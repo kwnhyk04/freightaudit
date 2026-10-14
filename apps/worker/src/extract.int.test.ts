@@ -1,5 +1,7 @@
-import { deadLetters, extractions, invoices } from '@freightaudit/db';
+import { deadLetters, extractions, invoices, tenants } from '@freightaudit/db';
+import { testEnv } from '@freightaudit/db/testing';
 import { replayDeadLetter, sweepFailedJobs } from '@freightaudit/pipeline';
+import { resetDev } from '@freightaudit/pipeline/scripts/reset';
 import { UnrecoverableError, Worker } from 'bullmq';
 import { eq } from 'drizzle-orm';
 import { PermanentError } from '@freightaudit/llm';
@@ -22,6 +24,8 @@ async function setup(reply: Parameters<typeof fakeGemini>[0]) {
 }
 
 const extractionRows = (invoiceId: string) => env!.db.select().from(extractions).where(eq(extractions.invoiceId, invoiceId));
+// After extraction the reconcile job runs; this tenant has no shipments, so it ends at needs_review.
+const EXTRACTED = ['extracted', 'reconciling', 'needs_review'];
 const statusOf = async (invoiceId: string) =>
   (await env!.db.select({ status: invoices.status }).from(invoices).where(eq(invoices.id, invoiceId)))[0]?.status;
 // The state first, then the job: a job read before its last attempt ends would show that attempt as not yet made.
@@ -40,12 +44,28 @@ test('a 429 from the model is retried with backoff and writes exactly one extrac
   expect(job.attemptsMade).toBe(3);
   expect(gemini.calls()).toBe(3);
   expect(await extractionRows(invoice.id)).toHaveLength(1);
-  expect(['extracted', 'reconciling']).toContain(await statusOf(invoice.id));
+  expect(EXTRACTED).toContain(await statusOf(invoice.id));
 
   // The job id is the content hash, so adding the same invoice again is a no-op.
   const again = await env.queues.queue('extract').add('extract', { tenantId: env.tenantId, invoiceId: invoice.id }, { jobId: invoice.contentSha256 });
   expect(await again.getState()).toBe('completed');
   expect(gemini.calls()).toBe(3);
+});
+
+test('a PDF uploaded before pnpm db:reset is extracted again after it', async () => {
+  const { env, gemini } = await setup(() => ({ status: 200, text: extraction() }));
+  env.runWorkers({ geminiUrl: gemini.url });
+  const before = await env.upload(await makePdf());
+  // Both jobs finished, so the reset meets no running job; both job ids (the PDF's hash) stay taken until it.
+  await waitFor(async () => (await env.queues.queue('reconcile').getJobState(before.contentSha256)) === 'completed');
+
+  await resetDev({ databaseUrl: env.databaseUrl, redisUrl: testEnv('REDIS_URL'), prefix: env.prefix, log: () => {} });
+  // The same bytes again, as the api would add them, for the tenant the reset seeded.
+  const [tenant] = await env.db.select({ id: tenants.id }).from(tenants);
+  const [after] = await env.db.insert(invoices).values({ tenantId: tenant!.id, filename: 'invoice.pdf', contentSha256: before.contentSha256 }).returning();
+  await env.queues.queue('extract').add('extract', { tenantId: tenant!.id, invoiceId: after!.id }, { jobId: before.contentSha256 });
+  await waitFor(async () => (await extractionRows(after!.id)).length > 0);
+  expect(gemini.calls()).toBe(2);
 });
 
 test('a poisoned job lands in extract-dlq and dead_letters, then replays successfully', async () => {
@@ -69,7 +89,7 @@ test('a poisoned job lands in extract-dlq and dead_letters, then replays success
   expect(await replayDeadLetter(env, env.tenantId, dead!.id)).toEqual({ id: dead!.id, jobId: invoice.contentSha256 });
   await waitFor(() => finished('extract', invoice.contentSha256));
   expect(await extractionRows(invoice.id)).toHaveLength(1);
-  expect(['extracted', 'reconciling']).toContain(await statusOf(invoice.id));
+  expect(EXTRACTED).toContain(await statusOf(invoice.id));
   const [replayed] = await env.db.select().from(deadLetters).where(eq(deadLetters.id, dead!.id));
   expect(replayed?.replayedAt).toBeInstanceOf(Date);
   expect(await env.queues.dlq('extract').getJob(invoice.contentSha256)).toBeUndefined();
@@ -152,7 +172,7 @@ test('a multi-invoice PDF splits into child jobs, and a failed child does not fa
   const outcomes = (row!.result as { parts: { invoiceId: string; status: string; error?: string }[] }).parts;
   expect(outcomes).toHaveLength(2);
   expect(outcomes.find((outcome) => outcome.invoiceId === bad.id)).toMatchObject({ status: 'failed', error: expect.stringMatching(/schema invalid/) });
-  expect(['extracted', 'reconciling']).toContain(outcomes.find((outcome) => outcome.invoiceId === good.id)?.status);
+  expect(EXTRACTED).toContain(outcomes.find((outcome) => outcome.invoiceId === good.id)?.status);
   expect(await extractionRows(good.id)).toHaveLength(1);
 
   // The failed part was dead-lettered on its own.

@@ -42,6 +42,8 @@ export const settings = {
   MOCK_TMS_URL: httpUrl,
   // How long a worker owns a job before another may recover it; the lock renews at half this while the job runs.
   JOB_LOCK_MS: integer(60_000),
+  // production on a machine whose database must survive; dev tools such as pnpm db:reset refuse to run there.
+  NODE_ENV: z.string().optional(),
   // mock-tms fault injection: share of requests that fail with 500, and delay added to each response.
   FAULT_RATE: z.string().regex(/^(0(\.\d+)?|1(\.0+)?)$/).transform(Number).default(0),
   LATENCY_MS: integer(0),

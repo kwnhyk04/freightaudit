@@ -1,11 +1,11 @@
 import { formatUsd } from './money.ts';
 import { type RateCard, rateShipment } from './rating.ts';
 
-// One version of a carrier's rate card, in force from the UTC day `from` up to, not including, `to` (open-ended while
-// null). Days are YYYY-MM-DD strings, which compare in date order.
+// One version of a carrier's rate card, in force from the UTC day `from` up to, not including, `to`; a null bound is
+// open on that side. Days are YYYY-MM-DD strings, which compare in date order.
 export type RateCardVersion = {
   version: number;
-  from: string;
+  from: string | null;
   to: string | null;
   // Linehaul bands and minimum, and the fuel surcharge.
   rates: RateCard;
@@ -29,7 +29,7 @@ const DAY = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
 // The version in force on a UTC day, or undefined before the first one. Overlapping versions are bad data.
 export function versionInForce<V extends Pick<RateCardVersion, 'version' | 'from' | 'to'>>(versions: readonly V[], day: string) {
   if (!DAY.test(day)) throw new RangeError(`not a YYYY-MM-DD day: ${day}`);
-  const found = versions.filter((version) => version.from <= day && (version.to === null || day < version.to));
+  const found = versions.filter((version) => (version.from === null || version.from <= day) && (version.to === null || day < version.to));
   if (found.length > 1) throw new RangeError(`rate card versions ${found.map((version) => version.version).join(' and ')} overlap on ${day}`);
   return found[0];
 }
@@ -38,7 +38,8 @@ export function versionInForce<V extends Pick<RateCardVersion, 'version' | 'from
 // than the contract allows, since undercharges favour the shipper. A charge code billed before, earlier on this invoice
 // or on an earlier invoice for the same shipment (billedBefore), is a duplicate; a code the version does not contract
 // is uncontracted; more than the linehaul (graduated bands, minimum), the fuel surcharge or the accessorial rate is a
-// rate mismatch. At most one discrepancy per line.
+// rate mismatch. At most one discrepancy per line. Findings do not change the invoice status: they wait as open
+// discrepancies for a reviewer.
 export function reconcileInvoice<V extends RateCardVersion>(
   versions: readonly V[],
   shipment: { shippedOn: string; miles: number; lines: readonly BilledLine[]; billedBefore?: readonly (string | null)[] },
@@ -63,5 +64,5 @@ export function reconcileInvoice<V extends RateCardVersion>(
     if (amountCents > finding.expectedCents) discrepancies.push({ ...finding, lineNumber, billedCents: amountCents });
     if (code !== null) billed.add(code);
   }
-  return { version, status: discrepancies.length === 0 ? ('reconciled' as const) : ('needs_review' as const), discrepancies };
+  return { version, discrepancies };
 }

@@ -1,7 +1,9 @@
 // Six invoice layouts with different labels, date formats and structure, so extraction is scored on varied documents.
 
 export type Party = { name: string; address: string };
-export type LineItem = { line_number: number; description: string; charge_code: string; amount_cents: number };
+// expected_cents is ground truth that no template prints: what the rate card version in force contracts for the line.
+export type LineItem = { line_number: number; description: string; charge_code: string; amount_cents: number; expected_cents: number };
+export type Overcharge = { line_number: number; type: string; expected_cents: number; billed_cents: number };
 export type InvoiceFixture = {
   carrier: string;
   invoice_number: string;
@@ -15,6 +17,8 @@ export type InvoiceFixture = {
   weight_lb: number;
   line_items: LineItem[];
   total_cents: number;
+  // Ground truth, never printed: every overcharge planted on the invoice.
+  overcharges: Overcharge[];
 };
 
 const esc = (value: string | number) => String(value).replace(/[&<>"]/g, (char) => `&#${char.charCodeAt(0)};`);

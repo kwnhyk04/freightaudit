@@ -28,6 +28,7 @@ test('the TMS sync pages with a saved cursor, retries a page in place, and resum
       destination: 'Boise, ID',
       shipped_on: '2026-09-01',
       weight_lb: 500,
+      miles: 430,
     }));
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ items, next_cursor: items.at(-1)?.reference ?? null, has_more: rest.length > limit }));
@@ -53,6 +54,7 @@ test('the TMS sync pages with a saved cursor, retries a page in place, and resum
     const [state] = await env.db.select().from(tmsSyncState).where(eq(tmsSyncState.tenantId, env.tenantId));
     expect(state?.cursor).toBe('SHP-000250');
     expect(await env.db.$count(shipments)).toBe(250);
+    expect(await env.db.$count(shipments, eq(shipments.miles, 430))).toBe(250);
     // Carriers the TMS names are created on the way.
     expect(await env.db.$count(carriers, eq(carriers.name, 'Copperline Haulage'))).toBe(1);
   } finally {

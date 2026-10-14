@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: FreightAudit API
-  version: 0.4.0
+  version: 0.6.0
   description: >-
     Ingests carrier invoice PDFs and serves audit results. Money is integer cents.
     Errors use RFC 9457 Problem Details (application/problem+json).
@@ -402,9 +402,11 @@ components:
     InvoiceStatus:
       type: string
       description: >-
-        Processing status of an invoice. It moves through received, extracting, extracted and reconciling,
-        then to reconciled (no discrepancies) or needs_review, and ends at approved. failed means a step used
-        up its retries; replaying its dead letter restarts that step.
+        Processing status of an invoice. It moves through received, extracting, extracted and reconciling
+        to reconciled, where each finding waits as an open discrepancy, and ends at approved once every
+        discrepancy has a decision. needs_review means the extraction could not be trusted, such as a carrier
+        or PRO number that matches no shipment. failed means a step used up its retries; replaying its dead
+        letter restarts that step.
       enum: [received, extracting, extracted, reconciling, reconciled, needs_review, approved, failed]
     InvoiceRef:
       type: object
@@ -416,13 +418,18 @@ components:
     Invoice:
       type: object
       required:
-        [id, status, filename, content_hash, carrier, invoice_number, invoice_date, currency, total_cents, created_at]
+        [id, status, failure_reason, filename, content_hash, carrier, invoice_number, invoice_date, currency, total_cents, created_at]
       properties:
         id:
           type: string
           format: uuid
         status:
           $ref: "#/components/schemas/InvoiceStatus"
+        failure_reason:
+          type: [string, "null"]
+          description: >-
+            Why the invoice failed: the error of the step that used up its retries or met data it cannot
+            process, such as a shipment without miles. Null unless status is failed; a replay clears it.
         filename:
           type: string
         content_hash:

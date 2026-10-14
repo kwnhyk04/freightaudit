@@ -23,6 +23,7 @@ const pageSchema = z.object({
       destination: z.string().min(1),
       shipped_on: z.iso.date(),
       weight_lb: z.int().positive().nullable(),
+      miles: z.int().nonnegative().nullable(),
     }),
   ),
   next_cursor: z.string().min(1).nullable(),
@@ -106,6 +107,7 @@ async function upsertShipments(tx: Tx, tenantId: string, items: Page['items']) {
     destination: item.destination,
     shippedOn: item.shipped_on,
     weightLb: item.weight_lb,
+    miles: item.miles,
   }));
   await tx
     .insert(shipments)
@@ -118,6 +120,7 @@ async function upsertShipments(tx: Tx, tenantId: string, items: Page['items']) {
         destination: sql`excluded.destination`,
         shippedOn: sql`excluded.shipped_on`,
         weightLb: sql`excluded.weight_lb`,
+        miles: sql`excluded.miles`,
       },
     });
   return rows.length;

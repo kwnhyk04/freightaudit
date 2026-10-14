@@ -367,6 +367,9 @@ importers:
       '@freightaudit/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@freightaudit/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@freightaudit/llm':
         specifier: workspace:*
         version: link:../../packages/llm
@@ -540,6 +543,9 @@ importers:
       '@faker-js/faker':
         specifier: 'catalog:'
         version: 10.6.0
+      '@freightaudit/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@types/jest':
         specifier: 'catalog:'
         version: 30.0.0

@@ -67,6 +67,7 @@ For small, clearly authorized changes, proceed without unnecessary confirmation.
 - Keep comments to one line and one sentence whenever practical.
 - Use kebab-case for Markdown filenames, except standard names such as `README.md` and `AGENTS.md`.
 - Make a to-do list before substantial development work.
+- Write and edit files with the file editing tools, never through shell echo, heredocs or redirects.
 
 ## Code Quality
 

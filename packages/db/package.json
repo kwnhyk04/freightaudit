@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "catalog:",
+    "@freightaudit/domain": "workspace:*",
     "@types/jest": "catalog:",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",

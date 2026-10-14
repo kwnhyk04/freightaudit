@@ -94,11 +94,11 @@ enum InvoiceStatus {
   """
   RECONCILING
   """
-  Reconciled with no discrepancies; waiting for approval.
+  Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision.
   """
   RECONCILED
   """
-  At least one discrepancy is open.
+  The extraction could not be trusted, such as a carrier or PRO number that matches no shipment; a person must check the document.
   """
   NEEDS_REVIEW
   """
@@ -117,6 +117,10 @@ A carrier invoice uploaded for audit.
 type Invoice implements Node {
   id: ID!
   status: InvoiceStatus!
+  """
+  Why the invoice failed, such as a shipment without miles; null unless status is FAILED.
+  """
+  failureReason: String
   """
   Original upload file name.
   """

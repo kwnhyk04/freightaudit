@@ -143,7 +143,7 @@ export interface components {
             };
         };
         /**
-         * @description Processing status of an invoice. It moves through received, extracting, extracted and reconciling, then to reconciled (no discrepancies) or needs_review, and ends at approved. failed means a step used up its retries; replaying its dead letter restarts that step.
+         * @description Processing status of an invoice. It moves through received, extracting, extracted and reconciling to reconciled, where each finding waits as an open discrepancy, and ends at approved once every discrepancy has a decision. needs_review means the extraction could not be trusted, such as a carrier or PRO number that matches no shipment. failed means a step used up its retries; replaying its dead letter restarts that step.
          * @enum {string}
          */
         InvoiceStatus: "received" | "extracting" | "extracted" | "reconciling" | "reconciled" | "needs_review" | "approved" | "failed";
@@ -155,6 +155,8 @@ export interface components {
             /** Format: uuid */
             id: string;
             status: components["schemas"]["InvoiceStatus"];
+            /** @description Why the invoice failed: the error of the step that used up its retries or met data it cannot process, such as a shipment without miles. Null unless status is failed; a replay clears it. */
+            failure_reason: string | null;
             filename: string;
             /** @description SHA-256 of the PDF bytes, hex encoded. */
             content_hash: string;

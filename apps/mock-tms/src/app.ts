@@ -24,6 +24,7 @@ const shipment = (n: number) => ({
   destination: CITIES[(n * 3 + 1) % CITIES.length]!,
   shipped_on: new Date(Date.UTC(2025, 0, 1) + (n % 600) * DAY_MS).toISOString().slice(0, 10),
   weight_lb: 150 + ((n * 37) % 11_850),
+  miles: 25 + ((n * 53) % 2_476),
 });
 
 // Fake TMS: generated shipments behind cursor pagination, a rate limit, and fault injection.

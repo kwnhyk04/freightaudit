@@ -2,6 +2,7 @@ query Invoice($id: ID!) {
   invoice(id: $id) {
     id
     status
+    failureReason
     filename
     carrier
     number

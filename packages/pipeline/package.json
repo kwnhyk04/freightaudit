@@ -2,9 +2,13 @@
   "name": "@freightaudit/pipeline",
   "private": true,
   "type": "module",
-  "exports": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./scripts/*": "./scripts/*.ts"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "db:reset": "node --env-file-if-exists=../../.env scripts/reset.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"

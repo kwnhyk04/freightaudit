@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { CARRIERS, CHARGE_CODES, type ChargeCode } from '@freightaudit/db';
+import { CHARGE_CODES } from '@freightaudit/db';
+import { billShipment, buildSeed } from '@freightaudit/db/scripts/seed';
 import { createCipheriv, createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -12,11 +13,16 @@ import { amount, TEMPLATES, type InvoiceFixture } from './templates.ts';
 // Renders synthetic invoices to digital PDFs plus scanned variants, each beside its ground-truth JSON.
 // Usage: pnpm fixtures [--count=60] [--seed=42] [--out=<dir>]; output defaults to evals/fixtures/out (git-ignored).
 // The same seed gives byte-identical files on one machine and Chromium build; other fonts or builds render differently.
+// Each invoice bills a shipment the small seed leaves unbilled, under its rate cards, so it reconciles against a
+// database seeded with --scale=small, and the ground truth gives what that reconciliation must find.
 
 // Letter at 96 CSS px per inch; device scale 2 rasterizes scans at 192 dpi.
 const VIEWPORT = { width: 816, height: 1056 };
 const SCAN = { width: VIEWPORT.width * 2, height: VIEWPORT.height * 2 };
-const ACCESSORIALS = (Object.keys(CHARGE_CODES) as ChargeCode[]).filter((code) => code !== 'LINEHAUL' && code !== 'FUEL');
+// Share of invoices with one planted overcharge.
+const PLANTED = 0.4;
+
+type Seeded = ReturnType<typeof buildSeed>;
 
 const day = (date: Date) => date.toISOString().slice(0, 10);
 const party = () => ({
@@ -24,28 +30,35 @@ const party = () => ({
   address: `${faker.location.streetAddress()}, ${faker.location.city()}, ${faker.location.state({ abbreviated: true })} ${faker.location.zipCode('#####')}`,
 });
 
-function makeInvoice(): InvoiceFixture {
-  const issued = faker.date.between({ from: '2025-01-01T00:00:00Z', to: '2026-09-30T00:00:00Z' });
-  const codes: ChargeCode[] = ['LINEHAUL', 'FUEL', ...faker.helpers.arrayElements(ACCESSORIALS, { min: 0, max: 3 })];
-  const lineItems = codes.map((code, i) => ({
+function makeInvoice(seeded: Seeded, shipment: Seeded['unbilled'][number]): InvoiceFixture {
+  const { items, overcharges } = billShipment(seeded.cards.get(shipment.carrierId)!, shipment, 3, faker.datatype.boolean(PLANTED));
+  const issued = new Date(Date.parse(shipment.shippedOn) + faker.number.int({ min: 1, max: 10 }) * 86_400_000);
+  const lineItems = items.map((item, i) => ({
     line_number: i + 1,
-    description: CHARGE_CODES[code],
-    charge_code: code,
-    amount_cents: faker.number.int(code === 'LINEHAUL' ? { min: 45_000, max: 180_000 } : { min: 2_500, max: 25_000 }),
+    description: CHARGE_CODES[item.code],
+    charge_code: item.code,
+    amount_cents: Number(item.billed),
+    expected_cents: Number(item.expected),
   }));
   return {
-    carrier: faker.helpers.arrayElement(CARRIERS),
+    carrier: seeded.carriers.find((carrier) => carrier.id === shipment.carrierId)!.name,
     invoice_number: faker.string.numeric(8),
     invoice_date: day(issued),
     due_date: day(new Date(issued.getTime() + 30 * 86_400_000)),
-    pro_number: faker.string.numeric(10),
+    pro_number: shipment.proNumber,
     currency: 'USD',
     bill_to: party(),
     shipper: party(),
     consignee: party(),
-    weight_lb: faker.number.int({ min: 150, max: 12_000 }),
+    weight_lb: shipment.weightLb,
     line_items: lineItems,
     total_cents: lineItems.reduce((sum, item) => sum + item.amount_cents, 0),
+    overcharges: overcharges.map((found) => ({
+      line_number: found.lineNumber,
+      type: found.type,
+      expected_cents: Number(found.expectedCents),
+      billed_cents: Number(found.billedCents),
+    })),
   };
 }
 
@@ -85,13 +98,16 @@ const pinDates = (pdf: Buffer, isoDay: string) =>
 
 export async function generateInvoices({ count, out, seed = 42 }: { count: number; out: string; seed?: number }) {
   await mkdir(out, { recursive: true });
+  const seeded = buildSeed('small');
+  if (count > seeded.unbilled.length) throw new RangeError(`count must be at most ${seeded.unbilled.length}, the shipments the small seed leaves unbilled`);
   faker.seed(seed);
+  const shipments = faker.helpers.arrayElements(seeded.unbilled, count);
   const names = Object.keys(TEMPLATES) as (keyof typeof TEMPLATES)[];
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 2 });
     for (let n = 1; n <= count; n++) {
-      const invoice = makeInvoice();
+      const invoice = makeInvoice(seeded, shipments[n - 1]!);
       const template = names[(n - 1) % names.length]!;
       const stem = join(out, `invoice-${String(n).padStart(4, '0')}`);
       await page.setContent(TEMPLATES[template](invoice));

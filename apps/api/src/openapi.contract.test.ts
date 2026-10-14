@@ -1,5 +1,5 @@
 import { createApiClient, openapiPath } from '@freightaudit/contracts';
-import { deadLetters, discrepancies } from '@freightaudit/db';
+import { deadLetters, discrepancies, invoices } from '@freightaudit/db';
 import { createMemoryStorage } from '@freightaudit/pipeline';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
@@ -192,7 +192,16 @@ test('GET /v1/invoices/{id} returns the invoice or a 404 Problem', async () => {
   const id = created.data?.id ?? '';
   const found = await client.GET('/v1/invoices/{id}', { params: { path: { id } } });
   expectMatchesSpec('/v1/invoices/{id}', 'get', found.response, found.data);
-  expect(found.data).toMatchObject({ id, status: 'received', filename: 'invoice-0.pdf', carrier: null });
+  expect(found.data).toMatchObject({ id, status: 'received', failure_reason: null, filename: 'invoice-0.pdf', carrier: null });
+
+  // A failed invoice gives the error of its open dead letter, whose job id is the invoice's content hash.
+  const contentSha256 = 'f'.repeat(64);
+  const [failed] = await env.db.insert(invoices).values({ tenantId: env.tenantId, status: 'failed', filename: 'failed.pdf', contentSha256 }).returning();
+  const payload = { tenantId: env.tenantId, invoiceId: failed!.id };
+  await env.db.insert(deadLetters).values({ tenantId: env.tenantId, queue: 'reconcile', jobId: contentSha256, payload, error: 'shipment has no miles', attempts: 1 });
+  const broken = await client.GET('/v1/invoices/{id}', { params: { path: { id: failed!.id } } });
+  expectMatchesSpec('/v1/invoices/{id}', 'get', broken.response, broken.data);
+  expect(broken.data).toMatchObject({ status: 'failed', failure_reason: 'shipment has no miles' });
 
   const missing = await client.GET('/v1/invoices/{id}', { params: { path: { id: randomUUID() } } });
   expectMatchesSpec('/v1/invoices/{id}', 'get', missing.response, missing.error);

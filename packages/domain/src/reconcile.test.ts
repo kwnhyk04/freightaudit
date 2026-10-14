@@ -33,7 +33,7 @@ const versions = fc
   .chain(([start, lengths]) => {
     const starts = lengths.map((_, i) => start + lengths.slice(0, i).reduce((sum, length) => sum + length, 0));
     return fc.tuple(...lengths.map(() => terms)).map((all) =>
-      all.map((t, i): RateCardVersion => ({ version: i + 1, from: day(starts[i]!), to: i + 1 < starts.length ? day(starts[i + 1]!) : null, ...t })),
+      all.map((t, i): RateCardVersion & { from: string } => ({ version: i + 1, from: day(starts[i]!), to: i + 1 < starts.length ? day(starts[i + 1]!) : null, ...t })),
     );
   });
 
@@ -76,22 +76,23 @@ test('the version in force is the one whose days contain the ship date, and none
     { version: 2, from: '2026-01-01', to: null },
   ];
   expect([versionInForce(increase, '2025-12-31')?.version, versionInForce(increase, '2026-01-01')?.version]).toEqual([1, 2]);
+  // A version with no start, such as one backfilled from flat rates, is in force on any earlier day.
+  expect(versionInForce([{ ...increase[0]!, from: null }], '1999-07-01')?.version).toBe(1);
 });
 
 test('an invoice that bills exactly the contract reconciles with no discrepancies', () => {
-  fc.assert(fc.property(billedExactly, (c) => expect(reconcile(c)).toEqual({ version: c.version, status: 'reconciled', discrepancies: [] })));
+  fc.assert(fc.property(billedExactly, (c) => expect(reconcile(c)).toEqual({ version: c.version, discrepancies: [] })));
 });
 
 test('each overbilled line is a rate mismatch against its contracted amount, and underbilled lines are not flagged', () => {
   fc.assert(
     fc.property(billedExactly, fc.array(fc.bigInt({ min: -50_000n, max: 50_000n }), { minLength: 8, maxLength: 8 }), (c, offsets) => {
       const lines = c.lines.map((line, i) => ({ ...line, amountCents: line.amountCents + offsets[i]! }));
-      const { status, discrepancies } = reconcile(c, lines);
+      const { discrepancies } = reconcile(c, lines);
       const over = c.lines.filter((_, i) => offsets[i]! > 0n);
       expect(brief(discrepancies)).toEqual(
         over.map((line) => ({ type: 'rate_mismatch', lineNumber: line.lineNumber, expectedCents: line.amountCents, billedCents: lines[line.lineNumber - 1]!.amountCents })),
       );
-      expect(status).toBe(over.length > 0 ? 'needs_review' : 'reconciled');
     }),
   );
 });
@@ -151,7 +152,6 @@ test('explains each finding for the reviewer', () => {
   // 500 miles at $2.50 is $1,250.00, and fuel is 20 % of that; the carrier billed fuel on the contract linehaul.
   expect(reconcileInvoice([version], { shippedOn: '2026-03-02', miles: 500, lines })).toEqual({
     version,
-    status: 'needs_review',
     discrepancies: [
       { type: 'rate_mismatch', lineNumber: 1, expectedCents: 125_000n, billedCents: 131_250n, evidence: 'Rate card version 2 sets LINEHAUL at $1,250.00; billed $1,312.50.' },
       { type: 'uncontracted_charge', lineNumber: 4, expectedCents: 0n, billedCents: 12_000n, evidence: 'RESIDENTIAL is not on rate card version 2.' },

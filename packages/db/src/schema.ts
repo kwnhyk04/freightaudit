@@ -44,9 +44,22 @@ export const rateCardVersions = pgTable('rate_card_versions', {
   carrierId: uuid('carrier_id').notNull(),
   version: integer('version').notNull(),
   effective: tstzrange('effective').notNull(),
+  // Linehaul terms (0007): the minimum linehaul and the fuel surcharge in basis points of it; null on older versions.
+  minimumCents: cents('minimum_cents'),
+  fuelBp: integer('fuel_bp'),
   ...timestamps,
 });
 
+// Graduated per-mile linehaul bands of a version (0007): each mile from fromMile on pays centsPerMile.
+export const rateCardBands = pgTable('rate_card_bands', {
+  tenantId: tenantId(),
+  rateCardVersionId: uuid('rate_card_version_id').notNull(),
+  fromMile: integer('from_mile').notNull(),
+  centsPerMile: cents('cents_per_mile').notNull(),
+  ...timestamps,
+});
+
+// A version's flat accessorial rates; the bands, minimum and fuel surcharge price the linehaul and fuel.
 export const rateCards = pgTable('rate_cards', {
   id: id(),
   tenantId: tenantId(),
@@ -66,6 +79,8 @@ export const shipments = pgTable('shipments', {
   destination: text('destination').notNull(),
   shippedOn: date('shipped_on').notNull(),
   weightLb: integer('weight_lb'),
+  // Trip distance (0007), which prices the linehaul; null until the TMS sends it.
+  miles: integer('miles'),
   ...timestamps,
 });
 

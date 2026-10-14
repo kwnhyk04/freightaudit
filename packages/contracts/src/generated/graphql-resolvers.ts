@@ -87,6 +87,8 @@ export type Invoice = Node & {
   currency?: Maybe<Scalars['String']['output']>;
   /** Discrepancies found on this invoice, newest first. */
   discrepancies: DiscrepancyConnection;
+  /** Why the invoice failed, such as a shipment without miles; null unless status is FAILED. */
+  failureReason?: Maybe<Scalars['String']['output']>;
   /** Original upload file name. */
   filename: Scalars['String']['output'];
   id: Scalars['ID']['output'];
@@ -135,11 +137,11 @@ export type InvoiceStatus =
   | 'EXTRACTING'
   /** A step used up its retries; replaying its dead letter restarts that step. */
   | 'FAILED'
-  /** At least one discrepancy is open. */
+  /** The extraction could not be trusted, such as a carrier or PRO number that matches no shipment; a person must check the document. */
   | 'NEEDS_REVIEW'
   /** Stored; waiting for extraction. */
   | 'RECEIVED'
-  /** Reconciled with no discrepancies; waiting for approval. */
+  /** Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision. */
   | 'RECONCILED'
   /** Matching against the shipment and rate card is running. */
   | 'RECONCILING';
@@ -430,6 +432,7 @@ export type InvoiceResolvers<ContextType = any, ParentType extends ResolversPare
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   currency?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   discrepancies?: Resolver<ResolversTypes['DiscrepancyConnection'], ParentType, ContextType, RequireFields<InvoiceDiscrepanciesArgs, 'first'>>;
+  failureReason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   filename?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   issuedOn?: Resolver<Maybe<ResolversTypes['Date']>, ParentType, ContextType>;

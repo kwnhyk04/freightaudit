@@ -1,5 +1,5 @@
 import type { components, operations } from '@freightaudit/contracts';
-import { carriers, discrepancies, idempotencyKeys, invoiceLines, invoices } from '@freightaudit/db';
+import { carriers, deadLetters, discrepancies, idempotencyKeys, invoiceLines, invoices } from '@freightaudit/db';
 import { type Queues, replayDeadLetter } from '@freightaudit/pipeline';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -41,9 +41,18 @@ function page<Row extends { id: string; cursorAt: string }, Item>(rows: Row[], l
   return { items: items.map(toItem), next_cursor: next };
 }
 
+// Why a failed invoice failed: the error of its open dead letter. Invoice jobs take the content hash as their id (a split
+// upload's collect job prefixes it), so the open-job index finds the row.
+const failureReason = sql<string | null>`(SELECT ${deadLetters.error} FROM ${deadLetters}
+  WHERE ${invoices.status} = 'failed' AND ${deadLetters.tenantId} = ${invoices.tenantId} AND ${deadLetters.replayedAt} IS NULL
+    AND ${deadLetters.queue} IN ('extract', 'reconcile')
+    AND ${deadLetters.jobId} IN (${invoices.contentSha256}, 'split-' || ${invoices.contentSha256})
+  ORDER BY ${deadLetters.createdAt} DESC LIMIT 1)`;
+
 const invoiceColumns = {
   id: invoices.id,
   status: invoices.status,
+  failureReason,
   filename: invoices.filename,
   contentSha256: invoices.contentSha256,
   carrier: carriers.name,
@@ -58,6 +67,7 @@ const invoiceColumns = {
 type InvoiceRow = {
   id: string;
   status: Invoice['status'];
+  failureReason: string | null;
   filename: string;
   contentSha256: string;
   carrier: string | null;
@@ -71,6 +81,7 @@ type InvoiceRow = {
 const toInvoice = (row: InvoiceRow): Invoice => ({
   id: row.id,
   status: row.status,
+  failure_reason: row.failureReason,
   filename: row.filename,
   content_hash: row.contentSha256,
   carrier: row.carrier,
