@@ -1,0 +1,6 @@
+mutation ApproveInvoice($id: ID!) {
+  approveInvoice(id: $id) {
+    id
+    status
+  }
+}

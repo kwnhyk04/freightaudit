@@ -1,0 +1,27 @@
+{
+  "name": "freightaudit",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:int": "turbo run test:int",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "db:migrate": "turbo run db:migrate",
+    "db:seed": "turbo run db:seed",
+    "codegen": "turbo run codegen",
+    "eval": "turbo run eval",
+    "contracts:check": "turbo run contracts:check",
+    "contracts:breaking": "turbo run contracts:breaking"
+  },
+  "devDependencies": {
+    "@freightaudit/config": "workspace:*",
+    "turbo": "^2.11.7"
+  }
+}

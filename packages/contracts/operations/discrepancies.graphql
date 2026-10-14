@@ -1,0 +1,23 @@
+query Discrepancies($first: Int, $after: String, $status: DiscrepancyStatus) {
+  discrepancies(first: $first, after: $after, status: $status) {
+    edges {
+      cursor
+      node {
+        id
+        type
+        status
+        expectedCents
+        billedCents
+        invoice {
+          id
+          number
+          carrier
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

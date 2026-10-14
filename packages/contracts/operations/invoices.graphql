@@ -1,0 +1,21 @@
+query Invoices($first: Int, $after: String, $status: InvoiceStatus) {
+  invoices(first: $first, after: $after, status: $status) {
+    edges {
+      cursor
+      node {
+        id
+        status
+        filename
+        carrier
+        number
+        issuedOn
+        totalCents
+        createdAt
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

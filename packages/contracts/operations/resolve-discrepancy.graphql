@@ -1,0 +1,8 @@
+mutation ResolveDiscrepancy($id: ID!, $decision: DiscrepancyDecision!, $note: String) {
+  resolveDiscrepancy(id: $id, decision: $decision, note: $note) {
+    id
+    status
+    note
+    resolvedAt
+  }
+}

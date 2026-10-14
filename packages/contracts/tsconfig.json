@@ -1,0 +1,7 @@
+{
+  "extends": "@freightaudit/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src", "scripts", "codegen.ts"]
+}

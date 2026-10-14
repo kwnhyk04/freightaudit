@@ -1,0 +1,286 @@
+"""
+Integer amount in cents, serialized as a JSON number within the safe integer range.
+"""
+scalar Cents
+
+"""
+Calendar date in ISO 8601 format (YYYY-MM-DD).
+"""
+scalar Date
+
+"""
+Timestamp in ISO 8601 format with a UTC offset.
+"""
+scalar DateTime
+
+"""
+Queries for the invoice review UI.
+"""
+type Query {
+  """
+  Liveness probe; always returns ok.
+  """
+  health: String!
+
+  """
+  Invoices, newest first.
+  """
+  invoices(first: Int = 25, after: String, status: InvoiceStatus): InvoiceConnection!
+
+  """
+  One invoice, or null when it does not exist.
+  """
+  invoice(id: ID!): Invoice
+
+  """
+  Discrepancies across all invoices, newest first.
+  """
+  discrepancies(first: Int = 25, after: String, status: DiscrepancyStatus): DiscrepancyConnection!
+}
+
+"""
+Reviewer actions.
+"""
+type Mutation {
+  """
+  Records a reviewer decision on a discrepancy.
+  """
+  resolveDiscrepancy(id: ID!, decision: DiscrepancyDecision!, note: String): Discrepancy!
+
+  """
+  Approves an invoice for payment.
+  """
+  approveInvoice(id: ID!): Invoice!
+}
+
+"""
+An object with a globally unique ID.
+"""
+interface Node {
+  """
+  Globally unique ID.
+  """
+  id: ID!
+}
+
+"""
+Pagination state of a connection.
+"""
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+"""
+Processing status of an invoice.
+"""
+enum InvoiceStatus {
+  RECEIVED
+  EXTRACTING
+  RECONCILING
+  NEEDS_REVIEW
+  APPROVED
+  FAILED
+}
+
+"""
+A carrier invoice uploaded for audit.
+"""
+type Invoice implements Node {
+  id: ID!
+  status: InvoiceStatus!
+  """
+  Original upload file name.
+  """
+  filename: String!
+  """
+  SHA-256 of the PDF bytes, hex encoded.
+  """
+  contentHash: String!
+  carrier: String
+  """
+  Invoice number printed by the carrier.
+  """
+  number: String
+  issuedOn: Date
+  """
+  ISO 4217 currency code.
+  """
+  currency: String
+  totalCents: Cents
+  createdAt: DateTime!
+  """
+  Charge lines in invoice order.
+  """
+  # eslint-disable-next-line @graphql-eslint/relay-edge-types -- plain list, not a connection: line items are bounded per invoice
+  lineItems: [LineItem!]!
+  """
+  Shipment the invoice was matched to.
+  """
+  shipment: Shipment
+  """
+  Rate card version used for reconciliation.
+  """
+  rateCardVersion: RateCardVersion
+  """
+  Discrepancies found on this invoice, newest first.
+  """
+  discrepancies(first: Int = 25, after: String, status: DiscrepancyStatus): DiscrepancyConnection!
+}
+
+"""
+A charge line extracted from an invoice.
+"""
+type LineItem {
+  id: ID!
+  """
+  Position on the invoice, starting at 1.
+  """
+  lineNumber: Int!
+  description: String!
+  """
+  Normalized charge code, for example LINEHAUL or FUEL.
+  """
+  chargeCode: String
+  amountCents: Cents!
+}
+
+"""
+A shipment record synced from the TMS.
+"""
+type Shipment {
+  id: ID!
+  """
+  Shipment reference in the TMS.
+  """
+  reference: String!
+  carrier: String!
+  origin: String!
+  destination: String!
+  shippedOn: Date!
+  weightLb: Float
+}
+
+"""
+One version of a contracted carrier rate card.
+"""
+type RateCardVersion {
+  id: ID!
+  carrier: String!
+  """
+  Increases with each new version for the carrier.
+  """
+  version: Int!
+  effectiveFrom: Date!
+  """
+  Null while this version is current.
+  """
+  effectiveTo: Date
+}
+
+"""
+Kind of mismatch between billed and expected charges.
+"""
+enum DiscrepancyType {
+  RATE_MISMATCH
+  UNCONTRACTED_CHARGE
+  DUPLICATE_CHARGE
+  WEIGHT_MISMATCH
+  ARITHMETIC_ERROR
+}
+
+"""
+Review state of a discrepancy.
+"""
+enum DiscrepancyStatus {
+  OPEN
+  CONFIRMED
+  DISMISSED
+}
+
+"""
+Reviewer decision on a discrepancy.
+"""
+enum DiscrepancyDecision {
+  """
+  The overcharge is real.
+  """
+  CONFIRM
+  """
+  False flag; the billed amount stands.
+  """
+  DISMISS
+}
+
+"""
+A billed charge that does not match the contract.
+"""
+type Discrepancy implements Node {
+  id: ID!
+  type: DiscrepancyType!
+  status: DiscrepancyStatus!
+  """
+  Amount the contract allows.
+  """
+  expectedCents: Cents!
+  """
+  Amount the carrier billed.
+  """
+  billedCents: Cents!
+  """
+  How the expected amount was derived.
+  """
+  evidence: String!
+  invoice: Invoice!
+  """
+  Billed line the discrepancy is about, if any.
+  """
+  lineItem: LineItem
+  """
+  Shipment used as evidence.
+  """
+  shipment: Shipment
+  """
+  Rate card version used as evidence.
+  """
+  rateCardVersion: RateCardVersion
+  """
+  Reviewer note from the last decision.
+  """
+  note: String
+  resolvedAt: DateTime
+}
+
+"""
+A page of invoices.
+"""
+type InvoiceConnection {
+  edges: [InvoiceEdge!]!
+  pageInfo: PageInfo!
+}
+
+"""
+An invoice in a connection.
+"""
+type InvoiceEdge {
+  cursor: String!
+  node: Invoice!
+}
+
+"""
+A page of discrepancies.
+"""
+type DiscrepancyConnection {
+  edges: [DiscrepancyEdge!]!
+  pageInfo: PageInfo!
+}
+
+"""
+A discrepancy in a connection.
+"""
+type DiscrepancyEdge {
+  cursor: String!
+  node: Discrepancy!
+}

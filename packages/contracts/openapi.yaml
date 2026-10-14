@@ -1,0 +1,488 @@
+openapi: 3.1.0
+info:
+  title: FreightAudit API
+  version: 0.2.0
+  description: >-
+    Ingests carrier invoice PDFs and serves audit results. Money is integer cents.
+    Errors use RFC 9457 Problem Details (application/problem+json).
+servers:
+  - url: http://localhost:4000
+    description: Local development
+
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      summary: Liveness probe.
+      responses:
+        "200":
+          description: Service is alive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /v1/invoices:
+    post:
+      operationId: createInvoice
+      summary: Upload one invoice PDF.
+      description: >-
+        Files are deduplicated by the SHA-256 of their bytes. A retry with the same
+        Idempotency-Key and file returns the original invoice id.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  contentMediaType: application/pdf
+                  description: Invoice PDF, at most 20 MiB.
+      responses:
+        "200":
+          description: This file was uploaded before; returns the existing invoice id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceRef"
+        "202":
+          description: Invoice stored; extraction is queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceRef"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/IdempotencyKeyReused"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    get:
+      operationId: listInvoices
+      summary: List invoices, newest first.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: status
+          in: query
+          description: Only return invoices with this status.
+          schema:
+            $ref: "#/components/schemas/InvoiceStatus"
+      responses:
+        "200":
+          description: One page of invoices.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoicePage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/invoices/{id}:
+    get:
+      operationId: getInvoice
+      summary: Get one invoice.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The invoice.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/invoice-batches:
+    post:
+      operationId: createInvoiceBatch
+      summary: Upload up to 500 invoice PDFs.
+      description: >-
+        Every file gets its own result, in request order. A bad file is reported as
+        rejected and never fails the whole batch.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items:
+                    type: string
+                    contentMediaType: application/pdf
+                    description: Invoice PDF, at most 20 MiB.
+      responses:
+        "202":
+          description: Per-file results; accepted files are queued for extraction.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/discrepancies:
+    get:
+      operationId: listDiscrepancies
+      summary: List discrepancies, newest first.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: One page of discrepancies.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscrepancyPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /v1/dead-letters/{id}/replay:
+    post:
+      operationId: replayDeadLetter
+      summary: Requeue a dead-lettered job.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Dead-letter entry id.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+      responses:
+        "202":
+          description: Job requeued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplayAccepted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Client-chosen key that makes retries safe.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+    Limit:
+      name: limit
+      in: query
+      description: Page size.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+    Cursor:
+      name: cursor
+      in: query
+      description: Opaque cursor taken from next_cursor of the previous page.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 512
+
+  headers:
+    RetryAfter:
+      description: Seconds to wait before retrying.
+      required: true
+      schema:
+        type: integer
+        minimum: 0
+
+  responses:
+    BadRequest:
+      description: The request failed validation.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotFound:
+      description: The resource does not exist.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    PayloadTooLarge:
+      description: A file is larger than 20 MiB or the request has more than 500 files.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    UnsupportedMediaType:
+      description: The uploaded file is not a PDF.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    IdempotencyKeyReused:
+      description: The Idempotency-Key was already used with a different file.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    TooManyRequests:
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          $ref: "#/components/headers/RetryAfter"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ServiceUnavailable:
+      description: Ingestion is shedding load or a dependency is down.
+      headers:
+        Retry-After:
+          $ref: "#/components/headers/RetryAfter"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+    InvoiceStatus:
+      type: string
+      description: Processing status of an invoice.
+      enum: [received, extracting, reconciling, needs_review, approved, failed]
+    InvoiceRef:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+    Invoice:
+      type: object
+      required:
+        [id, status, filename, content_hash, carrier, invoice_number, invoice_date, currency, total_cents, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/InvoiceStatus"
+        filename:
+          type: string
+        content_hash:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description: SHA-256 of the PDF bytes, hex encoded.
+        carrier:
+          type: [string, "null"]
+          description: Carrier name; null until extracted.
+        invoice_number:
+          type: [string, "null"]
+          description: Invoice number printed by the carrier.
+        invoice_date:
+          type: [string, "null"]
+          format: date
+        currency:
+          type: [string, "null"]
+          pattern: "^[A-Z]{3}$"
+          description: ISO 4217 code.
+        total_cents:
+          type: [integer, "null"]
+          format: int64
+          description: Invoice total in cents.
+        created_at:
+          type: string
+          format: date-time
+    InvoicePage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Invoice"
+        next_cursor:
+          type: [string, "null"]
+          description: Cursor for the next page; null on the last page.
+    DiscrepancyType:
+      type: string
+      enum: [rate_mismatch, uncontracted_charge, duplicate_charge, weight_mismatch, arithmetic_error]
+    DiscrepancyStatus:
+      type: string
+      enum: [open, confirmed, dismissed]
+    Discrepancy:
+      type: object
+      required:
+        [
+          id,
+          invoice_id,
+          line_item_id,
+          shipment_id,
+          rate_card_version_id,
+          type,
+          status,
+          expected_cents,
+          billed_cents,
+          evidence,
+          created_at,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        invoice_id:
+          type: string
+          format: uuid
+        line_item_id:
+          type: [string, "null"]
+          format: uuid
+          description: Billed line the discrepancy is about, if any.
+        shipment_id:
+          type: [string, "null"]
+          format: uuid
+          description: Shipment used as evidence.
+        rate_card_version_id:
+          type: [string, "null"]
+          format: uuid
+          description: Rate card version used as evidence.
+        type:
+          $ref: "#/components/schemas/DiscrepancyType"
+        status:
+          $ref: "#/components/schemas/DiscrepancyStatus"
+        expected_cents:
+          type: integer
+          format: int64
+          description: Amount the contract allows, in cents.
+        billed_cents:
+          type: integer
+          format: int64
+          description: Amount the carrier billed, in cents.
+        evidence:
+          type: string
+          description: How the expected amount was derived.
+        created_at:
+          type: string
+          format: date-time
+    DiscrepancyPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Discrepancy"
+        next_cursor:
+          type: [string, "null"]
+          description: Cursor for the next page; null on the last page.
+    BatchResult:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/BatchItemResult"
+    BatchItemResult:
+      type: object
+      required: [index, status]
+      properties:
+        index:
+          type: integer
+          minimum: 0
+          description: Position of the file in the request.
+        status:
+          type: string
+          enum: [accepted, duplicate, rejected]
+        invoice_id:
+          type: string
+          format: uuid
+          description: Set when status is accepted or duplicate.
+        error:
+          $ref: "#/components/schemas/Problem"
+    ReplayAccepted:
+      type: object
+      required: [id, job_id]
+      properties:
+        id:
+          type: string
+        job_id:
+          type: string
+          description: Id of the requeued job.
+    Problem:
+      type: object
+      description: RFC 9457 Problem Details.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          description: Problem type; about:blank means the HTTP status describes it.
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference

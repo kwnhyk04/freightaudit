@@ -1,0 +1,51 @@
+query Invoice($id: ID!) {
+  invoice(id: $id) {
+    id
+    status
+    filename
+    carrier
+    number
+    issuedOn
+    currency
+    totalCents
+    lineItems {
+      id
+      lineNumber
+      description
+      chargeCode
+      amountCents
+    }
+    shipment {
+      id
+      reference
+      origin
+      destination
+      shippedOn
+    }
+    rateCardVersion {
+      id
+      version
+      effectiveFrom
+    }
+    discrepancies(first: 100) {
+      edges {
+        node {
+          id
+          type
+          status
+          expectedCents
+          billedCents
+          evidence
+          note
+          lineItem {
+            id
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
