@@ -25,8 +25,14 @@ catalog:
 allowBuilds:
   "@parcel/watcher": false
   "@swc/core": false
+  # ssh2 and cpu-features (SSH transports of Testcontainers and its dockerode) compile optional native crypto; ssh2
+  # falls back to JavaScript.
+  cpu-features: false
   # BullMQ's optional msgpack addon; msgpackr falls back to JavaScript without it.
   msgpackr-extract: false
+  # dockerode's gRPC protos; the postinstall only checks how dependents pin its version.
+  protobufjs: false
+  ssh2: false
   unrs-resolver: false
 
 # openapi-typescript 7 declares typescript ^5; its output on 6.0 is checked by pnpm contracts:check.

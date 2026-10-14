@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { loadEnv } from '@freightaudit/config/env';
-import { getTableColumns, sql } from 'drizzle-orm';
+import { getTableColumns } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { PgInsertValue, PgTable } from 'drizzle-orm/pg-core';
 import { createHash } from 'node:crypto';
@@ -74,8 +74,18 @@ async function insert<T extends PgTable>(db: NodePgDatabase, table: T, rows: PgI
   for (let i = 0; i < rows.length; i += size) await db.insert(table).values(rows.slice(i, i + size));
 }
 
+// The same, naming only the given columns: a Drizzle insert names every column of the latest schema.
+async function insertColumns(client: pg.Client, table: string, columns: string[], rows: unknown[][]) {
+  const size = Math.floor(65_535 / columns.length);
+  for (let i = 0; i < rows.length; i += size) {
+    const batch = rows.slice(i, i + size);
+    const values = batch.map((_, row) => `(${columns.map((_, column) => `$${row * columns.length + column + 1}`).join(', ')})`);
+    await client.query(`INSERT INTO ${table} (${columns.join(', ')}) VALUES ${values.join(', ')}`, batch.flat());
+  }
+}
+
 // Deterministic demo data (faker.seed(42)) for an empty, migrated database, written in one transaction.
-// flatRates writes the pre-versioning shape (state 0002) that scripts/backfill-rate-card-versions.ts upgrades.
+// flatRates writes the pre-versioning shape of 0001, which also loads at 0002, for scripts/backfill-rate-card-versions.ts.
 export async function seed(client: pg.Client, scale: Scale, { flatRates = false, log = logJson }: { flatRates?: boolean; log?: Log } = {}) {
   const { rows } = await client.query<{ seeded: boolean }>('SELECT EXISTS (SELECT 1 FROM tenants) AS seeded');
   if (rows[0]?.seeded) throw new Error('Database already has data; seed needs an empty, migrated database.');
@@ -220,17 +230,18 @@ export async function seed(client: pg.Client, scale: Scale, { flatRates = false,
     }
     await insert(db, t.shipments, shipments);
     if (flatRates) {
-      // Before 0006, invoices has no parent_invoice_id, which a Drizzle insert of the latest schema always names.
-      for (const row of invoices) {
-        const columns = 'id, tenant_id, status, filename, content_sha256, carrier_id, shipment_id, invoice_number, pro_number, invoice_date, currency, total_cents, created_at, updated_at';
-        const values = [row.id, row.tenantId, row.status, row.filename, row.contentSha256, row.carrierId, row.shipmentId, row.invoiceNumber, row.proNumber, row.invoiceDate, row.currency, row.totalCents, row.createdAt, row.updatedAt];
-        await client.query(`INSERT INTO invoices (${columns}) VALUES (${values.map((_, i) => `$${i + 1}`).join(', ')})`, values.map((value) => value ?? null));
-      }
+      // The 0001 columns: invoices without parent_invoice_id (0006), and lines without the rate_card_version_id that
+      // 0002 adds and the backfill fills.
+      const invoiceColumns = ['id', 'tenant_id', 'status', 'filename', 'content_sha256', 'carrier_id', 'shipment_id', 'invoice_number', 'pro_number', 'invoice_date', 'currency', 'total_cents', 'created_at', 'updated_at'];
+      const invoiceRows = invoices.map((row) => [row.id, row.tenantId, row.status, row.filename, row.contentSha256, row.carrierId, row.shipmentId, row.invoiceNumber, row.proNumber, row.invoiceDate, row.currency, row.totalCents, row.createdAt, row.updatedAt]);
+      await insertColumns(client, 'invoices', invoiceColumns, invoiceRows.map((values) => values.map((value) => value ?? null)));
+      const lineColumns = ['id', 'tenant_id', 'invoice_id', 'line_number', 'description', 'charge_code', 'amount_cents', 'created_at', 'updated_at'];
+      const lineRows = lines.map((line) => [line.id, line.tenantId, line.invoiceId, line.lineNumber, line.description, line.chargeCode, line.amountCents, line.createdAt, line.updatedAt]);
+      await insertColumns(client, 'invoice_lines', lineColumns, lineRows);
     } else {
       await insert(db, t.invoices, invoices);
+      await insert(db, t.invoiceLines, lines);
     }
-    // Flat-rate lines have no version yet and wait for the backfill; the column stays nullable until 0003a.
-    await insert(db, t.invoiceLines, flatRates ? lines.map((line) => ({ ...line, rateCardVersionId: sql`NULL` })) : lines);
     await insert(db, t.discrepancies, discrepancies);
     await insert(db, t.idempotencyKeys, keys);
     await insert(db, t.deadLetters, deadLetters);

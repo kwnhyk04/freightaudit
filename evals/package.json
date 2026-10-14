@@ -5,8 +5,7 @@
   "scripts": {
     "fixtures": "node fixtures/generate-invoices.ts",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "test:int": "node --experimental-vm-modules node_modules/jest/bin/jest.js -c jest.int.config.js"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@faker-js/faker": "catalog:",
@@ -19,7 +18,6 @@
     "@types/jest": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",
-    "jest": "catalog:",
     "typescript": "catalog:"
   }
 }

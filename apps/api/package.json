@@ -7,8 +7,7 @@
     "dev": "node --env-file-if-exists=../../.env --watch src/main.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "test:int": "node --env-file-if-exists=../../.env --experimental-vm-modules node_modules/jest/bin/jest.js -c jest.int.config.js"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
     "@fastify/multipart": "^10.1.3",

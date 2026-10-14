@@ -11,18 +11,21 @@
   "scripts": {
     "build": "tsc",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",
     "@swc/core": "^1.16.18",
     "@swc/jest": "^0.2.39",
     "eslint": "catalog:",
+    "testcontainers": "^12.2.1",
     "typescript": "catalog:",
     "typescript-eslint": "^8.71.2",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "jest": "catalog:"
   }
 }

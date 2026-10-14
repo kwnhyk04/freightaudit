@@ -9,15 +9,15 @@ import { scheduleTmsSync } from './workers.ts';
 // 250 shipments; a page is up to `limit` references after the cursor, and the cursor is the last reference.
 const references = Array.from({ length: 250 }, (_, i) => `SHP-${String(i + 1).padStart(6, '0')}`);
 
-test('the TMS sync pages with a saved cursor, backs off on 429 and resumes mid-stream after a failure', async () => {
+test('the TMS sync pages with a saved cursor, retries a page in place, and resumes mid-stream after a failed attempt', async () => {
   const requests: string[] = [];
   const tms = createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://tms');
     const after = url.searchParams.get('after') ?? '';
     requests.push(after);
     if (requests.length === 2) return res.writeHead(429, { 'retry-after': '0' }).end();
-    // The third page fails once, ending that attempt after two pages were saved.
-    if (requests.length === 4) return res.writeHead(500).end();
+    // The third page fails 10 times in a row, the most one page is tried, ending that attempt after two pages were saved.
+    if (requests.length >= 4 && requests.length <= 13) return res.writeHead(500).end();
     const rest = references.filter((reference) => reference > after);
     const limit = Number(url.searchParams.get('limit'));
     const items = rest.slice(0, limit).map((reference, i) => ({
@@ -45,8 +45,9 @@ test('the TMS sync pages with a saved cursor, backs off on 429 and resumes mid-s
       const completed = await env.queues.queue('tms-sync').getCompleted();
       return completed.length > 0 && completed;
     });
-    // The 429 retried the same page; the failed attempt resumed from the cursor saved after page two.
-    expect(requests).toEqual(['', 'SHP-000100', 'SHP-000100', 'SHP-000200', 'SHP-000200']);
+    // The 429 and the first nine 500s retried the same page in place; the next attempt resumed from the cursor saved
+    // after page two.
+    expect(requests).toEqual(['', 'SHP-000100', 'SHP-000100', ...Array<string>(11).fill('SHP-000200')]);
     expect(job!.attemptsMade).toBe(2);
     expect(job!.returnvalue).toEqual({ pages: 1, upserted: 50 });
     const [state] = await env.db.select().from(tmsSyncState).where(eq(tmsSyncState.tenantId, env.tenantId));

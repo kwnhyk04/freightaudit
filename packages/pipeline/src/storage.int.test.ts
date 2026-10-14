@@ -1,9 +1,9 @@
+import { testEnv } from '@freightaudit/db/testing';
 import { randomBytes } from 'node:crypto';
 import { createStorage } from './storage.ts';
 
-// The compose MinIO; the bucket is created on first use and shared with the worker's crash test.
-const { S3_ENDPOINT = 'http://localhost:9000', S3_ACCESS_KEY = '', S3_SECRET_KEY = '' } = process.env;
-const options = { endpoint: S3_ENDPOINT, accessKey: S3_ACCESS_KEY, secretKey: S3_SECRET_KEY, bucket: 'freightaudit-test' };
+// The test run's MinIO; the bucket is created on first use and shared with the worker's crash test.
+const options = { endpoint: testEnv('S3_ENDPOINT'), accessKey: testEnv('S3_ACCESS_KEY'), secretKey: testEnv('S3_SECRET_KEY'), bucket: 'freightaudit-test' };
 
 test('puts and gets objects in MinIO with SigV4-signed requests', async () => {
   const storage = createStorage(options);

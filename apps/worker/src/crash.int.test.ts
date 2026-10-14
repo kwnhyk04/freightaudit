@@ -1,4 +1,5 @@
 import { extractions, invoices } from '@freightaudit/db';
+import { testEnv } from '@freightaudit/db/testing';
 import { createStorage } from '@freightaudit/pipeline';
 import { eq } from 'drizzle-orm';
 import { spawn } from 'node:child_process';
@@ -18,8 +19,8 @@ test('a job whose worker is killed mid-job is recovered by another worker withou
     markHung();
     return 'hang';
   });
-  const { S3_ENDPOINT = '', S3_ACCESS_KEY = '', S3_SECRET_KEY = '' } = process.env;
-  const env = await createTestEnv(createStorage({ endpoint: S3_ENDPOINT, accessKey: S3_ACCESS_KEY, secretKey: S3_SECRET_KEY, bucket }));
+  const storage = createStorage({ endpoint: testEnv('S3_ENDPOINT'), accessKey: testEnv('S3_ACCESS_KEY'), secretKey: testEnv('S3_SECRET_KEY'), bucket });
+  const env = await createTestEnv(storage);
   try {
     const child = spawn(process.execPath, [main], {
       stdio: ['ignore', 'ignore', 'inherit'],
@@ -48,10 +49,9 @@ test('a job whose worker is killed mid-job is recovered by another worker withou
     await once(child, 'exit');
     // Another worker finds the lock expired, moves the job back to wait and runs it again.
     env.runWorkers({ geminiUrl: gemini.url });
-    const job = await waitFor(async () => {
-      const found = await env.queues.queue('extract').getJob(invoice.contentSha256);
-      return (await found?.isCompleted()) && found;
-    });
+    // The state first, then the job: a job read before its last attempt ends would show that attempt as not yet made.
+    const extract = env.queues.queue('extract');
+    const job = await waitFor(async () => (await extract.getJobState(invoice.contentSha256)) === 'completed' && extract.getJob(invoice.contentSha256));
     // The killed attempt never finished, so it is not counted: one stall, one finished attempt.
     expect(job.stalledCounter).toBe(1);
     expect(job.attemptsMade).toBe(1);

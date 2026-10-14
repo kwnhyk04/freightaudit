@@ -26,15 +26,17 @@ Backend on this PC (production): `docker compose --env-file .env -f infra/docker
 | --- | --- |
 | `pnpm dev` | Run all apps in watch mode |
 | `pnpm build` | Build every package and app |
-| `pnpm typecheck`, `pnpm lint`, `pnpm test` | Checks (lint includes graphql-eslint); unit tests need no infrastructure |
+| `pnpm typecheck`, `pnpm lint`, `pnpm test` | Checks (lint includes graphql-eslint). `pnpm test` runs the Jest `unit` project per package through Turborepo, cached: no infrastructure, and a guard fails any unit test that opens a socket or starts a process. `packages/domain` fails below 90 % coverage |
 | `pnpm codegen` | Regenerate types and clients from `packages/contracts/openapi.yaml` and `schema.graphql` |
 | `pnpm contracts:check` | Fail if committed generated code is stale (regenerates it) |
 | `pnpm contracts:breaking` | Fail on breaking OpenAPI changes against `origin/main` (needs git, a fetched base branch and Docker; override the base with `OASDIFF_BASE_REF`) |
 | `pnpm db:migrate [--to=0002]` | Apply pending SQL migrations from `packages/db/migrations`; `--to` stops after the files with that prefix (see `docs/migrations.md`) |
 | `pnpm db:seed --scale=small\|large` | Seed an empty, migrated database with deterministic demo data: small is 1 tenant, 6 carriers, 5,000 shipments and 500 invoices; large is 50,000 shipments and 20,000 invoices |
-| `pnpm test:int` | Integration tests against the compose Postgres, Redis and MinIO (start infra first; each test uses a throwaway database and its own Redis key prefix): migrations, the REST contract, rate limits and backpressure, the worker pipeline (retries, dead letters and replay, crash recovery, budget guard, multi-invoice split, TMS sync), and the fixture determinism test (needs the Playwright Chromium) |
+| `pnpm test:int` | The Jest `integration` and `contract` projects in one root run (`jest.config.js`), against Postgres, Redis, MinIO and Toxiproxy containers that Testcontainers starts for the run on 127.0.0.1 and removes afterwards. Needs Docker, not the compose infra; each test uses a throwaway database, its own Redis key prefix and bucket. Covers migrations including expand, backfill and contract under the api's queries, the REST contract, keyset pagination under concurrent inserts, batch partial failure, rate limits and backpressure, the worker pipeline (retries, dead letters and replay, crash recovery, budget guard, multi-invoice split, TMS sync through 20 % connection resets and 300 ms latency), and the fixture determinism test (needs the Playwright Chromium) |
 | `pnpm fixtures [--count=60] [--seed=42]` | Render synthetic invoice PDFs from 6 templates, plus scanned variants, each with ground-truth JSON, into `evals/fixtures/out`; the same seed gives byte-identical files on one machine |
 | `pnpm eval` | Wired to Turborepo; a no-op until step 6 |
+
+One project or file: `node --experimental-vm-modules node_modules/jest/bin/jest.js --selectProjects contract`, or `--selectProjects integration -- apps/worker/src/tms-chaos` (build the packages first with `pnpm build`).
 
 Apps (each answers `GET /healthz` and `GET /readyz`, bound to loopback): web `:3000`, api `:4000` (GraphQL at `/graphql`), worker `:4001`, mock-tms `:4010`. Every api route except the two probes requires the `X-API-Key` header and is rate limited per key (60 requests a minute, 10 uploads a minute). Uploads go to MinIO and the `extract` queue; the worker extracts with Gemini only when `AI_ENABLED=true` and `GEMINI_API_KEY` is set, and otherwise holds extract jobs back. Node services log JSON lines (pino) with a request id, at `LOG_LEVEL`, with credentials redacted.
 

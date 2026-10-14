@@ -14,6 +14,7 @@
     "@types/jest": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",
+    "fast-check": "^4.10.2",
     "jest": "catalog:",
     "typescript": "catalog:"
   }

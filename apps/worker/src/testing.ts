@@ -1,6 +1,6 @@
 // Shared by the worker integration tests: a throwaway database and Redis prefix, test PDFs, and a fake Gemini.
 import { carriers, invoices, tenants } from '@freightaudit/db';
-import { createTestDatabase } from '@freightaudit/db/testing';
+import { createTestDatabase, testEnv } from '@freightaudit/db/testing';
 import { createGeminiProvider, createLimits, metered } from '@freightaudit/llm';
 import { createMemoryStorage, createQueues, type Storage } from '@freightaudit/pipeline';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -102,7 +102,7 @@ export async function createTestEnv(storage: Storage = createMemoryStorage()) {
   const tenantId = randomUUID();
   await db.insert(tenants).values({ id: tenantId, name: 'Test tenant' });
   await db.insert(carriers).values({ tenantId, name: 'Halcyon Ridge Freight' });
-  const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', { maxRetriesPerRequest: null });
+  const redis = new Redis(testEnv('REDIS_URL'), { maxRetriesPerRequest: null });
   const prefix = `test-${randomBytes(4).toString('hex')}`;
   const queues = createQueues(redis, prefix);
   const stops: (() => Promise<void>)[] = [];

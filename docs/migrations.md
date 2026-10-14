@@ -104,19 +104,19 @@ The helper check is named `*_check`. Postgres 18 records `NOT NULL` itself as a 
 - `extractions` holds one validated model extraction per invoice: model, token counts and the result as `jsonb`. `invoice_id` is unique, so a second save by a retried or recovered job is a no-op (`ON CONFLICT DO NOTHING`). For an upload split into several invoices, the row records each part's outcome instead.
 - `invoices.parent_invoice_id` points a split-out invoice at the upload it came from. The nullable column is a catalog change; the foreign key is added `NOT VALID`, because every existing row is NULL and a validating scan could find nothing, while new writes are checked at once. A later contract step may `VALIDATE` it.
 - The `check_invoice_transition` trigger (`BEFORE UPDATE OF status`) rejects any status move that the lifecycle in `docs/context.md` does not list, with SQLSTATE `23514`, whichever code writes it. An update to the same status passes, so a retried job may repeat its move. Inserts are not checked, so the seed may write any status.
-- The flat-rate seed that the backfill test writes at 0002 inserts invoices with explicit columns: a Drizzle insert of the latest schema always names `parent_invoice_id`, which does not exist before 0006.
+- The flat-rate seed that the expand/contract test writes at 0001 inserts invoices and lines with explicit columns: a Drizzle insert of the latest schema always names `parent_invoice_id`, which does not exist before 0006, and `rate_card_version_id`, which does not exist before 0002.
 
 ## Tests (`pnpm test:int`)
 
-Each test runs in a throwaway database on the Postgres server in `DATABASE_URL`.
+Each test runs in a throwaway database on the Postgres container that `pnpm test:int` starts for the run.
 
 - Migrations apply from empty, a second run is a no-op, and the Drizzle schema matches the database, including enum labels.
 - The exclusion constraint rejects overlapping versions for one carrier (SQLSTATE `23P01`), and allows touching ranges and the same dates for another carrier.
 - The status trigger rejects moves the lifecycle does not list (SQLSTATE `23514`) and allows listed and repeated ones.
-- Backfill on the small seed (flat-rate shape at 0002): a crash after the first batch, then a rerun that finishes; every line points at a version of its own invoice's carrier; another rerun changes nothing; then 0003a, 0003b and 0004 apply, leaving both columns `NOT NULL`, the foreign keys validated, both indexes valid and no `carrier_id`.
+- Expand, backfill and contract under the app (`apps/api/src/expand-contract.int.test.ts`): 0001 with the small seed in its flat-rate shape; 0002, after which the api's own list and detail handlers still read every invoice and discrepancy; the backfill, crashed after its first batch and resumed; 0003a and 0003b, after which every invoice line has a version of its own invoice's carrier, both columns are `NOT NULL`, the foreign keys are validated, both indexes are valid, and the api reads again with a version on every finding's line; then 0004 to 0006, leaving no `carrier_id`, and the api reads once more.
 - The small seed loads on the final schema, every line bills the version in force on its ship date, and every invoice's lines and discrepancies fit its status in the lifecycle.
 
-The flat-rate seed that the backfill test writes at 0002 uses only the statuses that existed then; seed modes that write a historical shape must keep to that shape's enum values.
+The flat-rate seed that the expand/contract test writes at 0001 uses only the statuses that existed then; seed modes that write a historical shape must keep to that shape's enum values.
 
 ## Adding a migration
 

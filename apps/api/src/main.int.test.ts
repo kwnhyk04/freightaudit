@@ -1,9 +1,10 @@
 import { type ChildProcess, spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { apiKey, createTestEnv, formData, pdf } from './testing.ts';
 
-// Boots src/main.ts in a plain Node process, outside the Jest realm, against the compose Postgres, Redis and MinIO.
+// Boots src/main.ts in a plain Node process, outside the Jest realm, against the test run's Postgres, Redis and MinIO.
 const main = fileURLToPath(new URL('main.ts', import.meta.url));
 let env: Awaited<ReturnType<typeof createTestEnv>>;
 let server: ChildProcess;
@@ -41,6 +42,21 @@ beforeAll(async () => {
 afterAll(async () => {
   server.kill();
   await env.close();
+});
+
+test('exits with a clear error that lists every missing or invalid setting without echoing values', async () => {
+  const child = spawn(process.execPath, [main], {
+    env: { ...process.env, DATABASE_URL: undefined, API_KEYS: 'too-short-secret' },
+    stdio: ['ignore', 'ignore', 'pipe'],
+  });
+  let stderr = '';
+  child.stderr?.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
+  const [code] = await once(child, 'close');
+  expect(code).toBe(1);
+  expect(stderr).toContain('Invalid environment configuration');
+  expect(stderr).toContain('at DATABASE_URL');
+  expect(stderr).toContain('at API_KEYS');
+  expect(stderr).not.toContain('too-short-secret');
 });
 
 test('GET /readyz answers 200 when Postgres, Redis and MinIO are reachable', async () => {

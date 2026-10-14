@@ -5,8 +5,9 @@ import type { Job } from 'bullmq';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Deps } from './workers.ts';
 
-// ponytail: stub. It marks the invoice reconciling and links its shipment; rate-card checks, discrepancies and the
-// final reconciled or needs_review status arrive with the domain rules in step 6.
+// ponytail: stub. It marks the invoice reconciling and links its shipment. The rules live in reconcileInvoice
+// (packages/domain); this job applies them once the database stores per-mile bands, minimums, fuel percentages and
+// shipment miles (step 6).
 export async function reconcile({ db }: Deps, job: Job<InvoiceJob>) {
   const { invoiceId } = job.data;
   const [invoice] = await db.select({ status: invoices.status }).from(invoices).where(eq(invoices.id, invoiceId));

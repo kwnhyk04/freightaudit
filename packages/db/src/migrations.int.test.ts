@@ -2,18 +2,17 @@ import { is } from 'drizzle-orm';
 import { getTableConfig, isPgEnum, PgTable } from 'drizzle-orm/pg-core';
 import { randomBytes } from 'node:crypto';
 import pg from 'pg';
-import { backfillRateCardVersions } from '../scripts/backfill-rate-card-versions.ts';
 import { seed } from '../scripts/seed.ts';
 import { migrate } from './migrate.ts';
 import * as schema from './schema.ts';
+import { testEnv } from './testing.ts';
 
 const quiet = () => {};
 const byName = (a: { name: string }, b: { name: string }) => (a.name < b.name ? -1 : 1);
 
-// Each test runs in a throwaway database on the Postgres server in DATABASE_URL (infra/docker-compose.yml locally).
+// Each test runs in an empty throwaway database on the test run's Postgres.
 async function withDatabase(test: (client: pg.Client, url: string) => Promise<void>) {
-  const server = process.env.DATABASE_URL;
-  if (!server) throw new Error('DATABASE_URL is not set: copy .env.example to .env and start Postgres');
+  const server = testEnv('DATABASE_URL');
   const name = `freightaudit_test_${randomBytes(4).toString('hex')}`;
   const admin = new pg.Client({ connectionString: server });
   await admin.connect();
@@ -113,42 +112,6 @@ test('the exclusion constraint rejects overlapping rate card versions for one ca
     await expect(addVersion(0, 3, '[2025-06-01,2025-07-01)')).rejects.toMatchObject(overlap);
     await expect(addVersion(0, 3, '[2027-01-01,2028-01-01)')).rejects.toMatchObject(overlap); // inside the open-ended version 2
     await addVersion(1, 1, '[2025-06-01,2025-07-01)'); // another carrier may use the same dates
-  }));
-
-test('backfill on the small seed resumes after a crash, then the contract migrations apply', () =>
-  withDatabase(async (client, url) => {
-    await migrate(url, { to: '0002', log: quiet });
-    await seed(client, 'small', { flatRates: true, log: quiet });
-    const nullLines = () => count(client, 'SELECT count(*) FROM invoice_lines WHERE rate_card_version_id IS NULL');
-    const total = await nullLines();
-    expect(total).toBeGreaterThan(1_000);
-
-    // A crash right after the first batch commits; the rerun picks up the rows that are still null.
-    const crash = (msg: string) => {
-      if (msg === 'batch done') throw new Error('crash');
-    };
-    await expect(backfillRateCardVersions(client, { batchSize: 500, log: crash })).rejects.toThrow('crash');
-    expect(await nullLines()).toBe(total - 500);
-    expect(await backfillRateCardVersions(client, { batchSize: 500, log: quiet })).toEqual({ versions: 0, rates: 0, lines: total - 500, remaining: 0 });
-    expect(await count(client, misversionedLines)).toBe(0);
-    expect(await backfillRateCardVersions(client, { log: quiet })).toEqual({ versions: 0, rates: 0, lines: 0, remaining: 0 });
-
-    await migrate(url, { log: quiet });
-    const { rows } = await client.query(`SELECT
-      (SELECT array_agg(attrelid::regclass::text ORDER BY attrelid::regclass::text) FROM pg_attribute
-        WHERE attrelid IN ('invoice_lines'::regclass, 'rate_cards'::regclass) AND attname = 'rate_card_version_id' AND attnotnull) AS not_null,
-      (SELECT count(*)::int FROM pg_constraint WHERE conname LIKE '%rate_card_version_id_check') AS temporary_checks,
-      (SELECT bool_and(convalidated) FROM pg_constraint WHERE conname LIKE '%rate_card_version_id_fkey') AS foreign_keys_valid,
-      (SELECT count(*)::int FROM pg_index WHERE indisvalid AND indexrelid IN
-        ('invoice_lines_rate_card_version_id_idx'::regclass, 'rate_cards_version_charge_code_key'::regclass)) AS valid_indexes,
-      (SELECT count(*)::int FROM pg_attribute WHERE attrelid = 'rate_cards'::regclass AND attname = 'carrier_id' AND NOT attisdropped) AS flat_columns`);
-    expect(rows[0]).toEqual({
-      not_null: ['invoice_lines', 'rate_cards'],
-      temporary_checks: 0,
-      foreign_keys_valid: true,
-      valid_indexes: 2,
-      flat_columns: 0,
-    });
   }));
 
 test('the small seed loads on the fully migrated schema, and lines bill the version in force', () =>

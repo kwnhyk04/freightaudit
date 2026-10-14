@@ -8,8 +8,9 @@ import { z } from 'zod';
 import type { Deps, Tx } from './workers.ts';
 
 const PAGE_SIZE = 100;
-// 429s in a row on one page before the attempt fails and BullMQ backs off instead.
-const MAX_THROTTLES = 10;
+// Transient failures in a row on one page (429, 5xx, timeouts, dropped connections) before the attempt fails and
+// BullMQ backs off instead. Retrying the page in place keeps a flaky link from using up the job's attempts.
+const MAX_TRIES = 10;
 
 // The TMS is outside the trust boundary, so every page is validated.
 const pageSchema = z.object({
@@ -58,24 +59,30 @@ async function fetchPage(baseUrl: string, cursor: string | null, backoff: Backof
   const url = new URL('/shipments', baseUrl);
   url.searchParams.set('limit', String(PAGE_SIZE));
   if (cursor) url.searchParams.set('after', cursor);
-  for (let throttled = 1; ; throttled++) {
-    let response: Response;
+  for (let tries = 1; ; tries++) {
     try {
-      response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+      return await requestPage(url);
     } catch (err) {
-      throw classify(err);
+      if (!(err instanceof TransientError) || tries >= MAX_TRIES) throw err;
+      // Wait at least Retry-After, then ask for the same page again.
+      await setTimeout(backoff(tries, undefined, err));
     }
-    const retryAfterMs = parseRetryAfter(response.headers.get('retry-after'));
+  }
+}
+
+async function requestPage(url: URL): Promise<Page> {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     if (!response.ok) {
       await response.body?.cancel();
-      if (response.status !== 429 || throttled >= MAX_THROTTLES) throw httpError(response.status, `TMS HTTP ${response.status}`, retryAfterMs);
-      // Rate limited: wait at least Retry-After, then ask for the same page again.
-      await setTimeout(backoff(throttled, undefined, new TransientError('TMS HTTP 429', { retryAfterMs })));
-      continue;
+      throw httpError(response.status, `TMS HTTP ${response.status}`, parseRetryAfter(response.headers.get('retry-after')));
     }
     const parsed = pageSchema.safeParse(await response.json());
     if (!parsed.success) throw new PermanentError(`TMS page failed validation (${parsed.error.issues.length} issues)`);
     return parsed.data;
+  } catch (err) {
+    // A connection that drops before or during the body is transient too.
+    throw classify(err);
   }
 }
 

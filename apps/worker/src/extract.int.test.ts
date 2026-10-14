@@ -9,6 +9,7 @@ import { failFast } from './workers.ts';
 let env: Awaited<ReturnType<typeof createTestEnv>> | undefined;
 let gemini: Awaited<ReturnType<typeof fakeGemini>> | undefined;
 afterEach(async () => {
+  import.meta.jest.useRealTimers();
   await env?.close();
   await gemini?.close();
   env = gemini = undefined;
@@ -23,9 +24,10 @@ async function setup(reply: Parameters<typeof fakeGemini>[0]) {
 const extractionRows = (invoiceId: string) => env!.db.select().from(extractions).where(eq(extractions.invoiceId, invoiceId));
 const statusOf = async (invoiceId: string) =>
   (await env!.db.select({ status: invoices.status }).from(invoices).where(eq(invoices.id, invoiceId)))[0]?.status;
+// The state first, then the job: a job read before its last attempt ends would show that attempt as not yet made.
 const finished = async (queueName: 'extract', jobId: string) => {
-  const job = await env!.queues.queue(queueName).getJob(jobId);
-  return (await job?.isCompleted()) && job;
+  const queue = env!.queues.queue(queueName);
+  return (await queue.getJobState(jobId)) === 'completed' && queue.getJob(jobId);
 };
 
 test('a 429 from the model is retried with backoff and writes exactly one extraction row', async () => {
@@ -104,17 +106,23 @@ test('the sweep moves a failed job whose dead-letter move never ran, once', asyn
 });
 
 test('the budget guard delays extract jobs without calling the model once the daily cap is reached', async () => {
+  // Noon UTC on a fixed day, moving in real time, so the day cannot roll over mid-test. Only Date is fake: timers run
+  // as usual, and Redis and Postgres keep their own clocks.
+  const timers = ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate'] as const;
+  import.meta.jest.useFakeTimers({
+    now: Date.parse('2026-10-14T12:00:00Z'),
+    advanceTimers: true,
+    doNotFake: [...timers, 'hrtime', 'nextTick', 'performance', 'queueMicrotask'],
+  });
   const { env, gemini } = await setup(() => ({ status: 200, text: extraction() }));
-  await env.redis.hset(`${env.prefix}:llm:day:${new Date().toISOString().slice(0, 10)}`, 'tokens', 1_000);
+  await env.redis.hset(`${env.prefix}:llm:day:2026-10-14`, 'tokens', 1_000);
   env.runWorkers({ geminiUrl: gemini.url, limits: { dailyTokenBudget: 1_000 } });
   const invoice = await env.upload(await makePdf());
 
   await waitFor(async () => (await env.queues.queue('extract').getJobState(invoice.contentSha256)) === 'delayed');
   // Delayed until the UTC day, and with it the budget, rolls over.
-  const midnight = new Date();
-  midnight.setUTCHours(24, 0, 0, 0);
   const score = Number(await env.redis.zscore(`${env.prefix}:extract:delayed`, invoice.contentSha256));
-  expect(Math.floor(score / 0x1000)).toBe(midnight.getTime());
+  expect(Math.floor(score / 0x1000)).toBe(Date.parse('2026-10-15T00:00:00Z'));
   expect(gemini.calls()).toBe(0);
   expect((await env.queues.queue('extract').getJob(invoice.contentSha256))?.attemptsMade).toBe(0);
   expect(await statusOf(invoice.id)).toBe('received');

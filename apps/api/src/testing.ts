@@ -1,6 +1,6 @@
 // Shared by the api integration tests: a throwaway database with one tenant, a Redis key prefix, test PDFs.
 import { tenants } from '@freightaudit/db';
-import { createTestDatabase } from '@freightaudit/db/testing';
+import { createTestDatabase, testEnv } from '@freightaudit/db/testing';
 import { createQueues } from '@freightaudit/pipeline';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { FastifyInstance } from 'fastify';
@@ -38,7 +38,7 @@ export async function createTestEnv() {
   const db = drizzle(pool);
   const tenantId = randomUUID();
   await db.insert(tenants).values({ id: tenantId, name: 'Test tenant' });
-  const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', { maxRetriesPerRequest: 1 });
+  const redis = new Redis(testEnv('REDIS_URL'), { maxRetriesPerRequest: 1 });
   const prefix = `test-${randomBytes(4).toString('hex')}`;
   const queues = createQueues(redis, prefix);
   return {

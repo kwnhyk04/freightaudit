@@ -5,13 +5,13 @@
   "exports": {
     ".": "./dist/index.js",
     "./migrate": "./dist/migrate.js",
-    "./testing": "./dist/testing.js"
+    "./testing": "./dist/testing.js",
+    "./scripts/*": "./scripts/*.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:int": "node --env-file-if-exists=../../.env --experimental-vm-modules node_modules/jest/bin/jest.js -c jest.int.config.js",
     "db:migrate": "node --env-file-if-exists=../../.env src/migrate.ts",
     "db:seed": "node --env-file-if-exists=../../.env scripts/seed.ts",
     "backfill:rate-card-versions": "node --env-file-if-exists=../../.env scripts/backfill-rate-card-versions.ts"
@@ -27,7 +27,6 @@
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
     "eslint": "catalog:",
-    "jest": "catalog:",
     "typescript": "catalog:"
   }
 }
