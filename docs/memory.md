@@ -36,6 +36,18 @@ From the approved design doc:
 - 2026-10-14: Readiness uses TCP connects for Postgres and Redis and MinIO's `/minio/health/live`, with a 2 s timeout. Reason: no database or Redis client exists before steps 3 and 4; Postgres 18 logs nothing for probe connections that send no data (checked).
 - 2026-10-14: The gitleaks hook is a plain `.githooks/pre-commit` enabled by `core.hooksPath` from the root `prepare` script; it prefers a local gitleaks and falls back to `ghcr.io/gitleaks/gitleaks:v8.30.1`. Reason: no hook-manager dependency, and Docker is already required.
 - 2026-10-14: In production Toxiproxy runs only with `--profile chaos`. Reason: its proxies would publish Postgres and Redis ports.
+- 2026-10-14: Migrations are plain SQL run by a small runner (`packages/db/src/migrate.ts`: `schema_migrations` table, advisory lock, `lock_timeout` 5 s, `-- migrate:no-transaction` files split on `--> statement-breakpoint`, `--to`), not drizzle-kit. Reason: drizzle-orm's migrator runs all pending files in one transaction, which rules out `CREATE INDEX CONCURRENTLY` and committing `NOT VALID` before `VALIDATE`; the backfill test also needs to stop at 0002.
+- 2026-10-14: `packages/db/src/schema.ts` mirrors the latest migration state for queries only; the SQL owns constraints and indexes, and `migrations.int.test.ts` compares tables, columns, types and nullability. Reason: one source of truth for DDL without drift.
+- 2026-10-14: Rate card versioning design: `rate_card_versions (carrier_id, version, effective tstzrange)` with an exclusion constraint per carrier; `rate_cards` rows become the per-version rates (`rate_card_version_id`), so the "old flat-rate column" that 0004 drops is `rate_cards.carrier_id` with its flat unique key; every invoice line references the version that priced it (`NOT NULL` from 0003a). Reason: interpretation of the step 3 prompt; reusing `rate_cards` avoids a second rates table.
+- 2026-10-14: The prompt's "0003 contract" is two files: `0003a` (check `NOT VALID`, `VALIDATE`, `SET NOT NULL`) and `0003b` (concurrent indexes), both no-transaction. Reason: in one transaction the `ACCESS EXCLUSIVE` lock from `ADD CONSTRAINT` lasts through the `VALIDATE` scan.
+- 2026-10-14: Integration tests create a throwaway database per test on the Postgres in `DATABASE_URL` (the compose Postgres locally) instead of using Testcontainers. Reason: no new dependency, and it reuses this project's 127.0.0.1-bound Postgres, while Testcontainers publishes random ports on all interfaces; CI can use a Postgres service container.
+- 2026-10-14: Keyset indexes `(tenant_id, created_at DESC, id DESC)` only on list-backed tables (shipments, invoices, discrepancies, dead_letters), plus `(invoice_id, created_at DESC, id DESC)` on discrepancies. Reason: every index slows writes; the other tables are read by key or through a parent.
+- 2026-10-14: Ids default to Postgres 18 `uuidv7()`; the seed sets deterministic faker UUIDs instead. Reason: time-ordered keys keep btree inserts local; seeded data stays reproducible (checked: two seeds give identical hashes).
+- 2026-10-14: The fictional carriers and normalized charge codes live in `packages/db/src/reference.ts`, shared by the seed and the eval fixtures. Reason: fixture invoices name carriers that exist in the seeded database.
+- 2026-10-14: Scanned fixtures come from a 192 dpi screenshot of the same rendered page, not from rasterizing the PDF. Reason: headless Chromium cannot render PDFs and sharp's prebuilt libvips has no PDF loader; the same engine draws both.
+- 2026-10-14: One invoice lifecycle in Postgres and both contracts: received, extracting, extracted, reconciling, reconciled, needs_review, approved, failed (user decision). `0005` adds `reconciling` and `approved` with `ADD VALUE`; the transition table lives in `docs/context.md`. Reason: the step 3 prompt and the step 2 contracts disagreed.
+- 2026-10-14: Fixtures are byte-identical for a seed (user request): scan noise is an AES-CTR keystream keyed by the seed and scaled by libvips, and each PDF's `/CreationDate` and `/ModDate` are pinned to the invoice date with a same-length replacement. Reason: those dates were the only bytes that differed between two digital renders (checked), and native noise avoids a slow JavaScript pixel loop.
+- 2026-10-14: `@freightaudit/config/jest` exports `integration` (only `*.int.test.ts`, 60 s timeout); each package's `jest.int.config.js` re-exports it. Reason: db and evals both run `test:int`.
 
 ## Preferences and Instructions
 
@@ -65,6 +77,14 @@ From the approved design doc:
 - 2026-10-14: Fastify's `req` log serializer rewrites any logged `req` key, so redaction tests must log credentials under other keys.
 - 2026-10-14: Git for Windows sets `core.autocrlf=true` system-wide; `.gitattributes` keeps `.githooks/*` at LF so the hook runs under sh. Files added on Windows get mode 644: stage the hook with `git add --chmod=+x` so it runs on Linux and macOS.
 - 2026-10-14: Turborepo runs tasks in strict env mode: only declared variables reach a task, so tests pass every setting explicitly and apps read `.env` themselves.
+- 2026-10-14: Postgres 18 records `NOT NULL` as a constraint named `<table>_<column>_not_null`. A helper check with that name makes `SET NOT NULL` pick `..._not_null1`, so helper checks are named `*_check`.
+- 2026-10-14: `CREATE INDEX CONCURRENTLY` also fails inside a multi-statement query string, not only inside `BEGIN`; no-transaction migrations must send one statement per query.
+- 2026-10-14: drizzle-orm's node-postgres `drizzle()` accepts a `pg.Client`, `Pool` or `PoolClient` but not `pg.ClientBase` (type error).
+- 2026-10-14: Postgres cannot reorder existing enum values without recreating the type (a rewrite of every table using it), so `ADD VALUE ... AFTER` placement is the closest to lifecycle order; never sort by an enum column.
+- 2026-10-14: A seed mode that writes a historical shape (the flat-rate mode used at 0002) may only use enum values that existed at that migration; the backfill test failed when the seed wrote `approved` before 0005.
+- 2026-10-14: Under Jest (`--experimental-vm-modules`), a tight JavaScript loop over 3.4 million pixels ran about 135 times slower than in plain Node (4.5 s against 33 ms). Keep per-pixel work in native code (sharp, crypto).
+- 2026-10-14: Chromium writes the render time, in UTC to the second, into PDF `/CreationDate` and `/ModDate`.
+- 2026-10-14: oasdiff `breaking` reports a new enum value in a response as ERR (`response-property-enum-value-added`); `x-extensible-enum` declares a set that may grow.
 
 ## Rejected Approaches
 

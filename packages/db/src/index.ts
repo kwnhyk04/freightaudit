@@ -1,2 +1,3 @@
-// Postgres access: Drizzle schema, SQL migrations, seed scripts.
-export {};
+// Postgres access: the Drizzle schema (query side) and reference data shared with the evals.
+export * from './schema.ts';
+export { CARRIERS, CHARGE_CODES, type ChargeCode } from './reference.ts';

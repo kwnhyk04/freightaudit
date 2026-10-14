@@ -4,14 +4,26 @@
   "type": "module",
   "exports": "./dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:int": "node --env-file-if-exists=../../.env --experimental-vm-modules node_modules/jest/bin/jest.js -c jest.int.config.js",
+    "db:migrate": "node --env-file-if-exists=../../.env src/migrate.ts",
+    "db:seed": "node --env-file-if-exists=../../.env scripts/seed.ts",
+    "backfill:rate-card-versions": "node --env-file-if-exists=../../.env scripts/backfill-rate-card-versions.ts"
+  },
+  "dependencies": {
+    "@freightaudit/config": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
-    "@freightaudit/config": "workspace:*",
+    "@faker-js/faker": "catalog:",
+    "@types/jest": "catalog:",
     "@types/node": "catalog:",
+    "@types/pg": "^8.23.1",
     "eslint": "catalog:",
+    "jest": "catalog:",
     "typescript": "catalog:"
   }
 }

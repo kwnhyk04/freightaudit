@@ -27,11 +27,21 @@ export type DiscrepancyType =
 
 /** Processing status of an invoice. */
 export type InvoiceStatus =
+  /** Approved for payment. Final. */
   | 'APPROVED'
+  /** Header and lines extracted; waiting for reconciliation. */
+  | 'EXTRACTED'
+  /** Extraction is running. */
   | 'EXTRACTING'
+  /** A step used up its retries; replaying its dead letter restarts that step. */
   | 'FAILED'
+  /** At least one discrepancy is open. */
   | 'NEEDS_REVIEW'
+  /** Stored; waiting for extraction. */
   | 'RECEIVED'
+  /** Reconciled with no discrepancies; waiting for approval. */
+  | 'RECONCILED'
+  /** Matching against the shipment and rate card is running. */
   | 'RECONCILING';
 
 export type ApproveInvoiceMutationVariables = Exact<{

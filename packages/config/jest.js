@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
 // ESM + TypeScript via swc. Run jest with --experimental-vm-modules. *.int.test.ts is reserved for test:int.
-export default {
+const preset = {
   testEnvironment: 'node',
   extensionsToTreatAsEsm: ['.ts'],
   transform: {
@@ -12,4 +12,13 @@ export default {
   },
   testPathIgnorePatterns: ['/node_modules/', '/dist/', '[.]int[.]test[.]ts$'],
   setupFiles: [fileURLToPath(import.meta.resolve('./jest-realm.js'))],
+};
+export default preset;
+
+// test:int runs only *.int.test.ts, against real dependencies such as Postgres or a browser.
+export const integration = {
+  ...preset,
+  testMatch: ['**/*.int.test.ts'],
+  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
+  testTimeout: 60_000,
 };

@@ -1,0 +1,140 @@
+import { sql } from 'drizzle-orm';
+import { bigint, customType, date, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+
+// Query-side mirror of the state after the last migration. migrations/*.sql own every constraint and index;
+// migrations.int.test.ts checks that tables, columns, types and nullability match.
+
+const tstzrange = customType<{ data: string }>({ dataType: () => 'tstzrange' });
+
+const id = () => uuid('id').primaryKey().default(sql`uuidv7()`);
+const tenantId = () => uuid('tenant_id').notNull();
+const cents = (name: string) => bigint(name, { mode: 'bigint' });
+const timestamps = {
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+};
+
+// Lifecycle order; the database sorts needs_review before reconciled (see 0005), so never order by status.
+export const invoiceStatus = pgEnum('invoice_status', [
+  'received',
+  'extracting',
+  'extracted',
+  'reconciling',
+  'reconciled',
+  'needs_review',
+  'approved',
+  'failed',
+]);
+export const discrepancyType = pgEnum('discrepancy_type', [
+  'rate_mismatch',
+  'uncontracted_charge',
+  'duplicate_charge',
+  'weight_mismatch',
+  'arithmetic_error',
+]);
+export const discrepancyStatus = pgEnum('discrepancy_status', ['open', 'confirmed', 'dismissed']);
+
+export const tenants = pgTable('tenants', { id: id(), name: text('name').notNull(), ...timestamps });
+
+export const carriers = pgTable('carriers', { id: id(), tenantId: tenantId(), name: text('name').notNull(), ...timestamps });
+
+export const rateCardVersions = pgTable('rate_card_versions', {
+  id: id(),
+  tenantId: tenantId(),
+  carrierId: uuid('carrier_id').notNull(),
+  version: integer('version').notNull(),
+  effective: tstzrange('effective').notNull(),
+  ...timestamps,
+});
+
+export const rateCards = pgTable('rate_cards', {
+  id: id(),
+  tenantId: tenantId(),
+  rateCardVersionId: uuid('rate_card_version_id').notNull(),
+  chargeCode: text('charge_code').notNull(),
+  rateCents: cents('rate_cents').notNull(),
+  ...timestamps,
+});
+
+export const shipments = pgTable('shipments', {
+  id: id(),
+  tenantId: tenantId(),
+  carrierId: uuid('carrier_id').notNull(),
+  proNumber: text('pro_number').notNull(),
+  reference: text('reference').notNull(),
+  origin: text('origin').notNull(),
+  destination: text('destination').notNull(),
+  shippedOn: date('shipped_on').notNull(),
+  weightLb: integer('weight_lb'),
+  ...timestamps,
+});
+
+export const invoices = pgTable('invoices', {
+  id: id(),
+  tenantId: tenantId(),
+  status: invoiceStatus('status').notNull().default('received'),
+  filename: text('filename').notNull(),
+  contentSha256: text('content_sha256').notNull(),
+  carrierId: uuid('carrier_id'),
+  shipmentId: uuid('shipment_id'),
+  invoiceNumber: text('invoice_number'),
+  proNumber: text('pro_number'),
+  invoiceDate: date('invoice_date'),
+  currency: text('currency'),
+  totalCents: cents('total_cents'),
+  ...timestamps,
+});
+
+export const invoiceLines = pgTable('invoice_lines', {
+  id: id(),
+  tenantId: tenantId(),
+  invoiceId: uuid('invoice_id').notNull(),
+  lineNumber: integer('line_number').notNull(),
+  description: text('description').notNull(),
+  chargeCode: text('charge_code'),
+  amountCents: cents('amount_cents').notNull(),
+  rateCardVersionId: uuid('rate_card_version_id').notNull(),
+  ...timestamps,
+});
+
+export const discrepancies = pgTable('discrepancies', {
+  id: id(),
+  tenantId: tenantId(),
+  invoiceId: uuid('invoice_id').notNull(),
+  invoiceLineId: uuid('invoice_line_id'),
+  shipmentId: uuid('shipment_id'),
+  type: discrepancyType('type').notNull(),
+  status: discrepancyStatus('status').notNull().default('open'),
+  expectedCents: cents('expected_cents').notNull(),
+  billedCents: cents('billed_cents').notNull(),
+  evidence: text('evidence').notNull(),
+  note: text('note'),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  ...timestamps,
+});
+
+export const idempotencyKeys = pgTable('idempotency_keys', {
+  tenantId: tenantId(),
+  key: text('key').notNull(),
+  invoiceId: uuid('invoice_id').notNull(),
+  ...timestamps,
+});
+
+export const deadLetters = pgTable('dead_letters', {
+  id: id(),
+  tenantId: tenantId(),
+  queue: text('queue').notNull(),
+  jobId: text('job_id').notNull(),
+  payload: jsonb('payload').notNull(),
+  error: text('error').notNull(),
+  attempts: integer('attempts').notNull(),
+  replayedAt: timestamp('replayed_at', { withTimezone: true }),
+  ...timestamps,
+});
+
+export const tmsSyncState = pgTable('tms_sync_state', {
+  tenantId: uuid('tenant_id').primaryKey(),
+  cursor: text('cursor'),
+  lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+  ...timestamps,
+});

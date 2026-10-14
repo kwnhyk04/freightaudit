@@ -143,10 +143,10 @@ export interface components {
             };
         };
         /**
-         * @description Processing status of an invoice.
+         * @description Processing status of an invoice. It moves through received, extracting, extracted and reconciling, then to reconciled (no discrepancies) or needs_review, and ends at approved. failed means a step used up its retries; replaying its dead letter restarts that step.
          * @enum {string}
          */
-        InvoiceStatus: "received" | "extracting" | "reconciling" | "needs_review" | "approved" | "failed";
+        InvoiceStatus: "received" | "extracting" | "extracted" | "reconciling" | "reconciled" | "needs_review" | "approved" | "failed";
         InvoiceRef: {
             /** Format: uuid */
             id: string;

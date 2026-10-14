@@ -10,7 +10,9 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 - [ ] (manual, before step 7) GitHub repo created; provider keys added as Actions secrets.
 - [ ] (manual, before step 10) Vercel and Tailscale accounts created.
 - [ ] Before step 10: move the Postgres and MinIO credentials that the production override inherits into `.env`: the prod stack starts without the dev-only `freightaudit` values in the compose files.
-- [ ] 3. Data: schema and migrations apply from empty, expand/contract series tested, seed scripts run
+- [ ] With step 4: enforce the invoice lifecycle in `docs/context.md` on every status change (workers and review mutations); today nothing rejects a move the table does not list.
+- [ ] Before step 7: give CI a Postgres for `pnpm test:int` (service container) and let `DATABASE_URL` through Turborepo strict env mode (`passThroughEnv`), since CI has no `.env`.
+- [ ] Before step 10: run migrations in the production deploy (`node packages/db/dist/migrate.js`) before api and worker start.
 - [ ] 4. Workers: queue job with retries and dead-letter handling, backpressure and crash-recovery tests pass
 - [ ] 5. Tests: unit and integration suites green three runs in a row
 - [ ] 6. AI: pipeline built, golden dataset v1 created, eval report lists every target with pass or fail
@@ -28,6 +30,9 @@ None.
 
 ## Completed
 
+- [x] One invoice lifecycle in Postgres (`0005`), `openapi.yaml` and `schema.graphql`; clients regenerated and `contracts:check` passes; state machine recorded in `docs/context.md` (2026-10-14).
+- [x] Byte-identical fixtures: seeded scan noise and pinned PDF dates; `generate-invoices.int.test.ts` renders the 6 templates twice and all 24 files match (2026-10-14).
+- [x] 3. Data: the 5 migrations apply from empty; the backfill test passes on the small seed, including a crash and resume; a test shows the exclusion constraint rejects overlapping versions; `pnpm db:seed --scale=small|large` and `pnpm fixtures` run (2026-10-14).
 - [x] Hook committed executable: `git ls-tree HEAD .githooks/pre-commit` shows mode 100755 in commit `2cb0a6c` (2026-10-14).
 - [x] graphql-eslint `strict-id-in-types` exceptions (`PageInfo`, `*Connection`, `*Edge`) added to `packages/contracts/eslint.config.js` by the user: `pnpm lint` passes (2026-10-14).
 - [x] Catch-up from the updated Prompts 1 and 2: env config validation at startup, gitleaks pre-commit, /readyz on every service, structured JSON logs, infra/docker-compose.prod.yml override, API key scheme plus 401/403 and RateLimit headers in openapi.yaml. Typecheck, lint and tests pass; every service answers /healthz and /readyz; the api exits with a clear error when a required env var is missing (2026-10-14).

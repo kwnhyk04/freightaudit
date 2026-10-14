@@ -77,11 +77,37 @@ type PageInfo {
 Processing status of an invoice.
 """
 enum InvoiceStatus {
+  """
+  Stored; waiting for extraction.
+  """
   RECEIVED
+  """
+  Extraction is running.
+  """
   EXTRACTING
+  """
+  Header and lines extracted; waiting for reconciliation.
+  """
+  EXTRACTED
+  """
+  Matching against the shipment and rate card is running.
+  """
   RECONCILING
+  """
+  Reconciled with no discrepancies; waiting for approval.
+  """
+  RECONCILED
+  """
+  At least one discrepancy is open.
+  """
   NEEDS_REVIEW
+  """
+  Approved for payment. Final.
+  """
   APPROVED
+  """
+  A step used up its retries; replaying its dead letter restarts that step.
+  """
   FAILED
 }
 

@@ -4,6 +4,7 @@ packages:
   - evals
 
 catalog:
+  "@faker-js/faker": ^10.6.0
   "@types/jest": ^30.0.0
   "@types/node": ^24.19.2
   eslint: ^10.12.0
