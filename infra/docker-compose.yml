@@ -1,4 +1,6 @@
 # Local dev infrastructure. Ports bind to 127.0.0.1 only. Credentials are dev-only.
+# Host ports come from the root .env when run with --env-file .env; the defaults below apply otherwise.
+# Monitoring services start only with --profile observability.
 name: freightaudit
 
 x-healthcheck: &healthcheck
@@ -14,7 +16,7 @@ services:
       POSTGRES_USER: freightaudit
       POSTGRES_PASSWORD: freightaudit
       POSTGRES_DB: freightaudit
-    ports: ["127.0.0.1:5432:5432"]
+    ports: ["127.0.0.1:${POSTGRES_PORT:-5432}:5432"]
     volumes: [postgres-data:/var/lib/postgresql]
     healthcheck:
       <<: *healthcheck
@@ -22,7 +24,7 @@ services:
 
   redis:
     image: redis:8.10.2-alpine
-    ports: ["127.0.0.1:6379:6379"]
+    ports: ["127.0.0.1:${REDIS_PORT:-6379}:6379"]
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "redis-cli", "ping"]
@@ -34,7 +36,7 @@ services:
     environment:
       MINIO_ROOT_USER: freightaudit
       MINIO_ROOT_PASSWORD: freightaudit
-    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    ports: ["127.0.0.1:${MINIO_PORT:-9000}:9000", "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"]
     volumes: [minio-data:/data]
     healthcheck:
       <<: *healthcheck
@@ -42,6 +44,7 @@ services:
 
   # The collector image has no shell, so a static busybox is added for the healthcheck.
   otel-collector:
+    profiles: [observability]
     build:
       dockerfile_inline: |
         FROM busybox:1.38.0-musl AS busybox
@@ -49,30 +52,33 @@ services:
         COPY --from=busybox /bin/busybox /busybox
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes: ["./otel-collector.yaml:/etc/otelcol/config.yaml:ro"]
-    ports: ["127.0.0.1:4317:4317", "127.0.0.1:4318:4318"]
+    ports: ["127.0.0.1:${OTEL_GRPC_PORT:-4317}:4317", "127.0.0.1:${OTEL_HTTP_PORT:-4318}:4318"]
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "/busybox", "wget", "-q", "--spider", "http://localhost:13133/"]
 
   jaeger:
+    profiles: [observability]
     image: jaegertracing/jaeger:2.22.0
-    ports: ["127.0.0.1:16686:16686"]
+    ports: ["127.0.0.1:${JAEGER_PORT:-16686}:16686"]
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:13133/status"]
 
   prometheus:
+    profiles: [observability]
     image: prom/prometheus:v3.15.0-busybox
     volumes: ["./prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
-    ports: ["127.0.0.1:9090:9090"]
+    ports: ["127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"]
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
 
   grafana:
+    profiles: [observability]
     image: grafana/grafana:13.2.4
     volumes: ["./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro"]
-    ports: ["127.0.0.1:3001:3000"]
+    ports: ["127.0.0.1:${GRAFANA_PORT:-3001}:3000"]
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
@@ -83,10 +89,10 @@ services:
     volumes: ["./toxiproxy.json:/config/toxiproxy.json:ro"]
     extra_hosts: ["host.docker.internal:host-gateway"]
     ports:
-      - "127.0.0.1:8474:8474"
-      - "127.0.0.1:15432:15432"
-      - "127.0.0.1:16379:16379"
-      - "127.0.0.1:14010:14010"
+      - "127.0.0.1:${TOXIPROXY_PORT:-8474}:8474"
+      - "127.0.0.1:${TOXIPROXY_POSTGRES_PORT:-15432}:15432"
+      - "127.0.0.1:${TOXIPROXY_REDIS_PORT:-16379}:16379"
+      - "127.0.0.1:${TOXIPROXY_MOCK_TMS_PORT:-14010}:14010"
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "/toxiproxy-cli", "list"]

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Blocks a commit whose staged changes contain a secret.
+# Runs a local gitleaks when one is installed, otherwise the pinned Docker image.
+if command -v gitleaks >/dev/null 2>&1; then
+  exec gitleaks git --pre-commit --staged --redact --no-banner --verbose
+fi
+# Stops Git Bash on Windows from rewriting the mount path.
+export MSYS_NO_PATHCONV=1
+exec docker run --rm -v "$(git rev-parse --show-toplevel):/repo:ro" ghcr.io/gitleaks/gitleaks:v8.30.1 \
+  git --pre-commit --staged --redact --no-banner --verbose /repo

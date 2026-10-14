@@ -9,10 +9,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@freightaudit/config": "workspace:*",
+    "@freightaudit/telemetry": "workspace:*",
     "fastify": "^5.12.5"
   },
   "devDependencies": {
-    "@freightaudit/config": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:"

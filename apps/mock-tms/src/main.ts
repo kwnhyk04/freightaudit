@@ -1,5 +1,10 @@
+import { loadEnv } from '@freightaudit/config/env';
+import { serverOptions } from '@freightaudit/telemetry';
 import Fastify from 'fastify';
 
-const app = Fastify({ logger: true });
+const env = loadEnv(['HOST', 'MOCK_TMS_PORT', 'LOG_LEVEL']);
+const app = Fastify(serverOptions(env.LOG_LEVEL));
 app.get('/healthz', async () => ({ status: 'ok' }));
-await app.listen({ port: Number(process.env.PORT ?? 4010), host: process.env.HOST ?? 'localhost' });
+// No dependencies, so it is ready whenever it is up.
+app.get('/readyz', async () => ({ status: 'ok', checks: {} }));
+await app.listen({ port: env.MOCK_TMS_PORT, host: env.HOST });

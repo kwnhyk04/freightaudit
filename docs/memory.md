@@ -29,6 +29,13 @@ From the approved design doc:
 - 2026-10-14: Default to free-tier LLMs behind a provider switch: Gemini Flash primary, Groq for text, a different provider as fallback (user decision). Reason: no paid API budget; free tiers are enough for synthetic data. Free tiers may train on prompts, so only synthetic data goes through them.
 - 2026-10-14: Production foundations are built from the start (env config validation, secrets hygiene, /readyz, structured logs, rate limiting, AI budget guard, security scans). Reason: the same images run locally and deployed.
 - 2026-10-14: Deploy as a hybrid: UI on Vercel, backend on the user's PC via Tailscale Funnel; the browser reaches the API only through Next.js server routes. Reason: about $0 hosting, and the API key never reaches the browser.
+- 2026-10-14: Env validation is `loadEnv(keys)` in `@freightaudit/config/env` (zod 4, built to `dist/`); each service lists the keys it reads, and only settings that code reads are in the schema. Reason: one catalog, no dead validation; settings for later steps stay in `.env.example` only.
+- 2026-10-14: Each Node service has its own port variable (`API_PORT`, `WORKER_PORT`, `MOCK_TMS_PORT`). Reason: one root `.env` feeds every app, so a shared `PORT` would collide.
+- 2026-10-14: The API key check is a Fastify `onRequest` hook with a public allowlist (`/healthz`, `/readyz`), not openapi-glue `securityHandlers`. Reason: openapi-glue runs security as a `preHandler`, after multipart parsing and validation, so uploads without a key would be streamed and bad requests would get 400 before 401. The contract test keeps the allowlist in line with the spec's `security`.
+- 2026-10-14: `API_KEYS` is a comma-separated list of keys of at least 32 characters, compared as SHA-256 digests with `timingSafeEqual`. Reason: rotation without downtime and constant-time comparison.
+- 2026-10-14: Readiness uses TCP connects for Postgres and Redis and MinIO's `/minio/health/live`, with a 2 s timeout. Reason: no database or Redis client exists before steps 3 and 4; Postgres 18 logs nothing for probe connections that send no data (checked).
+- 2026-10-14: The gitleaks hook is a plain `.githooks/pre-commit` enabled by `core.hooksPath` from the root `prepare` script; it prefers a local gitleaks and falls back to `ghcr.io/gitleaks/gitleaks:v8.30.1`. Reason: no hook-manager dependency, and Docker is already required.
+- 2026-10-14: In production Toxiproxy runs only with `--profile chaos`. Reason: its proxies would publish Postgres and Redis ports.
 
 ## Preferences and Instructions
 
@@ -51,8 +58,13 @@ From the approved design doc:
 - 2026-10-14: Write regexes inside config strings with character classes (`[.]`), not backslash escapes. A lost escape once loosened the domain import rule; lint caught it.
 - 2026-10-14: Under Jest, `structuredClone` comes from the host realm, and Fastify lowercases header schemas only when their prototype is the realm's `Object.prototype`, so mixed-case required headers failed only in tests. `packages/config/jest-realm.js` rebuilds clone results in the test realm.
 - 2026-10-14: Fastify response serialization (fast-json-stringify) writes schema `const` values regardless of handler output, so the contract test cannot catch `const` mismatches.
-- 2026-10-14: graphql-eslint `schema-recommended` (strict-id-in-types) conflicts with Relay types. `packages/contracts/eslint.config.js` exempts only `PageInfo` and `*Connection`/`*Edge` types. `relay-edge-types` has no per-field exception, so `Invoice.lineItems` keeps one inline disable whose reason is its schema comment.
+- 2026-10-14: graphql-eslint `schema-recommended` (strict-id-in-types) conflicts with Relay types. The fix exempts only `PageInfo` and `*Connection`/`*Edge` types in `packages/contracts/eslint.config.js`; the user applies it (still pending on 2026-10-14). `relay-edge-types` has no per-field exception, so `Invoice.lineItems` keeps one inline disable whose reason is its schema comment.
 - 2026-10-14: The npm package named `oasdiff` is a security placeholder. Never install it; use the Docker image.
+- 2026-10-14: Compose reads `.env` from the project directory (`infra/`), not the working directory, so the root `.env` reaches the compose files only with `--env-file .env`.
+- 2026-10-14: `next dev` copies the parent's Node flags into `NODE_OPTIONS` for its child process, and `--env-file-if-exists` is not allowed there (exit 9). The web app cannot load the root `.env` through Node flags.
+- 2026-10-14: Fastify's `req` log serializer rewrites any logged `req` key, so redaction tests must log credentials under other keys.
+- 2026-10-14: Git for Windows sets `core.autocrlf=true` system-wide; `.gitattributes` keeps `.githooks/*` at LF so the hook runs under sh. Files added on Windows get mode 644: stage the hook with `git add --chmod=+x` so it runs on Linux and macOS.
+- 2026-10-14: Turborepo runs tasks in strict env mode: only declared variables reach a task, so tests pass every setting explicitly and apps read `.env` themselves.
 
 ## Rejected Approaches
 

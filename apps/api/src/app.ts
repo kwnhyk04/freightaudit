@@ -1,16 +1,35 @@
 import multipart from '@fastify/multipart';
 import { openapiPath, typeDefs, type Resolvers } from '@freightaudit/contracts';
-import Fastify, { type FastifyError, type FastifyServerOptions } from 'fastify';
+import { type Check, readiness } from '@freightaudit/telemetry';
+import Fastify, { type FastifyError, type FastifyReply, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import openapiGlue from 'fastify-openapi-glue';
 import { createSchema, createYoga } from 'graphql-yoga';
-import { problem } from './problem.ts';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { fail, problem } from './problem.ts';
 import { createStore, createStubService, type Store } from './stub-service.ts';
 import { onFile } from './uploads.ts';
 
 const resolvers: Resolvers = { Query: { health: () => 'ok' } };
 
-export function buildApp(opts: FastifyServerOptions = {}, store: Store = createStore()) {
+// Probes need no key; openapi.yaml marks the same routes with security: [].
+const publicRoutes = new Set(['/healthz', '/readyz']);
+
+const sha256 = (value: string) => createHash('sha256').update(value).digest();
+
+type Deps = { apiKeys: string[]; checks?: Record<string, Check>; store?: Store };
+
+export function buildApp(opts: FastifyServerOptions, { apiKeys, checks = {}, store = createStore() }: Deps) {
   const app = Fastify(opts);
+  const keyDigests = apiKeys.map(sha256);
+
+  // Runs before body parsing, so an upload without a valid key is rejected before its bytes are read.
+  // Equal-length digests let timingSafeEqual compare keys in constant time.
+  app.addHook('onRequest', async (req) => {
+    if (publicRoutes.has(req.routeOptions.url ?? '')) return;
+    const key = req.headers['x-api-key'];
+    if (typeof key === 'string' && keyDigests.some((known) => timingSafeEqual(known, sha256(key)))) return;
+    throw fail(401, 'X-API-Key header is missing or invalid');
+  });
 
   // Every error, including schema validation failures, is an RFC 9457 Problem Details body.
   app.setErrorHandler((error: FastifyError, req, reply) => {
@@ -32,7 +51,17 @@ export function buildApp(opts: FastifyServerOptions = {}, store: Store = createS
     limits: { files: 500, fileSize: 20 * 1024 * 1024 },
   });
   // Routes, request validation and response serialization all come from openapi.yaml.
-  app.register(openapiGlue, { specification: openapiPath, serviceHandlers: createStubService(store) });
+  app.register(openapiGlue, {
+    specification: openapiPath,
+    serviceHandlers: {
+      ...createStubService(store),
+      getHealthz: async () => ({ status: 'ok' }),
+      async getReadyz(req: FastifyRequest, reply: FastifyReply) {
+        const { ready, body } = await readiness(checks, req.log);
+        return reply.code(ready ? 200 : 503).send(body);
+      },
+    },
+  });
 
   const yoga = createYoga({ schema: createSchema({ typeDefs, resolvers }) });
   app.route({

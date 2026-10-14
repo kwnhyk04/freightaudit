@@ -1,19 +1,23 @@
 openapi: 3.1.0
 info:
   title: FreightAudit API
-  version: 0.2.0
+  version: 0.3.0
   description: >-
     Ingests carrier invoice PDFs and serves audit results. Money is integer cents.
     Errors use RFC 9457 Problem Details (application/problem+json).
+    Every route except /healthz and /readyz requires the X-API-Key header.
 servers:
   - url: http://localhost:4000
     description: Local development
+security:
+  - ApiKey: []
 
 paths:
   /healthz:
     get:
       operationId: getHealthz
       summary: Liveness probe.
+      security: []
       responses:
         "200":
           description: Service is alive.
@@ -21,6 +25,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+
+  /readyz:
+    get:
+      operationId: getReadyz
+      summary: Readiness probe; checks that Postgres, Redis and MinIO are reachable.
+      security: []
+      responses:
+        "200":
+          description: Every dependency is reachable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Readiness"
+        "503":
+          description: At least one dependency is unreachable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Readiness"
 
   /v1/invoices:
     post:
@@ -58,6 +81,10 @@ paths:
                 $ref: "#/components/schemas/InvoiceRef"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "413":
           $ref: "#/components/responses/PayloadTooLarge"
         "415":
@@ -88,6 +115,10 @@ paths:
                 $ref: "#/components/schemas/InvoicePage"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "429":
           $ref: "#/components/responses/TooManyRequests"
         "503":
@@ -113,6 +144,10 @@ paths:
                 $ref: "#/components/schemas/Invoice"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "429":
@@ -152,6 +187,10 @@ paths:
                 $ref: "#/components/schemas/BatchResult"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "413":
           $ref: "#/components/responses/PayloadTooLarge"
         "429":
@@ -175,6 +214,10 @@ paths:
                 $ref: "#/components/schemas/DiscrepancyPage"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "429":
           $ref: "#/components/responses/TooManyRequests"
         "503":
@@ -202,6 +245,10 @@ paths:
                 $ref: "#/components/schemas/ReplayAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "429":
@@ -210,6 +257,13 @@ paths:
           $ref: "#/components/responses/ServiceUnavailable"
 
 components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Server-to-server key; the browser never sends it.
+
   parameters:
     IdempotencyKey:
       name: Idempotency-Key
@@ -245,10 +299,34 @@ components:
       schema:
         type: integer
         minimum: 0
+    RateLimitLimit:
+      description: Requests allowed in the current window.
+      required: true
+      schema:
+        type: integer
+        minimum: 0
+    RateLimitRemaining:
+      description: Requests left in the current window.
+      required: true
+      schema:
+        type: integer
+        minimum: 0
 
   responses:
     BadRequest:
       description: The request failed validation.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Unauthorized:
+      description: The X-API-Key header is missing or not a valid key.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Forbidden:
+      description: The API key is valid but may not perform this operation.
       content:
         application/problem+json:
           schema:
@@ -280,6 +358,10 @@ components:
     TooManyRequests:
       description: Rate limit exceeded.
       headers:
+        RateLimit-Limit:
+          $ref: "#/components/headers/RateLimitLimit"
+        RateLimit-Remaining:
+          $ref: "#/components/headers/RateLimitRemaining"
         Retry-After:
           $ref: "#/components/headers/RetryAfter"
       content:
@@ -304,6 +386,19 @@ components:
         status:
           type: string
           const: ok
+    Readiness:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok, unavailable]
+        checks:
+          type: object
+          description: Result per dependency, keyed by name.
+          additionalProperties:
+            type: string
+            enum: [ok, fail]
     InvoiceStatus:
       type: string
       description: Processing status of an invoice.

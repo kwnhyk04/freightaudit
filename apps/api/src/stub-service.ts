@@ -1,7 +1,7 @@
 import type { components, operations } from '@freightaudit/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { problem } from './problem.ts';
+import { fail, problem } from './problem.ts';
 import { type Upload, uploadsOf } from './uploads.ts';
 
 type Invoice = components['schemas']['Invoice'];
@@ -22,8 +22,6 @@ export function createStore() {
 }
 
 export type Store = ReturnType<typeof createStore>;
-
-const fail = (statusCode: number, message: string) => Object.assign(new Error(message), { statusCode });
 
 function page<T>(items: T[], { limit, cursor }: PageQuery) {
   const offset = cursor === undefined ? 0 : Number(Buffer.from(cursor, 'base64url').toString());
@@ -54,8 +52,6 @@ export function createStubService(store: Store) {
   }
 
   return {
-    getHealthz: async () => ({ status: 'ok' }),
-
     async createInvoice(req: FastifyRequest, reply: FastifyReply) {
       const key = req.headers['idempotency-key'] as string;
       const [upload] = uploadsOf(req, 'file');

@@ -10,7 +10,8 @@ import { createStore } from './stub-service.ts';
 
 type Json = Record<string, unknown>;
 type ResponseDoc = { headers?: Record<string, { required?: boolean }>; content?: Record<string, { schema: Json }> };
-type Spec = { paths: Record<string, Record<string, { responses: Record<string, ResponseDoc> }>> };
+type Operation = { security?: unknown[]; responses: Record<string, ResponseDoc> };
+type Spec = { security: unknown[]; paths: Record<string, Record<string, Operation>> };
 
 const raw = parse(readFileSync(openapiPath, 'utf8')) as Json;
 
@@ -43,15 +44,23 @@ function expectMatchesSpec(path: string, method: string, response: Response, bod
   expect(validate(body) ? [] : validate.errors).toEqual([]);
 }
 
+const apiKey = 'k'.repeat(40);
 const store = createStore();
-const app = buildApp({}, store);
+let redisUp = true;
+const checks = {
+  postgres: async () => {},
+  redis: async () => {
+    if (!redisUp) throw new Error('connect ECONNREFUSED');
+  },
+};
+const app = buildApp({}, { apiKeys: [apiKey], checks, store });
 let baseUrl = '';
 let client: ReturnType<typeof createApiClient>;
 
 beforeAll(async () => {
   await app.listen({ host: '127.0.0.1', port: 0 });
   baseUrl = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
-  client = createApiClient({ baseUrl });
+  client = createApiClient({ baseUrl, headers: { 'X-API-Key': apiKey } });
 });
 afterAll(() => app.close());
 
@@ -73,6 +82,36 @@ const upload = (key: string, file: Blob) =>
 test('GET /healthz', async () => {
   const { data, response } = await client.GET('/healthz');
   expectMatchesSpec('/healthz', 'get', response, data);
+});
+
+test('GET /readyz answers 200 when every check passes and 503 naming the failed one', async () => {
+  const ready = await client.GET('/readyz');
+  expectMatchesSpec('/readyz', 'get', ready.response, ready.data);
+  expect(ready.data).toEqual({ status: 'ok', checks: { postgres: 'ok', redis: 'ok' } });
+
+  redisUp = false;
+  const unready = await client.GET('/readyz');
+  redisUp = true;
+  expectMatchesSpec('/readyz', 'get', unready.response, unready.error);
+  expect(unready.error).toEqual({ status: 'unavailable', checks: { postgres: 'ok', redis: 'fail' } });
+});
+
+test('every operation except the probes returns 401 without a valid X-API-Key, before validation', async () => {
+  for (const [path, methods] of Object.entries(spec.paths)) {
+    for (const [method, operation] of Object.entries(methods)) {
+      const isPublic = (operation.security ?? spec.security).length === 0;
+      for (const headers of [{}, { 'X-API-Key': 'x'.repeat(40) }] as HeadersInit[]) {
+        const response = await fetch(baseUrl + path.replace(/\{\w+\}/g, randomUUID()), { method, headers });
+        const body = await response.json();
+        if (isPublic) {
+          expect(response.status).not.toBe(401);
+        } else {
+          expectMatchesSpec(path, method, response, body);
+          expect(response.status).toBe(401);
+        }
+      }
+    }
+  }
 });
 
 test('POST /v1/invoices returns 202 for a new PDF and 200 with the same id for a duplicate', async () => {
@@ -97,7 +136,11 @@ test('POST /v1/invoices rejects bad uploads with Problem Details', async () => {
   expect(notPdf.response.status).toBe(415);
 
   // The typed client cannot omit a required header, so this request uses plain fetch.
-  const noKey = await fetch(`${baseUrl}/v1/invoices`, { method: 'POST', body: formData('file', [pdf('no key')]) });
+  const noKey = await fetch(`${baseUrl}/v1/invoices`, {
+    method: 'POST',
+    headers: { 'X-API-Key': apiKey },
+    body: formData('file', [pdf('no key')]),
+  });
   expectMatchesSpec('/v1/invoices', 'post', noKey, await noKey.json());
   expect(noKey.status).toBe(400);
 });

@@ -18,6 +18,11 @@ export default [
       ...graphql.configs['flat/schema-relay'].rules,
       // Keyset pagination is forward-only: first and after, without last and before.
       '@graphql-eslint/relay-arguments': ['error', { includeBoth: false }],
+      // Relay wrappers carry no identity of their own.
+      '@graphql-eslint/strict-id-in-types': [
+        'error',
+        { exceptions: { types: ['PageInfo'], suffixes: ['Connection', 'Edge'] } },
+      ],
     },
   },
   {
