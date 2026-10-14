@@ -15,6 +15,13 @@ Chronological record of significant development activity, newest first. Skip tri
 
 ## Entries
 
+### 2026-10-14: Lint exception applied and production foundations committed
+
+- Changes: The user added the graphql-eslint `strict-id-in-types` exception (`PageInfo`, `*Connection`, `*Edge`) to `packages/contracts/eslint.config.js` and committed the production-foundations work as `2cb0a6c`, with `.githooks/pre-commit` at mode 100755. Docs now record both; the Blocked section is empty.
+- Files: packages/contracts/eslint.config.js, docs/todo.md, docs/context.md, docs/memory.md, docs/activity-log.md
+- Validation: `turbo run build typecheck lint test contracts:check --force` passes 33 of 33 tasks with no cache (api 16 tests, domain 2). `git ls-tree HEAD .githooks/pre-commit` shows 100755.
+- Outstanding: The production override still uses the dev-only Postgres and MinIO credentials. `contracts:breaking` needs an `origin/main` remote; none is configured. The web port is not read from `.env`, and web logs are not JSON yet (step 9). Readiness is TCP-only until steps 3 and 4. 403 and 429 are documented, not emitted.
+
 ### 2026-10-14: Production foundations catch-up and parallel-run setup
 
 - Changes: Added `@freightaudit/config/env` (zod 4): `loadEnv(keys)` validates the settings each service reads and exits 1 with every problem listed, never echoing values; per-service ports `API_PORT`, `WORKER_PORT`, `MOCK_TMS_PORT`. `packages/telemetry` now exports Fastify logging options (pino JSON lines, UUID `reqId`, redacted `authorization`, `cookie`, `x-api-key` headers and `apiKey` fields) and readiness checks (TCP for Postgres and Redis, MinIO health endpoint, 2 s timeout). `/readyz` added to api, worker, mock-tms and web. `openapi.yaml` 0.3.0: `ApiKey` scheme (`X-API-Key`) on every operation except `/healthz` and `/readyz`, 401 and 403 responses, `RateLimit-Limit` and `RateLimit-Remaining` next to `Retry-After` on 429, `/readyz` with a `Readiness` schema; clients regenerated. The api enforces the key in an `onRequest` hook, before body parsing, for REST, GraphQL and unknown paths. gitleaks pre-commit hook (`.githooks/pre-commit`, enabled by a root `prepare` script; `.gitattributes` keeps it LF). Compose: monitoring services behind the `observability` profile, host ports from `.env` via `--env-file .env`, new `infra/docker-compose.prod.yml`. The web dev server binds 127.0.0.1. The local `.env` gained a generated `API_KEYS` value.
