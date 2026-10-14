@@ -26,17 +26,17 @@ Backend on this PC (production): `docker compose --env-file .env -f infra/docker
 | --- | --- |
 | `pnpm dev` | Run all apps in watch mode |
 | `pnpm build` | Build every package and app |
-| `pnpm typecheck`, `pnpm lint`, `pnpm test` | Checks (lint includes graphql-eslint; test includes the REST contract test) |
+| `pnpm typecheck`, `pnpm lint`, `pnpm test` | Checks (lint includes graphql-eslint); unit tests need no infrastructure |
 | `pnpm codegen` | Regenerate types and clients from `packages/contracts/openapi.yaml` and `schema.graphql` |
 | `pnpm contracts:check` | Fail if committed generated code is stale (regenerates it) |
 | `pnpm contracts:breaking` | Fail on breaking OpenAPI changes against `origin/main` (needs git, a fetched base branch and Docker; override the base with `OASDIFF_BASE_REF`) |
 | `pnpm db:migrate [--to=0002]` | Apply pending SQL migrations from `packages/db/migrations`; `--to` stops after the files with that prefix (see `docs/migrations.md`) |
 | `pnpm db:seed --scale=small\|large` | Seed an empty, migrated database with deterministic demo data: small is 1 tenant, 6 carriers, 5,000 shipments and 500 invoices; large is 50,000 shipments and 20,000 invoices |
-| `pnpm test:int` | Integration tests: database tests against the Postgres in `DATABASE_URL` (start infra first; each test uses a throwaway database) and the fixture determinism test (needs the Playwright Chromium) |
+| `pnpm test:int` | Integration tests against the compose Postgres, Redis and MinIO (start infra first; each test uses a throwaway database and its own Redis key prefix): migrations, the REST contract, rate limits and backpressure, the worker pipeline (retries, dead letters and replay, crash recovery, budget guard, multi-invoice split, TMS sync), and the fixture determinism test (needs the Playwright Chromium) |
 | `pnpm fixtures [--count=60] [--seed=42]` | Render synthetic invoice PDFs from 6 templates, plus scanned variants, each with ground-truth JSON, into `evals/fixtures/out`; the same seed gives byte-identical files on one machine |
 | `pnpm eval` | Wired to Turborepo; a no-op until step 6 |
 
-Apps (each answers `GET /healthz` and `GET /readyz`, bound to loopback): web `:3000`, api `:4000` (GraphQL at `/graphql`), worker `:4001`, mock-tms `:4010`. Every api route except the two probes requires the `X-API-Key` header. Node services log JSON lines (pino) with a request id, at `LOG_LEVEL`, with credentials redacted.
+Apps (each answers `GET /healthz` and `GET /readyz`, bound to loopback): web `:3000`, api `:4000` (GraphQL at `/graphql`), worker `:4001`, mock-tms `:4010`. Every api route except the two probes requires the `X-API-Key` header and is rate limited per key (60 requests a minute, 10 uploads a minute). Uploads go to MinIO and the `extract` queue; the worker extracts with Gemini only when `AI_ENABLED=true` and `GEMINI_API_KEY` is set, and otherwise holds extract jobs back. Node services log JSON lines (pino) with a request id, at `LOG_LEVEL`, with credentials redacted.
 
 Infra (bound to 127.0.0.1; host ports set in `.env`): Postgres `:5432`, Redis `:6379`, MinIO `:9000` (console `:9001`), Toxiproxy API `:8474` with proxies postgres `:15432`, redis `:16379`, mock-tms `:14010`. With `--profile observability`: OTLP `:4317`/`:4318`, Jaeger UI `:16686`, Prometheus `:9090`, Grafana `:3001`.
 

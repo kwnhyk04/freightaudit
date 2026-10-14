@@ -82,6 +82,20 @@ export const invoices = pgTable('invoices', {
   invoiceDate: date('invoice_date'),
   currency: text('currency'),
   totalCents: cents('total_cents'),
+  // Set on invoices split out of a multi-invoice upload.
+  parentInvoiceId: uuid('parent_invoice_id'),
+  ...timestamps,
+});
+
+// One validated model extraction per invoice; a split upload's row records the outcome of each part instead.
+export const extractions = pgTable('extractions', {
+  id: id(),
+  tenantId: tenantId(),
+  invoiceId: uuid('invoice_id').notNull(),
+  model: text('model').notNull(),
+  inputTokens: integer('input_tokens').notNull(),
+  outputTokens: integer('output_tokens').notNull(),
+  result: jsonb('result').notNull(),
   ...timestamps,
 });
 

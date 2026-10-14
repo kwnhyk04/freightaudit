@@ -1,8 +1,10 @@
+import { createMemoryStorage } from '@freightaudit/pipeline';
 import { serverOptions } from '@freightaudit/telemetry';
 import { buildApp } from './app.ts';
 
 const apiKey = 'k'.repeat(40);
-const app = buildApp({}, { apiKeys: [apiKey] });
+const storage = createMemoryStorage();
+const app = buildApp({}, { apiKeys: [apiKey], storage });
 afterAll(() => app.close());
 
 test('GraphQL answers with a valid API key and returns 401 without one', async () => {
@@ -20,7 +22,7 @@ test('logs are JSON lines with a UUID request id and redacted credentials', asyn
   const options = serverOptions('info');
   const logged = buildApp(
     { ...options, logger: { ...options.logger, stream: { write: (line: string) => lines.push(line) } } },
-    { apiKeys: [apiKey] },
+    { apiKeys: [apiKey], storage },
   );
   await logged.inject({ method: 'GET', url: '/healthz' });
   const headers = { 'x-api-key': apiKey, authorization: 'Bearer token-1', cookie: 'session=token-2' };

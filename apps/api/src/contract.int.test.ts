@@ -1,12 +1,13 @@
 import { createApiClient, openapiPath } from '@freightaudit/contracts';
+import { deadLetters, discrepancies } from '@freightaudit/db';
+import { createMemoryStorage } from '@freightaudit/pipeline';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import type { AddressInfo } from 'node:net';
 import { parse } from 'yaml';
 import { buildApp } from './app.ts';
-import { createStore } from './stub-service.ts';
+import { apiKey, createTestEnv, formData, listen, pdf } from './testing.ts';
 
 type Json = Record<string, unknown>;
 type ResponseDoc = { headers?: Record<string, { required?: boolean }>; content?: Record<string, { schema: Json }> };
@@ -44,8 +45,6 @@ function expectMatchesSpec(path: string, method: string, response: Response, bod
   expect(validate(body) ? [] : validate.errors).toEqual([]);
 }
 
-const apiKey = 'k'.repeat(40);
-const store = createStore();
 let redisUp = true;
 const checks = {
   postgres: async () => {},
@@ -53,24 +52,23 @@ const checks = {
     if (!redisUp) throw new Error('connect ECONNREFUSED');
   },
 };
-const app = buildApp({}, { apiKeys: [apiKey], checks, store });
+let env: Awaited<ReturnType<typeof createTestEnv>>;
+let app: ReturnType<typeof buildApp>;
 let baseUrl = '';
 let client: ReturnType<typeof createApiClient>;
 
 beforeAll(async () => {
-  await app.listen({ host: '127.0.0.1', port: 0 });
-  baseUrl = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
+  env = await createTestEnv();
+  // Limits high enough that this file never meets them; limits.int.test.ts covers them.
+  const rateLimits = { general: 10_000, upload: 10_000 };
+  app = buildApp({}, { apiKeys: [apiKey], checks, storage: createMemoryStorage(), service: env.service, rateLimits });
+  baseUrl = await listen(app);
   client = createApiClient({ baseUrl, headers: { 'X-API-Key': apiKey } });
 });
-afterAll(() => app.close());
-
-const pdf = (text: string) => new Blob([`%PDF-1.7 ${text}`], { type: 'application/pdf' });
-
-function formData(field: string, files: Blob[]) {
-  const body = new FormData();
-  files.forEach((file, index) => body.append(field, file, `invoice-${index}.pdf`));
-  return body;
-}
+afterAll(async () => {
+  await app.close();
+  await env.close();
+});
 
 const upload = (key: string, file: Blob) =>
   client.POST('/v1/invoices', {
@@ -114,20 +112,24 @@ test('every operation except the probes returns 401 without a valid X-API-Key, b
   }
 });
 
-test('POST /v1/invoices returns 202 for a new PDF and 200 with the same id for a duplicate', async () => {
-  const created = await upload('key-new', pdf('new'));
+test('POST /v1/invoices returns 202 for a new PDF and 200 with the same id for a duplicate, and queues one job', async () => {
+  const file = await pdf('new');
+  const created = await upload('key-new', file);
   expectMatchesSpec('/v1/invoices', 'post', created.response, created.data);
   expect(created.response.status).toBe(202);
 
-  const duplicate = await upload('key-dup', pdf('new'));
+  const duplicate = await upload('key-dup', file);
   expectMatchesSpec('/v1/invoices', 'post', duplicate.response, duplicate.data);
   expect(duplicate.response.status).toBe(200);
   expect(duplicate.data?.id).toBe(created.data?.id);
+
+  const jobs = await env.queues.queue('extract').getJobs(['waiting']);
+  expect(jobs.filter((job) => job.data.invoiceId === created.data?.id)).toHaveLength(1);
 });
 
 test('POST /v1/invoices rejects bad uploads with Problem Details', async () => {
-  await upload('key-reused', pdf('first'));
-  const reused = await upload('key-reused', pdf('second'));
+  await upload('key-reused', await pdf('first'));
+  const reused = await upload('key-reused', await pdf('second'));
   expectMatchesSpec('/v1/invoices', 'post', reused.response, reused.error);
   expect(reused.response.status).toBe(422);
 
@@ -139,16 +141,17 @@ test('POST /v1/invoices rejects bad uploads with Problem Details', async () => {
   const noKey = await fetch(`${baseUrl}/v1/invoices`, {
     method: 'POST',
     headers: { 'X-API-Key': apiKey },
-    body: formData('file', [pdf('no key')]),
+    body: formData('file', [await pdf('no key')]),
   });
   expectMatchesSpec('/v1/invoices', 'post', noKey, await noKey.json());
   expect(noKey.status).toBe(400);
 });
 
 test('POST /v1/invoice-batches returns per-file results and never fails the whole batch', async () => {
-  const known = await upload('key-known', pdf('known'));
+  const knownFile = await pdf('known');
+  const known = await upload('key-known', knownFile);
   const { data, response } = await client.POST('/v1/invoice-batches', {
-    body: { files: [pdf('batch'), new Blob(['not a pdf']), pdf('known')] },
+    body: { files: [await pdf('batch'), new Blob(['not a pdf']), knownFile] },
     bodySerializer: (body) => formData('files', body.files),
   });
   expectMatchesSpec('/v1/invoice-batches', 'post', response, data);
@@ -160,11 +163,12 @@ test('POST /v1/invoice-batches returns per-file results and never fails the whol
   expect(data?.results[2]?.invoice_id).toBe(known.data?.id);
 });
 
-test('GET /v1/invoices pages with an opaque cursor and validates its query', async () => {
-  await upload('key-page-1', pdf('page 1'));
-  await upload('key-page-2', pdf('page 2'));
+test('GET /v1/invoices pages newest first with an opaque keyset cursor and validates its query', async () => {
+  await upload('key-page-1', await pdf('page 1'));
+  const newest = await upload('key-page-2', await pdf('page 2'));
   const first = await client.GET('/v1/invoices', { params: { query: { limit: 1 } } });
   expectMatchesSpec('/v1/invoices', 'get', first.response, first.data);
+  expect(first.data?.items[0]?.id).toBe(newest.data?.id);
   const cursor = first.data?.next_cursor ?? undefined;
   expect(cursor).toEqual(expect.any(String));
 
@@ -178,14 +182,17 @@ test('GET /v1/invoices pages with an opaque cursor and validates its query', asy
   const tooLarge = await client.GET('/v1/invoices', { params: { query: { limit: 101 } } });
   expectMatchesSpec('/v1/invoices', 'get', tooLarge.response, tooLarge.error);
   expect(tooLarge.response.status).toBe(400);
+
+  const forged = await client.GET('/v1/invoices', { params: { query: { cursor: 'not-a-cursor' } } });
+  expect(forged.response.status).toBe(400);
 });
 
 test('GET /v1/invoices/{id} returns the invoice or a 404 Problem', async () => {
-  const created = await upload('key-get', pdf('get'));
+  const created = await upload('key-get', await pdf('get'));
   const id = created.data?.id ?? '';
   const found = await client.GET('/v1/invoices/{id}', { params: { path: { id } } });
   expectMatchesSpec('/v1/invoices/{id}', 'get', found.response, found.data);
-  expect(found.data?.id).toBe(id);
+  expect(found.data).toMatchObject({ id, status: 'received', filename: 'invoice-0.pdf', carrier: null });
 
   const missing = await client.GET('/v1/invoices/{id}', { params: { path: { id: randomUUID() } } });
   expectMatchesSpec('/v1/invoices/{id}', 'get', missing.response, missing.error);
@@ -193,34 +200,37 @@ test('GET /v1/invoices/{id} returns the invoice or a 404 Problem', async () => {
 });
 
 test('GET /v1/discrepancies returns a page of discrepancies', async () => {
-  store.discrepancies.push({
-    id: randomUUID(),
-    invoice_id: randomUUID(),
-    line_item_id: null,
-    shipment_id: null,
-    rate_card_version_id: null,
+  const created = await upload('key-discrepancy', await pdf('discrepancy'));
+  await env.db.insert(discrepancies).values({
+    tenantId: env.tenantId,
+    invoiceId: created.data?.id ?? '',
     type: 'rate_mismatch',
-    status: 'open',
-    expected_cents: 125_000,
-    billed_cents: 131_250,
+    expectedCents: 125_000n,
+    billedCents: 131_250n,
     evidence: 'Contract linehaul is 1,250.00 USD; billed 1,312.50 USD.',
-    created_at: new Date().toISOString(),
   });
   const { data, response } = await client.GET('/v1/discrepancies', { params: { query: { limit: 10 } } });
   expectMatchesSpec('/v1/discrepancies', 'get', response, data);
   expect(data?.items).toHaveLength(1);
+  expect(data?.items[0]).toMatchObject({ expected_cents: 125_000, billed_cents: 131_250, line_item_id: null });
 });
 
 test('POST /v1/dead-letters/{id}/replay requeues once, then returns 404', async () => {
-  store.deadLetterIds.add('extract:42');
-  const replay = () => client.POST('/v1/dead-letters/{id}/replay', { params: { path: { id: 'extract:42' } } });
-  const first = await replay();
+  const created = await upload('key-dead', await pdf('dead'));
+  const [dead] = await env.db
+    .insert(deadLetters)
+    .values({ tenantId: env.tenantId, queue: 'extract', jobId: 'dead-job', payload: { invoiceId: created.data?.id }, error: 'boom', attempts: 5 })
+    .returning();
+  const replay = (id: string) => client.POST('/v1/dead-letters/{id}/replay', { params: { path: { id } } });
+  const first = await replay(dead!.id);
   expectMatchesSpec('/v1/dead-letters/{id}/replay', 'post', first.response, first.data);
-  expect(first.response.status).toBe(202);
+  expect(first.data).toEqual({ id: dead!.id, job_id: 'dead-job' });
+  expect((await env.queues.queue('extract').getJob('dead-job'))?.data).toEqual({ invoiceId: created.data?.id, tenantId: env.tenantId });
 
-  const second = await replay();
+  const second = await replay(dead!.id);
   expectMatchesSpec('/v1/dead-letters/{id}/replay', 'post', second.response, second.error);
   expect(second.response.status).toBe(404);
+  expect((await replay('extract:42')).response.status).toBe(404);
 });
 
 test('every operation in openapi.yaml is exercised above', () => {

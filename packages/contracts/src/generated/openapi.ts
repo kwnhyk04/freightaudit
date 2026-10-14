@@ -296,7 +296,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description A file is larger than 20 MiB or the request has more than 500 files. */
+        /** @description The file is larger than 10 MiB or has more than 20 pages, or the request has more than 500 files. In a batch, such files are rejected one by one instead. */
         PayloadTooLarge: {
             headers: {
                 [name: string]: unknown;
@@ -461,7 +461,7 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": {
-                    /** @description Invoice PDF, at most 20 MiB. */
+                    /** @description Invoice PDF, at most 10 MiB and 20 pages. */
                     file: Blob;
                 };
             };

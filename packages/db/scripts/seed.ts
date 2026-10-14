@@ -219,7 +219,16 @@ export async function seed(client: pg.Client, scale: Scale, { flatRates = false,
       await insert(db, t.rateCards, rates);
     }
     await insert(db, t.shipments, shipments);
-    await insert(db, t.invoices, invoices);
+    if (flatRates) {
+      // Before 0006, invoices has no parent_invoice_id, which a Drizzle insert of the latest schema always names.
+      for (const row of invoices) {
+        const columns = 'id, tenant_id, status, filename, content_sha256, carrier_id, shipment_id, invoice_number, pro_number, invoice_date, currency, total_cents, created_at, updated_at';
+        const values = [row.id, row.tenantId, row.status, row.filename, row.contentSha256, row.carrierId, row.shipmentId, row.invoiceNumber, row.proNumber, row.invoiceDate, row.currency, row.totalCents, row.createdAt, row.updatedAt];
+        await client.query(`INSERT INTO invoices (${columns}) VALUES (${values.map((_, i) => `$${i + 1}`).join(', ')})`, values.map((value) => value ?? null));
+      }
+    } else {
+      await insert(db, t.invoices, invoices);
+    }
     // Flat-rate lines have no version yet and wait for the backfill; the column stays nullable until 0003a.
     await insert(db, t.invoiceLines, flatRates ? lines.map((line) => ({ ...line, rateCardVersionId: sql`NULL` })) : lines);
     await insert(db, t.discrepancies, discrepancies);

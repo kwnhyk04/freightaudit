@@ -4,14 +4,25 @@
   "type": "module",
   "exports": "./dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:int": "node --env-file-if-exists=../../.env --experimental-vm-modules node_modules/jest/bin/jest.js -c jest.int.config.js"
+  },
+  "dependencies": {
+    "@freightaudit/db": "workspace:*",
+    "@freightaudit/domain": "workspace:*",
+    "ioredis": "catalog:",
+    "pdf-lib": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@freightaudit/config": "workspace:*",
+    "@types/jest": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",
+    "jest": "catalog:",
     "typescript": "catalog:"
   }
 }

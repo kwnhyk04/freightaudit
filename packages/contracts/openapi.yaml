@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: FreightAudit API
-  version: 0.3.0
+  version: 0.4.0
   description: >-
     Ingests carrier invoice PDFs and serves audit results. Money is integer cents.
     Errors use RFC 9457 Problem Details (application/problem+json).
@@ -65,7 +65,7 @@ paths:
                 file:
                   type: string
                   contentMediaType: application/pdf
-                  description: Invoice PDF, at most 20 MiB.
+                  description: Invoice PDF, at most 10 MiB and 20 pages.
       responses:
         "200":
           description: This file was uploaded before; returns the existing invoice id.
@@ -177,7 +177,7 @@ paths:
                   items:
                     type: string
                     contentMediaType: application/pdf
-                    description: Invoice PDF, at most 20 MiB.
+                    description: Invoice PDF, at most 10 MiB and 20 pages.
       responses:
         "202":
           description: Per-file results; accepted files are queued for extraction.
@@ -338,7 +338,7 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
     PayloadTooLarge:
-      description: A file is larger than 20 MiB or the request has more than 500 files.
+      description: The file is larger than 10 MiB or has more than 20 pages, or the request has more than 500 files. In a batch, such files are rejected one by one instead.
       content:
         application/problem+json:
           schema:

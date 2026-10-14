@@ -2,7 +2,11 @@
   "name": "@freightaudit/db",
   "private": true,
   "type": "module",
-  "exports": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./migrate": "./dist/migrate.js",
+    "./testing": "./dist/testing.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
@@ -14,14 +18,14 @@
   },
   "dependencies": {
     "@freightaudit/config": "workspace:*",
-    "drizzle-orm": "^0.45.4",
-    "pg": "^8.23.1"
+    "drizzle-orm": "catalog:",
+    "pg": "catalog:"
   },
   "devDependencies": {
     "@faker-js/faker": "catalog:",
     "@types/jest": "catalog:",
     "@types/node": "catalog:",
-    "@types/pg": "^8.23.1",
+    "@types/pg": "catalog:",
     "eslint": "catalog:",
     "jest": "catalog:",
     "typescript": "catalog:"

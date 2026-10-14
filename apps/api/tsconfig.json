@@ -3,6 +3,8 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
+    // An app exports no types; declarations would also trip over the two bullmq peer variants in the store.
+    "declaration": false,
     "types": ["node", "jest"]
   },
   "include": ["src"]

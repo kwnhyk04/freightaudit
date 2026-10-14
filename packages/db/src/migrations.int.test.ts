@@ -41,6 +41,21 @@ const misversionedLines = `
   JOIN rate_card_versions v ON v.id = l.rate_card_version_id
   WHERE v.carrier_id <> i.carrier_id OR NOT v.effective @> (coalesce(s.shipped_on, i.invoice_date)::timestamp AT TIME ZONE 'UTC')`;
 
+test('the status trigger rejects invoice moves the lifecycle does not list', () =>
+  withDatabase(async (client, url) => {
+    await migrate(url, { log: quiet });
+    const { rows: tenants } = await client.query("INSERT INTO tenants (name) VALUES ('Test tenant') RETURNING id");
+    const { rows: invoices } = await client.query(
+      "INSERT INTO invoices (tenant_id, filename, content_sha256) VALUES ($1, 'a.pdf', repeat('a', 64)) RETURNING id",
+      [tenants[0].id],
+    );
+    const move = (status: string) => client.query('UPDATE invoices SET status = $1 WHERE id = $2', [status, invoices[0].id]);
+    await expect(move('approved')).rejects.toMatchObject({ code: '23514' });
+    // Allowed moves, including a repeat of the current status by a retried job.
+    for (const status of ['extracting', 'extracting', 'failed', 'received']) await move(status);
+    await expect(move('reconciled')).rejects.toMatchObject({ code: '23514' });
+  }));
+
 test('migrations apply cleanly from empty, re-run as a no-op, and match the Drizzle schema', () =>
   withDatabase(async (client, url) => {
     await migrate(url, { log: quiet });
@@ -53,6 +68,7 @@ test('migrations apply cleanly from empty, re-run as a no-op, and match the Driz
       '0003b_rate_card_versions_indexes',
       '0004_drop_flat_rate_columns',
       '0005_invoice_lifecycle',
+      '0006_extraction_pipeline',
     ]);
 
     const tables = Object.values(schema as Record<string, unknown>).filter((value): value is PgTable => is(value, PgTable));

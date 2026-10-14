@@ -7,15 +7,26 @@ catalog:
   "@faker-js/faker": ^10.6.0
   "@types/jest": ^30.0.0
   "@types/node": ^24.19.2
+  "@types/pg": ^8.23.1
+  bullmq: ^6.3.9
+  drizzle-orm: ^0.45.4
   eslint: ^10.12.0
+  # ioredis 6.0 is two days old; BullMQ 6 accepts >=5.
+  ioredis: ^5.9.3
   jest: ^30.5.2
+  # Unmaintained since 2022 but stable, MIT, with pinned dependencies; used to count and split pages.
+  pdf-lib: ^1.17.1
+  pg: ^8.23.1
   # typescript-eslint requires TypeScript <6.1; TypeScript 7 ships without the JS API it needs.
   typescript: ~6.0.3
+  zod: ^4.6.7
 
 # Native deps ship prebuilt binaries, so their install scripts stay off.
 allowBuilds:
   "@parcel/watcher": false
   "@swc/core": false
+  # BullMQ's optional msgpack addon; msgpackr falls back to JavaScript without it.
+  msgpackr-extract: false
   unrs-resolver: false
 
 # openapi-typescript 7 declares typescript ^5; its output on 6.0 is checked by pnpm contracts:check.

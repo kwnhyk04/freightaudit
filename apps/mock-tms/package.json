@@ -3,19 +3,23 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "dev": "node --env-file-if-exists=../../.env --watch src/main.ts",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
     "@freightaudit/config": "workspace:*",
+    "@freightaudit/db": "workspace:*",
     "@freightaudit/telemetry": "workspace:*",
     "fastify": "^5.12.5"
   },
   "devDependencies": {
+    "@types/jest": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",
+    "jest": "catalog:",
     "typescript": "catalog:"
   }
 }

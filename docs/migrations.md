@@ -99,12 +99,20 @@ The helper check is named `*_check`. Postgres 18 records `NOT NULL` itself as a 
 
 `ALTER TYPE invoice_status ADD VALUE IF NOT EXISTS` adds `reconciling` and `approved`, so the database and the API contracts share one lifecycle (state machine in `docs/context.md`). Adding an enum value changes only the catalog, with no table scan or rewrite, and runs inside the migration's transaction (Postgres 12 and later; a new value is usable once the transaction commits). Existing values cannot be reordered without recreating the type, which rewrites every table that uses it, so `needs_review` keeps sorting before `reconciled`; code must not order by status. As with any expand step, deploy code that can read the new values before code that writes them: an older reader that meets an unknown value fails, for example when serializing a GraphQL enum.
 
+## 0006 extraction pipeline (expand)
+
+- `extractions` holds one validated model extraction per invoice: model, token counts and the result as `jsonb`. `invoice_id` is unique, so a second save by a retried or recovered job is a no-op (`ON CONFLICT DO NOTHING`). For an upload split into several invoices, the row records each part's outcome instead.
+- `invoices.parent_invoice_id` points a split-out invoice at the upload it came from. The nullable column is a catalog change; the foreign key is added `NOT VALID`, because every existing row is NULL and a validating scan could find nothing, while new writes are checked at once. A later contract step may `VALIDATE` it.
+- The `check_invoice_transition` trigger (`BEFORE UPDATE OF status`) rejects any status move that the lifecycle in `docs/context.md` does not list, with SQLSTATE `23514`, whichever code writes it. An update to the same status passes, so a retried job may repeat its move. Inserts are not checked, so the seed may write any status.
+- The flat-rate seed that the backfill test writes at 0002 inserts invoices with explicit columns: a Drizzle insert of the latest schema always names `parent_invoice_id`, which does not exist before 0006.
+
 ## Tests (`pnpm test:int`)
 
 Each test runs in a throwaway database on the Postgres server in `DATABASE_URL`.
 
 - Migrations apply from empty, a second run is a no-op, and the Drizzle schema matches the database, including enum labels.
 - The exclusion constraint rejects overlapping versions for one carrier (SQLSTATE `23P01`), and allows touching ranges and the same dates for another carrier.
+- The status trigger rejects moves the lifecycle does not list (SQLSTATE `23514`) and allows listed and repeated ones.
 - Backfill on the small seed (flat-rate shape at 0002): a crash after the first batch, then a rerun that finishes; every line points at a version of its own invoice's carrier; another rerun changes nothing; then 0003a, 0003b and 0004 apply, leaving both columns `NOT NULL`, the foreign keys validated, both indexes valid and no `carrier_id`.
 - The small seed loads on the final schema, every line bills the version in force on its ship date, and every invoice's lines and discrepancies fit its status in the lifecycle.
 

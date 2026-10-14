@@ -3,19 +3,32 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "dev": "node --env-file-if-exists=../../.env --watch src/main.ts",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:int": "node --env-file-if-exists=../../.env --experimental-vm-modules node_modules/jest/bin/jest.js -c jest.int.config.js"
   },
   "dependencies": {
     "@freightaudit/config": "workspace:*",
+    "@freightaudit/db": "workspace:*",
+    "@freightaudit/llm": "workspace:*",
+    "@freightaudit/pipeline": "workspace:*",
     "@freightaudit/telemetry": "workspace:*",
-    "fastify": "^5.12.5"
+    "bullmq": "catalog:",
+    "drizzle-orm": "catalog:",
+    "fastify": "^5.12.5",
+    "ioredis": "catalog:",
+    "pg": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@types/jest": "catalog:",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "eslint": "catalog:",
+    "jest": "catalog:",
+    "pdf-lib": "catalog:",
     "typescript": "catalog:"
   }
 }
