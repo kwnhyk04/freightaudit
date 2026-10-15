@@ -1,0 +1,319 @@
+name: CI
+
+on:
+  pull_request:
+  # release.yml runs the same checks before it publishes.
+  workflow_call:
+
+# Each job asks for what it needs; nothing is granted by default.
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Turborepo Remote Cache is optional: without these turbo uses its local cache only.
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+  TURBO_TELEMETRY_DISABLED: 1
+  # What this change is compared against: the PR's base, or the previous main on a push.
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+
+jobs:
+  lint:
+    name: lint + typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+
+  unit:
+    name: unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      # --force: a test result replayed from turbo's cache is not a pass.
+      - run: pnpm test --force
+
+  integration:
+    name: integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      # The fixture determinism test renders invoices in Playwright's Chromium.
+      - run: pnpm --filter @freightaudit/evals exec playwright install --with-deps --only-shell chromium
+      # Testcontainers starts Postgres, Redis, MinIO and Toxiproxy on the runner's Docker.
+      - run: pnpm test:int
+
+  contracts:
+    name: contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # oasdiff reads openapi.yaml at the base commit.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm contracts:check
+      - name: oasdiff breaking changes against the base
+        if: ${{ !startsWith(env.BASE_SHA, '0000000') }}
+        run: pnpm contracts:breaking
+        env:
+          OASDIFF_BASE_REF: ${{ env.BASE_SHA }}
+
+  migrations:
+    name: migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      PG: postgres://ci:ci@localhost:5432
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm turbo run build --filter=@freightaudit/db...
+      # pg_dump and pg_restore run inside the service container, whose version matches the server.
+      - run: echo "PG_CONTAINER=${{ job.services.postgres.id }}" >> "$GITHUB_ENV"
+      - name: Apply every migration to a fresh database
+        run: |
+          docker exec "$PG_CONTAINER" createdb -U ci fresh
+          DATABASE_URL="$PG/fresh" node packages/db/dist/migrate.js
+      - name: Restore the seeded snapshot of the base
+        id: snapshot
+        if: ${{ !startsWith(env.BASE_SHA, '0000000') }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: snapshot.dump
+          key: migrations-snapshot-${{ env.BASE_SHA }}
+      - name: Check out the base
+        if: ${{ !startsWith(env.BASE_SHA, '0000000') && steps.snapshot.outputs.cache-hit != 'true' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.BASE_SHA }}
+          path: .base
+          persist-credentials: false
+      - name: Build the snapshot with the base's own migrations and small seed
+        if: ${{ !startsWith(env.BASE_SHA, '0000000') && steps.snapshot.outputs.cache-hit != 'true' }}
+        run: |
+          pnpm --dir .base install --frozen-lockfile
+          pnpm --dir .base exec turbo run build --filter=@freightaudit/db...
+          docker exec "$PG_CONTAINER" createdb -U ci base
+          DATABASE_URL="$PG/base" node .base/packages/db/dist/migrate.js
+          DATABASE_URL="$PG/base" node .base/packages/db/scripts/seed.ts --scale=small
+          docker exec "$PG_CONTAINER" pg_dump -U ci --format=custom base > snapshot.dump
+      - name: Apply this commit's migrations to the snapshot
+        if: ${{ !startsWith(env.BASE_SHA, '0000000') }}
+        run: |
+          docker exec "$PG_CONTAINER" createdb -U ci upgraded
+          docker exec -i "$PG_CONTAINER" pg_restore -U ci --no-owner -d upgraded < snapshot.dump
+          DATABASE_URL="$PG/upgraded" node packages/db/dist/migrate.js
+      # Also catches an applied migration that was edited, which the runner cannot see.
+      - name: Both paths end with the same schema
+        if: ${{ !startsWith(env.BASE_SHA, '0000000') }}
+        run: |
+          schema() { docker exec "$PG_CONTAINER" pg_dump -U ci --schema-only --no-owner --restrict-key=ci "$1"; }
+          diff <(schema fresh) <(schema upgraded)
+
+  eval-smoke:
+    name: eval smoke (20 cases)
+    # Fork and Dependabot PRs get no Actions secrets.
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      report: ${{ steps.eval.outputs.report }}
+      status: ${{ steps.eval.outputs.status }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      # Against the ci floors in evals/thresholds.json: exit 1 (a broken floor) fails the job, exit 2 (a free-tier
+      # quota stop) only warns.
+      - name: Eval the ci subset on the pinned models
+        id: eval
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          status=0
+          pnpm eval --suite extraction --subset ci || status=$?
+          {
+            echo "status=$status"
+            echo "report=$(git ls-files --others --modified --exclude-standard -- 'evals/reports/*-ci.md')"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$status" -eq 2 ]; then
+            echo "::warning title=eval smoke::Stopped on a free-tier quota before every case ran; rerun this job once the quota resets."
+            exit 0
+          fi
+          exit "$status"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() && steps.eval.outputs.report != '' }}
+        with:
+          name: eval-smoke-report
+          path: ${{ steps.eval.outputs.report }}
+
+  eval-comment:
+    name: eval smoke comment
+    needs: eval-smoke
+    if: ${{ always() && needs.eval-smoke.outputs.report != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: eval-smoke-report
+      - name: Post the report, or update the earlier one
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          REPORT: ${{ needs.eval-smoke.outputs.report }}
+          STATUS: ${{ needs.eval-smoke.outputs.status }}
+        run: |
+          marker='<!-- eval-smoke -->'
+          case "$STATUS" in
+            0) note='' ;;
+            1) note='> **Failed:** a metric fell below its floor in evals/thresholds.json.' ;;
+            2) note='> **Warning, not a failure:** the run stopped on a free-tier quota before every case ran. Rerun the job once the quota resets.' ;;
+            *) note="> **Failed:** the eval exited with code $STATUS." ;;
+          esac
+          {
+            echo "$marker"
+            if [ -n "$note" ]; then printf '%s\n\n' "$note"; fi
+            cat "$(basename "$REPORT")"
+          } > body.md
+          id=$(gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | tail -n 1)
+          if [ -n "$id" ]; then
+            gh api --method PATCH "repos/$GH_REPO/issues/comments/$id" -F body=@body.md > /dev/null
+          else
+            gh pr comment "$PR" --body-file body.md
+          fi
+
+  docker:
+    name: docker (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api, worker, web]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          tags: freightaudit-${{ matrix.app }}:ci
+          load: true
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,scope=${{ matrix.app }},mode=max
+      - name: Trivy (fail on a fixable critical)
+        env:
+          IMAGE: freightaudit-${{ matrix.app }}:ci
+        run: >-
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
+          image --exit-code 1 --severity CRITICAL --ignore-unfixed --no-progress "$IMAGE"
+
+  golden:
+    name: golden set checksums
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The eval PDFs are plain git files; each must match the sha256 its set's manifest records.
+      - name: Check every PDF against its manifest
+        run: |
+          for set in evals/golden/v1 evals/comparison/v1; do
+            jq -r --arg dir "$set" '.cases[] | "\(.sha256)  \($dir)/\(.file)"' "$set/manifest.json" | sha256sum --check --strict --quiet
+          done
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan every commit for secrets
+        run: >-
+          docker run --rm -v "$PWD:/repo:ro"
+          ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git --redact --no-banner --verbose /repo
+
+  audit:
+    name: pnpm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      # Accepted advisories are listed with their reasons under auditConfig in pnpm-workspace.yaml.
+      - run: pnpm audit --audit-level high

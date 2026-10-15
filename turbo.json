@@ -82,14 +82,19 @@
         "DOCKER_*",
         "TESTCONTAINERS_*",
         "HOME",
-        "USERPROFILE"
+        "USERPROFILE",
+        "GEMINI_API_KEY",
+        "GROQ_API_KEY"
       ]
     },
     "contracts:check": {
       "cache": false
     },
     "contracts:breaking": {
-      "cache": false
+      "cache": false,
+      "passThroughEnv": [
+        "OASDIFF_BASE_REF"
+      ]
     }
   }
 }

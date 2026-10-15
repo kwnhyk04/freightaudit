@@ -1,3 +1,4 @@
+import { networkInterfaces } from 'node:os';
 import process from 'node:process';
 import { GenericContainer, getContainerRuntimeClient, Wait } from 'testcontainers';
 import { OWNER, staleTestContainers } from './jest-orphans.js';
@@ -25,6 +26,17 @@ async function removeOrphans() {
   const client = await getContainerRuntimeClient();
   const labelled = await client.container.dockerode.listContainers({ all: true, filters: { label: [OWNER] } });
   await Promise.all(staleTestContainers(labelled).map((info) => client.container.getById(info.Id).remove({ force: true, v: true })));
+}
+
+// A container reaches the host as host.docker.internal, which host-gateway maps to its network's gateway. Docker Desktop
+// forwards that to the host's loopback; on a Linux engine the gateway is an address of this host, where a server bound
+// to 127.0.0.1 never hears it, so servers for a container to reach listen on the gateway there.
+async function upstreamHost(container) {
+  const client = await getContainerRuntimeClient();
+  const { NetworkSettings } = await client.container.dockerode.getContainer(container.getId()).inspect();
+  const gateway = Object.values(NetworkSettings.Networks)[0]?.Gateway;
+  const own = Object.values(networkInterfaces()).some((addresses) => addresses?.some(({ address }) => address === gateway));
+  return own ? gateway : '127.0.0.1';
 }
 
 export default async function startContainers() {
@@ -64,6 +76,8 @@ export default async function startContainers() {
     // A proxy that listens on TOXIPROXY_LISTEN is reachable from the host at TOXIPROXY_LISTEN_URL.
     TOXIPROXY_LISTEN: '0.0.0.0:8666',
     TOXIPROXY_LISTEN_URL: `http://${local(toxiproxy, 8666)}`,
+    // A server the proxy forwards to listens on TOXIPROXY_UPSTREAM_HOST and is reached as host.docker.internal.
+    TOXIPROXY_UPSTREAM_HOST: await upstreamHost(toxiproxy),
   });
   globalThis.testContainers = [postgres, redis, minio, toxiproxy];
 }

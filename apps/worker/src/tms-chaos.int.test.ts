@@ -31,7 +31,7 @@ test("the TMS sync reaches the mock's full shipment count through 20% connection
   server.addHook('onSend', async (_req, reply) => {
     reply.header('connection', 'close');
   });
-  await server.listen({ host: '127.0.0.1', port: 0 });
+  await server.listen({ host: testEnv('TOXIPROXY_UPSTREAM_HOST'), port: 0 });
   const upstream = `host.docker.internal:${(server.server.address() as AddressInfo).port}`;
   await toxiproxy('POST', '/proxies', { name: 'tms', listen: testEnv('TOXIPROXY_LISTEN'), upstream, enabled: true });
   await toxiproxy('POST', '/proxies/tms/toxics', { name: 'latency', type: 'latency', stream: 'downstream', attributes: { latency: 300 } });

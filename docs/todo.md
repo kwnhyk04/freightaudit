@@ -9,18 +9,17 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 - [ ] With step 8: measure end-to-end latency p95 (target 30 s) and throughput (2,000 invoices an hour on 2 workers x concurrency 8) under normal load with the k6 load test. The eval reports end-to-end latency only under its own free-tier throttling (143 s p95 on 2026-10-15) and throughput only as the free-tier ceiling (394 an hour).
 - [ ] Multi-currency support (user request): rate cards per currency, or FX at the invoice date. Until then an invoice in any currency but USD ends needs_review with `unsupported_currency`.
 - [ ] Golden set v2 (a new version, never v1 edited): harder layouts, real-world noise, more adversarial cases, and dev cases for the 6b test-split findings (a title line beside the carrier, as in remit; a repeated scanned page), so a prompt fix for them is tuned on dev, not test.
-- [ ] (manual, before step 7) GitHub repo created; provider keys added as Actions secrets.
+- [ ] (manual, user) Create the GitHub repository and add the Actions secrets `GEMINI_API_KEY` and `GROQ_API_KEY` (optional: secret `TURBO_TOKEN`, variable `TURBO_TEAM`); then push and open a test PR, step 7's last check.
+- [ ] Drop the `auditConfig.ignoreGhsas` entries in `pnpm-workspace.yaml` once a fixed version reaches their dependents: braces (via @graphql-codegen/cli) and @graphql-tools/utils 12.0.1+ (via @graphql-eslint/eslint-plugin).
 - [ ] (manual, before step 10) Vercel and Tailscale accounts created.
 - [ ] Before step 10: move the Postgres and MinIO credentials that the production override inherits into `.env`: the prod stack starts without the dev-only `freightaudit` values in the compose files.
-- [ ] Before step 7: CI runs `pnpm test:int` on a Docker host (Testcontainers) with the Playwright Chromium installed. Make the Toxiproxy test's fake TMS reachable from its container on a Linux engine, where `host-gateway` does not reach the host's 127.0.0.1 (for example, bind it to the Docker bridge address there).
-- [ ] Before step 10: run migrations in the production deploy (`node packages/db/dist/migrate.js`) before api and worker start.
+- [ ] Step 10: turn on release.yml's migrate and deploy jobs. On the PC: OpenSSH server, a deploy key whose `authorized_keys` entry forces a script that accepts only `migrate <tag>` (runs `node packages/db/dist/migrate.js` from `ghcr.io/<owner>/freightaudit-api:<tag>` on the compose network) and `deploy <tag>` (pulls and starts api and worker at that tag), and compose services for the GHCR images. In Tailscale: an OIDC federated identity for this repository with the tag `tag:ci`, allowed only to the PC's SSH port. In GitHub: environment `production` with secret `DEPLOY_SSH_KEY`, variables `DEPLOY_SSH_TARGET`, `DEPLOY_KNOWN_HOSTS`, `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`, then `DEPLOY_ENABLED=true`.
 - [ ] Before step 10: run the worker with a stop grace period longer than its slowest job (60 s model timeout), so SIGTERM lets running jobs finish.
 - [ ] Before step 10: set `NODE_ENV=production` on the machine that serves production (its `.env`), so `pnpm db:reset` refuses there; on this PC dev and production share the compose project and its Postgres volume.
 - [ ] With step 9: a way out of needs_review, such as correcting the extracted carrier or PRO number and reconciling again; today such an invoice can only be approved.
 - [ ] When 0007 reaches a database with synced shipments (production, step 10): clear the TMS sync cursor so the next sync writes their miles, and enter linehaul terms for the existing rate card versions.
 - [ ] Contract for 0007, in a later release once every rate card version has terms and every shipment has miles: `VALIDATE` the `NOT VALID` checks, `SET NOT NULL` through a validated check (as in 0003a), and delete the flat `LINEHAUL` and `FUEL` rates nothing reads.
 - [ ] After `gemini-3.8-flash`'s daily quota resets: `pnpm eval --suite extraction --subset compare` to finish its 15th comparison case (the run resumes from the cache).
-- [ ] 7. CI/CD: GitHub Actions for test, build, docker push; actionlint passes; test PR green
 - [ ] 8. Instrumentation: OpenTelemetry traces span services end to end; dashboard and alerts committed; screenshots saved
 - [ ] 9. Review UI and demo mode: resolvers, login, backend-for-frontend, demo snapshot shown when the backend is offline; Playwright tests pass
 - [ ] 10. Deploy: UI on Vercel, backend on the PC via Tailscale Funnel; phone test passes; 401 without API key; demo mode when the PC is off
@@ -28,7 +27,11 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## In Progress
 
+- [ ] 7. CI/CD: GitHub Actions for test, build, docker push; actionlint passes; test PR green. Written and checked locally (2026-10-15): actionlint 1.7.12 passes on all workflows; the three images build, run as `node`, report healthy and have no fixable critical (Trivy 0.75.0); the Linux-only steps pass on a docker:dind engine. Left: the test PR, once the repository and its secrets exist (manual item above).
+
 ## Completed
+
+- [x] The Toxiproxy test's fake TMS listens on `TOXIPROXY_UPSTREAM_HOST`: the containers' bridge gateway when it is an address of this host (a Linux engine), else 127.0.0.1 (Docker Desktop). On a docker:dind engine `pnpm test:int` passed 92 of 92 with the Playwright Chromium, and the old 127.0.0.1 binding failed there; on this PC 92 of 92 (2026-10-15).
 
 - [x] 6b. AI evals: golden set v1 (90 cases, dev 20, ci 20, `evals/golden/v1`, 28 MB) built from the generator; `pnpm eval --suite extraction --subset ci|dev|full|compare` with 95% bootstrap intervals, a per-case cache, quota stops and regression floors; the full run lists every target met or missed (17 met; missed: overcharge precision 0.944, end-to-end p95 143 s under the eval's throttling, throughput ceiling 394 an hour on free tiers); README opens with the eval table; the ci subset ran in 155 s from a cold cache; primary kept on `gemini-3.5-flash-lite` by the comparison on a separate set; non-USD invoices end needs_review (0010). `pnpm turbo run test --force` passed 54 tests three runs in a row and `test:int` with its build forced 92 of 92 three runs in a row (Jest 20.5 to 22.2 s) (2026-10-15).
 - [x] Fallback moved from Mistral to Groq `qwen/qwen3.8-27b` through the same `LLM_FALLBACK_*` settings (user decision; Mistral's account allowed no requests): page cap 3, Groq's image limit, which 4 pages would also break by exceeding 8,000 tokens a minute; `mistral-scanned` became `fallback-scanned`, which follows the configured fallback and is recorded against Groq; the Mistral adapter stays, covered by `mistral.test.ts` (2026-10-15).
