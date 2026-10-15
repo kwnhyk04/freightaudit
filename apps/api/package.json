@@ -21,7 +21,7 @@
     "drizzle-orm": "catalog:",
     "fastify": "^5.12.5",
     "fastify-openapi-glue": "^4.11.5",
-    "graphql": "^16.14.2",
+    "graphql": "^17.0.2",
     "graphql-yoga": "^5.24.4",
     "ioredis": "catalog:",
     "pg": "catalog:"
