@@ -1,0 +1,19 @@
+# Build context of apps/*/Dockerfile, the repository root: what turbo prune needs, without local state or secrets.
+.git
+.env*
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+**/*.tsbuildinfo
+**/*.test.ts
+.github
+docs
+infra
+evals/.cache
+evals/comparison
+evals/fixtures/out
+evals/golden
+evals/reports
+packages/llm/fixtures

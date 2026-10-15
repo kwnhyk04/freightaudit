@@ -105,6 +105,18 @@ From the approved design doc:
 - 2026-10-15: Full run findings on the test split, kept as findings and not tuned on: the remit layout's title line ("<carrier> — Freight Bill") was read as the carrier in 2 of 15 remit cases (g010, g046), which then matched no shipment and ended needs_review; the repeated-page scan (g080) was read as two invoices, so the second copy's lines became two false duplicate findings and overcharge precision (0.944) missed 0.95. A fix needs a dev case first, so a v2 dev split should add a remit title and a repeated page.
 - 2026-10-15: The primary stays `gemini-3.5-flash-lite`, measured against `gemini-3.8-flash` on the comparison set (14 scans both finished; the 15th waits for 3.8-flash's daily quota): header accuracy and line-item F1 1.000 for both (intervals 1.000 to 1.000, so a tie on an easy set), extraction latency p50 3.1 s against 8.5 s and p95 5.2 s against 70.3 s (3.8-flash's includes calls that hit its quota), 1,628 against 1,964 tokens per invoice, and about 500 free requests a day against 20. Nothing measured favours 3.8-flash; revisit with golden v2's harder scans.
 - 2026-10-15: `gemini-3.8-flash`'s free daily cap is confirmed by a real 429: quota `GenerateRequestsPerDayPerProjectPerModel-FreeTier`, value 20, retry delay 51,566 s. The harness now stops (exit 2) when a 429's backoff exceeds 10 minutes instead of waiting it out.
+- 2026-10-15: CI runs gitleaks, Trivy and actionlint as Docker images pinned by digest, not as third-party actions; actions are pinned to commit SHAs of releases at least two weeks old. Reason: fewer third-party actions holding the job's token and secrets, and the same images run locally.
+- 2026-10-15: release.yml reruns ci.yml through `workflow_call` as its checks; the eval smoke runs only on pull requests. Reason: one definition of the checks; the smoke comments on a PR and spends free-tier quota.
+- 2026-10-15: Trivy fails only on criticals that have a fix (`--ignore-unfixed`). Reason: an unfixable critical would block every PR with nothing to do but wait; it still shows in the log.
+- 2026-10-15: `pnpm audit --audit-level high` accepts two advisories through `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml`: braces (no fixed release) and @graphql-tools/utils (fixed only in 12.0.1, while @graphql-eslint 4.4.2, the latest, requires ^10). Reason: both sit in contracts lint and codegen tooling that reads only this repository's files.
+- 2026-10-15: `@freightaudit/config` keeps its lint and test tooling (eslint, typescript, swc, jest, testcontainers) in devDependencies; only zod is a dependency. Reason: production installs of api and worker carried all of it (api image 800 MB, now 486 MB); the presets still resolve it from config's own node_modules in dev installs.
+- 2026-10-15: Images run on `node:24.22.0-alpine3.24` by digest: `turbo prune --docker`, a full install and build, then a clean production-only install; the runtime runs as `node` with `HOST=0.0.0.0` (compose publishes on 127.0.0.1) and a Node `fetch` HEALTHCHECK on `/healthz`. The web image is Next's standalone output. Reason: the user's Dockerfile rules; the musl build of @napi-rs/canvas renders scanned pages (checked on a golden scan).
+- 2026-10-15: The migrations job applies every migration to a fresh database and this change's migrations to a small-seeded snapshot that the base commit's own code built (cached per base commit), then compares `pg_dump --schema-only` of both. Reason: migrations meet existing rows, and the comparison catches an edited applied migration, which the runner (names only) cannot see.
+- 2026-10-15: release.yml's migrate and deploy jobs reach the PC over Tailscale (workload identity, tag `tag:ci`) and SSH with a key whose forced command accepts only `migrate <tag>` and `deploy <tag>`; both stay off until `DEPLOY_ENABLED` is true. Reason: the production override publishes no Postgres port, so migrations run on the PC's compose network. To confirm in step 10.
+- 2026-10-15: The full eval runs weekly, not nightly (user); its `evals/.cache` is kept per workflow run, so a re-run resumes and a new run starts empty. Reason: free-tier quotas, and each week measures the current code and the models as providers serve them (Gemini has served a newer model under a pinned id).
+- 2026-10-15: Eval exit 1 (a broken floor) fails its job; exit 2 (a quota stop) is a warning (user). The smoke skips fork and Dependabot PRs, which get no Actions secrets.
+- 2026-10-15: CI runs unit tests with `pnpm test --force` (user): a pass replayed from Turborepo's cache is not a pass. Lint and typecheck keep caching, being deterministic on hashed inputs.
+- 2026-10-15: CI checks every golden and comparison PDF against its manifest's sha256 (user). Git treats every PDF here as binary, and all 105 committed blobs match their manifests.
 
 ## Preferences and Instructions
 
@@ -177,10 +189,22 @@ From the approved design doc:
 - 2026-10-15: Gemini answers some retired model ids with a newer model: a call to `gemini-3.7-flash` returned `modelVersion: gemini-3.8-flash`. Pin exact ids and read `served_model`.
 - 2026-10-15: Groq's gpt-oss models reject array message content ("must be a string"), so text-only requests send one string. `qwen/qwen3.8-27b` reads images but answered 0 for a field asked to be null under a strict schema.
 - 2026-10-15: A Mistral key can list models while its workspace allows 0 requests a minute (`x-ratelimit-limit-req-minute=0`, 429 code 1300); the free plan must be active in the console before any chat call works. A second key, created while the console's Limits page showed 20,000 tokens a minute and 1 request a second for `mistral-small-2603`, behaved the same: it lists models, and 13 tiny calls from 04:14 to 04:27 UTC all got 429 with the limit at 0 (no token headers). So a new key alone does not fix it.
+- 2026-10-15: Turborepo strict env mode dropped `OASDIFF_BASE_REF`, so the documented override of `contracts:breaking` never reached the script until the task listed it in `passThroughEnv`; the provider keys reach `pnpm eval` in CI the same way.
+- 2026-10-15: `turbo run` and `pnpm run` pass a task's exit code through unchanged (a task exiting 3 made turbo exit 3), so `pnpm eval` keeps 1 and 2 apart.
+- 2026-10-15: `pnpm install --prod` over a full install unlinks dev packages but leaves them in `node_modules/.pnpm`; the images delete node_modules and install production dependencies again.
+- 2026-10-15: On a Linux Docker engine `host-gateway` is the bridge's gateway (172.17.0.1), an address of the host, so a server bound to 127.0.0.1 is unreachable from containers. A docker:dind engine reproduced it: the chaos test failed on 127.0.0.1 and passed on the gateway.
+- 2026-10-15: `git archive` applies `core.autocrlf`, so on this PC it writes CRLF, and Postgres keeps the `\r` in function bodies; a schema dump then differs. Use `git -c core.autocrlf=false archive` for a copy as Linux sees it.
+- 2026-10-15: In Git Bash, `grep -c $'\r'` counts every line (count carriage returns with node), and GNU tar reads `H:/...` as a remote host (use `/h/...`).
+- 2026-10-15: actionlint finds the project through `.git`; a copy without one exits 3 ("no project was found").
+- 2026-10-15: The gitleaks image runs as root with `safe.directory = *` in `/root/.gitconfig`, so it scans a checkout owned by another uid as is.
+- 2026-10-15: pg_dump 18 writes `\restrict <random key>` lines; pass `--restrict-key` for dumps that compare.
+- 2026-10-15: Next's standalone `server.js` binds `HOSTNAME`, which Docker sets to the container id; the web image sets `HOSTNAME=0.0.0.0`.
+- 2026-10-15: Empty `TURBO_TOKEN` and `TURBO_TEAM` only disable remote caching ("Remote caching disabled"), so CI needs no condition around them.
 
 ## Rejected Approaches
 
-None yet.
+- 2026-10-15: A self-hosted GitHub runner on the PC for migrate and deploy. Reason: pull requests from forks of a public repository can target self-hosted runners and run code on the PC.
+- 2026-10-15: gitleaks-action and trivy-action. Reason: digest-pinned images do the same without another third-party action holding the token (gitleaks-action also needs a license for organizations).
 
 ## Lessons Learned
 

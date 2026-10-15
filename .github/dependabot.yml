@@ -1,0 +1,27 @@
+version: 2
+
+# A week's cooldown keeps proposals clear of pnpm's release-age gate and of releases pulled soon after publishing.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directories: [/apps/api, /apps/worker, /apps/web]
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: github-actions
+    directories: [/, /.github/actions/*]
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

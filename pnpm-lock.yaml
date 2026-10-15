@@ -489,6 +489,10 @@ importers:
 
   packages/config:
     dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.12.0(jiti@2.7.0)(supports-color@8.1.1))
@@ -498,9 +502,15 @@ importers:
       '@swc/jest':
         specifier: ^0.2.39
         version: 0.2.39(@swc/core@1.16.18(@swc/helpers@0.5.23))
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
       eslint:
         specifier: 'catalog:'
         version: 10.12.0(jiti@2.7.0)(supports-color@8.1.1)
+      jest:
+        specifier: 'catalog:'
+        version: 30.5.2(@types/node@24.19.2)(supports-color@8.1.1)
       testcontainers:
         specifier: ^12.2.1
         version: 12.2.1(supports-color@8.1.1)
@@ -510,16 +520,6 @@ importers:
       typescript-eslint:
         specifier: ^8.71.2
         version: 8.71.2(eslint@10.12.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
-      zod:
-        specifier: 'catalog:'
-        version: 4.6.7
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 24.19.2
-      jest:
-        specifier: 'catalog:'
-        version: 30.5.2(@types/node@24.19.2)(supports-color@8.1.1)
 
   packages/contracts:
     dependencies:
