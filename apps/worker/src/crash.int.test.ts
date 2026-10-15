@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
-import { createTestEnv, extraction, fakeGemini, makePdf, waitFor } from './testing.ts';
+import { createTestEnv, extraction, fakeModels, makePdf, replyWith, waitFor } from './testing.ts';
 
 // The real worker process, killed with SIGKILL while the model call is in flight.
 const main = fileURLToPath(new URL('main.ts', import.meta.url));
@@ -14,8 +14,8 @@ const bucket = 'freightaudit-test';
 test('a job whose worker is killed mid-job is recovered by another worker without duplicate rows', async () => {
   let markHung!: () => void;
   const hung = new Promise<void>((resolve) => (markHung = resolve));
-  const gemini = await fakeGemini(({ n }) => {
-    if (n > 0) return { status: 200, text: extraction() };
+  const models = await fakeModels((call) => {
+    if (call.n > 0) return replyWith(call.protocol, extraction());
     markHung();
     return 'hang';
   });
@@ -34,10 +34,13 @@ test('a job whose worker is killed mid-job is recovered by another worker withou
         S3_BUCKET: bucket,
         TENANT_ID: env.tenantId,
         AI_ENABLED: 'true',
+        // The pinned models, each served by the fake.
+        LLM_PRIMARY_BASE_URL: models.url,
+        LLM_TEXT_BASE_URL: models.url,
+        LLM_FALLBACK_BASE_URL: models.url,
         GEMINI_API_KEY: 'test-key',
-        GEMINI_MODEL: 'fake',
-        GEMINI_BASE_URL: gemini.url,
-        MOCK_TMS_URL: gemini.url,
+        GROQ_API_KEY: 'test-key',
+        MOCK_TMS_URL: models.url,
         JOB_LOCK_MS: '2000',
       },
     });
@@ -48,17 +51,17 @@ test('a job whose worker is killed mid-job is recovered by another worker withou
     child.kill('SIGKILL');
     await once(child, 'exit');
     // Another worker finds the lock expired, moves the job back to wait and runs it again.
-    env.runWorkers({ geminiUrl: gemini.url });
+    env.runWorkers({ modelsUrl: models.url });
     // The state first, then the job: a job read before its last attempt ends would show that attempt as not yet made.
     const extract = env.queues.queue('extract');
     const job = await waitFor(async () => (await extract.getJobState(invoice.contentSha256)) === 'completed' && extract.getJob(invoice.contentSha256));
     // The killed attempt never finished, so it is not counted: one stall, one finished attempt.
     expect(job.stalledCounter).toBe(1);
     expect(job.attemptsMade).toBe(1);
-    expect(gemini.calls()).toBe(2);
+    expect(models.calls()).toBe(2);
     expect(await env.db.select().from(extractions).where(eq(extractions.invoiceId, invoice.id))).toHaveLength(1);
   } finally {
     await env.close();
-    await gemini.close();
+    await models.close();
   }
 });

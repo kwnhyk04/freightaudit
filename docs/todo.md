@@ -6,20 +6,18 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Pending
 
-- [ ] (manual) Get free API keys: Google AI Studio (Gemini) and Groq. Put them in `.env`, never in the repo.
+- [ ] Before 6b: regenerate `evals/fixtures/out` with `pnpm fixtures`; the files there predate the step 5b seed, so their PRO numbers match no shipment in a database seeded now (fresh ones reconcile, checked 2026-10-15).
 - [ ] (manual, before step 7) GitHub repo created; provider keys added as Actions secrets.
 - [ ] (manual, before step 10) Vercel and Tailscale accounts created.
 - [ ] Before step 10: move the Postgres and MinIO credentials that the production override inherits into `.env`: the prod stack starts without the dev-only `freightaudit` values in the compose files.
 - [ ] Before step 7: CI runs `pnpm test:int` on a Docker host (Testcontainers) with the Playwright Chromium installed. Make the Toxiproxy test's fake TMS reachable from its container on a Linux engine, where `host-gateway` does not reach the host's 127.0.0.1 (for example, bind it to the Docker bridge address there).
 - [ ] Before step 10: run migrations in the production deploy (`node packages/db/dist/migrate.js`) before api and worker start.
 - [ ] Before step 10: run the worker with a stop grace period longer than its slowest job (60 s model timeout), so SIGTERM lets running jobs finish.
-- [ ] With step 6: the Groq text path and fallback escalation.
 - [ ] Before step 10: set `NODE_ENV=production` on the machine that serves production (its `.env`), so `pnpm db:reset` refuses there; on this PC dev and production share the compose project and its Postgres volume.
 - [ ] With step 9: a way out of needs_review, such as correcting the extracted carrier or PRO number and reconciling again; today such an invoice can only be approved.
 - [ ] When 0007 reaches a database with synced shipments (production, step 10): clear the TMS sync cursor so the next sync writes their miles, and enter linehaul terms for the existing rate card versions.
 - [ ] Contract for 0007, in a later release once every rate card version has terms and every shipment has miles: `VALIDATE` the `NOT VALID` checks, `SET NOT NULL` through a validated check (as in 0003a), and delete the flat `LINEHAUL` and `FUEL` rates nothing reads.
-- [ ] With step 6: circuit breaker for provider auth and config errors (401, 403, 404 model not found): pause the extract queue and raise an alert instead of dead-lettering every job. Test: one such error pauses the queue, no job is dead-lettered, and resuming processes the waiting jobs.
-- [ ] 6. AI: pipeline built, golden dataset v1 created, eval report lists every target with pass or fail
+- [ ] 6b. AI evals: golden dataset v1 created, eval report lists every target with pass or fail. Add a comparison run of `gemini-3.8-flash` on the scanned subset only, kept under its free daily cap, reported side by side with `gemini-3.5-flash-lite`, so the primary choice rests on measured accuracy. Measure JPEG q80 page images on every scan, and include identifiers with long runs of one digit (a 20-page scan's PRO `2000000020` lost a zero).
 - [ ] 7. CI/CD: GitHub Actions for test, build, docker push; actionlint passes; test PR green
 - [ ] 8. Instrumentation: OpenTelemetry traces span services end to end; dashboard and alerts committed; screenshots saved
 - [ ] 9. Review UI and demo mode: resolvers, login, backend-for-frontend, demo snapshot shown when the backend is offline; Playwright tests pass
@@ -28,10 +26,12 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## In Progress
 
-None.
-
 ## Completed
 
+- [x] Fallback moved from Mistral to Groq `qwen/qwen3.8-27b` through the same `LLM_FALLBACK_*` settings (user decision; Mistral's account allowed no requests): page cap 3, Groq's image limit, which 4 pages would also break by exceeding 8,000 tokens a minute; `mistral-scanned` became `fallback-scanned`, which follows the configured fallback and is recorded against Groq; the Mistral adapter stays, covered by `mistral.test.ts` (2026-10-15).
+- [x] 6a. AI provider layer and extraction pipeline: roles `LLM_PRIMARY` (gemini `gemini-3.5-flash-lite`), `LLM_TEXT` (groq `openai/gpt-oss-120b`) and `LLM_FALLBACK` (groq `qwen/qwen3.8-27b`) from env, validated in packages/config; Gemini on `@google/genai` and one OpenAI-compatible client; per-role requests and tokens per minute in Redis; per-page routing (pdfjs-dist and @napi-rs/canvas); subtotal and tax arithmetic; one repair, then the fallback, then needs_review; a primary 429 falls back; circuit breaker for 401, 403 and 404 with `pnpm extract:resume`; per-call records and the extraction step (migration 0009); recorded-response tests. Done when `pnpm test` and `pnpm test:int` pass three runs in a row on recorded fixtures (429 fallback recorded; invalid output gets one repair, then the fallback, then needs_review; an arithmetic failure triggers the repair; one 401 pauses the queue, nothing is dead-lettered and resuming drains it; AI_ENABLED=false starts without keys), and a live smoke run stores a digital and a scanned extraction with model, tokens, latency and step. `pnpm turbo run test --force` passed 50 tests three runs in a row (8.0 to 9.7 s) and `test:int` with its build forced 89 of 89 three runs in a row (Jest 19.1 to 20.4 s); the live smoke run passed (digital on Groq and scanned on Gemini, both first pass, both reconciled, the planted duplicate charge found) (2026-10-15).
+- [x] Large scans (user's option 1): scanned pages go as JPEG q80 (0.29 MB against 1.54 MB of PNG a page); a recorded 20-page scan is one Gemini call of 6.5 MB, under the 20 MB limit, read right on the first pass; a scan over the fallback's 8 page images ends needs_review with `fallback_page_cap` instead of reaching it (unit tests for a primary 429 and for output still invalid, worker test with nothing dead-lettered); JPEG equalled PNG on the scanned smoke invoice. `pnpm turbo run test --force` passed 46 tests three runs in a row (8.0 to 9.0 s), and `test:int` with its build forced 88 of 89 three runs in a row (Jest 17.8 to 18.8 s; only `mistral-scanned`) (2026-10-15).
+- [x] (manual) Gemini and Groq keys in `.env`; both list their models (Gemini `models.list`, Groq `/models`) and answer a tiny call through header auth (2026-10-15).
 - [x] `pnpm db:reset` also obliterates this deployment's BullMQ queues, with the same guards (Redis on localhost or 127.0.0.1, NODE_ENV not production); a PDF uploaded before a reset is extracted again after it (test, which fails without the obliterate). AGENTS.md rule for file edits added. The dev database, reset again, matches a fresh reset in every seeded table's rows and content and in its 9 migrations (2026-10-15).
 - [x] Unpriceable reconcile data ends the invoice failed with its reason: the api shows the open dead letter's error as `failure_reason`; worker tests for no version in force, a version without terms and a shipment without miles, plus one replay; `pnpm db:reset` with its localhost and NODE_ENV guards, run on the dev database, after which a fixture invoice for a seeded shipment went through extract and reconcile on the dev stack. `pnpm test:int` passes 54 tests, three runs in a row (2026-10-15).
 - [x] 5b. Real reconcile job: migrations `0007` (linehaul bands, minimum and fuel percentage on rate card versions, shipment miles, approval only once no discrepancy is open) and `0008` (index on `invoices.shipment_id`); the worker applies `reconcileInvoice` and writes lines and discrepancies; findings end reconciled with open discrepancies, needs_review only when the extraction cannot be trusted; seed and fixture ground truth record each line's expected cents and every planted overcharge. `pnpm test:int` passes 51 tests: one planted rate mismatch, uncontracted or duplicate charge gives exactly that discrepancy, a clean invoice none (before and after the rate increase), overlapping and repeated runs no duplicates; eleven mutations each fail the reconcile suite (2026-10-15).
@@ -57,4 +57,8 @@ None.
 
 ## Blocked
 
-None.
+## Mistral, if the account ever works
+
+Dropped as the fallback on 2026-10-15 (docs/memory.md); its adapter, price and 8-image cap stay, so going back is configuration only.
+
+- [ ] (manual, user) A tiny chat call with the key in `MISTRAL_API_KEY` gets a non-zero `x-ratelimit-limit-req-minute` (two keys got 0 on 2026-10-15; check that the key belongs to the workspace whose Limits page shows 20,000 tokens a minute and 1 request a second, and that its plan is active). Then set `LLM_FALLBACK_PROVIDER=mistral`, `LLM_FALLBACK_MODEL=mistral-small-2603`, `LLM_FALLBACK_RPM=60` and `LLM_FALLBACK_TPM=20000` in `.env`, record the fallback with `LLM_RECORD=1 node --experimental-vm-modules node_modules/jest/bin/jest.js --selectProjects integration -t fallback-scanned -- packages/llm/src/recorded`, and run `pnpm test:int` three times.

@@ -1,0 +1,46 @@
+{
+  "recorded_at": "2026-10-15",
+  "exchanges": [
+    {
+      "method": "POST",
+      "path": "/chat/completions",
+      "body_sha256": "696a1532adf57d8e3ccf856701e1abf9b8c4b2b43d1b032440b940078022e35a",
+      "body_bytes": 394143,
+      "status": 200,
+      "headers": {},
+      "body": {
+        "id": "chatcmpl-8224ac73-3ab6-4bea-b2e1-52437673ea45",
+        "object": "chat.completion",
+        "created": 1792047918,
+        "model": "qwen/qwen3.8-27b",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "{\"invoices\": [{\"carrier\": \"Nimbus Road Lines\", \"currency\": \"USD\", \"first_page\": 1, \"invoice_date\": \"2025-06-18\", \"invoice_number\": \"67554172\", \"line_items\": [{\"amount_cents\": 176357, \"charge_code\": \"LINEHAUL\", \"description\": \"Linehaul\", \"line_number\": 1}, {\"amount_cents\": 11345, \"charge_code\": \"FUEL\", \"description\": \"Fuel surcharge\", \"line_number\": 2}], \"pro_number\": \"0619993094\", \"subtotal_cents\": null, \"tax_cents\": null, \"total_cents\": 187702}]}"
+            },
+            "logprobs": null,
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "queue_time": 0.196604377,
+          "prompt_tokens": 2022,
+          "prompt_time": 0.143798571,
+          "completion_tokens": 175,
+          "completion_time": 0.344087702,
+          "total_tokens": 2197,
+          "total_time": 0.487886273
+        },
+        "usage_breakdown": null,
+        "system_fingerprint": "fp_a1293f40b5",
+        "x_groq": {
+          "id": "req_01m4z62ag0esgt56411krpa25f",
+          "seed": 1899419875
+        },
+        "service_tier": "on_demand"
+      }
+    }
+  ]
+}

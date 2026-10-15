@@ -58,11 +58,20 @@
         "NODE_ENV"
       ]
     },
-    "fixtures": {
+    "extract:resume": {
       "dependsOn": [
         "^build"
       ],
       "cache": false
+    },
+    "fixtures": {
+      "dependsOn": [
+        "^build"
+      ],
+      "cache": false,
+      "passThroughEnv": [
+        "PLAYWRIGHT_BROWSERS_PATH"
+      ]
     },
     "eval": {
       "dependsOn": [

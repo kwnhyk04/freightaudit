@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "db:reset": "node --env-file-if-exists=../../.env scripts/reset.ts",
+    "extract:resume": "node --env-file-if-exists=../../.env scripts/resume-extract.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"

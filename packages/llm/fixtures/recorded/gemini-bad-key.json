@@ -1,0 +1,34 @@
+{
+  "recorded_at": "2026-10-14",
+  "exchanges": [
+    {
+      "method": "POST",
+      "path": "/v1beta/models/gemini-3.5-flash-lite:generateContent",
+      "body_sha256": "3e18e4dc734baed525a6bcca86c0b74d4dfd81ef9dc8bd74f3164a89b01515b2",
+      "status": 400,
+      "headers": {},
+      "body": {
+        "error": {
+          "code": 400,
+          "message": "API key not valid. Please pass a valid API key.",
+          "status": "INVALID_ARGUMENT",
+          "details": [
+            {
+              "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+              "reason": "API_KEY_INVALID",
+              "domain": "googleapis.com",
+              "metadata": {
+                "service": "generativelanguage.googleapis.com"
+              }
+            },
+            {
+              "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+              "locale": "en-US",
+              "message": "API key not valid. Please pass a valid API key."
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

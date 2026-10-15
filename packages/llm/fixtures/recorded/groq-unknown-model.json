@@ -1,0 +1,19 @@
+{
+  "recorded_at": "2026-10-14",
+  "exchanges": [
+    {
+      "method": "POST",
+      "path": "/chat/completions",
+      "body_sha256": "ead0674703bd5c45526e784290b71385fef9c87d8ae2448065db06105e42e4e8",
+      "status": 404,
+      "headers": {},
+      "body": {
+        "error": {
+          "message": "The model `unknown/model-0` does not exist or you do not have access to it.",
+          "type": "invalid_request_error",
+          "code": "model_not_found"
+        }
+      }
+    }
+  ]
+}

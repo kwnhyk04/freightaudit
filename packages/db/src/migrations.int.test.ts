@@ -54,6 +54,8 @@ test('the status trigger rejects invoice moves the lifecycle does not list, and 
     // Allowed moves, including a repeat of the current status by a retried job.
     for (const status of ['extracting', 'extracting', 'failed', 'received']) await move(status);
     await expect(move('reconciled')).rejects.toMatchObject({ code: '23514' });
+    // An extraction still invalid after its repair and the fallback waits for a reviewer (0009).
+    for (const status of ['extracting', 'needs_review', 'approved']) await move(status);
 
     // A reconciled invoice with an open finding is approved only once the finding has a decision.
     for (const status of ['extracting', 'extracted', 'reconciling', 'reconciled']) await move(status, 1);
@@ -81,6 +83,7 @@ test('migrations apply cleanly from empty, re-run as a no-op, and match the Driz
       '0006_extraction_pipeline',
       '0007_reconcile_terms',
       '0008_invoices_shipment_index',
+      '0009_llm_calls',
     ]);
 
     const tables = Object.values(schema as Record<string, unknown>).filter((value): value is PgTable => is(value, PgTable));
@@ -171,5 +174,5 @@ test('db:reset refuses a database off this machine or NODE_ENV=production, and o
     await resetDatabase(url, { nodeEnv: 'development', log: quiet });
     expect((await client.query('SELECT name FROM tenants')).rows).toEqual([{ name: 'Larkspur Outdoor Supply' }]);
     expect(await count(client, 'SELECT count(*) FROM invoices')).toBe(500);
-    expect(await count(client, 'SELECT count(*) FROM schema_migrations')).toBe(9);
+    expect(await count(client, 'SELECT count(*) FROM schema_migrations')).toBe(10);
   }));

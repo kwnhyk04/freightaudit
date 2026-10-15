@@ -1,0 +1,21 @@
+{
+  "recorded_at": "2026-10-14",
+  "exchanges": [
+    {
+      "method": "POST",
+      "path": "/chat/completions",
+      "body_sha256": "a5ecb018d6c431a7b74455476ebce07b6e608cde33481abc13c802fe4b9fcc0a",
+      "status": 429,
+      "headers": {},
+      "body": {
+        "object": "error",
+        "message": "Rate limit exceeded",
+        "type": "rate_limited",
+        "param": null,
+        "code": "1300",
+        "raw_status_code": 429
+      }
+    }
+  ],
+  "note": "A real 429 from a Mistral workspace whose free plan was not active (x-ratelimit-limit-req-minute=0); Mistral sent no Retry-After."
+}

@@ -1,7 +1,25 @@
-// Provider layer: error taxonomy, PDF handling, extraction with one repair, Gemini, and shared AI limits.
-// The model only extracts data; code checks every amount it returns and never asks it to compute one.
-export { classify, httpError, parseRetryAfter, PermanentError, TransientError } from './errors.ts';
-export { extractInvoices, type ExtractedInvoice, type GenerateInput, type Provider, type Usage } from './extract.ts';
+// Provider layer: error taxonomy, PDF pages, extraction with repair and fallback, Gemini and OpenAI-compatible clients,
+// shared AI limits and call prices. The model only extracts data; code checks every amount it returns.
+export { classify, httpError, parseRetryAfter, PermanentError, ProviderConfigError, RateLimitError, TransientError } from './errors.ts';
+export {
+  type Call,
+  EXTRACTION_JSON_SCHEMA,
+  type ExtractedInvoice,
+  type Extraction,
+  extractInvoices,
+  type GenerateInput,
+  type Models,
+  type Part,
+  type Provider,
+  type Reply,
+  type Role,
+  type Step,
+  type Usage,
+} from './extract.ts';
 export { createGeminiProvider } from './gemini.ts';
-export { createLimits, metered, type Limits } from './limits.ts';
+export { createLimits, type Limits, metered, type RoleLimits } from './limits.ts';
+export { createModels, type ModelConfig } from './models.ts';
+export { createOpenAiProvider } from './openai.ts';
+export { readPages } from './pages.ts';
 export { MAX_PAGES, readPdf, splitPdf } from './pdf.ts';
+export { callCost, hasPrice } from './prices.ts';

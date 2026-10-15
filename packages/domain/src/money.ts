@@ -16,6 +16,20 @@ export const BASIS_POINTS = 10_000n;
 // `bp` basis points of an amount, to the nearest cent.
 export const percentOf = (cents: bigint, bp: bigint) => divRound(cents * bp, BASIS_POINTS);
 
+// Model call costs are integer micro-dollars (1,000,000 is $1), since one call costs a fraction of a cent.
+export const MICRO_USD = 1_000_000n;
+
+// A price list's decimal dollars ("0.075") as micro-dollars, exactly.
+export function microUsd(dollars: string) {
+  const match = /^(\d+)(?:[.](\d{1,6}))?$/.exec(dollars);
+  if (!match) throw new RangeError('dollars must be a decimal with at most 6 places');
+  return BigInt(match[1]!) * MICRO_USD + BigInt((match[2] ?? '').padEnd(6, '0'));
+}
+
+// A model call's cost in micro-dollars from its tokens and per-million-token prices in micro-dollars.
+export const tokenCost = (inputTokens: bigint, outputTokens: bigint, inputPerMillion: bigint, outputPerMillion: bigint) =>
+  divRound(inputTokens * inputPerMillion + outputTokens * outputPerMillion, 1_000_000n);
+
 // Cents as US dollars for people to read, such as -$1,234.50.
 export function formatUsd(cents: bigint) {
   const size = cents < 0n ? -cents : cents;

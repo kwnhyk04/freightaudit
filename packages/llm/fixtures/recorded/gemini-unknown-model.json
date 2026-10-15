@@ -1,0 +1,19 @@
+{
+  "recorded_at": "2026-10-14",
+  "exchanges": [
+    {
+      "method": "POST",
+      "path": "/v1beta/models/gemini-0.0-unknown:generateContent",
+      "body_sha256": "3e18e4dc734baed525a6bcca86c0b74d4dfd81ef9dc8bd74f3164a89b01515b2",
+      "status": 404,
+      "headers": {},
+      "body": {
+        "error": {
+          "code": 404,
+          "message": "models/gemini-0.0-unknown is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.",
+          "status": "NOT_FOUND"
+        }
+      }
+    }
+  ]
+}

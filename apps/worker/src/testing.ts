@@ -1,23 +1,24 @@
-// Shared by the worker integration tests: a throwaway database and Redis prefix, test PDFs, and a fake Gemini.
+// Shared by the worker integration tests: a throwaway database and Redis prefix, test PDFs, and a fake model server.
 import { carriers, invoices, tenants } from '@freightaudit/db';
 import { createTestDatabase, testEnv } from '@freightaudit/db/testing';
-import { createGeminiProvider, createLimits, metered } from '@freightaudit/llm';
+import { createLimits, createModels } from '@freightaudit/llm';
 import { createMemoryStorage, createQueues, type Storage } from '@freightaudit/pipeline';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Redis } from 'ioredis';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { once } from 'node:events';
-import { createServer } from 'node:http';
-import type { AddressInfo } from 'node:net';
 import { setTimeout } from 'node:timers/promises';
 import { PDFDocument } from 'pdf-lib';
 import pg from 'pg';
-import { startWorkers, type WorkerOptions } from './workers.ts';
+import { type Deps, startWorkers, type WorkerOptions } from './workers.ts';
+
+// The fake model server answers in the providers' recorded shapes.
+export { type FakeCall, fakeModels, replyWith } from '@freightaudit/llm/testing';
 
 export const sha256 = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 const quiet = { warn: () => {}, error: () => {} };
 
-// A valid PDF; the label goes into its metadata, so each label gives different bytes and a different hash.
+// A valid PDF; the label goes into its metadata, so each label gives different bytes and a different hash. Its pages
+// are blank, so each one goes to the model as an image.
 export async function makePdf(pages = 1, label: string = randomUUID()) {
   const doc = await PDFDocument.create({ updateMetadata: false });
   doc.setTitle(label);
@@ -50,48 +51,25 @@ export const extraction = (...firstPages: number[]) =>
         { line_number: 1, description: 'Linehaul', charge_code: 'LINEHAUL', amount_cents: 125_000 },
         { line_number: 2, description: 'Fuel surcharge', charge_code: 'FUEL', amount_cents: 18_750 },
       ],
+      subtotal_cents: null,
+      tax_cents: null,
       total_cents: 143_750,
     })),
   });
 
-export type Reply = { status: number; headers?: Record<string, string>; text?: string } | 'hang';
-
-// Fake Gemini generateContent. `reply` gets the call number (from 0) and the page count of the PDF it was sent;
-// 'hang' never answers. GET requests get an empty TMS page, for workers that run the TMS sync.
-export async function fakeGemini(reply: (call: { n: number; pages: number }) => Reply) {
-  let calls = 0;
-  const server = createServer(async (req, res) => {
-    let body = '';
-    for await (const chunk of req) body += chunk;
-    if (req.method === 'GET') {
-      res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ items: [], next_cursor: null, has_more: false }));
-      return;
-    }
-    const pdf = Buffer.from(JSON.parse(body).contents[0].parts[0].inline_data.data, 'base64');
-    const answer = reply({ n: calls++, pages: (await PDFDocument.load(pdf)).getPageCount() });
-    if (answer === 'hang') return;
-    const json =
-      answer.status === 200
-        ? { candidates: [{ content: { parts: [{ text: answer.text }] } }], usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 80 } }
-        : { error: { code: answer.status, message: 'fake error' } };
-    res.writeHead(answer.status, { 'content-type': 'application/json', ...answer.headers }).end(JSON.stringify(json));
-  });
-  server.listen(0, '127.0.0.1');
-  await once(server, 'listening');
-  return {
-    url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
-    calls: () => calls,
-    close: () => {
-      server.closeAllConnections();
-      return new Promise<void>((resolve) => server.close(() => resolve()));
-    },
-  };
-}
+// The three model roles on one fake server, told apart by model id: Gemini's protocol for the primary, the
+// OpenAI-compatible one for the text model and the fallback.
+export const MODEL_IDS = { primary: 'fake-primary', text: 'fake-text', fallback: 'fake-fallback' } as const;
+export const testRoles = (url: string) => {
+  const role = (provider: string, model: string) => ({ provider, model, baseUrl: url, apiKey: 'test-key', rpm: 100_000, tpm: 1e9 });
+  return { primary: role('gemini', MODEL_IDS.primary), text: role('groq', MODEL_IDS.text), fallback: role('groq', MODEL_IDS.fallback) };
+};
 
 type RunOptions = WorkerOptions & {
-  geminiUrl?: string;
+  modelsUrl?: string;
   tmsUrl?: string;
-  limits?: { enabled?: boolean; tokensPerMinute?: number; dailyTokenBudget?: number };
+  limits?: { enabled?: boolean; dailyTokenBudget?: number };
+  log?: Deps['log'];
 };
 
 // A migrated throwaway database with one tenant and carrier, and a Redis key prefix of its own.
@@ -114,13 +92,13 @@ export async function createTestEnv(storage: Storage = createMemoryStorage()) {
     storage,
     tenantId,
     databaseUrl: database.url,
-    // In-process workers with fast retries and generous AI limits unless overridden.
-    runWorkers({ geminiUrl, tmsUrl = geminiUrl ?? '', limits: overrides, ...options }: RunOptions = {}) {
-      const limits = createLimits(redis, { prefix, enabled: true, tokensPerMinute: 1_000_000, dailyTokenBudget: 1e9, ...overrides });
-      const gemini = geminiUrl && createGeminiProvider({ apiKey: 'test-key', model: 'fake', baseUrl: geminiUrl });
-      const provider = gemini ? metered(gemini, limits) : undefined;
+    // In-process workers with fast retries and generous AI limits unless overridden; without a models URL, AI is off.
+    runWorkers({ modelsUrl, tmsUrl = modelsUrl ?? '', limits: overrides, log = quiet, ...options }: RunOptions = {}) {
+      const roles = testRoles(modelsUrl ?? '');
+      const limits = createLimits(redis, { prefix, enabled: true, dailyTokenBudget: 1e9, roles, ...overrides });
+      const models = modelsUrl ? createModels(roles, limits) : undefined;
       const workers = startWorkers(
-        { db, redis, queues, storage, limits, provider, tmsUrl, log: quiet },
+        { db, redis, queues, storage, limits, models, textMinChars: 100, tmsUrl, log },
         { lockDuration: 2_000, stalledInterval: 500, backoff: { baseMs: 50, capMs: 200 }, ...options },
       );
       stops.push(workers.close);

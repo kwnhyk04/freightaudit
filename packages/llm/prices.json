@@ -1,0 +1,38 @@
+{
+  "as_of": "2026-10-15",
+  "note": "Paid list prices in USD per million tokens. A call to a model on the free tier costs 0; its paid price stays here for reference. Ollama runs locally and needs no entry.",
+  "models": {
+    "gemini/gemini-3.5-flash-lite": {
+      "tier": "free",
+      "input": "0.30",
+      "output": "2.50",
+      "source": "https://ai.google.dev/gemini-api/docs/pricing"
+    },
+    "gemini/gemini-3.8-flash": {
+      "tier": "free",
+      "input": "0.75",
+      "output": "3.75",
+      "source": "https://ai.google.dev/gemini-api/docs/pricing",
+      "note": "1.50 / 7.50 from 2027-01-01. Kept for the 6b comparison run."
+    },
+    "groq/openai/gpt-oss-120b": {
+      "tier": "free",
+      "input": "0.15",
+      "output": "0.60",
+      "source": "https://console.groq.com/docs/models"
+    },
+    "groq/qwen/qwen3.8-27b": {
+      "tier": "free",
+      "input": "0.80",
+      "output": "4.00",
+      "source": "https://console.groq.com/docs/model/qwen/qwen3.8-27b",
+      "note": "Preview model."
+    },
+    "mistral/mistral-small-2603": {
+      "tier": "free",
+      "input": "0.15",
+      "output": "0.60",
+      "source": "https://docs.mistral.ai/models/mistral-small-4-0-26-03.md"
+    }
+  }
+}

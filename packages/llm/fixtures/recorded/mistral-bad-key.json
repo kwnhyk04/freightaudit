@@ -1,0 +1,15 @@
+{
+  "recorded_at": "2026-10-14",
+  "exchanges": [
+    {
+      "method": "POST",
+      "path": "/chat/completions",
+      "body_sha256": "dc601e319885475f09ad2dfa8ac20887ef1b82d2afe4f53db37b8f56a4704171",
+      "status": 401,
+      "headers": {},
+      "body": {
+        "detail": "Invalid API Key"
+      }
+    }
+  ]
+}

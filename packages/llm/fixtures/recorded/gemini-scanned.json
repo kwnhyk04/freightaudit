@@ -1,0 +1,47 @@
+{
+  "recorded_at": "2026-10-15",
+  "exchanges": [
+    {
+      "method": "POST",
+      "path": "/v1beta/models/gemini-3.5-flash-lite:generateContent",
+      "body_sha256": "de2edf4d2786635e4497f43d231ba85b48282c63c61708f8fc58f73daede7e4f",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "candidates": [
+          {
+            "content": {
+              "parts": [
+                {
+                  "text": "{\n  \"invoices\": [\n    {\n      \"first_page\": 1,\n      \"carrier\": \"Nimbus Road Lines\",\n      \"invoice_number\": \"67554172\",\n      \"invoice_date\": \"2025-06-18\",\n      \"pro_number\": \"0619993094\",\n      \"currency\": \"USD\",\n      \"line_items\": [\n        {\n          \"line_number\": 1,\n          \"description\": \"Linehaul\",\n          \"charge_code\": \"LINEHAUL\",\n          \"amount_cents\": 176357\n        },\n        {\n          \"line_number\": 2,\n          \"description\": \"Fuel surcharge\",\n          \"charge_code\": \"FUEL\",\n          \"amount_cents\": 11345\n        }\n      ],\n      \"subtotal_cents\": null,\n      \"tax_cents\": null,\n      \"total_cents\": 187702\n    }\n  ]\n}",
+                  "thoughtSignature": "EmAKXgFpFH0TEprtxWZLWbBnwmfxgWJfvWrsRlYrgRayw6DPngnIqmLyavkIO4OAMEFD1ILUbhtWdbhYqQ7heda2wu0O5dqcT/EfLE08f6s7zhBLKPsld/AWVg5HIUF9+JI="
+                }
+              ],
+              "role": "model"
+            },
+            "finishReason": "STOP",
+            "index": 0
+          }
+        ],
+        "usageMetadata": {
+          "promptTokenCount": 1325,
+          "candidatesTokenCount": 245,
+          "totalTokenCount": 1570,
+          "promptTokensDetails": [
+            {
+              "modality": "IMAGE",
+              "tokenCount": 1102
+            },
+            {
+              "modality": "TEXT",
+              "tokenCount": 223
+            }
+          ],
+          "serviceTier": "standard"
+        },
+        "modelVersion": "gemini-3.5-flash-lite",
+        "responseId": "eFfQaqCkLqvrrfcPpNfcqQ0"
+      }
+    }
+  ]
+}

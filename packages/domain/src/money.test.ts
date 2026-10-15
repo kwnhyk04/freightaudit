@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { BASIS_POINTS, divRound, formatUsd, linesMatchTotal, percentOf } from './index.ts';
+import { BASIS_POINTS, checkArithmetic, divRound, formatUsd, MICRO_USD, microUsd, percentOf, tokenCost } from './index.ts';
 
 // A fixed seed: every run checks the same cases, and a failure prints the counterexample it shrank to.
 fc.configureGlobal({ seed: 42, numRuns: 1_000 });
@@ -51,11 +51,36 @@ test('formatUsd writes cents as dollars that read back to the same cents', () =>
   fc.assert(fc.property(cents, (amount) => BigInt(formatUsd(amount).replace(/[$,.]/g, '')) === amount));
 });
 
-test('linesMatchTotal holds only for the exact sum of the lines', () => {
+test('lines must add up to the subtotal within one cent, and subtotal plus tax must be the total exactly', () => {
+  const offset = fc.bigInt({ min: -100n, max: 100n });
   fc.assert(
-    fc.property(fc.array(cents, { maxLength: 20 }), fc.bigInt({ min: -100n, max: 100n }), (lines, offset) => {
-      const sum = lines.reduce((total, line) => total + line, 0n);
-      return linesMatchTotal(lines, sum + offset) === (offset === 0n);
+    fc.property(fc.array(cents, { maxLength: 20 }), offset, fc.option(cents, { nil: null }), offset, (lines, off, tax, totalOff) => {
+      const subtotal = lines.reduce((total, line) => total + line, 0n) + off;
+      const checked = checkArithmetic({ lines, subtotal, tax, total: subtotal + (tax ?? 0n) + totalOff });
+      return checked.linesMatchSubtotal === abs(off) <= 1n && checked.subtotalPlusTaxIsTotal === (totalOff === 0n);
+    }),
+  );
+});
+
+test('without a printed subtotal, lines must add up to the total less tax within one cent', () => {
+  fc.assert(
+    fc.property(fc.array(cents, { maxLength: 20 }), fc.bigInt({ min: -100n, max: 100n }), fc.option(cents, { nil: null }), (lines, off, tax) => {
+      const total = lines.reduce((sum, line) => sum + line, 0n) + off + (tax ?? 0n);
+      const checked = checkArithmetic({ lines, subtotal: null, tax, total });
+      return checked.linesMatchSubtotal === abs(off) <= 1n && checked.subtotalPlusTaxIsTotal;
+    }),
+  );
+});
+
+test('prices parse exactly to micro-dollars, and a call costs its tokens at those prices', () => {
+  expect(['0.30', '2.50', '0.075', '12', '0.000001'].map(microUsd)).toEqual([300_000n, 2_500_000n, 75_000n, 12n * MICRO_USD, 1n]);
+  for (const bad of ['', '1.0000001', '-1', '1e3', '$1']) expect(() => microUsd(bad)).toThrow(RangeError);
+  // 1,108 input and 43 output tokens at $0.30 and $2.50 per million: 332.4 + 107.5 = 439.9 micro-dollars.
+  expect(tokenCost(1_108n, 43n, microUsd('0.30'), microUsd('2.50'))).toBe(440n);
+  fc.assert(
+    fc.property(fc.bigInt({ min: 0n, max: 10n ** 7n }), fc.bigInt({ min: 0n, max: 10n ** 7n }), (input, output) => {
+      // A million tokens of each at whole-dollar prices cost exactly those dollars.
+      return tokenCost(input * 1_000_000n, output * 1_000_000n, 2n * MICRO_USD, 3n * MICRO_USD) === (2n * input + 3n * output) * MICRO_USD;
     }),
   );
 });

@@ -223,9 +223,11 @@ export function buildSeed(scale: Scale, { flatRates = false }: { flatRates?: boo
       pro_number: proNumber,
       currency: 'USD',
       line_items: items.map((item, n) => ({ line_number: n + 1, description: CHARGE_CODES[item.code], charge_code: item.code, amount_cents: Number(item.billed) })),
+      subtotal_cents: null,
+      tax_cents: null,
       total_cents: Number(totalCents),
     };
-    const extraction = { id: faker.string.uuid(), tenantId, invoiceId: invoice.id, model: 'seed', inputTokens: 0, outputTokens: 0, result };
+    const extraction = { id: faker.string.uuid(), tenantId, invoiceId: invoice.id, model: 'seed', inputTokens: 0, outputTokens: 0, result, step: 'first_pass' };
     extractions.push({ ...extraction, ...stamp(hoursAfter(createdAt, 1)) });
     invoices.push({
       ...invoice,

@@ -17,6 +17,7 @@
     "db:migrate": "turbo run db:migrate --",
     "db:seed": "turbo run db:seed --",
     "db:reset": "turbo run db:reset",
+    "extract:resume": "turbo run extract:resume",
     "fixtures": "turbo run fixtures --",
     "codegen": "turbo run codegen",
     "eval": "turbo run eval",

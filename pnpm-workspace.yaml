@@ -23,6 +23,8 @@ catalog:
 
 # Native deps ship prebuilt binaries, so their install scripts stay off.
 allowBuilds:
+  # Its preinstall only echoes; the published dist is prebuilt.
+  "@google/genai": false
   "@parcel/watcher": false
   "@swc/core": false
   # ssh2 and cpu-features (SSH transports of Testcontainers and its dockerode) compile optional native crypto; ssh2

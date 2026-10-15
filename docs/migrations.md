@@ -123,13 +123,23 @@ Migrate: the seed writes terms, bands and miles, the TMS sync writes miles, and 
 
 The reconcile job reads the charges other invoices billed for a shipment, joining `invoices` by `shipment_id`, which had no index, so every reconcile scanned `invoices`. `CREATE INDEX CONCURRENTLY` builds it without blocking writes; like 0003b, the file drops a possibly `INVALID` index first, so it can run again. The index also serves foreign key checks when a shipment is deleted.
 
+## 0009 model calls and extraction steps (expand)
+
+What the extraction pipeline of step 6 records, and where an extraction that cannot be trusted ends.
+
+- `llm_calls` is a new table with one row per model call, failed calls included: the invoice, the role (`primary`, `text`, `fallback`), the step (`first_pass`, `repair`, `fallback`), provider, model, the model the provider says it ran (`served_model`), the outcome (`valid`, `invalid`, `rate_limited`, `error`), input and output tokens, latency in ms and the cost in integer micro-dollars (`cost_micro_usd`, 1,000,000 is $1, since a call costs a fraction of a cent). The worker writes each row as the call ends, so the spend of an attempt that later fails is kept. An index on `(invoice_id, created_at)` lists an invoice's calls in order; the table is new and empty, so a plain build inside the migration's transaction is instant.
+- `extractions.step` (`first_pass`, `repair`, `fallback`, `needs_review`) and `extractions.fallback_reason` (`rate_limited`, `invalid_output`) are nullable, with checks added `NOT VALID`: rows written before 0009 have neither, and a validating scan could find nothing to reject.
+- `check_invoice_transition` is replaced with one more allowed move, extracting to needs_review: output still invalid after the repair and the fallback waits for a reviewer instead of being dead-lettered. Every other rule of 0007 stays.
+
+Migrate: the worker writes both columns and `llm_calls` from this release; the seed writes `step` as `first_pass` on its extraction rows. Contract, in a later release if needed: `VALIDATE` the two checks; older rows keep a NULL step, which the checks allow.
+
 ## Tests (`pnpm test:int`)
 
 Each test runs in a throwaway database on the Postgres container that `pnpm test:int` starts for the run.
 
 - Migrations apply from empty, a second run is a no-op, and the Drizzle schema matches the database, including enum labels.
 - The exclusion constraint rejects overlapping versions for one carrier (SQLSTATE `23P01`), and allows touching ranges and the same dates for another carrier.
-- The status trigger rejects moves the lifecycle does not list (SQLSTATE `23514`) and allows listed and repeated ones, and it rejects approving a reconciled invoice until its open discrepancy has a decision.
+- The status trigger rejects moves the lifecycle does not list (SQLSTATE `23514`) and allows listed and repeated ones, extracting to needs_review included, and it rejects approving a reconciled invoice until its open discrepancy has a decision.
 - Expand, backfill and contract under the app (`apps/api/src/expand-contract.int.test.ts`): 0001 with the small seed in its flat-rate shape; 0002, after which the api's own list and detail handlers still read every invoice and discrepancy; the backfill, crashed after its first batch and resumed; 0003a and 0003b, after which every invoice line has a version of its own invoice's carrier, both columns are `NOT NULL`, the foreign keys are validated, both indexes are valid, and the api reads again with a version on every finding's line; then 0004 to 0006, leaving no `carrier_id`, and the api reads once more.
 - The small seed loads on the final schema with terms on every version and miles on every shipment, every line bills the version in force on its ship date, and every invoice's extraction, lines, shipment and discrepancies fit its status in the lifecycle.
 
@@ -137,4 +147,4 @@ The flat-rate seed that the expand/contract test writes at 0001 uses only the st
 
 ## Adding a migration
 
-Name it with the next number and a short description, for example `0009_add_invoice_due_date.sql`. Add the no-transaction marker only when a statement needs it, and keep such statements safe to run again. Update `src/schema.ts` in the same change, and document any expand/contract series here.
+Name it with the next number and a short description, for example `0010_add_invoice_due_date.sql`. Add the no-transaction marker only when a statement needs it, and keep such statements safe to run again. Update `src/schema.ts` in the same change, and document any expand/contract series here.

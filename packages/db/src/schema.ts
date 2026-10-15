@@ -111,6 +111,28 @@ export const extractions = pgTable('extractions', {
   inputTokens: integer('input_tokens').notNull(),
   outputTokens: integer('output_tokens').notNull(),
   result: jsonb('result').notNull(),
+  // first_pass, repair, fallback or needs_review; rows before 0009 have none.
+  step: text('step'),
+  // rate_limited or invalid_output when the fallback model ran.
+  fallbackReason: text('fallback_reason'),
+  ...timestamps,
+});
+
+export const llmCalls = pgTable('llm_calls', {
+  id: id(),
+  tenantId: tenantId(),
+  invoiceId: uuid('invoice_id').notNull(),
+  role: text('role').notNull(),
+  step: text('step').notNull(),
+  provider: text('provider').notNull(),
+  model: text('model').notNull(),
+  servedModel: text('served_model'),
+  outcome: text('outcome').notNull(),
+  inputTokens: integer('input_tokens').notNull(),
+  outputTokens: integer('output_tokens').notNull(),
+  latencyMs: integer('latency_ms').notNull(),
+  // Integer micro-dollars (1,000,000 is $1).
+  costMicroUsd: bigint('cost_micro_usd', { mode: 'bigint' }).notNull(),
   ...timestamps,
 });
 

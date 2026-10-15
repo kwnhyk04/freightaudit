@@ -1,4 +1,4 @@
-import { type Limits, PermanentError, type Provider } from '@freightaudit/llm';
+import { type Limits, type Models, PermanentError } from '@freightaudit/llm';
 import {
   deadLetter,
   isFinalFailure,
@@ -26,8 +26,10 @@ export type Deps = {
   queues: Queues;
   storage: Storage;
   limits: Limits;
-  // Absent while AI_ENABLED is false; extract jobs then wait.
-  provider?: Provider;
+  // One model per role; absent while AI_ENABLED is false, and extract jobs then wait.
+  models?: Models;
+  // A page whose text layer has fewer non-space characters than this is read as an image.
+  textMinChars: number;
   tmsUrl: string;
   log: Logger;
 };

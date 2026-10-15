@@ -1,64 +1,64 @@
-import { classify, httpError, parseRetryAfter } from './errors.ts';
-import type { Provider } from './extract.ts';
+import { ApiError, GoogleGenAI, type Part as GeminiPart } from '@google/genai';
+import { classify, httpError, ProviderConfigError } from './errors.ts';
+import type { Part, Provider } from './extract.ts';
 
 type GeminiOptions = { apiKey: string; model: string; baseUrl?: string; timeoutMs?: number };
-type GeminiReply = {
-  candidates?: { content?: { parts?: { text?: string }[] } }[];
-  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
-};
-type GeminiError = { error?: { details?: { retryDelay?: unknown }[] } };
+type GeminiError = { error?: { status?: unknown; details?: { reason?: unknown; retryDelay?: unknown }[] } };
 
-// Gemini REST generateContent with the PDF inline; it reads scanned pages as images.
-// The key travels in a header, never in the URL, so it cannot leak through request logs.
-export function createGeminiProvider({
-  apiKey,
-  model,
-  baseUrl = 'https://generativelanguage.googleapis.com',
-  timeoutMs = 60_000,
-}: GeminiOptions): Provider {
-  const url = new URL(`/v1beta/models/${encodeURIComponent(model)}:generateContent`, baseUrl);
+// Gemini through the Gen AI SDK. The key is passed in code, so a GOOGLE_API_KEY in the environment cannot replace it,
+// and the SDK sends it in the x-goog-api-key header, never in the URL. SDK retries stay off: the job's backoff and the
+// fallback model handle failures. The SDK's timeout bounds each call; passing fetch skips its undici dispatcher, which
+// needs Node's own globals and fails inside Jest's sandbox.
+export function createGeminiProvider({ apiKey, model, baseUrl, timeoutMs = 60_000 }: GeminiOptions): Provider {
+  const ai = new GoogleGenAI({ apiKey, vertexai: false, httpOptions: { baseUrl, timeout: timeoutMs, fetch } });
   return {
     name: 'gemini',
     model,
-    async generate({ pdf, prompt }) {
+    async generate({ prompt, parts, schema }) {
+      const started = performance.now();
       try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
-          body: JSON.stringify({
-            contents: [{ parts: [{ inline_data: { mime_type: 'application/pdf', data: Buffer.from(pdf).toString('base64') } }, { text: prompt }] }],
-            generationConfig: { response_mime_type: 'application/json', temperature: 0 },
-          }),
-          signal: AbortSignal.timeout(timeoutMs),
+        const response = await ai.models.generateContent({
+          model,
+          contents: [{ role: 'user', parts: [{ text: prompt }, ...parts.flatMap(toGemini)] }],
+          config: { temperature: 0, responseMimeType: 'application/json', responseJsonSchema: schema },
         });
-        if (!response.ok) throw httpError(response.status, `gemini HTTP ${response.status}`, await retryHint(response));
-        const reply = (await response.json()) as GeminiReply;
-        const usage = reply.usageMetadata ?? {};
+        const usage = response.usageMetadata ?? {};
         return {
-          text: reply.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('') ?? '',
+          text: response.text ?? '',
           // Thinking tokens are billed as output.
-          usage: {
-            inputTokens: usage.promptTokenCount ?? 0,
-            outputTokens: (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0),
-          },
+          usage: { inputTokens: usage.promptTokenCount ?? 0, outputTokens: (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0) },
+          latencyMs: Math.round(performance.now() - started),
+          servedModel: response.modelVersion,
         };
       } catch (err) {
-        throw classify(err);
+        throw err instanceof ApiError ? apiError(err) : classify(err);
       }
     },
   };
 }
 
-// The Retry-After header, else the RetryInfo delay that Google puts in 429 bodies ("37s").
-async function retryHint(response: Response) {
-  const body = await response.text().catch(() => '');
-  const header = parseRetryAfter(response.headers.get('retry-after'));
-  if (header !== undefined) return header;
-  let delay: unknown;
+const toGemini = (part: Part): GeminiPart[] =>
+  'text' in part
+    ? [{ text: `Page ${part.page}:\n${part.text}` }]
+    : [{ text: `Page ${part.page}:` }, { inlineData: { mimeType: 'image/jpeg', data: Buffer.from(part.jpeg).toString('base64') } }];
+
+const parse = (text: string): GeminiError => {
   try {
-    delay = (JSON.parse(body) as GeminiError).error?.details?.find((detail) => typeof detail.retryDelay === 'string')?.retryDelay;
+    return JSON.parse(text) as GeminiError;
   } catch {
-    return undefined;
+    return {};
   }
-  return typeof delay === 'string' && /^\d+(\.\d+)?s$/.test(delay) ? Math.ceil(Number.parseFloat(delay) * 1_000) : undefined;
+};
+const identifier = (value: unknown) => (typeof value === 'string' && /^[A-Z][A-Z0-9_]{0,63}$/.test(value) ? value : undefined);
+
+// The SDK puts the whole error body in the message; only the status, the gRPC status name and the ErrorInfo reason are
+// kept. An invalid key is a 400 with reason API_KEY_INVALID, as wrong as a 401. A 429 carries its wait as RetryInfo.
+function apiError({ status, message }: ApiError) {
+  const { error } = parse(message);
+  const details = error?.details ?? [];
+  const reason = details.map((detail) => identifier(detail.reason)).find(Boolean);
+  const text = ['gemini HTTP', status, identifier(error?.status), reason].filter((part) => part !== undefined).join(' ');
+  if (status === 400 && reason === 'API_KEY_INVALID') return new ProviderConfigError(text);
+  const delay = details.map((detail) => detail.retryDelay).find((value) => typeof value === 'string' && /^\d+(\.\d+)?s$/.test(value));
+  return httpError(status, text, typeof delay === 'string' ? Math.ceil(Number.parseFloat(delay) * 1_000) : undefined);
 }

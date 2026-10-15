@@ -1,29 +1,21 @@
 import { once } from 'node:events';
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { readFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { classify, parseRetryAfter, PermanentError, TransientError } from './errors.ts';
+import { parseEnv } from 'node:util';
+import { classify, parseRetryAfter, PermanentError, ProviderConfigError, RateLimitError, TransientError } from './errors.ts';
+import { EXTRACTION_JSON_SCHEMA, type GenerateInput } from './extract.ts';
 import { createGeminiProvider } from './gemini.ts';
+import { cassetteServer, type FakeCall, fakeModels, replyWith } from './testing.ts';
 
-type Handler = (req: IncomingMessage, body: string, res: ServerResponse) => void;
-let handler: Handler = () => {};
-const server = createServer(async (req, res) => {
-  let body = '';
-  for await (const chunk of req) body += chunk;
-  handler(req, body, res);
+const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+const input: GenerateInput = { prompt: 'read it', parts: [{ page: 1, text: 'INVOICE 1' }, { page: 2, jpeg }], schema: EXTRACTION_JSON_SCHEMA };
+let fake: Awaited<ReturnType<typeof fakeModels>> | undefined;
+afterEach(async () => {
+  await fake?.close();
+  fake = undefined;
 });
-let baseUrl = '';
-beforeAll(async () => {
-  server.listen(0, '127.0.0.1');
-  await once(server, 'listening');
-  baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-});
-afterAll(() => {
-  server.closeAllConnections();
-  server.close();
-});
-
-const input = { pdf: new TextEncoder().encode('%PDF'), pageCount: 1, prompt: 'read it' };
-const provider = (timeoutMs?: number) => createGeminiProvider({ apiKey: 'secret-key', model: 'flash-test', baseUrl, timeoutMs });
+const provider = (apiKey = 'test-key', timeoutMs?: number) => createGeminiProvider({ apiKey, model: 'flash-test', baseUrl: fake!.url, timeoutMs });
 const failure = (promise: Promise<unknown>) =>
   promise.then(
     () => {
@@ -32,38 +24,72 @@ const failure = (promise: Promise<unknown>) =>
     (err: unknown) => err,
   );
 
-test('sends the PDF inline with the key in a header, and reads the text and token usage', async () => {
-  let seen: { url?: string; key?: unknown; body?: { contents: { parts: unknown[] }[]; generationConfig: object } } = {};
-  handler = (req, body, res) => {
-    seen = { url: req.url, key: req.headers['x-goog-api-key'], body: JSON.parse(body) };
-    const reply = {
-      candidates: [{ content: { parts: [{ text: '{"invoices":' }, { text: '[]}' }] } }],
-      usageMetadata: { promptTokenCount: 300, candidatesTokenCount: 40, thoughtsTokenCount: 60 },
-    };
-    res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(reply));
-  };
-  expect(await provider().generate(input)).toEqual({ text: '{"invoices":[]}', usage: { inputTokens: 300, outputTokens: 100 } });
-  expect(seen.url).toBe('/v1beta/models/flash-test:generateContent');
-  expect(seen.key).toBe('secret-key');
-  expect(seen.body?.contents[0]?.parts).toEqual([{ inline_data: { mime_type: 'application/pdf', data: 'JVBERg==' } }, { text: 'read it' }]);
-  expect(seen.body?.generationConfig).toEqual({ response_mime_type: 'application/json', temperature: 0 });
+test('sends the pages, the schema and temperature 0, with the key only in x-goog-api-key, which GOOGLE_API_KEY cannot replace', async () => {
+  let seen: FakeCall | undefined;
+  const reply = replyWith('gemini', '{"invoices":[]}');
+  Object.assign((reply.body as { usageMetadata: object }).usageMetadata, { promptTokenCount: 300, candidatesTokenCount: 40, thoughtsTokenCount: 60 });
+  fake = await fakeModels((call) => ((seen = call), reply));
+  process.env.GOOGLE_API_KEY = 'environment-key';
+  try {
+    // Thinking tokens are billed as output.
+    expect(await provider('configured-key').generate(input)).toMatchObject({
+      text: '{"invoices":[]}',
+      usage: { inputTokens: 300, outputTokens: 100 },
+      servedModel: 'gemini-3.5-flash-lite',
+      latencyMs: expect.any(Number),
+    });
+  } finally {
+    delete process.env.GOOGLE_API_KEY;
+  }
+  expect(seen?.url).toBe('/v1beta/models/flash-test:generateContent');
+  expect(seen?.headers['x-goog-api-key']).toBe('configured-key');
+  expect(seen?.body).toMatchObject({
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: 'read it' }, { text: 'Page 1:\nINVOICE 1' }, { text: 'Page 2:' }, { inlineData: { mimeType: 'image/jpeg', data: '/9j/4A==' } }],
+      },
+    ],
+    generationConfig: { temperature: 0, responseMimeType: 'application/json', responseJsonSchema: EXTRACTION_JSON_SCHEMA },
+  });
 });
 
-test("429 and 5xx are transient and carry the server's wait; other 4xx are permanent", async () => {
-  handler = (_req, _body, res) => res.writeHead(429, { 'retry-after': '7' }).end();
-  expect(await failure(provider().generate(input))).toMatchObject({ name: 'TransientError', retryAfterMs: 7_000 });
-  const retryInfo = { error: { details: [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '1.5s' }] } };
-  handler = (_req, _body, res) => res.writeHead(429).end(JSON.stringify(retryInfo));
-  expect(await failure(provider().generate(input))).toMatchObject({ name: 'TransientError', retryAfterMs: 1_500 });
-  handler = (_req, _body, res) => res.writeHead(503).end();
-  expect(await failure(provider().generate(input))).toBeInstanceOf(TransientError);
-  handler = (_req, _body, res) => res.writeHead(400).end();
-  expect(await failure(provider().generate(input))).toBeInstanceOf(PermanentError);
+// Error bodies in the shape the Gemini API documents; a 429 cannot be recorded on demand.
+const quota = {
+  error: {
+    code: 429,
+    message: 'You exceeded your current quota, please check your plan and billing details.',
+    status: 'RESOURCE_EXHAUSTED',
+    details: [
+      { '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', quotaValue: '500' }] },
+      { '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '37s' },
+    ],
+  },
+};
+const rejected = (status: number, grpc: string, reason?: string) => ({
+  error: { code: status, message: 'API key not valid. Please pass a valid API key.', status: grpc, details: reason ? [{ '@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason }] : [] },
 });
 
-test('timeouts and dropped or refused connections are transient', async () => {
-  handler = () => {};
-  expect(await failure(provider(50).generate(input))).toMatchObject({ name: 'TransientError', message: 'request timed out' });
+test.each([
+  { status: 429, body: quota, error: RateLimitError, message: 'gemini HTTP 429 RESOURCE_EXHAUSTED', retryAfterMs: 37_000 },
+  { status: 401, body: rejected(401, 'UNAUTHENTICATED', 'ACCESS_TOKEN_TYPE_UNSUPPORTED'), error: ProviderConfigError, message: 'gemini HTTP 401 UNAUTHENTICATED ACCESS_TOKEN_TYPE_UNSUPPORTED' },
+  { status: 403, body: rejected(403, 'PERMISSION_DENIED'), error: ProviderConfigError, message: 'gemini HTTP 403 PERMISSION_DENIED' },
+  { status: 404, body: rejected(404, 'NOT_FOUND'), error: ProviderConfigError, message: 'gemini HTTP 404 NOT_FOUND' },
+  { status: 400, body: rejected(400, 'INVALID_ARGUMENT', 'API_KEY_INVALID'), error: ProviderConfigError, message: 'gemini HTTP 400 INVALID_ARGUMENT API_KEY_INVALID' },
+  { status: 400, body: rejected(400, 'INVALID_ARGUMENT'), error: PermanentError, message: 'gemini HTTP 400 INVALID_ARGUMENT' },
+  { status: 503, body: rejected(503, 'UNAVAILABLE'), error: TransientError, message: 'gemini HTTP 503 UNAVAILABLE' },
+])('HTTP $status $message maps onto the taxonomy and keeps no message text', async ({ status, body, error, message, retryAfterMs }) => {
+  fake = await fakeModels(() => ({ status, body }));
+  const err = (await failure(provider().generate(input))) as Error & { retryAfterMs?: number };
+  expect(err).toBeInstanceOf(error);
+  expect(err.message).toBe(message);
+  if (error === PermanentError) expect(err).not.toBeInstanceOf(ProviderConfigError);
+  expect(err.retryAfterMs).toBe(retryAfterMs);
+});
+
+test('timeouts and refused connections are transient', async () => {
+  fake = await fakeModels(() => 'hang');
+  expect(await failure(provider('k', 100).generate(input))).toMatchObject({ name: 'TransientError', message: 'request timed out' });
   // A port that was just free, so nothing listens on it.
   const probe = createServer().listen(0, '127.0.0.1');
   await once(probe, 'listening');
@@ -83,4 +109,22 @@ test('Retry-After is read as seconds or as an HTTP date', () => {
   expect(parseRetryAfter('Wed, 14 Oct 2026 11:00:00 GMT', now)).toBe(0);
   expect(parseRetryAfter('soon', now)).toBeUndefined();
   expect(parseRetryAfter(null, now)).toBeUndefined();
+});
+
+// Real rejections recorded with LLM_RECORD=1: a made-up key, and a model id that does not exist (with the real key).
+const recording = process.env.LLM_RECORD === '1';
+const keys: Record<string, string | undefined> = recording ? parseEnv(readFileSync(new URL('../../../.env', import.meta.url), 'utf8')) : {};
+test.each([
+  { name: 'gemini-bad-key', model: 'gemini-3.5-flash-lite', realKey: false },
+  { name: 'gemini-unknown-model', model: 'gemini-0.0-unknown', realKey: true },
+])('$name: the recorded rejection pauses work as a ProviderConfigError', async ({ name, model, realKey }) => {
+  const server = await cassetteServer(name, 'https://generativelanguage.googleapis.com');
+  try {
+    const apiKey = recording && realKey ? (keys.GEMINI_API_KEY ?? '') : 'made-up-key-0000';
+    const err = await failure(createGeminiProvider({ apiKey, model, baseUrl: server.url }).generate({ ...input, parts: [{ page: 1, text: 'INVOICE 1' }] }));
+    expect(err).toBeInstanceOf(ProviderConfigError);
+    expect(server.mismatches()).toEqual([]);
+  } finally {
+    await server.close();
+  }
 });

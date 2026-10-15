@@ -5,7 +5,14 @@ import { z } from 'zod';
 const integer = (fallback: number, max = Number.MAX_SAFE_INTEGER) =>
   z.string().regex(/^\d+$/).transform(Number).pipe(z.int().max(max)).default(fallback);
 const port = (fallback: number) => integer(fallback, 65_535);
+const perMinute = (fallback: number) => z.string().regex(/^\d+$/).transform(Number).pipe(z.int().min(1)).default(fallback);
 const httpUrl = z.url({ protocol: /^https?$/ });
+// Empty means the provider's default.
+const baseUrl = z.union([httpUrl, z.literal('')]).optional();
+
+export const LLM_PROVIDERS = ['gemini', 'groq', 'mistral', 'openrouter', 'nvidia', 'ollama'] as const;
+export type LlmProvider = (typeof LLM_PROVIDERS)[number];
+const llmProvider = z.enum(LLM_PROVIDERS);
 
 // Every setting the services read. Each service loads only the keys it uses.
 export const settings = {
@@ -34,11 +41,31 @@ export const settings = {
   // Kill switch: false stops every model call, and extract jobs wait instead.
   AI_ENABLED: z.stringbool().default(false),
   DAILY_AI_TOKEN_BUDGET: integer(1_000_000),
-  LLM_TOKENS_PER_MINUTE: integer(250_000),
-  // Required when AI_ENABLED is true, which the worker checks; empty means not set.
+  // Model roles: provider, model, base URL and the model's free-tier requests and tokens per minute. Models pinned on
+  // 2026-10-15 from each key's model list; limits from the providers' pages that day (docs/memory.md).
+  LLM_PRIMARY_PROVIDER: llmProvider.default('gemini'),
+  LLM_PRIMARY_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
+  LLM_PRIMARY_BASE_URL: baseUrl,
+  LLM_PRIMARY_RPM: perMinute(15),
+  LLM_PRIMARY_TPM: perMinute(250_000),
+  LLM_TEXT_PROVIDER: llmProvider.default('groq'),
+  LLM_TEXT_MODEL: z.string().min(1).default('openai/gpt-oss-120b'),
+  LLM_TEXT_BASE_URL: baseUrl,
+  LLM_TEXT_RPM: perMinute(30),
+  LLM_TEXT_TPM: perMinute(8_000),
+  LLM_FALLBACK_PROVIDER: llmProvider.default('groq'),
+  LLM_FALLBACK_MODEL: z.string().min(1).default('qwen/qwen3.8-27b'),
+  LLM_FALLBACK_BASE_URL: baseUrl,
+  LLM_FALLBACK_RPM: perMinute(30),
+  LLM_FALLBACK_TPM: perMinute(8_000),
+  // A page whose text layer has fewer non-space characters than this is read as an image, like a scan.
+  LLM_TEXT_MIN_CHARS: integer(100),
+  // One key per provider account; required while AI_ENABLED is true for each provider a role uses. Empty means not set.
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().optional(),
-  GEMINI_BASE_URL: httpUrl.default('https://generativelanguage.googleapis.com'),
+  GROQ_API_KEY: z.string().optional(),
+  MISTRAL_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
+  NVIDIA_API_KEY: z.string().optional(),
   MOCK_TMS_URL: httpUrl,
   // How long a worker owns a job before another may recover it; the lock renews at half this while the job runs.
   JOB_LOCK_MS: integer(60_000),
@@ -64,4 +91,66 @@ export function loadEnv<K extends keyof Settings>(keys: K[]) {
 export function configError(problems: string): never {
   writeSync(2, `Invalid environment configuration (see .env.example):\n${problems}\n`);
   process.exit(1);
+}
+
+// Every setting the model roles read, for loadEnv.
+export const LLM_SETTINGS = [
+  'LLM_PRIMARY_PROVIDER',
+  'LLM_PRIMARY_MODEL',
+  'LLM_PRIMARY_BASE_URL',
+  'LLM_PRIMARY_RPM',
+  'LLM_PRIMARY_TPM',
+  'LLM_TEXT_PROVIDER',
+  'LLM_TEXT_MODEL',
+  'LLM_TEXT_BASE_URL',
+  'LLM_TEXT_RPM',
+  'LLM_TEXT_TPM',
+  'LLM_FALLBACK_PROVIDER',
+  'LLM_FALLBACK_MODEL',
+  'LLM_FALLBACK_BASE_URL',
+  'LLM_FALLBACK_RPM',
+  'LLM_FALLBACK_TPM',
+  'GEMINI_API_KEY',
+  'GROQ_API_KEY',
+  'MISTRAL_API_KEY',
+  'OPENROUTER_API_KEY',
+  'NVIDIA_API_KEY',
+] as const satisfies (keyof Settings)[];
+
+const BASE_URLS: Record<LlmProvider, string> = {
+  gemini: 'https://generativelanguage.googleapis.com',
+  groq: 'https://api.groq.com/openai/v1',
+  mistral: 'https://api.mistral.ai/v1',
+  openrouter: 'https://openrouter.ai/api/v1',
+  nvidia: 'https://integrate.api.nvidia.com/v1',
+  ollama: 'http://localhost:11434/v1',
+};
+// Ollama runs locally without a key.
+const KEYS = { gemini: 'GEMINI_API_KEY', groq: 'GROQ_API_KEY', mistral: 'MISTRAL_API_KEY', openrouter: 'OPENROUTER_API_KEY', nvidia: 'NVIDIA_API_KEY' } as const;
+
+export type LlmRoleName = 'primary' | 'text' | 'fallback';
+export type LlmRole = { provider: LlmProvider; model: string; baseUrl: string; apiKey: string | undefined; rpm: number; tpm: number };
+// What loadEnv returns for these keys, optional ones optional.
+type LlmEnv = z.output<z.ZodObject<Pick<Settings, (typeof LLM_SETTINGS)[number]>>>;
+
+// The model roles from validated settings, plus what keeps them from running: a provider without its key, or a fallback
+// on the primary's provider. Callers report the problems only while AI_ENABLED is true.
+export function llmRoles(env: LlmEnv) {
+  const role = (name: 'PRIMARY' | 'TEXT' | 'FALLBACK'): LlmRole => {
+    const provider = env[`LLM_${name}_PROVIDER`];
+    return {
+      provider,
+      model: env[`LLM_${name}_MODEL`],
+      baseUrl: env[`LLM_${name}_BASE_URL`] || BASE_URLS[provider],
+      apiKey: provider === 'ollama' ? undefined : env[KEYS[provider]] || undefined,
+      rpm: env[`LLM_${name}_RPM`],
+      tpm: env[`LLM_${name}_TPM`],
+    };
+  };
+  const roles: Record<LlmRoleName, LlmRole> = { primary: role('PRIMARY'), text: role('TEXT'), fallback: role('FALLBACK') };
+  const problems = Object.entries(roles).flatMap(([name, { provider, apiKey }]) =>
+    provider === 'ollama' || apiKey ? [] : [`LLM_${name.toUpperCase()}_PROVIDER is ${provider}, which needs ${KEYS[provider]}`],
+  );
+  if (roles.fallback.provider === roles.primary.provider) problems.push('LLM_FALLBACK_PROVIDER must differ from LLM_PRIMARY_PROVIDER');
+  return { roles, problems };
 }

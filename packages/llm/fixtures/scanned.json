@@ -1,0 +1,39 @@
+{
+  "carrier": "Nimbus Road Lines",
+  "invoice_number": "67554172",
+  "invoice_date": "2025-06-18",
+  "due_date": "2025-07-18",
+  "pro_number": "0619993094",
+  "currency": "USD",
+  "bill_to": {
+    "name": "Grimes, Halvorson and Weber",
+    "address": "606 Cherry Street, Michealcester, LA 28889"
+  },
+  "shipper": {
+    "name": "O'Hara LLC",
+    "address": "933 Immanuel Mill, New Rebecca, ME 15726"
+  },
+  "consignee": {
+    "name": "Lindgren - Wolf",
+    "address": "3724 Rickie Radial, Destanystad, OK 62975"
+  },
+  "weight_lb": 7399,
+  "line_items": [
+    {
+      "line_number": 1,
+      "description": "Linehaul",
+      "charge_code": "LINEHAUL",
+      "amount_cents": 176357
+    },
+    {
+      "line_number": 2,
+      "description": "Fuel surcharge",
+      "charge_code": "FUEL",
+      "amount_cents": 11345
+    }
+  ],
+  "total_cents": 187702,
+  "template": "modern",
+  "variant": "scanned",
+  "rotation_deg": -0.32
+}
