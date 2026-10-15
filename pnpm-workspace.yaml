@@ -6,7 +6,7 @@ packages:
 catalog:
   "@faker-js/faker": ^10.6.0
   "@types/jest": ^30.0.0
-  "@types/node": ^24.19.2
+  "@types/node": ^26.6.4
   "@types/pg": ^8.23.1
   bullmq: ^6.3.9
   drizzle-orm: ^0.45.4
