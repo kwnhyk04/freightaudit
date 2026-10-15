@@ -1,0 +1,190 @@
+// Turns eval runs into evals/reports/<date>[-<subset>].json and .md: every target of docs/context.md met or missed, the
+// regression floors of evals/thresholds.json beside them, and on a full run the eval table that opens the README. The
+// exit code is 2 when a quota stop left cases unrun, 1 when a metric breaks its floor, else 0.
+import { existsSync } from 'node:fs';
+import { readFile, writeFile } from 'node:fs/promises';
+import { type Measured, measure, meets, type Metric, METRICS, scoreCase, type Score } from './metrics.ts';
+import type { Roles, Run, Subset } from './run.ts';
+
+// Floors per subset: a minimum for metrics where higher is better, a maximum for the others. Floors only tighten;
+// loosening one needs a written reason in docs/memory.md naming the run that justified it.
+type Floor = { min?: number; max?: number; from: string };
+type Thresholds = { _rules?: string } & Partial<Record<Subset, Record<string, Floor>>>;
+const THRESHOLDS = new URL('../thresholds.json', import.meta.url);
+const README = new URL('../../README.md', import.meta.url);
+
+const metricOf = (name: string) => METRICS.find((def) => def.metric === name)!;
+const fmt = (unit: string, value: number | undefined) => {
+  if (value === undefined) return 'n/a';
+  if (unit === 'ratio') return value.toFixed(3);
+  if (unit === 'usd') return `$${value.toFixed(4)}`;
+  return `${Math.round(value).toLocaleString('en-US')}${unit === 'ms' ? ' ms' : ''}`;
+};
+const ci = (unit: string, interval: [number, number] | undefined) => (interval ? `${fmt(unit, interval[0])} to ${fmt(unit, interval[1])}` : 'n/a');
+const bound = (op: string, unit: string, value: number) => `${op === '>=' ? '≥' : '≤'} ${fmt(unit, value)}`;
+const yes = (ok: boolean) => (ok ? 'met' : 'missed');
+// A floor from this run (user rules). Accuracy: the looser of the run's 95% bound and the design target, so a perfect
+// run's degenerate interval (1.000 to 1.000) never makes a floor that one miss would break; without a target, the bound
+// with a 0.02 margin, at most 0.98 for a minimum, at least 0.02 for a maximum. Efficiency (tokens, cost, latency): the
+// upper bound times 1.5, so a 50% regression breaks it, capped at the design target unless the run already exceeds it
+// (end-to-end latency under the eval's throttling), where a cap would break the floor with no regression. Cost as
+// billed stays 0: any billed cost means a paid key was used by mistake. Rounded away from the run to the unit's step.
+function floorFrom({ metric, unit, higherIsBetter, target }: Metric, [lo, hi]: [number, number]) {
+  if (metric === 'free_tier_cost_per_invoice_usd') return 0;
+  const step = { ratio: 0.01, ms: 100, tokens: 10, usd: 0.0001, per_hour: 1 }[unit] ?? 1;
+  const efficiency = !higherIsBetter && (unit === 'ms' || unit === 'tokens' || unit === 'usd');
+  const raw = efficiency
+    ? target && target.value >= hi ? Math.min(hi * 1.5, target.value) : hi * 1.5
+    : higherIsBetter
+      ? target ? Math.min(lo, target.value) : Math.min(lo - 0.02, 0.98)
+      : target ? Math.max(hi, target.value) : Math.max(hi + 0.02, 0.02);
+  // The epsilon keeps 0.93 at 0.93 despite binary fractions; toFixed drops artifacts such as 0.9500000000000001.
+  return Number((higherIsBetter ? Math.floor(raw / step + 1e-9) * step : Math.ceil(raw / step - 1e-9) * step).toFixed(4));
+}
+
+// The most invoices an hour the pinned roles' per-minute limits allow at the measured calls and tokens per invoice,
+// digital ones on the text model and scans on the primary, both providers working at once on this set's mix.
+function throughput(scores: Score[], roles: Roles) {
+  const minutes = (path: 'digital' | 'scanned', role: 'text' | 'primary') => {
+    const cases = scores.filter((score) => score.path === path);
+    if (cases.length === 0) return 0;
+    const calls = cases.reduce((sum, score) => sum + score.calls, 0) / cases.length;
+    const tokens = cases.reduce((sum, score) => sum + score.inputTokens + score.outputTokens, 0) / cases.length;
+    return Math.max(calls / roles[role].rpm, tokens / roles[role].tpm) * cases.length;
+  };
+  const busiest = Math.max(minutes('digital', 'text'), minutes('scanned', 'primary'));
+  return busiest > 0 ? (60 * scores.length) / busiest : undefined;
+}
+
+const usage = (runs: Run[]) => {
+  const rows = new Map<string, { calls: number; input: number; output: number; served: Set<string> }>();
+  for (const run of runs)
+    for (const result of run.results.values())
+      for (const call of result.calls) {
+        const row = rows.get(`${call.provider}/${call.model}`) ?? { calls: 0, input: 0, output: 0, served: new Set<string>() };
+        row.calls += 1;
+        row.input += call.inputTokens;
+        row.output += call.outputTokens;
+        if (call.servedModel) row.served.add(call.servedModel);
+        rows.set(`${call.provider}/${call.model}`, row);
+      }
+  return rows;
+};
+const pins = (roles: Roles) => Object.entries(roles).map(([role, { provider, model }]) => `${role} ${provider}/${model}`).join(', ');
+
+export async function report({ subset, runs, durationMs, setFloors }: { subset: Subset; runs: Run[]; durationMs: number; setFloors: boolean }) {
+  const date = new Date().toISOString().slice(0, 10);
+  const name = subset === 'full' ? date : `${date}-${subset}`;
+  const stopped = runs.find((run) => run.stopped)?.stopped;
+  // A comparison scores only the cases every run finished, so both columns cover the same invoices.
+  const done = (golden: { id: string }) => (subset === 'compare' ? runs.every((run) => run.results.has(golden.id)) : true);
+  const scored = runs.map((run) => ({ run, scores: run.cases.filter((golden) => run.results.has(golden.id) && done(golden)).map((golden) => scoreCase(golden, run.results.get(golden.id)!)) }));
+  const used = usage(runs);
+  const usageTable = [
+    '| Model | Served as | Calls | Input tokens | Output tokens |',
+    '| --- | --- | --- | --- | --- |',
+    ...[...used].map(([model, row]) => `| ${model} | ${[...row.served].join(', ')} | ${row.calls} | ${row.input.toLocaleString('en-US')} | ${row.output.toLocaleString('en-US')} |`),
+  ];
+  const head = (run: Run, scores: Score[]) =>
+    `${scores.length} of ${run.cases.length} cases (${run.computed} run now, the rest from the cache), prompt ${run.promptHash}, models: ${pins(run.roles)}.`;
+  const lines: string[] = [];
+  let code = stopped ? 2 : 0;
+  const json: Record<string, unknown> = { suite: 'extraction', subset, date, durationMs, stopped: stopped ?? null };
+
+  if (subset === 'compare') {
+    const keys = ['header_accuracy_scanned', 'line_f1_scanned', 'extraction_latency_p50_ms', 'extraction_latency_p95_ms', 'tokens_per_invoice_scanned', 'outcome_accuracy'];
+    const measured = scored.map(({ scores }) => new Map(measure(scores).map((m) => [m.metric, m])));
+    lines.push(`# Primary model comparison (${date})`, '', 'On evals/comparison/v1: 15 scans drawn with seed 7 from shipments the golden set does not bill, outside golden/v1, so the choice never looks at the test split. 15 cases give wide intervals.', '');
+    for (const { run, scores } of scored) lines.push(`- ${run.label}: ${head(run, scores)}`);
+    lines.push('', `| Metric | ${scored.map(({ run }) => run.label).join(' | ')} |`, `| --- | ${scored.map(() => '---').join(' | ')} |`);
+    for (const key of keys) {
+      const metric = metricOf(key);
+      lines.push(`| ${metric.label} | ${measured.map((m) => `${fmt(metric.unit, m.get(key)?.value)} (${ci(metric.unit, m.get(key)?.ci)})`).join(' | ')} |`);
+    }
+    lines.push('', '## Model use', '', ...usageTable);
+    json.runs = scored.map(({ run, scores }, i) => ({ label: run.label, pins: pins(run.roles), promptHash: run.promptHash, cases: scores.length, metrics: [...measured[i]!.values()] }));
+  } else {
+    const [{ run, scores }] = scored as [(typeof scored)[number]];
+    const measured: Measured[] = measure(scores);
+    const ceiling = throughput(scores, run.roles);
+    const thresholds: Thresholds = existsSync(THRESHOLDS) ? (JSON.parse(await readFile(THRESHOLDS, 'utf8')) as Thresholds) : {};
+    const floors = (thresholds[subset] ??= {});
+    const suggestions: string[] = [];
+    const rows = measured.map((m) => {
+      const metric = metricOf(m.metric);
+      const floor = floors[m.metric];
+      const floorBound = floor && (floor.min !== undefined ? { op: '>=' as const, value: floor.min } : { op: '<=' as const, value: floor.max! });
+      const floorOk = floorBound ? meets(m.value, floorBound) : undefined;
+      if (floorOk === false) code = Math.max(code, 1);
+      // A run that clears its floor by more than its own interval's width earns a tighter floor, when the rule gives one.
+      const proposed = m.ci && floorFrom(metric, m.ci);
+      const tighter = proposed !== undefined && floorBound && (metric.higherIsBetter ? proposed > floorBound.value : proposed < floorBound.value);
+      if (tighter && m.value !== undefined && m.ci && Math.abs(m.value - floorBound.value) > m.ci[1] - m.ci[0] && floorOk)
+        suggestions.push(`${metric.label}: measured ${fmt(metric.unit, m.value)} clears the floor ${fmt(metric.unit, floorBound.value)} by more than the interval's width; consider tightening it to ${fmt(metric.unit, proposed)}.`);
+      if (setFloors && !floor && m.value !== undefined && m.ci) {
+        floors[m.metric] = { [metric.higherIsBetter ? 'min' : 'max']: floorFrom(metric, m.ci), from: name };
+      }
+      return { m, metric, floorBound, floorOk };
+    });
+    if (setFloors) {
+      thresholds._rules ??=
+        "Regression floors per subset, set from that subset's own run. Accuracy: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost and latency: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
+      await writeFile(THRESHOLDS, `${JSON.stringify(thresholds, null, 2)}\n`);
+    }
+    const wide = subset === 'full' ? '90 cases give wide intervals: read each measurement with its 95% interval.' : `${scores.length} cases give very wide intervals; this subset guards against regressions, it does not measure the targets.`;
+    lines.push(`# Extraction eval: ${subset} (${date})`, '', `Golden set v1, ${head(run, scores)} Took ${Math.round(durationMs / 1000)} s.`, '', wide, '');
+    if (stopped) lines.push(`**Stopped early on a spent quota (${stopped}); rerun the same command to resume from the cache.**`, '');
+    lines.push('| Metric | Design target | Target | Floor | Floor | Measured | 95% CI | n |', '| --- | --- | --- | --- | --- | --- | --- | --- |');
+    for (const { m, metric, floorBound, floorOk } of rows) {
+      const target = metric.target ? `${bound(metric.target.op, metric.unit, metric.target.value)} | ${yes(meets(m.value, metric.target))}` : '- | -';
+      const floor = floorBound ? `${bound(floorBound.op, metric.unit, floorBound.value)} | ${floorOk ? 'kept' : 'broken'}` : '- | -';
+      lines.push(`| ${metric.label} | ${target} | ${floor} | ${fmt(metric.unit, m.value)} | ${ci(metric.unit, m.ci)} | ${m.n} |`);
+    }
+    lines.push(
+      `| Throughput (free-tier ceiling, not a load test) | ≥ 2,000 / h | ${yes((ceiling ?? 0) >= 2_000)} | - | - | ${fmt('per_hour', ceiling)} / h | computed, no interval | ${scores.length} |`,
+      '',
+      "End-to-end latency is measured from upload to final status under this run's own throttling and concurrency, not under normal load; throughput is the ceiling the pinned roles' free-tier per-minute limits allow at the measured calls and tokens per invoice, not a load test. Step 8's k6 load test measures both.",
+    );
+    if (suggestions.length > 0) lines.push('', '## Floors to tighten', '', ...suggestions.map((text) => `- ${text}`));
+    const misses = scores.filter((s) => s.header.correct < s.header.total || s.lines.fp + s.lines.fn > 0 || s.overcharges.fp + s.overcharges.fn > 0 || s.outcomes.ok < s.outcomes.total);
+    const kinds = new Map(run.cases.map((golden) => [golden.id, golden.kind]));
+    lines.push('', '## Model use', '', ...usageTable, '', '## Cases with any miss', '', '| Case | Kind | Path | Header fields | Lines tp/fp/fn | Findings tp/fp/fn | Outcome | Status |', '| --- | --- | --- | --- | --- | --- | --- | --- |');
+    for (const s of misses) {
+      const result = run.results.get(s.id)!;
+      lines.push(`| ${s.id} | ${kinds.get(s.id)} | ${s.path} | ${s.header.correct}/${s.header.total} | ${s.lines.tp}/${s.lines.fp}/${s.lines.fn} | ${s.overcharges.tp}/${s.overcharges.fp}/${s.overcharges.fn} | ${s.outcomes.ok}/${s.outcomes.total} | ${result.status}${result.error ? ` (${result.error})` : ''} |`);
+    }
+    Object.assign(json, { golden: 'v1', promptHash: run.promptHash, pins: pins(run.roles), cases: scores.length, computed: run.computed, metrics: measured, throughputPerHour: ceiling ?? null, floors, scores });
+
+    if (subset === 'full' && !stopped) {
+      // Every pinned role with the model version the provider reported serving, or that it was never called.
+      const served = Object.entries(run.roles)
+        .map(([role, { provider, model }]) => {
+          const row = used.get(`${provider}/${model}`);
+          return `${role} ${provider}/${model} (${row ? `served as ${[...row.served].join(', ')}` : 'not called'})`;
+        })
+        .join(', ');
+      const modelOf = (key: string) => (key.includes('_digital') ? `${run.roles.text.provider}/${run.roles.text.model}` : key.includes('_scanned') ? `${run.roles.primary.provider}/${run.roles.primary.model}` : 'all roles');
+      const table = [
+        '<!-- eval:start -->',
+        '## Eval results',
+        '',
+        `Golden set v1 (90 synthetic invoices, ground truth from the generator), measured ${date} with ${served}. 90 cases give wide intervals; misses are listed as misses. Full report: \`evals/reports/${name}.md\`.`,
+        '',
+        '| Metric | Target | Measured | 95% CI | Met | Model | Date |',
+        '| --- | --- | --- | --- | --- | --- | --- |',
+        ...rows
+          .filter(({ metric }) => metric.target)
+          .map(({ m, metric }) => `| ${metric.label} | ${bound(metric.target!.op, metric.unit, metric.target!.value)} | ${fmt(metric.unit, m.value)} | ${ci(metric.unit, m.ci)} | ${meets(m.value, metric.target!) ? 'yes' : 'no'} | ${modelOf(m.metric)} | ${date} |`),
+        `| Throughput (free-tier ceiling, not a load test) | ≥ 2,000 / h | ${fmt('per_hour', ceiling)} / h | computed | ${(ceiling ?? 0) >= 2_000 ? 'yes' : 'no'} | all roles | ${date} |`,
+        '<!-- eval:end -->',
+      ].join('\n');
+      const readme = await readFile(README, 'utf8');
+      const marked = /<!-- eval:start -->[\s\S]*<!-- eval:end -->/;
+      await writeFile(README, marked.test(readme) ? readme.replace(marked, table) : readme.replace(/^(# .*\n)/, `$1\n${table}\n`));
+    }
+  }
+  await writeFile(new URL(`../reports/${name}.json`, import.meta.url), `${JSON.stringify(json, (_, value: unknown) => (value instanceof Set ? [...value] : value), 2)}\n`);
+  await writeFile(new URL(`../reports/${name}.md`, import.meta.url), `${lines.join('\n')}\n`);
+  console.log(lines.join('\n'));
+  return code;
+}

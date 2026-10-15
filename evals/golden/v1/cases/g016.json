@@ -1,0 +1,80 @@
+{
+  "id": "g016",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/g016.pdf",
+  "sha256": "9e6ca4ec81a06262a58d2fda284c7e87b5eac6a6c1c3d4661b2afc0d742d0be9",
+  "bytes": 44936,
+  "shipments": [
+    "1019971718"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "30456682",
+      "invoice_date": "2025-04-13",
+      "due_date": "2025-05-13",
+      "pro_number": "1019971718",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Wolf - Wunsch",
+        "address": "36390 Funk Haven, Collierville, TN 57725"
+      },
+      "shipper": {
+        "name": "Klein-Conroy, Hammes-Stroman and Boehm",
+        "address": "374 Kihn Highway, New Jeremy, ND 22975"
+      },
+      "consignee": {
+        "name": "Lang LLC",
+        "address": "1194 Raynor Mews, Carmenberg, MS 22668"
+      },
+      "weight_lb": 680,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 318040,
+          "expected_cents": 318040
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 95762,
+          "expected_cents": 95762
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14999,
+          "expected_cents": 14999
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 11565,
+          "expected_cents": 11565
+        }
+      ],
+      "total_cents": 440366,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

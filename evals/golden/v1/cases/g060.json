@@ -1,0 +1,94 @@
+{
+  "id": "g060",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/g060.pdf",
+  "sha256": "5ee25db25a23a82e81bc2149a7c547446902feeddbe71246982340711a647951",
+  "bytes": 67242,
+  "shipments": [
+    "1018229538"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "12424875",
+      "invoice_date": "2025-01-12",
+      "due_date": "2025-02-11",
+      "pro_number": "1018229538",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Schaden - Heller",
+        "address": "251 W Jackson Street, Kaydenmouth, NH 61840"
+      },
+      "shipper": {
+        "name": "Nader, Will and Hoeger",
+        "address": "466 Kohler Wells, Rachellefort, SC 72881"
+      },
+      "consignee": {
+        "name": "Trantow - O'Connell",
+        "address": "1756 Gottlieb Crest, Fort Lethafurt, DE 77229"
+      },
+      "weight_lb": 1636,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 205499,
+          "expected_cents": 205499
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 62806,
+          "expected_cents": 50245
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3775,
+          "expected_cents": 3775
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 9444,
+          "expected_cents": 9444
+        }
+      ],
+      "total_cents": 281524,
+      "overcharges": [
+        {
+          "line_number": 2,
+          "type": "rate_mismatch",
+          "expected_cents": 50245,
+          "billed_cents": 62806
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 2,
+            "type": "rate_mismatch",
+            "expected_cents": 50245,
+            "billed_cents": 62806
+          }
+        ]
+      }
+    }
+  ]
+}

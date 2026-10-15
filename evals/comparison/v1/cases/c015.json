@@ -1,0 +1,94 @@
+{
+  "id": "c015",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/c015.pdf",
+  "sha256": "68daec8d63a393b3d0db409152fa5e4afc7d1b914ddc12eecfe3b9a4d86af90b",
+  "bytes": 674214,
+  "shipments": [
+    "1022347418"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "46928821",
+      "invoice_date": "2025-03-26",
+      "due_date": "2025-04-25",
+      "pro_number": "1022347418",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Conroy, Hilpert and Stiedemann",
+        "address": "947 Ebert Extension, West Daniella, NC 21949"
+      },
+      "shipper": {
+        "name": "Steuber Inc",
+        "address": "60072 Old Military Road, Fort Mabellebury, UT 03914"
+      },
+      "consignee": {
+        "name": "Fahey, Kautzer and Champlin",
+        "address": "785 Hillside Road, Jeffryshire, PA 27013"
+      },
+      "weight_lb": 3256,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 266680,
+          "expected_cents": 266680
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 80297,
+          "expected_cents": 80297
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 11565,
+          "expected_cents": 11565
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 13714,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 372256,
+      "overcharges": [
+        {
+          "line_number": 4,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 13714
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 4,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 13714
+          }
+        ]
+      }
+    }
+  ]
+}

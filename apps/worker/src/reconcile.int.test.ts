@@ -133,12 +133,28 @@ test('running reconcile twice creates no duplicate discrepancies', async () => {
   expect(await db().$count(invoiceLines, eq(invoiceLines.invoiceId, invoiceId))).toBe(planted.lines.length);
 });
 
-test('an invoice whose PRO number matches no shipment goes to needs_review with nothing written', async () => {
+const reviewReasonOf = async (id: string) => (await db().select({ reason: extractions.reviewReason }).from(extractions).where(eq(extractions.invoiceId, id)))[0]?.reason;
+
+test('an invoice whose PRO number matches no shipment goes to needs_review with its reason and nothing else written', async () => {
   const misread = take(clean);
   await db().update(invoices).set({ proNumber: '0000000000' }).where(eq(invoices.id, misread.invoiceId));
-  expect(await run(misread.invoiceId)).toEqual({ invoiceId: misread.invoiceId, status: 'needs_review' });
+  expect(await run(misread.invoiceId)).toEqual({ invoiceId: misread.invoiceId, status: 'needs_review', reason: 'no_shipment_match' });
   expect(await invoiceOf(misread.invoiceId)).toMatchObject({ status: 'needs_review', shipmentId: null });
   expect(await db().$count(invoiceLines, eq(invoiceLines.invoiceId, misread.invoiceId))).toBe(0);
+  expect(await reviewReasonOf(misread.invoiceId)).toBe('no_shipment_match');
+});
+
+test.each([
+  ['CAD', 'unsupported_currency: CAD'],
+  [null, 'missing_currency'],
+])('an invoice in currency %s is never priced: it goes to needs_review with the reason', async (currency, reason) => {
+  const invoice = take(clean);
+  await db().update(invoices).set({ currency }).where(eq(invoices.id, invoice.invoiceId));
+  expect(await run(invoice.invoiceId)).toEqual({ invoiceId: invoice.invoiceId, status: 'needs_review', reason });
+  expect(await invoiceOf(invoice.invoiceId)).toMatchObject({ status: 'needs_review', shipmentId: null });
+  expect(await db().$count(invoiceLines, eq(invoiceLines.invoiceId, invoice.invoiceId))).toBe(0);
+  expect(await countFindings(invoice.invoiceId)).toBe(0);
+  expect(await reviewReasonOf(invoice.invoiceId)).toBe(reason);
 });
 
 test('of two invoices billing one charge for a shipment, reconciled at once, the second carries the duplicate', async () => {
@@ -148,7 +164,7 @@ test('of two invoices billing one charge for a shipment, reconciled at once, the
   const amount = Number(first.lines[0]!.billedCents);
   const [second] = await db()
     .insert(invoices)
-    .values({ tenantId, status: 'extracted', filename: 'again.pdf', contentSha256: randomBytes(32).toString('hex'), carrierId, proNumber })
+    .values({ tenantId, status: 'extracted', filename: 'again.pdf', contentSha256: randomBytes(32).toString('hex'), carrierId, proNumber, currency: 'USD' })
     .returning();
   const line_items = [{ line_number: 1, description: 'Linehaul', charge_code: 'LINEHAUL', amount_cents: amount }];
   await db().insert(extractions).values({ tenantId, invoiceId: second!.id, model: 'test', inputTokens: 0, outputTokens: 0, result: { line_items } });
@@ -189,7 +205,7 @@ describe('unpriceable data', () => {
     const proNumber = '1000000000';
     await database.insert(shipments).values({ tenantId, carrierId, proNumber, reference: 'SHP-000001', origin: 'Reno, NV', destination: 'Boise, ID', shippedOn, miles });
     const contentSha256 = randomBytes(32).toString('hex');
-    const [invoice] = await database.insert(invoices).values({ tenantId, status: 'extracted', filename: 'invoice.pdf', contentSha256, carrierId, proNumber }).returning();
+    const [invoice] = await database.insert(invoices).values({ tenantId, status: 'extracted', filename: 'invoice.pdf', contentSha256, carrierId, proNumber, currency: 'USD' }).returning();
     const line_items = [
       { line_number: 1, description: 'Linehaul', charge_code: 'LINEHAUL', amount_cents: 131_250 },
       { line_number: 2, description: 'Fuel surcharge', charge_code: 'FUEL', amount_cents: 25_000 },

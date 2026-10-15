@@ -1,0 +1,108 @@
+{
+  "id": "g056",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g056.pdf",
+  "sha256": "6d4f3f3382b86a487207aae0e5af9c57bcd6a46e119052e7709695341c663efa",
+  "bytes": 20702,
+  "shipments": [
+    "1001639233"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "46879006",
+      "invoice_date": "2025-03-19",
+      "due_date": "2025-04-18",
+      "pro_number": "1001639233",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Glover - Langworth",
+        "address": "421 Orn Falls, Jonathonmouth, NH 71710"
+      },
+      "shipper": {
+        "name": "Kihn, Simonis and Hermann",
+        "address": "3985 Rafaela Lake, South Samir, VT 93233"
+      },
+      "consignee": {
+        "name": "Streich - Ruecker",
+        "address": "879 Adalberto Ferry, West Susantown, OR 19866"
+      },
+      "weight_lb": 1392,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 488500,
+          "expected_cents": 488500
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 147087,
+          "expected_cents": 147087
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 5989,
+          "expected_cents": 5989
+        },
+        {
+          "line_number": 4,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 15554,
+          "expected_cents": 15554
+        },
+        {
+          "line_number": 5,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 11565,
+          "expected_cents": 11565
+        },
+        {
+          "line_number": 6,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 5989,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 674684,
+      "overcharges": [
+        {
+          "line_number": 6,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 5989
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 6,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 5989
+          }
+        ]
+      }
+    }
+  ]
+}

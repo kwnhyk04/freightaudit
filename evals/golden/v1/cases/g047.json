@@ -1,0 +1,87 @@
+{
+  "id": "g047",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/g047.pdf",
+  "sha256": "0e013d2d5af4f8382558dad04f2dde3336416225d65bc170ed9ad113aee8b4fc",
+  "bytes": 718890,
+  "shipments": [
+    "1032578766"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "26404758",
+      "invoice_date": "2026-02-12",
+      "due_date": "2026-03-14",
+      "pro_number": "1032578766",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hodkiewicz - Hane",
+        "address": "221 E 4th Avenue, Lindgrenport, KY 46998"
+      },
+      "shipper": {
+        "name": "Tremblay, Johns-Mills and Frami-Rodriguez",
+        "address": "3756 Hertha Drives, Louisville/Jefferson County, OR 43445"
+      },
+      "consignee": {
+        "name": "Kunze Group",
+        "address": "96649 Willms Square, Chesterfield, IN 22800"
+      },
+      "weight_lb": 1030,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 337056,
+          "expected_cents": 337056
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 101488,
+          "expected_cents": 101488
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 6399,
+          "expected_cents": 6399
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 12357,
+          "expected_cents": 12357
+        },
+        {
+          "line_number": 5,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 16026,
+          "expected_cents": 16026
+        }
+      ],
+      "total_cents": 473326,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

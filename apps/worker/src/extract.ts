@@ -74,7 +74,11 @@ export async function extract(deps: Deps, job: Job<InvoiceJob>, token?: string) 
   const parts = await readPages(bytes, deps.textMinChars);
   let result: Extraction;
   try {
-    result = await extractInvoices(models, { parts, pageCount }, { onCall: (call) => recordCall(deps, invoice, call) });
+    result = await extractInvoices(
+      models,
+      { parts, pageCount },
+      { fallbackOnRateLimit: deps.fallbackOnRateLimit ?? true, onCall: (call) => recordCall(deps, invoice, call) },
+    );
   } catch (err) {
     if (err instanceof ProviderConfigError) return pauseExtract(deps, job, token, err);
     throw err;

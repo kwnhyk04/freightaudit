@@ -1,0 +1,66 @@
+{
+  "id": "g004",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/g004.pdf",
+  "sha256": "057e297b80268fc4dded40da64dcd3c4c67a3244894fcb351cbf108d7cebae8b",
+  "bytes": 44106,
+  "shipments": [
+    "1021911873"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "76317426",
+      "invoice_date": "2026-03-15",
+      "due_date": "2026-04-14",
+      "pro_number": "1021911873",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Corkery - Christiansen",
+        "address": "74500 Bogisich Mews, Hemet, TN 19796"
+      },
+      "shipper": {
+        "name": "Hartmann LLC",
+        "address": "927 Bath Road, West Merl, OK 93848"
+      },
+      "consignee": {
+        "name": "Hansen - Mohr",
+        "address": "7202 Jacobs Cape, Kevenchester, MA 74506"
+      },
+      "weight_lb": 11862,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 467118,
+          "expected_cents": 467118
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 118835,
+          "expected_cents": 118835
+        }
+      ],
+      "total_cents": 585953,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "id": "g035",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/g035.pdf",
+  "sha256": "5603d1903e3fdcd98b943d12068966aeff625ae4100986d5b0ae91ff101fd88b",
+  "bytes": 32664,
+  "shipments": [
+    "1001591719"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "62674648",
+      "invoice_date": "2025-01-17",
+      "due_date": "2025-02-16",
+      "pro_number": "1001591719",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Jenkins Group",
+        "address": "8258 Brekke Skyway, West Wilberworth, IN 07417"
+      },
+      "shipper": {
+        "name": "Champlin - Pouros-Schmitt",
+        "address": "4245 D'Amore Walk, South Lavonneport, MA 76826"
+      },
+      "consignee": {
+        "name": "Haley Group",
+        "address": "16697 Hermann Oval, Marysville, VA 01458"
+      },
+      "weight_lb": 5732,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 278180,
+          "expected_cents": 278180
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 85373,
+          "expected_cents": 85373
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 2539,
+          "expected_cents": 2539
+        },
+        {
+          "line_number": 4,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 9778,
+          "expected_cents": 9778
+        }
+      ],
+      "total_cents": 375870,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

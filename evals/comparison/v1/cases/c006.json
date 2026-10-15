@@ -1,0 +1,73 @@
+{
+  "id": "c006",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/c006.pdf",
+  "sha256": "61f96f6f11243a0eb05d82e1d672c56485363c76cca77f533d0d4452130e61c1",
+  "bytes": 729679,
+  "shipments": [
+    "1020312235"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "89112303",
+      "invoice_date": "2025-09-25",
+      "due_date": "2025-10-25",
+      "pro_number": "1020312235",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Keebler Inc",
+        "address": "2569 Trantow Ridge, North Hailie, PA 55787"
+      },
+      "shipper": {
+        "name": "Leannon, Davis and Oberbrunner",
+        "address": "136 Ferry Port, Marcelohaven, RI 03442"
+      },
+      "consignee": {
+        "name": "Larson-Graham - Toy",
+        "address": "87353 Hamill Course, Federal Way, HI 84891"
+      },
+      "weight_lb": 10660,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 190364,
+          "expected_cents": 190364
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 58423,
+          "expected_cents": 58423
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11448,
+          "expected_cents": 11448
+        }
+      ],
+      "total_cents": 260235,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

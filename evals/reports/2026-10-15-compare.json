@@ -1,0 +1,343 @@
+{
+  "suite": "extraction",
+  "subset": "compare",
+  "date": "2026-10-15",
+  "durationMs": 50,
+  "stopped": null,
+  "runs": [
+    {
+      "label": "gemini/gemini-3.5-flash-lite",
+      "pins": "primary gemini/gemini-3.5-flash-lite, text groq/openai/gpt-oss-120b, fallback groq/qwen/qwen3.8-27b",
+      "promptHash": "19f0c19627c4",
+      "cases": 14,
+      "metrics": [
+        {
+          "metric": "header_accuracy_digital",
+          "n": 0
+        },
+        {
+          "metric": "header_accuracy_scanned",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        },
+        {
+          "metric": "line_f1_digital",
+          "n": 0
+        },
+        {
+          "metric": "line_f1_scanned",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        },
+        {
+          "metric": "arithmetic_consistency",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        },
+        {
+          "metric": "overcharge_precision",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        },
+        {
+          "metric": "overcharge_recall",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        },
+        {
+          "metric": "dollar_recovery",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        },
+        {
+          "metric": "false_flag_rate",
+          "value": 0,
+          "ci": [
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "metric": "escalation_rate",
+          "value": 0,
+          "ci": [
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "metric": "extraction_latency_p50_ms",
+          "value": 3063.5,
+          "ci": [
+            2793.5,
+            3541
+          ],
+          "n": 14
+        },
+        {
+          "metric": "extraction_latency_p95_ms",
+          "value": 5190.849999999999,
+          "ci": [
+            3416.7999999999997,
+            6576
+          ],
+          "n": 14
+        },
+        {
+          "metric": "e2e_latency_p95_ms",
+          "value": 6055.4,
+          "ci": [
+            4457,
+            7332
+          ],
+          "n": 14
+        },
+        {
+          "metric": "input_tokens_per_page_digital",
+          "n": 0
+        },
+        {
+          "metric": "output_tokens_per_page_digital",
+          "n": 0
+        },
+        {
+          "metric": "tokens_per_invoice_digital",
+          "n": 0
+        },
+        {
+          "metric": "tokens_per_invoice_scanned",
+          "value": 1627.857142857143,
+          "ci": [
+            1596.4964285714286,
+            1658.0714285714287
+          ],
+          "n": 14
+        },
+        {
+          "metric": "cost_per_invoice_digital_usd",
+          "n": 0
+        },
+        {
+          "metric": "cost_per_invoice_scanned_usd",
+          "value": 0.0011548571428571428,
+          "ci": [
+            0.0010764910714285713,
+            0.0012303589285714285
+          ],
+          "n": 14
+        },
+        {
+          "metric": "free_tier_cost_per_invoice_usd",
+          "value": 0,
+          "ci": [
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "metric": "outcome_accuracy",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        }
+      ]
+    },
+    {
+      "label": "gemini/gemini-3.8-flash",
+      "pins": "primary gemini/gemini-3.8-flash, text groq/openai/gpt-oss-120b, fallback groq/qwen/qwen3.8-27b",
+      "promptHash": "19f0c19627c4",
+      "cases": 14,
+      "metrics": [
+        {
+          "metric": "header_accuracy_digital",
+          "n": 0
+        },
+        {
+          "metric": "header_accuracy_scanned",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        },
+        {
+          "metric": "line_f1_digital",
+          "n": 0
+        },
+        {
+          "metric": "line_f1_scanned",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        },
+        {
+          "metric": "arithmetic_consistency",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        },
+        {
+          "metric": "overcharge_precision",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        },
+        {
+          "metric": "overcharge_recall",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        },
+        {
+          "metric": "dollar_recovery",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        },
+        {
+          "metric": "false_flag_rate",
+          "value": 0,
+          "ci": [
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "metric": "escalation_rate",
+          "value": 0,
+          "ci": [
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "metric": "extraction_latency_p50_ms",
+          "value": 8491.5,
+          "ci": [
+            6729,
+            20865
+          ],
+          "n": 14
+        },
+        {
+          "metric": "extraction_latency_p95_ms",
+          "value": 70305.39999999998,
+          "ci": [
+            20865,
+            100793
+          ],
+          "n": 14
+        },
+        {
+          "metric": "e2e_latency_p95_ms",
+          "value": 121353.89999999998,
+          "ci": [
+            61587,
+            157165
+          ],
+          "n": 14
+        },
+        {
+          "metric": "input_tokens_per_page_digital",
+          "n": 0
+        },
+        {
+          "metric": "output_tokens_per_page_digital",
+          "n": 0
+        },
+        {
+          "metric": "tokens_per_invoice_digital",
+          "n": 0
+        },
+        {
+          "metric": "tokens_per_invoice_scanned",
+          "value": 1963.7857142857142,
+          "ci": [
+            1892.5678571428573,
+            2034.5714285714287
+          ],
+          "n": 14
+        },
+        {
+          "metric": "cost_per_invoice_digital_usd",
+          "n": 0
+        },
+        {
+          "metric": "cost_per_invoice_scanned_usd",
+          "value": 0.003389285714285714,
+          "ci": [
+            0.0031222696428571425,
+            0.003654714285714286
+          ],
+          "n": 14
+        },
+        {
+          "metric": "free_tier_cost_per_invoice_usd",
+          "value": 0,
+          "ci": [
+            0,
+            0
+          ],
+          "n": 14
+        },
+        {
+          "metric": "outcome_accuracy",
+          "value": 1,
+          "ci": [
+            1,
+            1
+          ],
+          "n": 14
+        }
+      ]
+    }
+  ]
+}

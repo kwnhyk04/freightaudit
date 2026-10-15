@@ -1,0 +1,87 @@
+{
+  "id": "g011",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/g011.pdf",
+  "sha256": "71d157c6011c9fa2ebe232465fca8a4408c69258c9a0cf5a0d3894011048d277",
+  "bytes": 31544,
+  "shipments": [
+    "1001488772"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "21283039",
+      "invoice_date": "2025-01-30",
+      "due_date": "2025-03-01",
+      "pro_number": "1001488772",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Yost and Sons",
+        "address": "10159 Quitzon Ridges, West Fordstad, WY 48475"
+      },
+      "shipper": {
+        "name": "Murphy, Botsford and Feil",
+        "address": "73519 Vine Street, Adantown, NJ 45047"
+      },
+      "consignee": {
+        "name": "Schulist LLC",
+        "address": "36842 S 1st Avenue, Lucillebury, WY 44598"
+      },
+      "weight_lb": 9422,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 333490,
+          "expected_cents": 333490
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 84840,
+          "expected_cents": 84840
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10687,
+          "expected_cents": 10687
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12946,
+          "expected_cents": 12946
+        },
+        {
+          "line_number": 5,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11784,
+          "expected_cents": 11784
+        }
+      ],
+      "total_cents": 453747,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

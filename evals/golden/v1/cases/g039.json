@@ -1,0 +1,73 @@
+{
+  "id": "g039",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g039.pdf",
+  "sha256": "925da44b8ee774228de30bb3b5b60181fb8edd84abec191af9fe6b23e70a979f",
+  "bytes": 27553,
+  "shipments": [
+    "1023519430"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "53125451",
+      "invoice_date": "2025-12-31",
+      "due_date": "2026-01-30",
+      "pro_number": "1023519430",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Kulas and Sons",
+        "address": "60609 Tennyson Road, Stokesworth, MO 95542"
+      },
+      "shipper": {
+        "name": "Hoeger - Heller-Klein",
+        "address": "17571 Anderson Courts, North Caesar, GA 50892"
+      },
+      "consignee": {
+        "name": "Jerde Inc",
+        "address": "64165 Cedar Avenue, Powlowskiport, WV 16393"
+      },
+      "weight_lb": 4265,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 259540,
+          "expected_cents": 259540
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 63458,
+          "expected_cents": 63458
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3775,
+          "expected_cents": 3775
+        }
+      ],
+      "total_cents": 326773,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

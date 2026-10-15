@@ -1,0 +1,73 @@
+{
+  "id": "g014",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g014.pdf",
+  "sha256": "df9cbdb73e21c4ee8fa3e2b70cfa538e4b1b91638cd84c01e1e69d8b0b8d98aa",
+  "bytes": 20065,
+  "shipments": [
+    "1025095311"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "29314303",
+      "invoice_date": "2025-04-30",
+      "due_date": "2025-05-30",
+      "pro_number": "1025095311",
+      "currency": "USD",
+      "bill_to": {
+        "name": "King and Sons",
+        "address": "3247 Greyson Shoals, New Alysha, TX 18373"
+      },
+      "shipper": {
+        "name": "Kunde, Welch and Walker",
+        "address": "3769 Bret Alley, Santa Clara, SC 53123"
+      },
+      "consignee": {
+        "name": "Auer, Watsica and Konopelski",
+        "address": "1871 West Orchard, Charitytown, PA 71813"
+      },
+      "weight_lb": 6549,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 325490,
+          "expected_cents": 325490
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 82805,
+          "expected_cents": 82805
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10687,
+          "expected_cents": 10687
+        }
+      ],
+      "total_cents": 418982,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

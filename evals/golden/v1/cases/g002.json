@@ -1,0 +1,66 @@
+{
+  "id": "g002",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g002.pdf",
+  "sha256": "dfcfa08afacf320371a6e781e4867fdc73d9779f7393828f0b91e1dd97dca1c8",
+  "bytes": 20571,
+  "shipments": [
+    "1003809039"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "00926851",
+      "invoice_date": "2025-02-13",
+      "due_date": "2025-03-15",
+      "pro_number": "1003809039",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Russel, Heaney and Treutel",
+        "address": "38534 Harrison Avenue, Blaine, RI 81417"
+      },
+      "shipper": {
+        "name": "Effertz Group",
+        "address": "68649 Walnut Close, Melodyland, KS 55613"
+      },
+      "consignee": {
+        "name": "Walker and Sons",
+        "address": "2666 Leannon Drives, Cleveland, CA 46425"
+      },
+      "weight_lb": 3544,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 192580,
+          "expected_cents": 192580
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 35281,
+          "expected_cents": 35281
+        }
+      ],
+      "total_cents": 227861,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

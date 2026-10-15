@@ -4,20 +4,35 @@
   "type": "module",
   "scripts": {
     "fixtures": "node fixtures/generate-invoices.ts",
+    "golden": "node golden/build.ts",
+    "eval": "node --env-file-if-exists=../.env harness/run.ts",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
     "@faker-js/faker": "catalog:",
+    "@freightaudit/config": "workspace:*",
     "@freightaudit/db": "workspace:*",
+    "@freightaudit/domain": "workspace:*",
+    "@freightaudit/llm": "workspace:*",
+    "@freightaudit/pipeline": "workspace:*",
+    "@freightaudit/worker": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "ioredis": "catalog:",
+    "pdf-lib": "catalog:",
+    "pg": "catalog:",
     "playwright": "^1.64.0",
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "testcontainers": "^12.2.1",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@freightaudit/config": "workspace:*",
     "@types/jest": "catalog:",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "eslint": "catalog:",
+    "jest": "catalog:",
     "typescript": "catalog:"
   }
 }

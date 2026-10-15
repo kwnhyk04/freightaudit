@@ -1,0 +1,94 @@
+{
+  "id": "g068",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g068.pdf",
+  "sha256": "6bf6b561bf2fbc6d5c14a0b4e3333b01dab03deadae9f246c97879d08934b0f0",
+  "bytes": 718143,
+  "shipments": [
+    "1017097121"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "95469703",
+      "invoice_date": "2025-11-18",
+      "due_date": "2025-12-18",
+      "pro_number": "1017097121",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Shanahan LLC",
+        "address": "387 Schamberger Meadows, Lake Alexzander, MI 58957"
+      },
+      "shipper": {
+        "name": "Hilpert LLC",
+        "address": "78348 Farm Close, Lake Ellis, VT 69792"
+      },
+      "consignee": {
+        "name": "Koss, Steuber and Hilll",
+        "address": "8391 Hane Stravenue, Bergeberg, MO 08796"
+      },
+      "weight_lb": 9606,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 406800,
+          "expected_cents": 406800
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 124847,
+          "expected_cents": 124847
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 2539,
+          "expected_cents": 2539
+        },
+        {
+          "line_number": 4,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 2539,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 536725,
+      "overcharges": [
+        {
+          "line_number": 4,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 2539
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 4,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 2539
+          }
+        ]
+      }
+    }
+  ]
+}

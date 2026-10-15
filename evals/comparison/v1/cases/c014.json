@@ -1,0 +1,101 @@
+{
+  "id": "c014",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/c014.pdf",
+  "sha256": "8ff480da9b981c7eef2dd1c6f522c1238cd56b54b20e3589137633921e6f8cf4",
+  "bytes": 718944,
+  "shipments": [
+    "1000839414"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "11000004",
+      "invoice_date": "2025-04-16",
+      "due_date": "2025-05-16",
+      "pro_number": "1000839414",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Bosco and Sons",
+        "address": "72920 Valentine Flat, Port Royalmouth, FL 41764"
+      },
+      "shipper": {
+        "name": "Huel, Schroeder and Kuvalis-Jenkins",
+        "address": "7967 Pound Lane, Kent, MS 31292"
+      },
+      "consignee": {
+        "name": "Jacobs - Block",
+        "address": "35468 Dare-Nader Drives, Silasville, RI 35395"
+      },
+      "weight_lb": 9402,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 511540,
+          "expected_cents": 511540
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 154025,
+          "expected_cents": 154025
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19131,
+          "expected_cents": 15554
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 11565,
+          "expected_cents": 11565
+        },
+        {
+          "line_number": 5,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14999,
+          "expected_cents": 14999
+        }
+      ],
+      "total_cents": 711260,
+      "overcharges": [
+        {
+          "line_number": 3,
+          "type": "rate_mismatch",
+          "expected_cents": 15554,
+          "billed_cents": 19131
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 3,
+            "type": "rate_mismatch",
+            "expected_cents": 15554,
+            "billed_cents": 19131
+          }
+        ]
+      }
+    }
+  ]
+}

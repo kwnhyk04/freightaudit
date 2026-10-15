@@ -1,0 +1,967 @@
+{
+  "suite": "extraction",
+  "subset": "dev",
+  "date": "2026-10-15",
+  "durationMs": 35,
+  "stopped": null,
+  "golden": "v1",
+  "promptHash": "19f0c19627c4",
+  "pins": "primary gemini/gemini-3.5-flash-lite, text groq/openai/gpt-oss-120b, fallback groq/qwen/qwen3.8-27b",
+  "cases": 20,
+  "computed": 0,
+  "metrics": [
+    {
+      "metric": "header_accuracy_digital",
+      "value": 1,
+      "ci": [
+        1,
+        1
+      ],
+      "n": 16
+    },
+    {
+      "metric": "header_accuracy_scanned",
+      "value": 1,
+      "ci": [
+        1,
+        1
+      ],
+      "n": 4
+    },
+    {
+      "metric": "line_f1_digital",
+      "value": 1,
+      "ci": [
+        1,
+        1
+      ],
+      "n": 16
+    },
+    {
+      "metric": "line_f1_scanned",
+      "value": 1,
+      "ci": [
+        1,
+        1
+      ],
+      "n": 4
+    },
+    {
+      "metric": "arithmetic_consistency",
+      "value": 1,
+      "ci": [
+        1,
+        1
+      ],
+      "n": 20
+    },
+    {
+      "metric": "overcharge_precision",
+      "value": 1,
+      "ci": [
+        1,
+        1
+      ],
+      "n": 20
+    },
+    {
+      "metric": "overcharge_recall",
+      "value": 1,
+      "ci": [
+        1,
+        1
+      ],
+      "n": 20
+    },
+    {
+      "metric": "dollar_recovery",
+      "value": 1,
+      "ci": [
+        1,
+        1
+      ],
+      "n": 20
+    },
+    {
+      "metric": "false_flag_rate",
+      "value": 0,
+      "ci": [
+        0,
+        0
+      ],
+      "n": 20
+    },
+    {
+      "metric": "escalation_rate",
+      "value": 0,
+      "ci": [
+        0,
+        0
+      ],
+      "n": 20
+    },
+    {
+      "metric": "extraction_latency_p50_ms",
+      "value": 1969.5,
+      "ci": [
+        1843.5,
+        2903.5
+      ],
+      "n": 20
+    },
+    {
+      "metric": "extraction_latency_p95_ms",
+      "value": 4138.150000000003,
+      "ci": [
+        3268,
+        8473
+      ],
+      "n": 20
+    },
+    {
+      "metric": "e2e_latency_p95_ms",
+      "value": 124058.45000000003,
+      "ci": [
+        19319.050000000105,
+        160813
+      ],
+      "n": 20
+    },
+    {
+      "metric": "input_tokens_per_page_digital",
+      "value": 880.8235294117648,
+      "ci": [
+        769.6203125,
+        1022.6305555555555
+      ],
+      "n": 16
+    },
+    {
+      "metric": "output_tokens_per_page_digital",
+      "value": 668.4705882352941,
+      "ci": [
+        535.7453125,
+        835.8655921052631
+      ],
+      "n": 16
+    },
+    {
+      "metric": "tokens_per_invoice_digital",
+      "value": 1646.125,
+      "ci": [
+        1307.7296875,
+        2190.0671875
+      ],
+      "n": 16
+    },
+    {
+      "metric": "tokens_per_invoice_scanned",
+      "value": 1592,
+      "ci": [
+        1521,
+        1683.5
+      ],
+      "n": 4
+    },
+    {
+      "metric": "cost_per_invoice_digital_usd",
+      "value": 0.0005665624999999999,
+      "ci": [
+        0.00043724687500000005,
+        0.0007736968749999999
+      ],
+      "n": 16
+    },
+    {
+      "metric": "cost_per_invoice_scanned_usd",
+      "value": 0.00106525,
+      "ci": [
+        0.0008875,
+        0.0012942499999999998
+      ],
+      "n": 4
+    },
+    {
+      "metric": "free_tier_cost_per_invoice_usd",
+      "value": 0,
+      "ci": [
+        0,
+        0
+      ],
+      "n": 20
+    },
+    {
+      "metric": "outcome_accuracy",
+      "value": 1,
+      "ci": [
+        1,
+        1
+      ],
+      "n": 20
+    }
+  ],
+  "throughputPerHour": 364.49236844103575,
+  "floors": {},
+  "scores": [
+    {
+      "id": "g001",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1642,
+      "e2eMs": 122124,
+      "inputTokens": 772,
+      "outputTokens": 389,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 349
+    },
+    {
+      "id": "g002",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1880,
+      "e2eMs": 2114,
+      "inputTokens": 762,
+      "outputTokens": 577,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 461
+    },
+    {
+      "id": "g003",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1413,
+      "e2eMs": 160813,
+      "inputTokens": 776,
+      "outputTokens": 470,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 398
+    },
+    {
+      "id": "g004",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2333,
+      "e2eMs": 63114,
+      "inputTokens": 764,
+      "outputTokens": 576,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 460
+    },
+    {
+      "id": "g005",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1752,
+      "e2eMs": 1837,
+      "inputTokens": 733,
+      "outputTokens": 558,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 445
+    },
+    {
+      "id": "g006",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1692,
+      "e2eMs": 1836,
+      "inputTokens": 792,
+      "outputTokens": 608,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 484
+    },
+    {
+      "id": "g007",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1862,
+      "e2eMs": 5535,
+      "inputTokens": 756,
+      "outputTokens": 577,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 460
+    },
+    {
+      "id": "g008",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1611,
+      "e2eMs": 9726,
+      "inputTokens": 792,
+      "outputTokens": 546,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 446
+    },
+    {
+      "id": "g047",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2964,
+      "e2eMs": 3392,
+      "inputTokens": 1325,
+      "outputTokens": 396,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1388
+    },
+    {
+      "id": "g048",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2391,
+      "e2eMs": 2884,
+      "inputTokens": 1325,
+      "outputTokens": 246,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1013
+    },
+    {
+      "id": "g054",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 10323,
+        "planted": 10323,
+        "cleanLines": 1
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1908,
+      "e2eMs": 4177,
+      "inputTokens": 795,
+      "outputTokens": 605,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 482
+    },
+    {
+      "id": "g055",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 12940,
+        "planted": 12940,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3508,
+      "e2eMs": 11872,
+      "inputTokens": 786,
+      "outputTokens": 766,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 578
+    },
+    {
+      "id": "g066",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 80154,
+        "planted": 80154,
+        "cleanLines": 1
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3910,
+      "e2eMs": 4424,
+      "inputTokens": 1325,
+      "outputTokens": 247,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1015
+    },
+    {
+      "id": "g069",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 731456,
+        "planted": 731456,
+        "cleanLines": 0
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2031,
+      "e2eMs": 5737,
+      "inputTokens": 780,
+      "outputTokens": 444,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 383
+    },
+    {
+      "id": "g074",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1825,
+      "e2eMs": 47949,
+      "inputTokens": 791,
+      "outputTokens": 539,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 442
+    },
+    {
+      "id": "g081",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 1
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1883,
+      "e2eMs": 9736,
+      "inputTokens": 765,
+      "outputTokens": 500,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 415
+    },
+    {
+      "id": "g083",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 12,
+        "total": 12
+      },
+      "lines": {
+        "tp": 7,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 2,
+        "total": 2
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 7
+      },
+      "outcomes": {
+        "ok": 2,
+        "total": 2
+      },
+      "escalated": 0,
+      "latencyMs": 8473,
+      "e2eMs": 113765,
+      "inputTokens": 2495,
+      "outputTokens": 2600,
+      "calls": 3,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1935
+    },
+    {
+      "id": "g085",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2843,
+      "e2eMs": 3159,
+      "inputTokens": 1325,
+      "outputTokens": 179,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 845
+    },
+    {
+      "id": "g087",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3802,
+      "e2eMs": 3930,
+      "inputTokens": 764,
+      "outputTokens": 576,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 460
+    },
+    {
+      "id": "g089",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3268,
+      "e2eMs": 3413,
+      "inputTokens": 1651,
+      "outputTokens": 1033,
+      "calls": 2,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 867
+    }
+  ]
+}

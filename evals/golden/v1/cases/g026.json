@@ -1,0 +1,73 @@
+{
+  "id": "g026",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g026.pdf",
+  "sha256": "02064f56b99e99be4e78466a86fff401c68bbbc95696e54c341c2facf3aeb3cf",
+  "bytes": 19379,
+  "shipments": [
+    "1003405170"
+  ],
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "25247729",
+      "invoice_date": "2026-04-28",
+      "due_date": "2026-05-28",
+      "pro_number": "1003405170",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Moen LLC",
+        "address": "5185 Teagan Haven, New Charleyburgh, MA 37412"
+      },
+      "shipper": {
+        "name": "Mann LLC",
+        "address": "992 Tristin Terrace, Fort Janieton, NV 34686"
+      },
+      "consignee": {
+        "name": "Carter LLC",
+        "address": "16818 W Monroe Street, Fort Alyce, AZ 74216"
+      },
+      "weight_lb": 11109,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 232180,
+          "expected_cents": 232180
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 49710,
+          "expected_cents": 49710
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 5037,
+          "expected_cents": 5037
+        }
+      ],
+      "total_cents": 286927,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

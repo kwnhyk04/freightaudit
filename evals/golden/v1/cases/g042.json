@@ -1,0 +1,80 @@
+{
+  "id": "g042",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/g042.pdf",
+  "sha256": "6f3882a911e608d83b0cd5432a26ee6f83c6e52ef73a5bf33eeb6ec73e847ce5",
+  "bytes": 67801,
+  "shipments": [
+    "1007277561"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "25345218",
+      "invoice_date": "2025-10-02",
+      "due_date": "2025-11-01",
+      "pro_number": "1007277561",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Kuphal LLC",
+        "address": "7128 Chapel Street, Estherville, OK 51081"
+      },
+      "shipper": {
+        "name": "Halvorson Group",
+        "address": "24620 McKenzie-Kovacek Mountains, Sioux City, KY 22575"
+      },
+      "consignee": {
+        "name": "Green - Towne",
+        "address": "568 Ernser Hills, Raleigh, MA 23217"
+      },
+      "weight_lb": 5310,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 196936,
+          "expected_cents": 196936
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 50101,
+          "expected_cents": 50101
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 19759
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11784,
+          "expected_cents": 11784
+        }
+      ],
+      "total_cents": 278580,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

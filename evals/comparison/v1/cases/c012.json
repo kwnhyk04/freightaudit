@@ -1,0 +1,101 @@
+{
+  "id": "c012",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/c012.pdf",
+  "sha256": "0f136fa7b6318df2749fb6b2728751ca9011135d9785d257cf5509f824bb0bd4",
+  "bytes": 732551,
+  "shipments": [
+    "1020011313"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "50917816",
+      "invoice_date": "2026-05-05",
+      "due_date": "2026-06-04",
+      "pro_number": "1020011313",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Morissette LLC",
+        "address": "365 Keira Crescent, New Myrna, UT 35261"
+      },
+      "shipper": {
+        "name": "Ullrich - Blick",
+        "address": "85936 Maximillia Motorway, Decatur, UT 03673"
+      },
+      "consignee": {
+        "name": "Hamill, Rohan-Bode and Goyette-Wisozk",
+        "address": "29689 Elouise Dam, West Paige, OH 02394"
+      },
+      "weight_lb": 764,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 264720,
+          "expected_cents": 264720
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 81243,
+          "expected_cents": 81243
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 10098,
+          "expected_cents": 10098
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11823,
+          "expected_cents": 11823
+        },
+        {
+          "line_number": 5,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 12855,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 380739,
+      "overcharges": [
+        {
+          "line_number": 5,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 12855
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 5,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 12855
+          }
+        ]
+      }
+    }
+  ]
+}

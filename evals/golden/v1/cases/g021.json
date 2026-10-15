@@ -1,0 +1,80 @@
+{
+  "id": "g021",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g021.pdf",
+  "sha256": "51782557ca4e5e00e41d6223aaf73fb03ad0e30a1a948b92e78d7273bd18cb55",
+  "bytes": 27348,
+  "shipments": [
+    "1012844618"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "04227084",
+      "invoice_date": "2025-12-16",
+      "due_date": "2026-01-15",
+      "pro_number": "1012844618",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Borer and Sons",
+        "address": "529 Welch Alley, Fort Lavonne, UT 49609"
+      },
+      "shipper": {
+        "name": "Gutmann Group",
+        "address": "58592 Eliane Skyway, Westminster, ID 83186"
+      },
+      "consignee": {
+        "name": "Rippin - Becker-Hermann",
+        "address": "5378 The Grange, Miami, TN 33342"
+      },
+      "weight_lb": 3268,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 109640,
+          "expected_cents": 109640
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 33013,
+          "expected_cents": 33013
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 5989,
+          "expected_cents": 5989
+        },
+        {
+          "line_number": 4,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 15554,
+          "expected_cents": 15554
+        }
+      ],
+      "total_cents": 164196,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "id": "g006",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/g006.pdf",
+  "sha256": "d886fd7afb74c503b95a71912701faa58088ad357bd41fa3d56ced758e03d686",
+  "bytes": 65418,
+  "shipments": [
+    "1006303524"
+  ],
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "45230399",
+      "invoice_date": "2025-01-15",
+      "due_date": "2025-02-14",
+      "pro_number": "1006303524",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Abshire and Sons",
+        "address": "119 Kirlin Radial, Lindstad, MA 19846"
+      },
+      "shipper": {
+        "name": "Larkin - Hilpert",
+        "address": "233 Schimmel Neck, Port Karine, IN 06549"
+      },
+      "consignee": {
+        "name": "Marks and Sons",
+        "address": "7304 Wisoky Ville, West Jayme, KY 56270"
+      },
+      "weight_lb": 8896,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 186535,
+          "expected_cents": 186535
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 39937,
+          "expected_cents": 39937
+        }
+      ],
+      "total_cents": 226472,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

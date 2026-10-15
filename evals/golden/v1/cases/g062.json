@@ -1,0 +1,94 @@
+{
+  "id": "g062",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g062.pdf",
+  "sha256": "d79d31e11d9a70ebeb6bb1dcbc3578aa756dfe0eef585574ec18e9d690b49305",
+  "bytes": 19688,
+  "shipments": [
+    "1039587081"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "57756844",
+      "invoice_date": "2025-06-04",
+      "due_date": "2025-07-04",
+      "pro_number": "1039587081",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Toy, Rosenbaum and Metz",
+        "address": "3054 Oswaldo Union, Edwinville, MI 45575"
+      },
+      "shipper": {
+        "name": "Witting - Bosco-Feeney",
+        "address": "78495 Hermann Union, Weymouth Town, VA 18494"
+      },
+      "consignee": {
+        "name": "Blanda and Sons",
+        "address": "276 Prohaska Mills, Dickinsonberg, ND 94268"
+      },
+      "weight_lb": 6923,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 433970,
+          "expected_cents": 433970
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 110402,
+          "expected_cents": 110402
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12946,
+          "expected_cents": 12946
+        },
+        {
+          "line_number": 4,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 110402,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 667720,
+      "overcharges": [
+        {
+          "line_number": 4,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 110402
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 4,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 110402
+          }
+        ]
+      }
+    }
+  ]
+}

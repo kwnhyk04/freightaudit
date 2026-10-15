@@ -1,0 +1,87 @@
+{
+  "id": "g051",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g051.pdf",
+  "sha256": "607fb0d79ed8c654c0c0e8685aec88e075332792bb42a967d5c7995507266690",
+  "bytes": 674429,
+  "shipments": [
+    "1006477742"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "26886010",
+      "invoice_date": "2026-06-23",
+      "due_date": "2026-07-23",
+      "pro_number": "1006477742",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Heidenreich Group",
+        "address": "5449 Joshuah Viaduct, South Elise, FL 55066"
+      },
+      "shipper": {
+        "name": "Lehner - Monahan",
+        "address": "704 Broad Lane, Washington, AR 93844"
+      },
+      "consignee": {
+        "name": "Medhurst Group",
+        "address": "4431 Vella Corners, Redlands, NY 68156"
+      },
+      "weight_lb": 3158,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 588450,
+          "expected_cents": 588450
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 180595,
+          "expected_cents": 180595
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 2622,
+          "expected_cents": 2622
+        },
+        {
+          "line_number": 4,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 10098,
+          "expected_cents": 10098
+        },
+        {
+          "line_number": 5,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10165,
+          "expected_cents": 10165
+        }
+      ],
+      "total_cents": 791930,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

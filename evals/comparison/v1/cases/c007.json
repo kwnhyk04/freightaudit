@@ -1,0 +1,73 @@
+{
+  "id": "c007",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/c007.pdf",
+  "sha256": "b16df90079d69788467f489aa6433e8cc6fa8324111d82fff80065fa476df5e3",
+  "bytes": 720852,
+  "shipments": [
+    "1026116862"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "71421093",
+      "invoice_date": "2025-04-27",
+      "due_date": "2025-05-27",
+      "pro_number": "1026116862",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Abshire LLC",
+        "address": "41700 Richmond Road, Eleazarland, MA 71086"
+      },
+      "shipper": {
+        "name": "Hermiston - Cassin",
+        "address": "41987 Hillside, Fort Dennishaven, KY 12761"
+      },
+      "consignee": {
+        "name": "Baumbach - Koepp",
+        "address": "75671 D'Amore Turnpike, Napa, NV 96436"
+      },
+      "weight_lb": 6303,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 123680,
+          "expected_cents": 123680
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 37240,
+          "expected_cents": 37240
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14999,
+          "expected_cents": 14999
+        }
+      ],
+      "total_cents": 175919,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -20,7 +20,7 @@
     "extract:resume": "turbo run extract:resume",
     "fixtures": "turbo run fixtures --",
     "codegen": "turbo run codegen",
-    "eval": "turbo run eval",
+    "eval": "turbo run eval --",
     "contracts:check": "turbo run contracts:check",
     "contracts:breaking": "turbo run contracts:breaking"
   },

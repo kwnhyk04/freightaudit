@@ -1,0 +1,80 @@
+{
+  "id": "g045",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g045.pdf",
+  "sha256": "d0dfcce9fa49788d6f4510cd5611b0b3b1e612f7d57ed5de73acceb2fa0aa8de",
+  "bytes": 27596,
+  "shipments": [
+    "1026774139"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "77820458",
+      "invoice_date": "2025-11-19",
+      "due_date": "2025-12-19",
+      "pro_number": "1026774139",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Batz LLC",
+        "address": "255 Jadyn Fall, Lake Bertramside, MD 34389"
+      },
+      "shipper": {
+        "name": "Waters - Goodwin",
+        "address": "153 Kolby Summit, New Laila, ND 57501"
+      },
+      "consignee": {
+        "name": "Keeling LLC",
+        "address": "76376 Predovic Highway, Seattle, NJ 22342"
+      },
+      "weight_lb": 6702,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 86108,
+          "expected_cents": 86108
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 21906,
+          "expected_cents": 21906
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10687,
+          "expected_cents": 10687
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12946,
+          "expected_cents": 12946
+        }
+      ],
+      "total_cents": 131647,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

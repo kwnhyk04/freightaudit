@@ -30,6 +30,8 @@ export type Deps = {
   models?: Models;
   // A page whose text layer has fewer non-space characters than this is read as an image.
   textMinChars: number;
+  // Evals pass false: a 429 then waits and retries instead of moving the first pass to the fallback model.
+  fallbackOnRateLimit?: boolean;
   tmsUrl: string;
   log: Logger;
 };

@@ -1,0 +1,81 @@
+{
+  "id": "g088",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "missing_pro",
+  "adversarial": true,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/g088.pdf",
+  "sha256": "28fec01d0bcd48e7d8f9bb996320878975261e5f37a237e82f0f4c3e93716830",
+  "bytes": 729829,
+  "shipments": [
+    "1000023757"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "18716612",
+      "invoice_date": "2025-08-04",
+      "due_date": "2025-09-03",
+      "pro_number": null,
+      "currency": "USD",
+      "bill_to": {
+        "name": "Lemke and Sons",
+        "address": "673 Pine Close, Mesa, HI 53648"
+      },
+      "shipper": {
+        "name": "Wyman, Harris and Lind",
+        "address": "56348 Alonzo Divide, Lefflertown, OK 17137"
+      },
+      "consignee": {
+        "name": "Dicki, Dickinson and Hoppe",
+        "address": "69055 N 9th Street, Amaraview, AZ 53519"
+      },
+      "weight_lb": 4899,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 355300,
+          "expected_cents": 355300
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 106981,
+          "expected_cents": 106981
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 11565,
+          "expected_cents": 11565
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14999,
+          "expected_cents": 14999
+        }
+      ],
+      "total_cents": 488845,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "needs_review",
+        "reason": "no_shipment_match",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "id": "g057",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g057.pdf",
+  "sha256": "43d4341b3b3cbca0fcaa2456f701f45d9326bd8a1df8d854fc8188ba2e48aa18",
+  "bytes": 27362,
+  "shipments": [
+    "1007467617"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "63825091",
+      "invoice_date": "2026-01-21",
+      "due_date": "2026-02-20",
+      "pro_number": "1007467617",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Mosciski - Rosenbaum",
+        "address": "849 King Shoals, Aliciastead, ID 16675"
+      },
+      "shipper": {
+        "name": "Nicolas, Goodwin-Douglas and Wolff",
+        "address": "6640 Rosenbaum Fall, East Retta, MD 57219"
+      },
+      "consignee": {
+        "name": "Prosacco Group",
+        "address": "53120 Mount Street, East Arelyfort, AK 28708"
+      },
+      "weight_lb": 10498,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 286725,
+          "expected_cents": 286725
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 108235,
+          "expected_cents": 87996
+        }
+      ],
+      "total_cents": 394960,
+      "overcharges": [
+        {
+          "line_number": 2,
+          "type": "rate_mismatch",
+          "expected_cents": 87996,
+          "billed_cents": 108235
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 2,
+            "type": "rate_mismatch",
+            "expected_cents": 87996,
+            "billed_cents": 108235
+          }
+        ]
+      }
+    }
+  ]
+}

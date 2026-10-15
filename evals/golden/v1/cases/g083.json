@@ -1,0 +1,135 @@
+{
+  "id": "g083",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "two_invoices",
+  "adversarial": true,
+  "layouts": [
+    "compact",
+    "boxed"
+  ],
+  "pages": 2,
+  "file": "cases/g083.pdf",
+  "sha256": "2e246f40601d1fe9d68dfc7b5b1cbf13776a726a0d99d3ae480f26b9cba3cf1a",
+  "bytes": 94409,
+  "shipments": [
+    "1002066859",
+    "1026520731"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "11051384",
+      "invoice_date": "2026-09-06",
+      "due_date": "2026-10-06",
+      "pro_number": "1002066859",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Rohan, O'Keefe and Von",
+        "address": "6598 E Main Street, Welchtown, WI 18232"
+      },
+      "shipper": {
+        "name": "Armstrong Group",
+        "address": "48825 Ferry Road, Alekville, NY 01301"
+      },
+      "consignee": {
+        "name": "Hoppe, Fadel and Senger",
+        "address": "9795 Wintheiser Glen, Davisborough, WA 16513"
+      },
+      "weight_lb": 10895,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 545910,
+          "expected_cents": 545910
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 138880,
+          "expected_cents": 138880
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 12441,
+          "expected_cents": 12441
+        }
+      ],
+      "total_cents": 697231,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    },
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "21472059",
+      "invoice_date": "2026-04-14",
+      "due_date": "2026-05-14",
+      "pro_number": "1026520731",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Powlowski-Reichel LLC",
+        "address": "786 Field Close, Port Desiree, SD 18615"
+      },
+      "shipper": {
+        "name": "Berge - Olson",
+        "address": "6367 Castle Street, Johnsview, MS 73306"
+      },
+      "consignee": {
+        "name": "Lind Inc",
+        "address": "6621 Godfrey Curve, Mohrhaven, AL 10704"
+      },
+      "weight_lb": 1068,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 482370,
+          "expected_cents": 482370
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 117939,
+          "expected_cents": 117939
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 11635,
+          "expected_cents": 11635
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 9745,
+          "expected_cents": 9745
+        }
+      ],
+      "total_cents": 621689,
+      "overcharges": [],
+      "first_page": 2,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "id": "c003",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/c003.pdf",
+  "sha256": "8cd2523bbd31d9770bb84fd8270e763a403297e9f95607d27494ac45b30e801c",
+  "bytes": 674379,
+  "shipments": [
+    "1011308332"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "40053990",
+      "invoice_date": "2026-06-04",
+      "due_date": "2026-07-04",
+      "pro_number": "1011308332",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Reynolds Inc",
+        "address": "51639 Borer-Schaefer Junction, Rubenberg, NM 73190"
+      },
+      "shipper": {
+        "name": "Wehner and Sons",
+        "address": "77460 Graham Valleys, Larkinmouth, AL 07674"
+      },
+      "consignee": {
+        "name": "Ritchie - Daniel",
+        "address": "64800 The Woodlands, Boganstad, MN 07918"
+      },
+      "weight_lb": 1238,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 457824,
+          "expected_cents": 457824
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 137851,
+          "expected_cents": 137851
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 12357,
+          "expected_cents": 12357
+        }
+      ],
+      "total_cents": 608032,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

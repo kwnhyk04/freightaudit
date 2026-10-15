@@ -1,5 +1,5 @@
 import { discrepancies, extractions, invoiceLines, invoices, rateCardBands, rateCards, rateCardVersions, shipments } from '@freightaudit/db';
-import { reconcileInvoice, versionInForce } from '@freightaudit/domain';
+import { currencyReview, reconcileInvoice, versionInForce } from '@freightaudit/domain';
 import { type ExtractedInvoice, PermanentError, TransientError } from '@freightaudit/llm';
 import type { InvoiceJob } from '@freightaudit/pipeline';
 import type { Job } from 'bullmq';
@@ -35,12 +35,22 @@ export async function reconcile({ db }: Pick<Deps, 'db'>, { data }: Pick<Job<Inv
   return db.transaction((tx) => check(tx, invoiceId));
 }
 
+// Sends the invoice to needs_review with the reason kept on its extraction, and writes nothing else.
+async function review(tx: Tx, invoiceId: string, reason: string) {
+  await tx.update(extractions).set({ reviewReason: reason }).where(eq(extractions.invoiceId, invoiceId));
+  await tx.update(invoices).set({ status: 'needs_review' }).where(eq(invoices.id, invoiceId));
+  return { invoiceId, status: 'needs_review' as const, reason };
+}
+
 async function check(tx: Tx, invoiceId: string) {
   const [invoice] = await tx.select().from(invoices).where(eq(invoices.id, invoiceId)).for('update');
   if (invoice?.status !== 'reconciling') return { invoiceId, skipped: invoice?.status };
-  const { tenantId, carrierId, proNumber } = invoice;
+  const { tenantId, carrierId, proNumber, currency } = invoice;
   const [extraction] = await tx.select({ result: extractions.result }).from(extractions).where(eq(extractions.invoiceId, invoiceId));
   if (!extraction) throw new PermanentError('invoice has no extraction');
+  // Rate cards are in USD, so an invoice in any other currency, or in none, cannot be priced.
+  const unsupported = currencyReview(currency);
+  if (unsupported) return review(tx, invoiceId, unsupported);
   // Locked, so reconciles of one shipment run one at a time and each sees the lines the others billed.
   const [shipment] =
     carrierId && proNumber
@@ -50,11 +60,8 @@ async function check(tx: Tx, invoiceId: string) {
           .where(and(eq(shipments.tenantId, tenantId), eq(shipments.carrierId, carrierId), eq(shipments.proNumber, proNumber)))
           .for('update')
       : [];
-  if (!shipment) {
-    // The carrier or PRO number read from the document matches no shipment, so the extraction cannot be trusted.
-    await tx.update(invoices).set({ status: 'needs_review' }).where(eq(invoices.id, invoiceId));
-    return { invoiceId, status: 'needs_review' as const };
-  }
+  // The carrier or PRO number read from the document matches no shipment, so the extraction cannot be trusted.
+  if (!shipment) return review(tx, invoiceId, 'no_shipment_match');
   const { miles, shippedOn } = shipment;
   if (miles === null) throw new PermanentError('shipment has no miles');
 

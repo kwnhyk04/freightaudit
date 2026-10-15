@@ -1,0 +1,73 @@
+{
+  "id": "g001",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/g001.pdf",
+  "sha256": "169025c00a7b27449256254a0b7d3c9321548433de508cba40263d29983fd914",
+  "bytes": 52394,
+  "shipments": [
+    "1020961593"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "63062301",
+      "invoice_date": "2026-07-20",
+      "due_date": "2026-08-19",
+      "pro_number": "1020961593",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Abshire - Hackett",
+        "address": "292 N Pearl Street, Middletown, NE 11933"
+      },
+      "shipper": {
+        "name": "Ritchie-Metz, Gerhold and Roberts",
+        "address": "439 Vandervort Mountain, Kerlukehaven, ME 79678"
+      },
+      "consignee": {
+        "name": "Jacobson, Rohan and Dibbert",
+        "address": "522 Mill Street, Fort Jaycee, MS 85724"
+      },
+      "weight_lb": 9996,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 379020,
+          "expected_cents": 379020
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 69436,
+          "expected_cents": 69436
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8587,
+          "expected_cents": 8587
+        }
+      ],
+      "total_cents": 457043,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

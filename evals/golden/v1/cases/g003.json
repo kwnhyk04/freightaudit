@@ -1,0 +1,73 @@
+{
+  "id": "g003",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g003.pdf",
+  "sha256": "edd75bfd2f134c1b1bcde6b59b28eafc835d105b772e8289fb0641498727e1b1",
+  "bytes": 27574,
+  "shipments": [
+    "1028872674"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "53704390",
+      "invoice_date": "2026-05-20",
+      "due_date": "2026-06-19",
+      "pro_number": "1028872674",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Bogan and Sons",
+        "address": "6244 Deborah Drives, Kaleland, AK 08104"
+      },
+      "shipper": {
+        "name": "Batz, Marquardt and Breitenberg",
+        "address": "1799 Park Avenue, Klockomouth, PA 23904"
+      },
+      "consignee": {
+        "name": "Friesen, MacGyver and Armstrong",
+        "address": "460 Warren Close, Neomaview, UT 68613"
+      },
+      "weight_lb": 410,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 202773,
+          "expected_cents": 202773
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 61055,
+          "expected_cents": 61055
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 16619,
+          "expected_cents": 16619
+        }
+      ],
+      "total_cents": 280447,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

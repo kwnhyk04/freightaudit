@@ -1,0 +1,73 @@
+{
+  "id": "c009",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/c009.pdf",
+  "sha256": "38b69d734e716ce6a325aeb1f49659ae399e05f724f8ee2e67926cb5972e99ae",
+  "bytes": 673631,
+  "shipments": [
+    "1013715708"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "64748984",
+      "invoice_date": "2026-05-16",
+      "due_date": "2026-06-15",
+      "pro_number": "1013715708",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Bednar, Schaefer and Bernier",
+        "address": "866 Walnut Close, Jazlynbury, CT 12462"
+      },
+      "shipper": {
+        "name": "Satterfield, Bergstrom-Abernathy and Herzog",
+        "address": "8459 Hill Road, South Dejahstad, RI 95445"
+      },
+      "consignee": {
+        "name": "Steuber-Dibbert, Tromp and Pagac",
+        "address": "146 Holly Close, Julesfort, ND 54867"
+      },
+      "weight_lb": 2885,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 23985,
+          "expected_cents": 23985
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 7222,
+          "expected_cents": 7222
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 16026,
+          "expected_cents": 16026
+        }
+      ],
+      "total_cents": 47233,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "id": "g059",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/g059.pdf",
+  "sha256": "abbe1b00591ca1fa75babc8aa2e4b57d66faa2253be6e31b4a658fecb2bf86d3",
+  "bytes": 33395,
+  "shipments": [
+    "1002423214"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "12538475",
+      "invoice_date": "2025-03-17",
+      "due_date": "2025-04-16",
+      "pro_number": "1002423214",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Goodwin, Krajcik and Wisoky",
+        "address": "89062 Adrien Oval, Mathewchester, ND 98043"
+      },
+      "shipper": {
+        "name": "Kemmer - Walker",
+        "address": "6834 Simonis Corner, South Brianastad, AL 36498"
+      },
+      "consignee": {
+        "name": "Veum and Sons",
+        "address": "92792 Garden Street, Elizabeth, WV 07542"
+      },
+      "weight_lb": 839,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 331730,
+          "expected_cents": 331730
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 84392,
+          "expected_cents": 84392
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 19759
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11784,
+          "expected_cents": 11784
+        },
+        {
+          "line_number": 5,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10687,
+          "expected_cents": 10687
+        },
+        {
+          "line_number": 6,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11784,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 470136,
+      "overcharges": [
+        {
+          "line_number": 6,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 11784
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 6,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 11784
+          }
+        ]
+      }
+    }
+  ]
+}

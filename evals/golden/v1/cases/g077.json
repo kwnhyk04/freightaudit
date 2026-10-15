@@ -1,0 +1,66 @@
+{
+  "id": "g077",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "long_digit_run",
+  "adversarial": false,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/g077.pdf",
+  "sha256": "1c56c5fc1230a40be12b998025ddf8697dc2677fed4cab343555ee354f0bcbd0",
+  "bytes": 714264,
+  "shipments": [
+    "1000000000"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "92800426",
+      "invoice_date": "2025-11-24",
+      "due_date": "2025-12-24",
+      "pro_number": "1000000000",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Howell Group",
+        "address": "404 Sadye Via, Fresno, IN 57910"
+      },
+      "shipper": {
+        "name": "Pagac, Volkman and Hagenes",
+        "address": "54812 Broad Street, South Santino, MN 94210"
+      },
+      "consignee": {
+        "name": "McKenzie Inc",
+        "address": "79119 Shawn Freeway, Fond du Lac, NC 02759"
+      },
+      "weight_lb": 1623,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 375604,
+          "expected_cents": 375604
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 91835,
+          "expected_cents": 91835
+        }
+      ],
+      "total_cents": 467439,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

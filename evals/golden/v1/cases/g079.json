@@ -1,0 +1,66 @@
+{
+  "id": "g079",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "packet_3_pages",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 3,
+  "file": "cases/g079.pdf",
+  "sha256": "d7a45a4c94b17db32e640aacb0dde4cdb2361870fe63c0cdbe76fc11f8494957",
+  "bytes": 2155688,
+  "shipments": [
+    "1001045308"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "71400428",
+      "invoice_date": "2025-03-31",
+      "due_date": "2025-04-30",
+      "pro_number": "1001045308",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Kuphal Group",
+        "address": "911 Rudy Route, Jaysonport, NC 56676"
+      },
+      "shipper": {
+        "name": "Flatley Group",
+        "address": "6933 Dessie Parkway, Kihnboro, VT 81002"
+      },
+      "consignee": {
+        "name": "Towne, Weissnat and Langworth",
+        "address": "259 Alvin Rue, Lake Elishaburgh, CT 97744"
+      },
+      "weight_lb": 2993,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 79926,
+          "expected_cents": 79926
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 24066,
+          "expected_cents": 24066
+        }
+      ],
+      "total_cents": 103992,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

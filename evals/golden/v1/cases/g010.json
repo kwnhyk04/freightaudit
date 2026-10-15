@@ -1,0 +1,73 @@
+{
+  "id": "g010",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/g010.pdf",
+  "sha256": "c13904698614bbdb09634bca759361f0940b10edb2f72cba6d06385f6a46550b",
+  "bytes": 45435,
+  "shipments": [
+    "1029387409"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "81691949",
+      "invoice_date": "2025-06-19",
+      "due_date": "2025-07-19",
+      "pro_number": "1029387409",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Gutmann, Braun and Connelly",
+        "address": "61019 High Road, Parkerfurt, IN 04858"
+      },
+      "shipper": {
+        "name": "Pacocha, Pfannerstill-Frami and Sauer",
+        "address": "464 Weber Views, Port Arvelboro, VA 67270"
+      },
+      "consignee": {
+        "name": "Senger Group",
+        "address": "4510 E Walnut Street, Yuma, HI 26995"
+      },
+      "weight_lb": 3713,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 103400,
+          "expected_cents": 103400
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 31134,
+          "expected_cents": 31134
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 15554,
+          "expected_cents": 15554
+        }
+      ],
+      "total_cents": 150088,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

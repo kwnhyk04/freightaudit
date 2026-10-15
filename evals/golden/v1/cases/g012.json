@@ -1,0 +1,73 @@
+{
+  "id": "g012",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/g012.pdf",
+  "sha256": "c05c22c71ae69767d66770c0bde0ac24ca0baf1227b84b5d224fb2cac94a911b",
+  "bytes": 66097,
+  "shipments": [
+    "1037567736"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "41429395",
+      "invoice_date": "2025-03-31",
+      "due_date": "2025-04-30",
+      "pro_number": "1037567736",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hirthe Group",
+        "address": "5721 Johnston Manor, Fort Keeganland, WI 16277"
+      },
+      "shipper": {
+        "name": "Block, Yundt and Paucek",
+        "address": "32420 William Street, West Renee, DE 17606"
+      },
+      "consignee": {
+        "name": "Schroeder - Jaskolski",
+        "address": "589 Rafael Estate, Springfield, IA 90155"
+      },
+      "weight_lb": 9255,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 324178,
+          "expected_cents": 324178
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 99490,
+          "expected_cents": 99490
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 2539,
+          "expected_cents": 2539
+        }
+      ],
+      "total_cents": 426207,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

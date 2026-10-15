@@ -1,0 +1,66 @@
+{
+  "id": "g028",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/g028.pdf",
+  "sha256": "841c6f1b9873f4d1d19352b848d8beaa7428249d1aa07c9228e6734a813e9ecf",
+  "bytes": 44281,
+  "shipments": [
+    "1023899542"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "99187458",
+      "invoice_date": "2025-03-04",
+      "due_date": "2025-04-03",
+      "pro_number": "1023899542",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Mayert Group",
+        "address": "760 Legros Island, Cassandreworth, NH 63092"
+      },
+      "shipper": {
+        "name": "Schroeder LLC",
+        "address": "11862 Gino Harbors, Lake Keshawn, MI 42845"
+      },
+      "consignee": {
+        "name": "Ratke - Hudson",
+        "address": "5313 Koelpin Drive, North Dashawn, IN 16016"
+      },
+      "weight_lb": 7023,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 560490,
+          "expected_cents": 560490
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 172014,
+          "expected_cents": 172014
+        }
+      ],
+      "total_cents": 732504,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

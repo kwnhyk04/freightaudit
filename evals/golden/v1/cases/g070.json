@@ -1,0 +1,130 @@
+{
+  "id": "g070",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "duplicate_invoice",
+  "adversarial": false,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/g070.pdf",
+  "sha256": "eff2c5d4512e2c8091331f444a801161b17f1198ead9798a8bb837ebb68dad94",
+  "bytes": 45814,
+  "shipments": [
+    "1008560439"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "11326872",
+      "invoice_date": "2026-05-17",
+      "due_date": "2026-06-16",
+      "pro_number": "1008560439",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Thompson - Heaney",
+        "address": "7535 Albion Street, South Coraview, GA 51009"
+      },
+      "shipper": {
+        "name": "Brekke - Wilderman",
+        "address": "864 Mayert Falls, Fort Baileehaven, AK 81871"
+      },
+      "consignee": {
+        "name": "Stokes Inc",
+        "address": "2383 Watery Lane, East Abelardoboro, NJ 71197"
+      },
+      "weight_lb": 3857,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 529050,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 198085,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11823,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 4,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 10098,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 749056,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 529050
+        },
+        {
+          "line_number": 2,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 198085
+        },
+        {
+          "line_number": 3,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 11823
+        },
+        {
+          "line_number": 4,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 10098
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 529050
+          },
+          {
+            "line_number": 2,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 198085
+          },
+          {
+            "line_number": 3,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 11823
+          },
+          {
+            "line_number": 4,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 10098
+          }
+        ]
+      }
+    }
+  ]
+}

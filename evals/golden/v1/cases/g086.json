@@ -1,0 +1,73 @@
+{
+  "id": "g086",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "handwritten",
+  "adversarial": true,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g086.pdf",
+  "sha256": "77c97902627d5e80566f4cd2222bae8e9de2bf0058d03e13eafedd263b2083ca",
+  "bytes": 717240,
+  "shipments": [
+    "1017611856"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "34183484",
+      "invoice_date": "2025-04-01",
+      "due_date": "2025-05-01",
+      "pro_number": "1017611856",
+      "currency": "USD",
+      "bill_to": {
+        "name": "D'Amore Inc",
+        "address": "431 Wellington Shoal, North Elmer, VA 52890"
+      },
+      "shipper": {
+        "name": "Volkman, Effertz and Ankunding",
+        "address": "1408 Monique Extension, Lake Janyborough, MN 79050"
+      },
+      "consignee": {
+        "name": "Watsica LLC",
+        "address": "712 Kovacek Ville, Ryleyberg, MO 33384"
+      },
+      "weight_lb": 4570,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 211660,
+          "expected_cents": 211660
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 38776,
+          "expected_cents": 38776
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8090,
+          "expected_cents": 8090
+        }
+      ],
+      "total_cents": 258526,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

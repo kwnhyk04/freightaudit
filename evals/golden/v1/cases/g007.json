@@ -1,0 +1,66 @@
+{
+  "id": "g007",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/g007.pdf",
+  "sha256": "c97278ecf4a96d5b77cd5a92ab9ed0e0da8b3722b0dad8b5911a134091f54e4a",
+  "bytes": 52166,
+  "shipments": [
+    "1026211890"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "33431394",
+      "invoice_date": "2025-11-05",
+      "due_date": "2025-12-05",
+      "pro_number": "1026211890",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Flatley-Parker LLC",
+        "address": "1605 Duke Street, Apple Valley, TX 42190"
+      },
+      "shipper": {
+        "name": "Little - Ferry",
+        "address": "47233 West Lane, Denton, AR 32578"
+      },
+      "consignee": {
+        "name": "Hahn, Altenwerth and Pouros",
+        "address": "382 Yundt Extensions, Cristfort, NH 24358"
+      },
+      "weight_lb": 6619,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 469060,
+          "expected_cents": 469060
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 141234,
+          "expected_cents": 141234
+        }
+      ],
+      "total_cents": 610294,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

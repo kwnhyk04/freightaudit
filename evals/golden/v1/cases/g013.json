@@ -1,0 +1,80 @@
+{
+  "id": "g013",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/g013.pdf",
+  "sha256": "b10b418f4394ab6d5ad8d3a16c01815831be975c9e607b3ac29d546c4df41f04",
+  "bytes": 52460,
+  "shipments": [
+    "1027605634"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "10596805",
+      "invoice_date": "2026-03-08",
+      "due_date": "2026-04-07",
+      "pro_number": "1027605634",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Paucek LLC",
+        "address": "516 Chaz Vista, Destinyfield, SD 95471"
+      },
+      "shipper": {
+        "name": "Johnson and Sons",
+        "address": "102 Central Avenue, Hermistonfield, ID 62781"
+      },
+      "consignee": {
+        "name": "Keebler, Rosenbaum and Schultz",
+        "address": "595 Kozey Lock, Somerville, MA 34527"
+      },
+      "weight_lb": 196,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 35424,
+          "expected_cents": 35424
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 10666,
+          "expected_cents": 10666
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 6399,
+          "expected_cents": 6399
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 12357,
+          "expected_cents": 12357
+        }
+      ],
+      "total_cents": 64846,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

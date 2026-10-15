@@ -1,0 +1,80 @@
+{
+  "id": "g008",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g008.pdf",
+  "sha256": "120f48731e7e1651abff0d993c1d169973ed26b163874cfce94705a8a3b5f633",
+  "bytes": 20448,
+  "shipments": [
+    "1028579671"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "24315324",
+      "invoice_date": "2025-09-16",
+      "due_date": "2025-10-16",
+      "pro_number": "1028579671",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Quigley - Schowalter",
+        "address": "268 Lehner Burg, Greenholtstad, CT 67111"
+      },
+      "shipper": {
+        "name": "Breitenberg, Shields and Bruen",
+        "address": "31239 Bruen River, Lake Devon, IN 90678"
+      },
+      "consignee": {
+        "name": "Schuster, Champlin and Veum-Kessler",
+        "address": "48740 Nitzsche Garden, Hassieport, LA 66723"
+      },
+      "weight_lb": 4201,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 164760,
+          "expected_cents": 164760
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 49609,
+          "expected_cents": 49609
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14999,
+          "expected_cents": 14999
+        },
+        {
+          "line_number": 4,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 5989,
+          "expected_cents": 5989
+        }
+      ],
+      "total_cents": 235357,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

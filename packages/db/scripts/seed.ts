@@ -74,9 +74,9 @@ export type Truth = {
   overcharges: Overcharge[];
 };
 
-// Adds one overcharge to the items and returns it as a reconciler should report it.
-function plantOvercharge(items: Item[], card: Card, version: Version): Overcharge {
-  const type = faker.helpers.arrayElement(['rate_mismatch', 'uncontracted_charge', 'duplicate_charge'] as const);
+// Adds one overcharge of the given type, else a random one, to the items and returns it as a reconciler should report it.
+function plantOvercharge(items: Item[], card: Card, version: Version, kind?: Overcharge['type']): Overcharge {
+  const type = kind ?? faker.helpers.arrayElement(['rate_mismatch', 'uncontracted_charge', 'duplicate_charge'] as const);
   let evidence: string;
   if (type === 'rate_mismatch') {
     const item = items[faker.number.int({ min: 0, max: items.length - 1 })]!;
@@ -97,8 +97,9 @@ function plantOvercharge(items: Item[], card: Card, version: Version): Overcharg
 }
 
 // What a carrier bills for a shipment under the version in force on its ship date: the linehaul and fuel surcharge
-// its terms give for the miles, up to `extras` of the contracted accessorials, and one planted overcharge if `plant`.
-export function billShipment(card: Card, shipment: { shippedOn: string; miles: number }, extras: number, plant: boolean) {
+// its terms give for the miles, up to `extras` of the contracted accessorials, and one planted overcharge if `plant`
+// (of that type when it names one).
+export function billShipment(card: Card, shipment: { shippedOn: string; miles: number }, extras: number, plant: boolean | Overcharge['type']) {
   const version = versionInForce(card.versions, shipment.shippedOn)!;
   const { linehaulCents, fuelCents } = rateShipment(version.rates, shipment.miles);
   const contracted = (code: ChargeCode, cents: bigint): Item => ({ code, expected: cents, billed: cents });
@@ -107,7 +108,7 @@ export function billShipment(card: Card, shipment: { shippedOn: string; miles: n
     contracted('FUEL', fuelCents),
     ...faker.helpers.arrayElements(card.accessorials, { min: 0, max: extras }).map((code) => contracted(code, version.accessorials[code]!)),
   ];
-  return { version, items, overcharges: plant ? [plantOvercharge(items, card, version)] : [] };
+  return { version, items, overcharges: plant ? [plantOvercharge(items, card, version, plant === true ? undefined : plant)] : [] };
 }
 
 // Multi-row inserts in batches, each under Postgres' limit of 65,535 bind parameters.

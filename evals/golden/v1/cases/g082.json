@@ -1,0 +1,67 @@
+{
+  "id": "g082",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "credit_memo",
+  "adversarial": true,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/g082.pdf",
+  "sha256": "90c51faa2cffe259280af7ff52ac611e82e6de63650d97070b606bea19e49af0",
+  "bytes": 45218,
+  "shipments": [
+    "1025990158"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "CM128685",
+      "invoice_date": "2026-05-13",
+      "due_date": "2026-06-12",
+      "pro_number": "1025990158",
+      "currency": "USD",
+      "kind": "credit_memo",
+      "bill_to": {
+        "name": "Steuber Group",
+        "address": "258 Rippin Via, Delphiaville, NV 10085"
+      },
+      "shipper": {
+        "name": "Wuckert LLC",
+        "address": "77481 Debbie Valley, South Zionfort, WI 79704"
+      },
+      "consignee": {
+        "name": "Mayert and Sons",
+        "address": "77997 Runolfsson Turnpike, Hartmanntown, HI 18229"
+      },
+      "weight_lb": 8865,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Limited access delivery credit",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": -12441,
+          "expected_cents": -12441
+        },
+        {
+          "line_number": 2,
+          "description": "Linehaul credit",
+          "charge_code": "LINEHAUL",
+          "amount_cents": -55590,
+          "expected_cents": -55590
+        }
+      ],
+      "total_cents": -68031,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { type BilledLine, rateShipment, reconcileInvoice, type RateCardVersion, versionInForce } from './index.ts';
+import { type BilledLine, currencyReview, rateShipment, reconcileInvoice, type RateCardVersion, versionInForce } from './index.ts';
 
 // A fixed seed: every run checks the same cases, and a failure prints the counterexample it shrank to.
 fc.configureGlobal({ seed: 42, numRuns: 1_000 });
@@ -58,6 +58,14 @@ const billedExactly = versions.chain((list) =>
 );
 type Case = { versions: RateCardVersion[]; shipment: { shippedOn: string; miles: number }; lines: BilledLine[] };
 const reconcile = (c: Case, lines = c.lines, billedBefore?: (string | null)[]) => reconcileInvoice(c.versions, { ...c.shipment, lines, billedBefore });
+
+test('only a USD invoice is priced; any other currency, an unrecognized one or none, goes to a reviewer with the reason', () => {
+  expect(currencyReview('USD')).toBeNull();
+  expect(currencyReview('CAD')).toBe('unsupported_currency: CAD');
+  expect(currencyReview('usd')).toBe('unsupported_currency: usd');
+  expect(currencyReview(' EUR ')).toBe('unsupported_currency: EUR');
+  for (const missing of [null, undefined, '', '   ']) expect(currencyReview(missing)).toBe('missing_currency');
+});
 const brief = (found: { type: string; lineNumber: number; expectedCents: bigint; billedCents: bigint }[]) =>
   found.map(({ type, lineNumber, expectedCents, billedCents }) => ({ type, lineNumber, expectedCents, billedCents }));
 

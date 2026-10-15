@@ -1,0 +1,73 @@
+{
+  "id": "c010",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/c010.pdf",
+  "sha256": "561e279aaca7affea2ea678249e67366f91db4e5fbeb45438cf966817f2780af",
+  "bytes": 729369,
+  "shipments": [
+    "1019005600"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "67573750",
+      "invoice_date": "2025-10-26",
+      "due_date": "2025-11-25",
+      "pro_number": "1019005600",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Haley, Lesch and Effertz",
+        "address": "384 Gleason Ramp, Fort Kathy, RI 15879"
+      },
+      "shipper": {
+        "name": "Ernser and Sons",
+        "address": "7120 Mertz Valley, Ontario, AK 75393"
+      },
+      "consignee": {
+        "name": "Mayert, Hoeger and Rice",
+        "address": "3495 Fairfield Road, Hesselburgh, NM 51098"
+      },
+      "weight_lb": 2104,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 165232,
+          "expected_cents": 165232
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 30271,
+          "expected_cents": 30271
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3486,
+          "expected_cents": 3486
+        }
+      ],
+      "total_cents": 198989,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "id": "g044",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g044.pdf",
+  "sha256": "9b1f576edc444ebd6b68d4e4698882e7720f33109e39fd9ab54c27857843f1f9",
+  "bytes": 19775,
+  "shipments": [
+    "1015465807"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "09108363",
+      "invoice_date": "2025-10-18",
+      "due_date": "2025-11-17",
+      "pro_number": "1015465807",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Jenkins LLC",
+        "address": "9055 Ash Grove, Shermantown, OR 96409"
+      },
+      "shipper": {
+        "name": "Kshlerin Group",
+        "address": "15658 Pine Grove, Lake Madgebury, VA 16091"
+      },
+      "consignee": {
+        "name": "Emard - Barton",
+        "address": "86763 Willa Locks, East Anissashire, ME 97766"
+      },
+      "weight_lb": 11981,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 457972,
+          "expected_cents": 457972
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 111974,
+          "expected_cents": 111974
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 11276,
+          "expected_cents": 11276
+        }
+      ],
+      "total_cents": 581222,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

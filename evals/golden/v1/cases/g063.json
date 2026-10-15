@@ -1,0 +1,94 @@
+{
+  "id": "g063",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g063.pdf",
+  "sha256": "6b8c342a9403fa45fe3aae54a564f1f803fb196371227e09e5f4ee3a92029429",
+  "bytes": 27467,
+  "shipments": [
+    "1024485548"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "35981132",
+      "invoice_date": "2026-04-19",
+      "due_date": "2026-05-19",
+      "pro_number": "1024485548",
+      "currency": "USD",
+      "bill_to": {
+        "name": "O'Kon-Smitham LLC",
+        "address": "55723 Roob Route, New Ulises, HI 08896"
+      },
+      "shipper": {
+        "name": "Marks, Kemmer and Mann",
+        "address": "1845 Mattie Club, Covina, HI 10786"
+      },
+      "consignee": {
+        "name": "Wilkinson - Kessler",
+        "address": "50727 Solon Spur, Largo, OR 31419"
+      },
+      "weight_lb": 481,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 235694,
+          "expected_cents": 235694
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 57627,
+          "expected_cents": 57627
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3895,
+          "expected_cents": 3895
+        },
+        {
+          "line_number": 4,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 15273,
+          "expected_cents": 14274
+        }
+      ],
+      "total_cents": 312489,
+      "overcharges": [
+        {
+          "line_number": 4,
+          "type": "rate_mismatch",
+          "expected_cents": 14274,
+          "billed_cents": 15273
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 4,
+            "type": "rate_mismatch",
+            "expected_cents": 14274,
+            "billed_cents": 15273
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "id": "g071",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "duplicate_invoice",
+  "adversarial": false,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/g071.pdf",
+  "sha256": "703d866df4c5ee7b2aa4e0a52b363766eff69858f7189f10e6f1438acf9a12ad",
+  "bytes": 30052,
+  "shipments": [
+    "1011284575"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "74732749",
+      "invoice_date": "2026-10-09",
+      "due_date": "2026-11-08",
+      "pro_number": "1011284575",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Flatley and Sons",
+        "address": "9474 Myrtle Parks, Baumbachfield, WY 40166"
+      },
+      "shipper": {
+        "name": "Pfeffer, Corkery and Jones",
+        "address": "615 Johnson Centers, South Irafort, NE 72958"
+      },
+      "consignee": {
+        "name": "Adams Inc",
+        "address": "69485 Schaden Forks, Judyhaven, VT 40816"
+      },
+      "weight_lb": 7941,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 582375,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 178731,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10165,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 771271,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 582375
+        },
+        {
+          "line_number": 2,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 178731
+        },
+        {
+          "line_number": 3,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 10165
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 582375
+          },
+          {
+            "line_number": 2,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 178731
+          },
+          {
+            "line_number": 3,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 10165
+          }
+        ]
+      }
+    }
+  ]
+}

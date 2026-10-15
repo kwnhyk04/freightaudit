@@ -1,0 +1,66 @@
+{
+  "id": "g048",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/g048.pdf",
+  "sha256": "0f693e3886a16d47901eeae586272746d7753aa7a106c12c0efb4edd400dbbe2",
+  "bytes": 728180,
+  "shipments": [
+    "1012092313"
+  ],
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "50441677",
+      "invoice_date": "2026-01-03",
+      "due_date": "2026-02-02",
+      "pro_number": "1012092313",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Schultz-Turner, Schroeder and Ritchie",
+        "address": "759 Watsica Centers, Kavonside, WV 04035"
+      },
+      "shipper": {
+        "name": "Botsford, Gleason and Jacobson",
+        "address": "474 Nickolas Haven, North Evalynchester, OH 74944"
+      },
+      "consignee": {
+        "name": "Nader - Russel",
+        "address": "31714 Schroeder Bypass, West Emmalee, NE 63732"
+      },
+      "weight_lb": 6355,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 186105,
+          "expected_cents": 186105
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 39845,
+          "expected_cents": 39845
+        }
+      ],
+      "total_cents": 225950,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

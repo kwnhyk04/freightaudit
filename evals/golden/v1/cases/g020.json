@@ -1,0 +1,66 @@
+{
+  "id": "g020",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g020.pdf",
+  "sha256": "c9da64cd054413fb1fb85ca29580b0b20937d3ecedd30bb9e353d56df47426b3",
+  "bytes": 19522,
+  "shipments": [
+    "1021135811"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "65641656",
+      "invoice_date": "2025-07-25",
+      "due_date": "2025-08-24",
+      "pro_number": "1021135811",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Bogan Inc",
+        "address": "848 Schuyler Ports, Bloomington, UT 31242"
+      },
+      "shipper": {
+        "name": "Marquardt - Rogahn",
+        "address": "737 Piper Fields, East Derrickstad, NE 62836"
+      },
+      "consignee": {
+        "name": "Little - Erdman",
+        "address": "857 Grimes Mountains, Koelpinfield, WA 56902"
+      },
+      "weight_lb": 10582,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 47142,
+          "expected_cents": 47142
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 14468,
+          "expected_cents": 14468
+        }
+      ],
+      "total_cents": 61610,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

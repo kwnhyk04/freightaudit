@@ -1,0 +1,66 @@
+{
+  "id": "g052",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/g052.pdf",
+  "sha256": "fad3fcdcdaa63777a36bda7783af68700cdb9fa1e301bfb0d66551a0b18a1627",
+  "bytes": 727259,
+  "shipments": [
+    "1004846428"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "53368484",
+      "invoice_date": "2025-12-10",
+      "due_date": "2026-01-09",
+      "pro_number": "1004846428",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hoeger - Roberts",
+        "address": "22511 The Glebe, South Katarinaland, OR 32343"
+      },
+      "shipper": {
+        "name": "Rutherford - O'Kon",
+        "address": "842 S Front Street, Fort Romaine, OH 97140"
+      },
+      "consignee": {
+        "name": "Harris LLC",
+        "address": "131 Buckingham Road, Webertown, MI 04531"
+      },
+      "weight_lb": 3518,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 188738,
+          "expected_cents": 188738
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 57924,
+          "expected_cents": 57924
+        }
+      ],
+      "total_cents": 246662,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

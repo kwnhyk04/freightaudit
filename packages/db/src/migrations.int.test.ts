@@ -84,6 +84,7 @@ test('migrations apply cleanly from empty, re-run as a no-op, and match the Driz
       '0007_reconcile_terms',
       '0008_invoices_shipment_index',
       '0009_llm_calls',
+      '0010_review_reason',
     ]);
 
     const tables = Object.values(schema as Record<string, unknown>).filter((value): value is PgTable => is(value, PgTable));
@@ -174,5 +175,5 @@ test('db:reset refuses a database off this machine or NODE_ENV=production, and o
     await resetDatabase(url, { nodeEnv: 'development', log: quiet });
     expect((await client.query('SELECT name FROM tenants')).rows).toEqual([{ name: 'Larkspur Outdoor Supply' }]);
     expect(await count(client, 'SELECT count(*) FROM invoices')).toBe(500);
-    expect(await count(client, 'SELECT count(*) FROM schema_migrations')).toBe(10);
+    expect(await count(client, 'SELECT count(*) FROM schema_migrations')).toBe(11);
   }));

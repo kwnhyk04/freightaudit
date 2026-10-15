@@ -75,6 +75,8 @@ Reply with JSON that matches the schema.
 - Amounts are integer cents of the printed figure: 1,234.56 becomes 123456. Copy them; never compute or correct them.
 - subtotal_cents and tax_cents are null when the invoice prints no subtotal or no tax.
 - charge_code is one of ${codes.join(', ')} when a line is clearly that charge, otherwise null.`;
+// Evals key their cached results on the prompt and the schema.
+export { PROMPT as EXTRACTION_PROMPT };
 
 const repairPrompt = (previous: string, problems: string[]) => `${PROMPT}
 

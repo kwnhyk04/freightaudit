@@ -1,0 +1,94 @@
+{
+  "id": "g058",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/g058.pdf",
+  "sha256": "0dd92fe8bd05fe23466df48738bb20cd76cc1557e247bb56faae205f57a22f7b",
+  "bytes": 44377,
+  "shipments": [
+    "1016186436"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "26400165",
+      "invoice_date": "2025-11-30",
+      "due_date": "2025-12-30",
+      "pro_number": "1016186436",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Walsh Inc",
+        "address": "8758 Goyette Canyon, Feeneyside, TN 56439"
+      },
+      "shipper": {
+        "name": "Kuphal - Connelly",
+        "address": "3107 Parisian Lane, South Rupert, UT 11630"
+      },
+      "consignee": {
+        "name": "Raynor, Feest and Haag",
+        "address": "22710 Carter Mountains, San Diego, NY 35067"
+      },
+      "weight_lb": 1614,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 355788,
+          "expected_cents": 355788
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 109191,
+          "expected_cents": 109191
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 9843,
+          "expected_cents": 9843
+        },
+        {
+          "line_number": 4,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 16819,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 491641,
+      "overcharges": [
+        {
+          "line_number": 4,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 16819
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 4,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 16819
+          }
+        ]
+      }
+    }
+  ]
+}

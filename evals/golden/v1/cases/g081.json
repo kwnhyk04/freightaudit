@@ -1,0 +1,60 @@
+{
+  "id": "g081",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "credit_memo",
+  "adversarial": true,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g081.pdf",
+  "sha256": "1160a5304d6a8cf86203bb5183da8d65ed6d826c1d2e9c222784bb8dc7f96c3a",
+  "bytes": 27175,
+  "shipments": [
+    "1003452684"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "CM803152",
+      "invoice_date": "2025-09-05",
+      "due_date": "2025-10-05",
+      "pro_number": "1003452684",
+      "currency": "USD",
+      "kind": "credit_memo",
+      "bill_to": {
+        "name": "Cartwright - Wiza",
+        "address": "6240 Bobbie Prairie, High Point, NY 98471"
+      },
+      "shipper": {
+        "name": "Kautzer Group",
+        "address": "551 Audie Forges, Bellevue, UT 54323"
+      },
+      "consignee": {
+        "name": "Schmeler, Koelpin and Nolan",
+        "address": "405 Kuhic-Konopelski Plain, West Adonisberg, OH 78295"
+      },
+      "weight_lb": 8143,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul credit",
+          "charge_code": "LINEHAUL",
+          "amount_cents": -213076,
+          "expected_cents": -213076
+        }
+      ],
+      "total_cents": -213076,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "id": "c004",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/c004.pdf",
+  "sha256": "0da5a2f1bc938a80fc06401bf31d85553740da9abd63d28ceafc02a0473b1eb4",
+  "bytes": 733151,
+  "shipments": [
+    "1035524634"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "59277662",
+      "invoice_date": "2025-12-07",
+      "due_date": "2026-01-06",
+      "pro_number": "1035524634",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Dietrich, Lemke and Raynor",
+        "address": "6404 Hilpert Meadows, Fort Cooper, MN 83981"
+      },
+      "shipper": {
+        "name": "Bruen Group",
+        "address": "5292 Spring Gardens, North Clovishaven, MN 39424"
+      },
+      "consignee": {
+        "name": "Douglas Inc",
+        "address": "214 Grand Avenue, Ethaport, PA 47907"
+      },
+      "weight_lb": 10239,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 315340,
+          "expected_cents": 315340
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 94949,
+          "expected_cents": 94949
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14999,
+          "expected_cents": 14999
+        },
+        {
+          "line_number": 4,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 15554,
+          "expected_cents": 15554
+        },
+        {
+          "line_number": 5,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 5989,
+          "expected_cents": 5989
+        }
+      ],
+      "total_cents": 446831,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

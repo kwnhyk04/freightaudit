@@ -1,0 +1,87 @@
+{
+  "id": "c008",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/c008.pdf",
+  "sha256": "94df3d435f79228bf568f5ac8bee8aa6eac83f6eb196d5205b687adb1345c615",
+  "bytes": 718710,
+  "shipments": [
+    "1009098931"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "08115461",
+      "invoice_date": "2025-11-05",
+      "due_date": "2025-12-05",
+      "pro_number": "1009098931",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Wilkinson, Streich and Howe",
+        "address": "31860 Priory Road, South Dejon, AR 93838"
+      },
+      "shipper": {
+        "name": "Lueilwitz Inc",
+        "address": "10688 Mraz Viaduct, Hahnfort, NV 97619"
+      },
+      "consignee": {
+        "name": "Fadel - Dietrich",
+        "address": "29031 Beech Road, Eldridgefield, NY 90008"
+      },
+      "weight_lb": 10955,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 133432,
+          "expected_cents": 133432
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 24445,
+          "expected_cents": 24445
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 13702,
+          "expected_cents": 13702
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12726,
+          "expected_cents": 12726
+        },
+        {
+          "line_number": 5,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8090,
+          "expected_cents": 8090
+        }
+      ],
+      "total_cents": 192395,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

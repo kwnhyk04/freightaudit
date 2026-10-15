@@ -1,0 +1,67 @@
+{
+  "id": "g087",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "missing_pro",
+  "adversarial": true,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g087.pdf",
+  "sha256": "3a5c22b31589e99c000f16ab271afa0d34714d7b2c5e0d31490dee8baccc7c57",
+  "bytes": 27292,
+  "shipments": [
+    "1036189830"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "71628335",
+      "invoice_date": "2025-04-03",
+      "due_date": "2025-05-03",
+      "pro_number": null,
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hermann - Mante",
+        "address": "3178 Kelly Plains, Lake Rethaport, DE 98741"
+      },
+      "shipper": {
+        "name": "Heaney, Lebsack-Connelly and Baumbach",
+        "address": "4739 Nicklaus Well, Midwest City, MO 89939"
+      },
+      "consignee": {
+        "name": "Goldner - Satterfield",
+        "address": "5738 S Elm Street, Garfieldfort, MO 83384"
+      },
+      "weight_lb": 3962,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 308680,
+          "expected_cents": 308680
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 75472,
+          "expected_cents": 75472
+        }
+      ],
+      "total_cents": 384152,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "needs_review",
+        "reason": "no_shipment_match",
+        "overcharges": []
+      }
+    }
+  ]
+}

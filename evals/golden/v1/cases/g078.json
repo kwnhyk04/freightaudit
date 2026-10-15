@@ -1,0 +1,73 @@
+{
+  "id": "g078",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "packet_long",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 14,
+  "file": "cases/g078.pdf",
+  "sha256": "f5447d8aa89a917ea18abd0b93a4d93ee1b95125484c90852f1de5eb4532b4e5",
+  "bytes": 10113908,
+  "shipments": [
+    "1010912382"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "38826081",
+      "invoice_date": "2026-08-28",
+      "due_date": "2026-09-27",
+      "pro_number": "1010912382",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Steuber - Beier",
+        "address": "643 Little Track, Lailaberg, NY 38470"
+      },
+      "shipper": {
+        "name": "Cronin Inc",
+        "address": "67758 Wilderman Skyway, Jayceeborough, WI 83441"
+      },
+      "consignee": {
+        "name": "Dickens, Runolfsdottir and Bechtelar",
+        "address": "12656 Collins Streets, Swaniawskifort, NC 42973"
+      },
+      "weight_lb": 9319,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 16927,
+          "expected_cents": 16927
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 4306,
+          "expected_cents": 4306
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 20861,
+          "expected_cents": 20861
+        }
+      ],
+      "total_cents": 42094,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

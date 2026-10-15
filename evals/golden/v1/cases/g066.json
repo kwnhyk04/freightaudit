@@ -1,0 +1,80 @@
+{
+  "id": "g066",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/g066.pdf",
+  "sha256": "610998efaf63a2dc0a8615e3abb11b3e2f3b3feeb4beb0abdab1fa5553f7f68f",
+  "bytes": 726571,
+  "shipments": [
+    "1003262628"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "76644482",
+      "invoice_date": "2026-09-03",
+      "due_date": "2026-10-03",
+      "pro_number": "1003262628",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Toy - Breitenberg",
+        "address": "6275 Coralie Stravenue, Scotbury, HI 74191"
+      },
+      "shipper": {
+        "name": "Okuneva - Hayes",
+        "address": "192 Clifton Road, Swifthaven, MA 75835"
+      },
+      "consignee": {
+        "name": "Cummerata Group",
+        "address": "6139 Hipolito View, Pourosstead, UT 32200"
+      },
+      "weight_lb": 6496,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 614514,
+          "expected_cents": 534360
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 97895,
+          "expected_cents": 97895
+        }
+      ],
+      "total_cents": 712409,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "rate_mismatch",
+          "expected_cents": 534360,
+          "billed_cents": 614514
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "rate_mismatch",
+            "expected_cents": 534360,
+            "billed_cents": 614514
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -133,6 +133,12 @@ What the extraction pipeline of step 6 records, and where an extraction that can
 
 Migrate: the worker writes both columns and `llm_calls` from this release; the seed writes `step` as `first_pass` on its extraction rows. Contract, in a later release if needed: `VALIDATE` the two checks; older rows keep a NULL step, which the checks allow.
 
+## 0010 review reason (expand)
+
+`extractions.review_reason` (text, nullable) records why reconciliation sent an invoice to needs_review: `unsupported_currency: <code>` or `missing_currency` from the domain's `currencyReview` (rate cards are in USD, so any other currency, or none, is never priced and never defaults to USD), or `no_shipment_match` when the extracted carrier or PRO number matches no shipment. A nullable column with no check: rows before 0010 have none, and running code never reads it. Extraction-level needs_review keeps its reasons in `result.problems` as before (`fallback_page_cap` among them).
+
+Migrate: the reconcile job writes it from this release. Contract: none needed.
+
 ## Tests (`pnpm test:int`)
 
 Each test runs in a throwaway database on the Postgres container that `pnpm test:int` starts for the run.

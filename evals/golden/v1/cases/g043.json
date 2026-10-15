@@ -1,0 +1,73 @@
+{
+  "id": "g043",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/g043.pdf",
+  "sha256": "3b30e50b90b80c416d6b50e14ef6163b1303fab7030184f339a9ad62d2281d1d",
+  "bytes": 52208,
+  "shipments": [
+    "1013779060"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "93005544",
+      "invoice_date": "2025-05-12",
+      "due_date": "2025-06-11",
+      "pro_number": "1013779060",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Cormier - Bradtke",
+        "address": "2219 E 8th Street, East Marcia, NE 81871"
+      },
+      "shipper": {
+        "name": "Gislason LLC",
+        "address": "9192 Hall Street, Port Laurynport, MO 70680"
+      },
+      "consignee": {
+        "name": "Jacobson - Cassin",
+        "address": "7249 Tower Road, Brycenberg, MA 83675"
+      },
+      "weight_lb": 6039,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 134704,
+          "expected_cents": 134704
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 24678,
+          "expected_cents": 24678
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3486,
+          "expected_cents": 3486
+        }
+      ],
+      "total_cents": 162868,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

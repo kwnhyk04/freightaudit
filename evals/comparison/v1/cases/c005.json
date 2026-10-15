@@ -1,0 +1,66 @@
+{
+  "id": "c005",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/c005.pdf",
+  "sha256": "291c447d7c0ec831c2e46155f2d45c43dca9da83592206b1cc2b1958eccaed9c",
+  "bytes": 714935,
+  "shipments": [
+    "1007087505"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "83784219",
+      "invoice_date": "2025-12-29",
+      "due_date": "2026-01-28",
+      "pro_number": "1007087505",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Sporer - Veum",
+        "address": "334 Richmond Close, South Santina, LA 95303"
+      },
+      "shipper": {
+        "name": "Bartell, Welch and O'Kon",
+        "address": "124 Martin Avenue, Coconut Creek, CA 82232"
+      },
+      "consignee": {
+        "name": "Lowe, Veum and Gerhold",
+        "address": "5344 Quitzon Extensions, East Lyleboro, IA 67160"
+      },
+      "weight_lb": 1371,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 510132,
+          "expected_cents": 510132
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 156560,
+          "expected_cents": 156560
+        }
+      ],
+      "total_cents": 666692,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

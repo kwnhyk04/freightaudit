@@ -1,0 +1,73 @@
+{
+  "id": "g032",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g032.pdf",
+  "sha256": "bc708a10c7ad5d898785e32d3be5087f387d5028e6a20d58796791a811bf6473",
+  "bytes": 20127,
+  "shipments": [
+    "1007950676"
+  ],
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "51080692",
+      "invoice_date": "2026-02-18",
+      "due_date": "2026-03-20",
+      "pro_number": "1007950676",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Cruickshank LLC",
+        "address": "55173 Champlin Junctions, Lake Sheryl, GA 60376"
+      },
+      "shipper": {
+        "name": "Brakus LLC",
+        "address": "7233 Simone Manors, Adriannashire, MO 39055"
+      },
+      "consignee": {
+        "name": "Reinger - Cruickshank",
+        "address": "30193 Ruthe Flats, East Jacklynburgh, MT 29953"
+      },
+      "weight_lb": 576,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 113040,
+          "expected_cents": 113040
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 24202,
+          "expected_cents": 24202
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 5037,
+          "expected_cents": 5037
+        }
+      ],
+      "total_cents": 142279,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

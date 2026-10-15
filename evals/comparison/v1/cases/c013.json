@@ -1,0 +1,87 @@
+{
+  "id": "c013",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/c013.pdf",
+  "sha256": "a55c710ae374056d143d74d873c7c7b74c2cea5e77a0ed6b0fa3be720bdbd9f5",
+  "bytes": 720068,
+  "shipments": [
+    "1033727021"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "48740824",
+      "invoice_date": "2025-01-15",
+      "due_date": "2025-02-14",
+      "pro_number": "1033727021",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Stroman Group",
+        "address": "487 Cromwell Road, Bossier City, KS 12888"
+      },
+      "shipper": {
+        "name": "West - Herzog",
+        "address": "899 Todd Junction, New Yasminworth, OK 40325"
+      },
+      "consignee": {
+        "name": "Monahan LLC",
+        "address": "13606 The Rise, Rexhaven, NE 74889"
+      },
+      "weight_lb": 6271,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 94000,
+          "expected_cents": 94000
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 17221,
+          "expected_cents": 17221
+        },
+        {
+          "line_number": 3,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 17221,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 128442,
+      "overcharges": [
+        {
+          "line_number": 3,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 17221
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 3,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 17221
+          }
+        ]
+      }
+    }
+  ]
+}

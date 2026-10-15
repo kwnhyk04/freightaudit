@@ -1,0 +1,66 @@
+{
+  "id": "g049",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/g049.pdf",
+  "sha256": "0ef809e4b1ba461c914e42f102394216d48e38a211544bf4ef63600f5b1dd8fc",
+  "bytes": 719265,
+  "shipments": [
+    "1011442955"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "97087684",
+      "invoice_date": "2025-01-28",
+      "due_date": "2025-02-27",
+      "pro_number": "1011442955",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Lind - Turcotte",
+        "address": "890 Karla Roads, West Federicoboro, LA 73508"
+      },
+      "shipper": {
+        "name": "Ebert and Sons",
+        "address": "4197 Marlene Run, Dangelofurt, WI 34658"
+      },
+      "consignee": {
+        "name": "Rolfson-Stracke, Bruen and Douglas",
+        "address": "88186 Dickinson Forges, Rafaelstead, SC 10802"
+      },
+      "weight_lb": 10494,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 403000,
+          "expected_cents": 403000
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 121343,
+          "expected_cents": 121343
+        }
+      ],
+      "total_cents": 524343,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

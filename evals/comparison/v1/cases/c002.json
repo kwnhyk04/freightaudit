@@ -1,0 +1,80 @@
+{
+  "id": "c002",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/c002.pdf",
+  "sha256": "8b1b96e419fc3e9da526204b03fdd5ea04c7c350af4a4c1112dba57dc31f4c5d",
+  "bytes": 719015,
+  "shipments": [
+    "1019259008"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "46140495",
+      "invoice_date": "2025-07-25",
+      "due_date": "2025-08-24",
+      "pro_number": "1019259008",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Effertz, Considine and Crooks",
+        "address": "3359 Stamm Squares, Fort Natalie, OK 56294"
+      },
+      "shipper": {
+        "name": "Abernathy, Fahey-Wyman and Volkman",
+        "address": "197 Oaklands, Lake Jermaine, SD 73788"
+      },
+      "consignee": {
+        "name": "Koepp - Rosenbaum",
+        "address": "3138 Zemlak Burg, Blockfort, AZ 51730"
+      },
+      "weight_lb": 2606,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 363760,
+          "expected_cents": 363760
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 109528,
+          "expected_cents": 109528
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 5989,
+          "expected_cents": 5989
+        },
+        {
+          "line_number": 4,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 15554,
+          "expected_cents": 15554
+        }
+      ],
+      "total_cents": 494831,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "id": "g030",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/g030.pdf",
+  "sha256": "a5d7bae0dfd37d56abdde9816b6d08d7133885a82137b802d1f3f54138e8e9cb",
+  "bytes": 67653,
+  "shipments": [
+    "1038225013"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "25877343",
+      "invoice_date": "2025-06-15",
+      "due_date": "2025-07-15",
+      "pro_number": "1038225013",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Yundt - Satterfield",
+        "address": "87946 Dickens Mall, Malcolmland, OR 58908"
+      },
+      "shipper": {
+        "name": "Cormier - Cummings",
+        "address": "7976 Lesch Points, Baronberg, TN 78192"
+      },
+      "consignee": {
+        "name": "Orn - Turner",
+        "address": "71632 Jaeden Field, Virginiaport, UT 51656"
+      },
+      "weight_lb": 9111,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 377440,
+          "expected_cents": 377440
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 69147,
+          "expected_cents": 69147
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 13702,
+          "expected_cents": 13702
+        }
+      ],
+      "total_cents": 460289,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

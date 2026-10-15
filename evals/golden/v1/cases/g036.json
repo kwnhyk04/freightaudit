@@ -1,0 +1,87 @@
+{
+  "id": "g036",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/g036.pdf",
+  "sha256": "86ab265216bdf979f95f5cb1417675324b7c8fd1f2187110f733f3956f0d6e01",
+  "bytes": 66544,
+  "shipments": [
+    "1024841903"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "14774396",
+      "invoice_date": "2025-08-23",
+      "due_date": "2025-09-22",
+      "pro_number": "1024841903",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Flatley Group",
+        "address": "3616 Tia Trace, Port Hollis, OH 03952"
+      },
+      "shipper": {
+        "name": "Hintz - Gutmann",
+        "address": "325 Brook Street, San Tan Valley, GA 73479"
+      },
+      "consignee": {
+        "name": "Hirthe - Pfannerstill",
+        "address": "2884 Deangelo Ridges, North Andreaworth, IA 12953"
+      },
+      "weight_lb": 5374,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 212538,
+          "expected_cents": 212538
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 54070,
+          "expected_cents": 54070
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 19759
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11784,
+          "expected_cents": 11784
+        },
+        {
+          "line_number": 5,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10687,
+          "expected_cents": 10687
+        }
+      ],
+      "total_cents": 308838,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

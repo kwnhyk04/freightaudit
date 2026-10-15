@@ -1,0 +1,279 @@
+{
+  "set": "comparison",
+  "version": "v1",
+  "created": "2026-10-15",
+  "seed": 7,
+  "scale": "small",
+  "cases": [
+    {
+      "id": "c001",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "layouts": [
+        "classic"
+      ],
+      "pages": 1,
+      "file": "cases/c001.pdf",
+      "sha256": "d98d37730129ec52f2ee6318ac04bde05cc8865b7208ecf1327ba684baa1e026",
+      "bytes": 721150,
+      "shipments": [
+        "1009930426"
+      ]
+    },
+    {
+      "id": "c002",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "layouts": [
+        "ledger"
+      ],
+      "pages": 1,
+      "file": "cases/c002.pdf",
+      "sha256": "8b1b96e419fc3e9da526204b03fdd5ea04c7c350af4a4c1112dba57dc31f4c5d",
+      "bytes": 719015,
+      "shipments": [
+        "1019259008"
+      ]
+    },
+    {
+      "id": "c003",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "layouts": [
+        "modern"
+      ],
+      "pages": 1,
+      "file": "cases/c003.pdf",
+      "sha256": "8cd2523bbd31d9770bb84fd8270e763a403297e9f95607d27494ac45b30e801c",
+      "bytes": 674379,
+      "shipments": [
+        "1011308332"
+      ]
+    },
+    {
+      "id": "c004",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "file": "cases/c004.pdf",
+      "sha256": "0da5a2f1bc938a80fc06401bf31d85553740da9abd63d28ceafc02a0473b1eb4",
+      "bytes": 733151,
+      "shipments": [
+        "1035524634"
+      ]
+    },
+    {
+      "id": "c005",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "layouts": [
+        "compact"
+      ],
+      "pages": 1,
+      "file": "cases/c005.pdf",
+      "sha256": "291c447d7c0ec831c2e46155f2d45c43dca9da83592206b1cc2b1958eccaed9c",
+      "bytes": 714935,
+      "shipments": [
+        "1007087505"
+      ]
+    },
+    {
+      "id": "c006",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "layouts": [
+        "boxed"
+      ],
+      "pages": 1,
+      "file": "cases/c006.pdf",
+      "sha256": "61f96f6f11243a0eb05d82e1d672c56485363c76cca77f533d0d4452130e61c1",
+      "bytes": 729679,
+      "shipments": [
+        "1020312235"
+      ]
+    },
+    {
+      "id": "c007",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "layouts": [
+        "classic"
+      ],
+      "pages": 1,
+      "file": "cases/c007.pdf",
+      "sha256": "b16df90079d69788467f489aa6433e8cc6fa8324111d82fff80065fa476df5e3",
+      "bytes": 720852,
+      "shipments": [
+        "1026116862"
+      ]
+    },
+    {
+      "id": "c008",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "layouts": [
+        "ledger"
+      ],
+      "pages": 1,
+      "file": "cases/c008.pdf",
+      "sha256": "94df3d435f79228bf568f5ac8bee8aa6eac83f6eb196d5205b687adb1345c615",
+      "bytes": 718710,
+      "shipments": [
+        "1009098931"
+      ]
+    },
+    {
+      "id": "c009",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "layouts": [
+        "modern"
+      ],
+      "pages": 1,
+      "file": "cases/c009.pdf",
+      "sha256": "38b69d734e716ce6a325aeb1f49659ae399e05f724f8ee2e67926cb5972e99ae",
+      "bytes": 673631,
+      "shipments": [
+        "1013715708"
+      ]
+    },
+    {
+      "id": "c010",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "file": "cases/c010.pdf",
+      "sha256": "561e279aaca7affea2ea678249e67366f91db4e5fbeb45438cf966817f2780af",
+      "bytes": 729369,
+      "shipments": [
+        "1019005600"
+      ]
+    },
+    {
+      "id": "c011",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "layouts": [
+        "compact"
+      ],
+      "pages": 1,
+      "file": "cases/c011.pdf",
+      "sha256": "50d2a3276d769a6bdfba5e6bd803ca976c4030f230c8ab744ba6000c16acfa48",
+      "bytes": 718103,
+      "shipments": [
+        "1003389332"
+      ]
+    },
+    {
+      "id": "c012",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "layouts": [
+        "boxed"
+      ],
+      "pages": 1,
+      "file": "cases/c012.pdf",
+      "sha256": "0f136fa7b6318df2749fb6b2728751ca9011135d9785d257cf5509f824bb0bd4",
+      "bytes": 732551,
+      "shipments": [
+        "1020011313"
+      ]
+    },
+    {
+      "id": "c013",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "layouts": [
+        "classic"
+      ],
+      "pages": 1,
+      "file": "cases/c013.pdf",
+      "sha256": "a55c710ae374056d143d74d873c7c7b74c2cea5e77a0ed6b0fa3be720bdbd9f5",
+      "bytes": 720068,
+      "shipments": [
+        "1033727021"
+      ]
+    },
+    {
+      "id": "c014",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "layouts": [
+        "ledger"
+      ],
+      "pages": 1,
+      "file": "cases/c014.pdf",
+      "sha256": "8ff480da9b981c7eef2dd1c6f522c1238cd56b54b20e3589137633921e6f8cf4",
+      "bytes": 718944,
+      "shipments": [
+        "1000839414"
+      ]
+    },
+    {
+      "id": "c015",
+      "split": "comparison",
+      "ci": false,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "layouts": [
+        "modern"
+      ],
+      "pages": 1,
+      "file": "cases/c015.pdf",
+      "sha256": "68daec8d63a393b3d0db409152fa5e4afc7d1b914ddc12eecfe3b9a4d86af90b",
+      "bytes": 674214,
+      "shipments": [
+        "1022347418"
+      ]
+    }
+  ]
+}

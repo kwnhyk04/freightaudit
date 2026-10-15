@@ -115,6 +115,8 @@ export const extractions = pgTable('extractions', {
   step: text('step'),
   // rate_limited or invalid_output when the fallback model ran.
   fallbackReason: text('fallback_reason'),
+  // Why reconciliation sent the invoice to needs_review, such as unsupported_currency: CAD; rows before 0010 have none.
+  reviewReason: text('review_reason'),
   ...timestamps,
 });
 

@@ -1,0 +1,73 @@
+{
+  "id": "g033",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g033.pdf",
+  "sha256": "07685566ef2db9f2ff21a740f7ddff30c3118e209133827268994285a4317ad2",
+  "bytes": 27519,
+  "shipments": [
+    "1027486849"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "48935024",
+      "invoice_date": "2025-07-14",
+      "due_date": "2025-08-13",
+      "pro_number": "1027486849",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Klocko - Hoppe",
+        "address": "640 Sipes Locks, North Ozellaboro, MO 44211"
+      },
+      "shipper": {
+        "name": "Murazik - Dickinson-Hegmann",
+        "address": "1809 N Main, Lonzoton, AZ 45818"
+      },
+      "consignee": {
+        "name": "Jacobs - Schmitt",
+        "address": "5874 Darrell Fords, Athens-Clarke County, WY 17348"
+      },
+      "weight_lb": 3726,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 462028,
+          "expected_cents": 462028
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 112966,
+          "expected_cents": 112966
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3775,
+          "expected_cents": 3775
+        }
+      ],
+      "total_cents": 578769,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

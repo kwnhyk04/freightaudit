@@ -1,0 +1,111 @@
+{
+  "id": "g069",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "duplicate_invoice",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g069.pdf",
+  "sha256": "3e46cf69463ec8f717513d994a69b0f158873400340c07f158d609bcfd4427b8",
+  "bytes": 27173,
+  "shipments": [
+    "1010041292"
+  ],
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "96079756",
+      "invoice_date": "2025-09-18",
+      "due_date": "2025-10-18",
+      "pro_number": "1010041292",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Graham, Cremin and Champlin",
+        "address": "83492 Turcotte Valley, Hoppeville, OK 60824"
+      },
+      "shipper": {
+        "name": "Bergstrom, Volkman and Prosacco",
+        "address": "347 Dibbert Mall, Drakeburgh, UT 14174"
+      },
+      "consignee": {
+        "name": "Lueilwitz LLC",
+        "address": "939 Dominique Forest, New Sienna, ND 29210"
+      },
+      "weight_lb": 897,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 552206,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 169472,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 9778,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 731456,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 552206
+        },
+        {
+          "line_number": 2,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 169472
+        },
+        {
+          "line_number": 3,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 9778
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 552206
+          },
+          {
+            "line_number": 2,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 169472
+          },
+          {
+            "line_number": 3,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 9778
+          }
+        ]
+      }
+    }
+  ]
+}

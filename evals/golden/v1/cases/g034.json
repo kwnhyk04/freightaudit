@@ -1,0 +1,73 @@
+{
+  "id": "g034",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/g034.pdf",
+  "sha256": "df984d1cab2cbf3ada95c0222fe0ec91f830ae429b795d3a08541315a30d6ae5",
+  "bytes": 43498,
+  "shipments": [
+    "1029268624"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "02611467",
+      "invoice_date": "2025-01-30",
+      "due_date": "2025-03-01",
+      "pro_number": "1029268624",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Gibson - Rutherford",
+        "address": "87532 Florencio Light, Lake Garfield, DE 67929"
+      },
+      "shipper": {
+        "name": "Trantow - Sipes",
+        "address": "18314 Bartoletti Junction, Wichita Falls, NY 19519"
+      },
+      "consignee": {
+        "name": "Dooley, Erdman and Sawayn",
+        "address": "8862 Edna Estates, Nashchester, CA 95372"
+      },
+      "weight_lb": 7174,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 162183,
+          "expected_cents": 162183
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 39654,
+          "expected_cents": 39654
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 11276,
+          "expected_cents": 11276
+        }
+      ],
+      "total_cents": 213113,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

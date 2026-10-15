@@ -34,6 +34,13 @@ export function versionInForce<V extends Pick<RateCardVersion, 'version' | 'from
   return found[0];
 }
 
+// Rate cards are in US dollars, so only a USD invoice can be checked against them. Any other currency, or none, is the
+// reason the invoice waits for a reviewer; it never defaults to USD.
+export function currencyReview(currency: string | null | undefined) {
+  if (currency === 'USD') return null;
+  return currency?.trim() ? `unsupported_currency: ${currency.trim()}` : 'missing_currency';
+}
+
 // Checks every line against the version in force on the ship date. A line is a discrepancy only when it bills more
 // than the contract allows, since undercharges favour the shipper. A charge code billed before, earlier on this invoice
 // or on an earlier invoice for the same shipment (billedBefore), is a duplicate; a code the version does not contract

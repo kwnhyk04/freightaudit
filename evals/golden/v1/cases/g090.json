@@ -1,0 +1,67 @@
+{
+  "id": "g090",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "non_usd",
+  "adversarial": true,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/g090.pdf",
+  "sha256": "117da1d5e278d0f08251f30d69e3ed89aa9e01563db87179875183df7e564693",
+  "bytes": 67751,
+  "shipments": [
+    "1019496578"
+  ],
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "52869245",
+      "invoice_date": "2026-05-13",
+      "due_date": "2026-06-12",
+      "pro_number": "1019496578",
+      "currency": "EUR",
+      "bill_to": {
+        "name": "King - Lebsack",
+        "address": "1323 Lenny Springs, Guycester, MI 47132"
+      },
+      "shipper": {
+        "name": "Schmeler and Sons",
+        "address": "9538 South Drive, South Mattstead, TX 25167"
+      },
+      "consignee": {
+        "name": "Casper - Johns",
+        "address": "7760 S Broadway, Port Joview, VT 40996"
+      },
+      "weight_lb": 10794,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 450369,
+          "expected_cents": 450369
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 96424,
+          "expected_cents": 96424
+        }
+      ],
+      "total_cents": 546793,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "needs_review",
+        "reason": "unsupported_currency: EUR",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,175 @@
+{
+  "ci": {
+    "header_accuracy_digital": {
+      "min": 0.95,
+      "from": "2026-10-15-ci"
+    },
+    "header_accuracy_scanned": {
+      "min": 0.93,
+      "from": "2026-10-15-ci"
+    },
+    "line_f1_digital": {
+      "min": 0.95,
+      "from": "2026-10-15-ci"
+    },
+    "line_f1_scanned": {
+      "min": 0.88,
+      "from": "2026-10-15-ci"
+    },
+    "arithmetic_consistency": {
+      "min": 0.99,
+      "from": "2026-10-15-ci"
+    },
+    "overcharge_precision": {
+      "min": 0.95,
+      "from": "2026-10-15-ci"
+    },
+    "overcharge_recall": {
+      "min": 0.9,
+      "from": "2026-10-15-ci"
+    },
+    "dollar_recovery": {
+      "min": 0.9,
+      "from": "2026-10-15-ci"
+    },
+    "false_flag_rate": {
+      "max": 0.03,
+      "from": "2026-10-15-ci"
+    },
+    "escalation_rate": {
+      "max": 0.1,
+      "from": "2026-10-15-ci"
+    },
+    "extraction_latency_p50_ms": {
+      "max": 4400,
+      "from": "2026-10-15-ci"
+    },
+    "extraction_latency_p95_ms": {
+      "max": 8900,
+      "from": "2026-10-15-ci"
+    },
+    "e2e_latency_p95_ms": {
+      "max": 174600,
+      "from": "2026-10-15-ci"
+    },
+    "input_tokens_per_page_digital": {
+      "max": 1480,
+      "from": "2026-10-15-ci"
+    },
+    "output_tokens_per_page_digital": {
+      "max": 1200,
+      "from": "2026-10-15-ci"
+    },
+    "tokens_per_invoice_digital": {
+      "max": 3440,
+      "from": "2026-10-15-ci"
+    },
+    "tokens_per_invoice_scanned": {
+      "max": 3660,
+      "from": "2026-10-15-ci"
+    },
+    "cost_per_invoice_digital_usd": {
+      "max": 0.0013,
+      "from": "2026-10-15-ci"
+    },
+    "cost_per_invoice_scanned_usd": {
+      "max": 0.0021,
+      "from": "2026-10-15-ci"
+    },
+    "free_tier_cost_per_invoice_usd": {
+      "max": 0,
+      "from": "2026-10-15-ci"
+    },
+    "outcome_accuracy": {
+      "min": 0.83,
+      "from": "2026-10-15-ci"
+    }
+  },
+  "_rules": "Regression floors per subset, set from that subset's own run. Accuracy: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost and latency: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.",
+  "full": {
+    "header_accuracy_digital": {
+      "min": 0.98,
+      "from": "2026-10-15"
+    },
+    "header_accuracy_scanned": {
+      "min": 0.93,
+      "from": "2026-10-15"
+    },
+    "line_f1_digital": {
+      "min": 0.95,
+      "from": "2026-10-15"
+    },
+    "line_f1_scanned": {
+      "min": 0.88,
+      "from": "2026-10-15"
+    },
+    "arithmetic_consistency": {
+      "min": 0.99,
+      "from": "2026-10-15"
+    },
+    "overcharge_precision": {
+      "min": 0.8,
+      "from": "2026-10-15"
+    },
+    "overcharge_recall": {
+      "min": 0.9,
+      "from": "2026-10-15"
+    },
+    "dollar_recovery": {
+      "min": 0.9,
+      "from": "2026-10-15"
+    },
+    "false_flag_rate": {
+      "max": 0.03,
+      "from": "2026-10-15"
+    },
+    "escalation_rate": {
+      "max": 0.1,
+      "from": "2026-10-15"
+    },
+    "extraction_latency_p50_ms": {
+      "max": 4000,
+      "from": "2026-10-15"
+    },
+    "extraction_latency_p95_ms": {
+      "max": 9900,
+      "from": "2026-10-15"
+    },
+    "e2e_latency_p95_ms": {
+      "max": 479400,
+      "from": "2026-10-15"
+    },
+    "input_tokens_per_page_digital": {
+      "max": 1330,
+      "from": "2026-10-15"
+    },
+    "output_tokens_per_page_digital": {
+      "max": 1090,
+      "from": "2026-10-15"
+    },
+    "tokens_per_invoice_digital": {
+      "max": 2560,
+      "from": "2026-10-15"
+    },
+    "tokens_per_invoice_scanned": {
+      "max": 6680,
+      "from": "2026-10-15"
+    },
+    "cost_per_invoice_digital_usd": {
+      "max": 0.001,
+      "from": "2026-10-15"
+    },
+    "cost_per_invoice_scanned_usd": {
+      "max": 0.0032,
+      "from": "2026-10-15"
+    },
+    "free_tier_cost_per_invoice_usd": {
+      "max": 0,
+      "from": "2026-10-15"
+    },
+    "outcome_accuracy": {
+      "min": 0.92,
+      "from": "2026-10-15"
+    }
+  }
+}

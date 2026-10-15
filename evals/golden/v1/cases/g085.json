@@ -1,0 +1,66 @@
+{
+  "id": "g085",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "handwritten",
+  "adversarial": true,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/g085.pdf",
+  "sha256": "6167a8f4865b431309d784c823de0bcdd7f8f7334b9792392f5e08c698329276",
+  "bytes": 719896,
+  "shipments": [
+    "1016321059"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "23049388",
+      "invoice_date": "2026-04-23",
+      "due_date": "2026-05-23",
+      "pro_number": "1016321059",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Stiedemann, Yundt and Satterfield-Swift",
+        "address": "759 Tudor Close, Weberstead, IA 18886"
+      },
+      "shipper": {
+        "name": "Skiles Group",
+        "address": "5590 Ash Street, South Keeleytown, AZ 68457"
+      },
+      "consignee": {
+        "name": "Murphy LLC",
+        "address": "9195 Broadway Street, Port Johnson, CA 98089"
+      },
+      "weight_lb": 310,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 33859,
+          "expected_cents": 33859
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 6203,
+          "expected_cents": 6203
+        }
+      ],
+      "total_cents": 40062,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

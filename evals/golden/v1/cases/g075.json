@@ -1,0 +1,66 @@
+{
+  "id": "g075",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "long_digit_run",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g075.pdf",
+  "sha256": "8635d0807ff7ebd0e22e6d703ff4c01533db92291e0368adbbbc796b8cfa1f19",
+  "bytes": 27672,
+  "shipments": [
+    "1000007919"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "72344766",
+      "invoice_date": "2025-04-25",
+      "due_date": "2025-05-25",
+      "pro_number": "1000007919",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Kessler, Schultz-Cruickshank and Frami",
+        "address": "58723 Vandervort Mall, Franeyview, NY 20000"
+      },
+      "shipper": {
+        "name": "Yost - Lockman",
+        "address": "725 S Washington Street, Mayertview, NC 80914"
+      },
+      "consignee": {
+        "name": "Cole, Hettinger and Ziemann-Buckridge",
+        "address": "101 Water Lane, East Laviniaburgh, PA 39647"
+      },
+      "weight_lb": 10540,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 225652,
+          "expected_cents": 225652
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 41339,
+          "expected_cents": 41339
+        }
+      ],
+      "total_cents": 266991,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

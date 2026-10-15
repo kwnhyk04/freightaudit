@@ -1,0 +1,101 @@
+{
+  "id": "g067",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/g067.pdf",
+  "sha256": "8dcc67a8055c73b2808dc5f6c97acc6db586db5932a1a1fbe3f9ab34d3c38eec",
+  "bytes": 724191,
+  "shipments": [
+    "1018443351"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "96255153",
+      "invoice_date": "2026-03-28",
+      "due_date": "2026-04-27",
+      "pro_number": "1018443351",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Terry - Langworth",
+        "address": "928 S 1st Street, Highlands Ranch, WV 70944"
+      },
+      "shipper": {
+        "name": "Sipes Group",
+        "address": "14779 Ryan Neck, Hillscester, AZ 34101"
+      },
+      "consignee": {
+        "name": "Hegmann-Miller and Sons",
+        "address": "77088 Evalyn Mall, Hazleton, KS 54218"
+      },
+      "weight_lb": 1726,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 134850,
+          "expected_cents": 134850
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 24705,
+          "expected_cents": 24705
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 13508,
+          "expected_cents": 13508
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8587,
+          "expected_cents": 8587
+        },
+        {
+          "line_number": 5,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 15093,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 196743,
+      "overcharges": [
+        {
+          "line_number": 5,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 15093
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 5,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 15093
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "id": "g080",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "repeated_page",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 2,
+  "file": "cases/g080.pdf",
+  "sha256": "71a91e06332110ec9f45ea70bb234df481dc0e7b76d827e0beb78a5ef9b2540a",
+  "bytes": 1433373,
+  "shipments": [
+    "1032784660"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "11257304",
+      "invoice_date": "2025-09-26",
+      "due_date": "2025-10-26",
+      "pro_number": "1032784660",
+      "currency": "USD",
+      "bill_to": {
+        "name": "White, Schowalter-Dickens and Hamill",
+        "address": "871 The Ridgeway, Port Magalichester, CA 39672"
+      },
+      "shipper": {
+        "name": "Feest - Harber",
+        "address": "240 Schamberger-Kuhn Circles, Juniorfield, RI 88945"
+      },
+      "consignee": {
+        "name": "Ankunding-Hermann, Fadel and Robel",
+        "address": "326 W 5th Street, West Jordan, NJ 98809"
+      },
+      "weight_lb": 5917,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 272332,
+          "expected_cents": 272332
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 66585,
+          "expected_cents": 66585
+        }
+      ],
+      "total_cents": 338917,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

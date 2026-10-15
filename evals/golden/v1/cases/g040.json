@@ -1,0 +1,87 @@
+{
+  "id": "g040",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/g040.pdf",
+  "sha256": "f0ba58b2f6d507d91cf733405e76c37b5f1baac13e327e9e422eeb3961d47b9b",
+  "bytes": 45599,
+  "shipments": [
+    "1013707789"
+  ],
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "24520224",
+      "invoice_date": "2025-05-16",
+      "due_date": "2025-06-15",
+      "pro_number": "1013707789",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Bogan - Will",
+        "address": "39977 Collin Spurs, South Wilfredoworth, NV 13432"
+      },
+      "shipper": {
+        "name": "Abbott, Green and Ratke",
+        "address": "329 Market Square, Killeen, MI 14504"
+      },
+      "consignee": {
+        "name": "Vandervort, Schaefer and Collins",
+        "address": "585 The Glebe, Schmittbury, MD 09064"
+      },
+      "weight_lb": 4876,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 71280,
+          "expected_cents": 71280
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 15261,
+          "expected_cents": 15261
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 9465,
+          "expected_cents": 9465
+        },
+        {
+          "line_number": 4,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 15812,
+          "expected_cents": 15812
+        },
+        {
+          "line_number": 5,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 4709,
+          "expected_cents": 4709
+        }
+      ],
+      "total_cents": 116527,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

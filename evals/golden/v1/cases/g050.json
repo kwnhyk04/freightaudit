@@ -1,0 +1,87 @@
+{
+  "id": "g050",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g050.pdf",
+  "sha256": "d82d8e8ae75fba56df701ca61c2650aa575b2ba48dc17c14ffc6f17b12ad158f",
+  "bytes": 719270,
+  "shipments": [
+    "1002375700"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "35892459",
+      "invoice_date": "2025-09-25",
+      "due_date": "2025-10-25",
+      "pro_number": "1002375700",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hodkiewicz, Koelpin and Pfannerstill",
+        "address": "63142 Crona Point, Bernierstead, IN 55955"
+      },
+      "shipper": {
+        "name": "Graham and Sons",
+        "address": "8817 Melody Fall, Lake Daynabury, MS 09733"
+      },
+      "consignee": {
+        "name": "Dickens and Sons",
+        "address": "48636 Rey Ville, Tracy, MT 34682"
+      },
+      "weight_lb": 5277,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 109640,
+          "expected_cents": 109640
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 33013,
+          "expected_cents": 33013
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 5989,
+          "expected_cents": 5989
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 11565,
+          "expected_cents": 11565
+        },
+        {
+          "line_number": 5,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14999,
+          "expected_cents": 14999
+        }
+      ],
+      "total_cents": 175206,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

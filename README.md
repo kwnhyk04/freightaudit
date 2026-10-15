@@ -1,5 +1,34 @@
 # FreightAudit
 
+<!-- eval:start -->
+## Eval results
+
+Golden set v1 (90 synthetic invoices, ground truth from the generator), measured 2026-10-15 with primary gemini/gemini-3.5-flash-lite (served as gemini-3.5-flash-lite), text groq/openai/gpt-oss-120b (served as openai/gpt-oss-120b), fallback groq/qwen/qwen3.8-27b (not called). 90 cases give wide intervals; misses are listed as misses. Full report: `evals/reports/2026-10-15.md`.
+
+| Metric | Target | Measured | 95% CI | Met | Model | Date |
+| --- | --- | --- | --- | --- | --- | --- |
+| Header field accuracy (digital) | ≥ 0.980 | 0.995 | 0.988 to 1.000 | yes | groq/openai/gpt-oss-120b | 2026-10-15 |
+| Header field accuracy (scanned) | ≥ 0.930 | 1.000 | 1.000 to 1.000 | yes | gemini/gemini-3.5-flash-lite | 2026-10-15 |
+| Line-item F1 (digital) | ≥ 0.950 | 1.000 | 1.000 to 1.000 | yes | groq/openai/gpt-oss-120b | 2026-10-15 |
+| Line-item F1 (scanned) | ≥ 0.880 | 0.985 | 0.952 to 1.000 | yes | gemini/gemini-3.5-flash-lite | 2026-10-15 |
+| Arithmetic consistency (after repair) | ≥ 0.990 | 1.000 | 1.000 to 1.000 | yes | all roles | 2026-10-15 |
+| Overcharge precision | ≥ 0.950 | 0.944 | 0.805 to 1.000 | no | all roles | 2026-10-15 |
+| Overcharge recall | ≥ 0.900 | 1.000 | 1.000 to 1.000 | yes | all roles | 2026-10-15 |
+| Dollar recovery | ≥ 0.900 | 1.000 | 1.000 to 1.000 | yes | all roles | 2026-10-15 |
+| False flag rate | ≤ 0.030 | 0.007 | 0.000 to 0.023 | yes | all roles | 2026-10-15 |
+| Escalation rate | ≤ 0.100 | 0.000 | 0.000 to 0.000 | yes | all roles | 2026-10-15 |
+| Extraction latency p50 (3 pages or fewer) | ≤ 5,000 ms | 2,333 ms | 2,102 ms to 2,620 ms | yes | all roles | 2026-10-15 |
+| Extraction latency p95 (3 pages or fewer) | ≤ 12,000 ms | 4,698 ms | 3,989 ms to 6,574 ms | yes | all roles | 2026-10-15 |
+| End-to-end latency p95 (under eval throttling, not normal load) | ≤ 30,000 ms | 143,403 ms | 83,863 ms to 319,548 ms | no | all roles | 2026-10-15 |
+| Input tokens per page (text path) | ≤ 4,000 | 828 | 786 to 880 | yes | groq/openai/gpt-oss-120b | 2026-10-15 |
+| Output tokens per page (text path) | ≤ 1,200 | 674 | 624 to 727 | yes | groq/openai/gpt-oss-120b | 2026-10-15 |
+| Cost per invoice, paid-equivalent (digital) | ≤ $0.0200 | $0.0005 | $0.0005 to $0.0006 | yes | groq/openai/gpt-oss-120b | 2026-10-15 |
+| Cost per invoice, paid-equivalent (scanned) | ≤ $0.0500 | $0.0015 | $0.0011 to $0.0021 | yes | gemini/gemini-3.5-flash-lite | 2026-10-15 |
+| Throughput (free-tier ceiling, not a load test) | ≥ 2,000 / h | 394 / h | computed | no | all roles | 2026-10-15 |
+<!-- eval:end -->
+
+**What these numbers do and don't show.** The golden set is 90 synthetic invoices drawn from the same 6 HTML templates the generator uses, with ground truth from that generator, so scores near 1.0 mean the set is easy for these models, not that real carrier invoices would score the same. The cases are few, so every interval is wide. End-to-end latency here is measured under the eval's own free-tier throttling, not normal load, and throughput is the ceiling the free tiers allow, not a load test; step 8's k6 load test measures both. Golden set v2 should add harder layouts (multi-column, rotated tables, carrier-specific forms), real-world noise (fax artifacts, stamps, skew beyond 2 degrees, low resolution) and more adversarial cases (a title line beside the carrier, repeated pages, partial credits).
+
 Ingests carrier invoice PDFs, extracts line items with an LLM, and reconciles each charge against contracted rate cards and shipment records with deterministic code. Flags overcharges for human review.
 
 ## Setup
@@ -38,7 +67,7 @@ Backend on this PC (production): `docker compose --env-file .env -f infra/docker
 | `pnpm test:int` | The Jest `integration` and `contract` projects in one root run (`jest.config.js`), against Postgres, Redis, MinIO and Toxiproxy containers that Testcontainers starts for the run on 127.0.0.1 and removes afterwards. Needs Docker, not the compose infra; each test uses a throwaway database, its own Redis key prefix and bucket. Covers migrations including expand, backfill and contract under the api's queries, the REST contract, keyset pagination under concurrent inserts, batch partial failure, rate limits and backpressure, the worker pipeline (retries, dead letters and replay, crash recovery, budget guard, multi-invoice split, TMS sync through 20 % connection resets and 300 ms latency), reconciliation against the small seed's planted overcharges, and the fixture determinism test (needs the Playwright Chromium) |
 | `pnpm fixtures [--count=60] [--seed=42]` | Render synthetic invoice PDFs from 6 templates, plus scanned variants, each with ground-truth JSON, into `evals/fixtures/out`; the same seed gives byte-identical files on one machine. Each invoice bills a shipment the small seed leaves unbilled, so it reconciles against `pnpm db:seed --scale=small`; the ground truth gives each line's expected cents and every planted overcharge |
 | `pnpm extract:resume` | Restart the extract queue after the worker paused it because a provider rejected its key or model (401, 403, 404; the worker logs `alert: "extract_paused"`). Fix the setting and restart the worker first |
-| `pnpm eval` | Wired to Turborepo; a no-op until step 6b |
+| `pnpm eval --suite extraction --subset ci\|dev\|full\|compare [--fresh] [--set-floors]` | Runs golden set v1 (`evals/golden/v1`: 90 invoices, dev split 20, ci subset 20) through the real worker against the small seed in throwaway Postgres and Redis containers, with the pinned roles from `.env` (real model calls; needs Docker and the keys). Each case's result is cached in `evals/.cache`, so a run stopped by a spent quota (exit 2) resumes; `--fresh` ignores the cache. Writes `evals/reports/<date>[-<subset>].json` and `.md` with every target met or missed and the regression floors of `evals/thresholds.json` (exit 1 when one breaks); a full run rewrites the table above. `compare` runs `gemini-3.8-flash` beside the configured primary on `evals/comparison/v1`. Rebuild a set with `node evals/golden/build.ts --set golden\|comparison` only as a new version |
 
 One project or file: `node --experimental-vm-modules node_modules/jest/bin/jest.js --selectProjects contract`, or `--selectProjects integration -- apps/worker/src/tms-chaos` (build the packages first with `pnpm build`).
 

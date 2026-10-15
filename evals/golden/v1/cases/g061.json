@@ -1,0 +1,108 @@
+{
+  "id": "g061",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/g061.pdf",
+  "sha256": "9c705a8416f5dcb7e56761cc91e4bed8cc65fbf22e887365bb8a767715053c42",
+  "bytes": 55382,
+  "shipments": [
+    "1028421291"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "63783818",
+      "invoice_date": "2026-05-12",
+      "due_date": "2026-06-11",
+      "pro_number": "1028421291",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Kozey - Grant",
+        "address": "5367 Willow Street, Lake Jolie, WY 79898"
+      },
+      "shipper": {
+        "name": "Aufderhar LLC",
+        "address": "5991 Schmeler Meadow, Calebcester, MI 20432"
+      },
+      "consignee": {
+        "name": "Beatty, Wehner and Franecki",
+        "address": "31615 Bashirian Brooks, Kemmerport, MT 72153"
+      },
+      "weight_lb": 10107,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 212475,
+          "expected_cents": 212475
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 38925,
+          "expected_cents": 38925
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 13508,
+          "expected_cents": 13508
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14544,
+          "expected_cents": 14544
+        },
+        {
+          "line_number": 5,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8587,
+          "expected_cents": 8587
+        },
+        {
+          "line_number": 6,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 11874,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 299913,
+      "overcharges": [
+        {
+          "line_number": 6,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 11874
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 6,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 11874
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "id": "g089",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "non_usd",
+  "adversarial": true,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/g089.pdf",
+  "sha256": "1152f3ec8f018a0b053ccabc0b49f98c25829ed2552ad729be7122b5ef3ccddf",
+  "bytes": 31712,
+  "shipments": [
+    "1036862945"
+  ],
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "32985599",
+      "invoice_date": "2026-03-21",
+      "due_date": "2026-04-20",
+      "pro_number": "1036862945",
+      "currency": "CAD",
+      "bill_to": {
+        "name": "Pagac, Berge and Hermiston",
+        "address": "684 Krystel Common, Des Moines, GA 55475"
+      },
+      "shipper": {
+        "name": "Marks and Sons",
+        "address": "49349 Sarah Light, Dimitritown, MS 88985"
+      },
+      "consignee": {
+        "name": "Lind Group",
+        "address": "536 Douglas Road, Enterprise, GA 47989"
+      },
+      "weight_lb": 2819,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 418642,
+          "expected_cents": 418642
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 89631,
+          "expected_cents": 89631
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 20877,
+          "expected_cents": 20877
+        }
+      ],
+      "total_cents": 529150,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "needs_review",
+        "reason": "unsupported_currency: CAD",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -4,6 +4,7 @@ export { classify, httpError, parseRetryAfter, PermanentError, ProviderConfigErr
 export {
   type Call,
   EXTRACTION_JSON_SCHEMA,
+  EXTRACTION_PROMPT,
   type ExtractedInvoice,
   type Extraction,
   extractInvoices,
@@ -22,4 +23,4 @@ export { createModels, type ModelConfig } from './models.ts';
 export { createOpenAiProvider } from './openai.ts';
 export { readPages } from './pages.ts';
 export { MAX_PAGES, readPdf, splitPdf } from './pdf.ts';
-export { callCost, hasPrice } from './prices.ts';
+export { callCost, hasPrice, paidCost } from './prices.ts';

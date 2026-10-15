@@ -1,0 +1,149 @@
+{
+  "id": "g073",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "duplicate_invoice",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/g073.pdf",
+  "sha256": "29239e2ecb836af2227c2cd9f4ee4a971b463bb357c26ed6d373b8b21e0c73d1",
+  "bytes": 725739,
+  "shipments": [
+    "1020510210"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "44595917",
+      "invoice_date": "2026-07-31",
+      "due_date": "2026-08-30",
+      "pro_number": "1020510210",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Mann, Cartwright and Fritsch",
+        "address": "482 Myrtis Forest, Odessaville, NC 96812"
+      },
+      "shipper": {
+        "name": "Olson, Schaden and Tromp",
+        "address": "3875 Hailee Stream, Santa Fe, ME 73103"
+      },
+      "consignee": {
+        "name": "Wisozk, Hand and Connelly",
+        "address": "3001 Everett Junction, Troy, OK 83366"
+      },
+      "weight_lb": 2233,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 151790,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 37113,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 9745,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 4,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3895,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 5,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 37113,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 239656,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 151790
+        },
+        {
+          "line_number": 2,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 37113
+        },
+        {
+          "line_number": 3,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 9745
+        },
+        {
+          "line_number": 4,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 3895
+        },
+        {
+          "line_number": 5,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 37113
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 151790
+          },
+          {
+            "line_number": 2,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 37113
+          },
+          {
+            "line_number": 3,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 9745
+          },
+          {
+            "line_number": 4,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 3895
+          },
+          {
+            "line_number": 5,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 37113
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "id": "g072",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "duplicate_invoice",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/g072.pdf",
+  "sha256": "3da4e384234fbfc8d54355db89184078cf4c84461eb6f7ac1dd781d79523465c",
+  "bytes": 68620,
+  "shipments": [
+    "1019456983"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "39143982",
+      "invoice_date": "2025-04-08",
+      "due_date": "2025-05-08",
+      "pro_number": "1019456983",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Osinski - Pfannerstill",
+        "address": "80294 Common Lane, Simonisstead, MD 55143"
+      },
+      "shipper": {
+        "name": "Weimann Inc",
+        "address": "8550 Hackett-Torp Points, New Carey, KY 30583"
+      },
+      "consignee": {
+        "name": "Connelly, Pfannerstill and Bernhard",
+        "address": "7185 Willow Road, Fort Rozellaside, MT 57818"
+      },
+      "weight_lb": 9183,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 188976,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 34620,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8090,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 4,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 4322,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 236008,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 188976
+        },
+        {
+          "line_number": 2,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 34620
+        },
+        {
+          "line_number": 3,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 8090
+        },
+        {
+          "line_number": 4,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 4322
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 188976
+          },
+          {
+            "line_number": 2,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 34620
+          },
+          {
+            "line_number": 3,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 8090
+          },
+          {
+            "line_number": 4,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 4322
+          }
+        ]
+      }
+    }
+  ]
+}

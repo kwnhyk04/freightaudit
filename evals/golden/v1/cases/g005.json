@@ -1,0 +1,80 @@
+{
+  "id": "g005",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/g005.pdf",
+  "sha256": "92bfb138d0948fe772afbe27699c6f3e3395621fadfc5597fcad9e815836a582",
+  "bytes": 31190,
+  "shipments": [
+    "1026766220"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "45975784",
+      "invoice_date": "2026-09-18",
+      "due_date": "2026-10-18",
+      "pro_number": "1026766220",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Predovic-Boehm and Sons",
+        "address": "1548 Arch Walks, Sabrinaborough, GA 12742"
+      },
+      "shipper": {
+        "name": "Heathcote - Daugherty",
+        "address": "579 Elena Dam, North Irwinstead, MI 07078"
+      },
+      "consignee": {
+        "name": "Hudson and Sons",
+        "address": "469 N Broadway, Brownstead, IA 24905"
+      },
+      "weight_lb": 8383,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 25179,
+          "expected_cents": 25179
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 6406,
+          "expected_cents": 6406
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 11283,
+          "expected_cents": 11283
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 12441,
+          "expected_cents": 12441
+        }
+      ],
+      "total_cents": 55309,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

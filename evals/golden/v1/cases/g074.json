@@ -1,0 +1,87 @@
+{
+  "id": "g074",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "long_digit_run",
+  "adversarial": false,
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "file": "cases/g074.pdf",
+  "sha256": "3851cac3c4623040b7ae28ec3fbcf9f8bfe0d2167e9760320a0a93d234e1f8d6",
+  "bytes": 20422,
+  "shipments": [
+    "1016297302"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "80000008",
+      "invoice_date": "2025-02-10",
+      "due_date": "2025-03-12",
+      "pro_number": "1016297302",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Wiegand - Gusikowski",
+        "address": "967 High Street, Alanborough, DE 29023"
+      },
+      "shipper": {
+        "name": "Cruickshank Group",
+        "address": "3940 Greenville Road, Rutherfordshire, IN 34990"
+      },
+      "consignee": {
+        "name": "Hegmann - Wiegand",
+        "address": "458 Damian Island, Lake Bernadettehaven, MO 55417"
+      },
+      "weight_lb": 7647,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 292440,
+          "expected_cents": 292440
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 53575,
+          "expected_cents": 53575
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8090,
+          "expected_cents": 8090
+        },
+        {
+          "line_number": 4,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3486,
+          "expected_cents": 3486
+        },
+        {
+          "line_number": 5,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12726,
+          "expected_cents": 12726
+        }
+      ],
+      "total_cents": 370317,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

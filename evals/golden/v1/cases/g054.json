@@ -1,0 +1,80 @@
+{
+  "id": "g054",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/g054.pdf",
+  "sha256": "710468015d4890d977f3329207f1759486a669f70c2e042f726a2fc003786ee1",
+  "bytes": 68227,
+  "shipments": [
+    "1035287064"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "47222915",
+      "invoice_date": "2025-12-15",
+      "due_date": "2026-01-14",
+      "pro_number": "1035287064",
+      "currency": "USD",
+      "bill_to": {
+        "name": "White-Torp, Rowe and Runolfsson",
+        "address": "2474 Morissette Haven, Lake Otha, CA 25025"
+      },
+      "shipper": {
+        "name": "Marvin - Johns",
+        "address": "821 Nelson Road, Yoststad, CO 82796"
+      },
+      "consignee": {
+        "name": "Herman LLC",
+        "address": "714 Memorial Drive, Godfreyside, FL 91082"
+      },
+      "weight_lb": 7954,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 469580,
+          "expected_cents": 469580
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 96350,
+          "expected_cents": 86027
+        }
+      ],
+      "total_cents": 565930,
+      "overcharges": [
+        {
+          "line_number": 2,
+          "type": "rate_mismatch",
+          "expected_cents": 86027,
+          "billed_cents": 96350
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 2,
+            "type": "rate_mismatch",
+            "expected_cents": 86027,
+            "billed_cents": 96350
+          }
+        ]
+      }
+    }
+  ]
+}

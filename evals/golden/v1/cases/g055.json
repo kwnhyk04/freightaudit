@@ -1,0 +1,101 @@
+{
+  "id": "g055",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/g055.pdf",
+  "sha256": "f2a8dcbf39cf6d7468275cc0546d4ce881e69ddbd0f1cfb31f914e0b01da7b21",
+  "bytes": 54611,
+  "shipments": [
+    "1013240568"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "14835569",
+      "invoice_date": "2025-08-19",
+      "due_date": "2025-09-18",
+      "pro_number": "1013240568",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Kshlerin - Hartmann",
+        "address": "85986 Susanna Dale, New Liliane, CA 03754"
+      },
+      "shipper": {
+        "name": "Becker LLC",
+        "address": "812 Blind Lane, Providence, OR 17680"
+      },
+      "consignee": {
+        "name": "MacGyver - Sporer",
+        "address": "20390 Cartwright Expressway, South Lindafurt, NE 04988"
+      },
+      "weight_lb": 11944,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 31898,
+          "expected_cents": 31898
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 5844,
+          "expected_cents": 5844
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8090,
+          "expected_cents": 8090
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12726,
+          "expected_cents": 12726
+        },
+        {
+          "line_number": 5,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 12940,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 71498,
+      "overcharges": [
+        {
+          "line_number": 5,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 12940
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 5,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 12940
+          }
+        ]
+      }
+    }
+  ]
+}

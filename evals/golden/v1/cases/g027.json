@@ -1,0 +1,66 @@
+{
+  "id": "g027",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g027.pdf",
+  "sha256": "a8c44f3e2f0b15eb1fb4f8e7de76a0bcc891913d5a5b886881402a6cfda613a1",
+  "bytes": 27590,
+  "shipments": [
+    "1018593812"
+  ],
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "01343396",
+      "invoice_date": "2026-03-08",
+      "due_date": "2026-04-07",
+      "pro_number": "1018593812",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Gutkowski - Moen",
+        "address": "1162 White Street, Kundeville, WI 14361"
+      },
+      "shipper": {
+        "name": "Bauch and Sons",
+        "address": "370 N Front Street, West Alvis, NC 49254"
+      },
+      "consignee": {
+        "name": "Emard, Marvin and Weissnat",
+        "address": "4202 Hyatt Radial, Howardport, OK 93045"
+      },
+      "weight_lb": 10246,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 291628,
+          "expected_cents": 291628
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 62438,
+          "expected_cents": 62438
+        }
+      ],
+      "total_cents": 354066,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

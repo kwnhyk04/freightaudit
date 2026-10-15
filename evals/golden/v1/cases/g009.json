@@ -1,0 +1,66 @@
+{
+  "id": "g009",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "file": "cases/g009.pdf",
+  "sha256": "9ce68a865c988c76dab86685193c86711f38ff63dda396f8607ef7d5b0d009b6",
+  "bytes": 27451,
+  "shipments": [
+    "1024889417"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "05884406",
+      "invoice_date": "2026-04-01",
+      "due_date": "2026-05-01",
+      "pro_number": "1024889417",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Smitham, Lubowitz and Vandervort",
+        "address": "708 Bosco Row, Celestineton, NJ 80058"
+      },
+      "shipper": {
+        "name": "Goodwin - Muller",
+        "address": "7623 Sabryna Vista, Schuliststead, NM 77807"
+      },
+      "consignee": {
+        "name": "Haley, McClure and Dare",
+        "address": "59217 O'Connell Falls, Lake Elliottport, MA 92235"
+      },
+      "weight_lb": 9885,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 340500,
+          "expected_cents": 340500
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 62380,
+          "expected_cents": 62380
+        }
+      ],
+      "total_cents": 402880,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

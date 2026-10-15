@@ -77,7 +77,13 @@
       "dependsOn": [
         "^build"
       ],
-      "cache": false
+      "cache": false,
+      "passThroughEnv": [
+        "DOCKER_*",
+        "TESTCONTAINERS_*",
+        "HOME",
+        "USERPROFILE"
+      ]
     },
     "contracts:check": {
       "cache": false

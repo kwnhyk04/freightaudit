@@ -1,0 +1,80 @@
+{
+  "id": "g046",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "file": "cases/g046.pdf",
+  "sha256": "89bcbd01a97940181773cb401b3ff4551de749f1dc33d23d45c915b0bb24f89e",
+  "bytes": 45006,
+  "shipments": [
+    "1020462696"
+  ],
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "99574633",
+      "invoice_date": "2026-06-02",
+      "due_date": "2026-07-02",
+      "pro_number": "1020462696",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Grant Inc",
+        "address": "12018 Shad Loaf, New Bailee, WY 43738"
+      },
+      "shipper": {
+        "name": "Stamm LLC",
+        "address": "23924 Veda Manor, Mesquite, AZ 35982"
+      },
+      "consignee": {
+        "name": "Stehr - Labadie",
+        "address": "3501 South Street, Noblefield, RI 72343"
+      },
+      "weight_lb": 10866,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 187538,
+          "expected_cents": 187538
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 56468,
+          "expected_cents": 56468
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 6399,
+          "expected_cents": 6399
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 12357,
+          "expected_cents": 12357
+        }
+      ],
+      "total_cents": 262762,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "id": "g037",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "file": "cases/g037.pdf",
+  "sha256": "9d0a5d3c65f2de16c0d7971018b040dc4f3702127f0848fbce32a3cd6f78aecb",
+  "bytes": 51882,
+  "shipments": [
+    "1016146841"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "36250149",
+      "invoice_date": "2025-04-02",
+      "due_date": "2025-05-02",
+      "pro_number": "1016146841",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Champlin Group",
+        "address": "21705 Haley Forks, Boyleside, LA 53155"
+      },
+      "shipper": {
+        "name": "McLaughlin - Prosacco",
+        "address": "617 6th Street, Cordiastead, VA 79906"
+      },
+      "consignee": {
+        "name": "Wunsch LLC",
+        "address": "117 Lukas Haven, Brekketon, NJ 57543"
+      },
+      "weight_lb": 8321,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 335200,
+          "expected_cents": 335200
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 81956,
+          "expected_cents": 81956
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 9444,
+          "expected_cents": 9444
+        },
+        {
+          "line_number": 4,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 13833,
+          "expected_cents": 13833
+        },
+        {
+          "line_number": 5,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3775,
+          "expected_cents": 3775
+        }
+      ],
+      "total_cents": 444208,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

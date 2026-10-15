@@ -1,0 +1,73 @@
+{
+  "id": "g041",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/g041.pdf",
+  "sha256": "219c56d5d47c05e387ff15831210f1066337368d2821d0bfe1d2fe64e91db7e7",
+  "bytes": 31761,
+  "shipments": [
+    "1013058431"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "57818684",
+      "invoice_date": "2025-11-22",
+      "due_date": "2025-12-22",
+      "pro_number": "1013058431",
+      "currency": "USD",
+      "bill_to": {
+        "name": "King Inc",
+        "address": "4228 Ewald Causeway, Port Ignacio, MS 87568"
+      },
+      "shipper": {
+        "name": "Robel - Heidenreich",
+        "address": "6478 Marilie Fields, Vandervortworth, CO 29900"
+      },
+      "consignee": {
+        "name": "Kuvalis - Mitchell",
+        "address": "82662 Precious Springs, Roderickview, IN 25440"
+      },
+      "weight_lb": 10477,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 280444,
+          "expected_cents": 280444
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 68569,
+          "expected_cents": 68569
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 11276,
+          "expected_cents": 11276
+        }
+      ],
+      "total_cents": 360289,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "id": "g023",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/g023.pdf",
+  "sha256": "572dda1c5ecebc3569fbc628d1ba2924bd86bf6a918ba0c5615d25396229d352",
+  "bytes": 31754,
+  "shipments": [
+    "1004007014"
+  ],
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "34880342",
+      "invoice_date": "2026-07-21",
+      "due_date": "2026-08-20",
+      "pro_number": "1004007014",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Gislason - Schmitt",
+        "address": "549 Carrie Highway, North Bethesda, MA 90256"
+      },
+      "shipper": {
+        "name": "Price - Botsford",
+        "address": "2943 N 3rd Street, Port Andy, NH 71280"
+      },
+      "consignee": {
+        "name": "Adams, Lindgren and Will",
+        "address": "4962 Mac Lane, New Kristiport, PA 87015"
+      },
+      "weight_lb": 1489,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 197054,
+          "expected_cents": 197054
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 50131,
+          "expected_cents": 50131
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 13668,
+          "expected_cents": 13668
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 11283,
+          "expected_cents": 11283
+        }
+      ],
+      "total_cents": 272136,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

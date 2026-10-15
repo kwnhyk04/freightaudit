@@ -1,0 +1,128 @@
+{
+  "id": "g084",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "two_invoices",
+  "adversarial": true,
+  "layouts": [
+    "boxed",
+    "classic"
+  ],
+  "pages": 2,
+  "file": "cases/g084.pdf",
+  "sha256": "f0524c5fcc680783602dc54f5e740b840061692f6fbe1facd150e10a0dce36de",
+  "bytes": 113315,
+  "shipments": [
+    "1031929408",
+    "1027708581"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "13706898",
+      "invoice_date": "2025-12-23",
+      "due_date": "2026-01-22",
+      "pro_number": "1031929408",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Gerhold - Swift",
+        "address": "6449 Arno Lock, Boulder, AR 17754"
+      },
+      "shipper": {
+        "name": "Schulist, Stracke and Bechtelar",
+        "address": "383 Dessie Lock, Leannonstad, NE 50001"
+      },
+      "consignee": {
+        "name": "Ward, Goldner and Schoen",
+        "address": "847 Isobel Wells, Port Ramonashire, IA 91048"
+      },
+      "weight_lb": 2224,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 188703,
+          "expected_cents": 188703
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 46138,
+          "expected_cents": 46138
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3775,
+          "expected_cents": 3775
+        }
+      ],
+      "total_cents": 238616,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    },
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "29083541",
+      "invoice_date": "2025-01-24",
+      "due_date": "2025-02-23",
+      "pro_number": "1027708581",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Dibbert Inc",
+        "address": "686 S 14th Street, Santiagofort, IL 70207"
+      },
+      "shipper": {
+        "name": "Kuvalis, O'Hara and Kreiger",
+        "address": "2122 Jana Shoals, Thielton, DE 06598"
+      },
+      "consignee": {
+        "name": "Cremin Group",
+        "address": "22395 Honeysuckle Close, Briashire, WY 01413"
+      },
+      "weight_lb": 11760,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 580982,
+          "expected_cents": 580982
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 178303,
+          "expected_cents": 178303
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 9843,
+          "expected_cents": 9843
+        }
+      ],
+      "total_cents": 769128,
+      "overcharges": [],
+      "first_page": 2,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

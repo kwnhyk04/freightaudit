@@ -1,0 +1,108 @@
+{
+  "id": "g065",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/g065.pdf",
+  "sha256": "71b39218f6dca15fa4ca7d64f6864ea0cf75b5b6bd1ccfafeb351d23edef622c",
+  "bytes": 33940,
+  "shipments": [
+    "1023582782"
+  ],
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "43703809",
+      "invoice_date": "2025-11-01",
+      "due_date": "2025-12-01",
+      "pro_number": "1023582782",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hintz, Nolan and Skiles",
+        "address": "687 Amanda Ville, Lake Travishaven, NE 21325"
+      },
+      "shipper": {
+        "name": "O'Hara, Kovacek and Champlin",
+        "address": "689 Lawrence Skyway, New Reyes, NM 93150"
+      },
+      "consignee": {
+        "name": "Leffler, Mueller and Vandervort",
+        "address": "55193 Katharina Radial, West Salvadorland, TN 36102"
+      },
+      "weight_lb": 2884,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 433880,
+          "expected_cents": 433880
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 79487,
+          "expected_cents": 79487
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 13702,
+          "expected_cents": 13702
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8090,
+          "expected_cents": 8090
+        },
+        {
+          "line_number": 5,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3486,
+          "expected_cents": 3486
+        },
+        {
+          "line_number": 6,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 79487,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 618132,
+      "overcharges": [
+        {
+          "line_number": 6,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 79487
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 6,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 79487
+          }
+        ]
+      }
+    }
+  ]
+}

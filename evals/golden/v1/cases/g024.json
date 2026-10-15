@@ -1,0 +1,87 @@
+{
+  "id": "g024",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "file": "cases/g024.pdf",
+  "sha256": "f9c88e4689760e5b43ef31185b0e5e70267e6787ec123354aadb5128611b32a0",
+  "bytes": 67278,
+  "shipments": [
+    "1036031450"
+  ],
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "41092209",
+      "invoice_date": "2025-04-02",
+      "due_date": "2025-05-02",
+      "pro_number": "1036031450",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hegmann LLC",
+        "address": "28733 Durgan Fields, Elgin, GA 58203"
+      },
+      "shipper": {
+        "name": "Williamson, Kunde and Hoppe-Cremin",
+        "address": "355 Kirlin Mews, O'Connellville, WA 37024"
+      },
+      "consignee": {
+        "name": "Kub, Schmitt and Vandervort",
+        "address": "567 Jaren Crest, West Anikamouth, GA 56573"
+      },
+      "weight_lb": 10406,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 107845,
+          "expected_cents": 107845
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 23090,
+          "expected_cents": 23090
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 15812,
+          "expected_cents": 15812
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14245,
+          "expected_cents": 14245
+        },
+        {
+          "line_number": 5,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 4709,
+          "expected_cents": 4709
+        }
+      ],
+      "total_cents": 165701,
+      "overcharges": [],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "id": "c011",
+  "split": "comparison",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "file": "cases/c011.pdf",
+  "sha256": "50d2a3276d769a6bdfba5e6bd803ca976c4030f230c8ab744ba6000c16acfa48",
+  "bytes": 718103,
+  "shipments": [
+    "1003389332"
+  ],
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "72376136",
+      "invoice_date": "2025-06-26",
+      "due_date": "2025-07-26",
+      "pro_number": "1003389332",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Harber - Botsford",
+        "address": "8080 N 8th Street, Cummerata-Bernierside, IL 47859"
+      },
+      "shipper": {
+        "name": "Lubowitz, Hegmann and Fisher",
+        "address": "1031 Woodlands Close, North Felicita, NC 33283"
+      },
+      "consignee": {
+        "name": "Greenholt - Wolff",
+        "address": "1369 Glover Bridge, Amyafurt, VA 61478"
+      },
+      "weight_lb": 6637,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 351736,
+          "expected_cents": 351736
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 96318,
+          "expected_cents": 85999
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 13833,
+          "expected_cents": 13833
+        },
+        {
+          "line_number": 4,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3775,
+          "expected_cents": 3775
+        }
+      ],
+      "total_cents": 465662,
+      "overcharges": [
+        {
+          "line_number": 2,
+          "type": "rate_mismatch",
+          "expected_cents": 85999,
+          "billed_cents": 96318
+        }
+      ],
+      "first_page": 1,
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 2,
+            "type": "rate_mismatch",
+            "expected_cents": 85999,
+            "billed_cents": 96318
+          }
+        ]
+      }
+    }
+  ]
+}
