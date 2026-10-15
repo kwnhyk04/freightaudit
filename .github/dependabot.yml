@@ -1,13 +1,18 @@
 version: 2
 
 # A week's cooldown keeps proposals clear of pnpm's release-age gate and of releases pulled soon after publishing.
+# Majors are upgraded by hand, so each ecosystem ignores them and batches minor and patch updates into one PR.
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
     cooldown:
       default-days: 7
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
       npm-minor-and-patch:
         update-types: [minor, patch]
@@ -16,12 +21,29 @@ updates:
     directories: [/apps/api, /apps/worker, /apps/web]
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
     cooldown:
       default-days: 7
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+      # Node base images stay on the 24 LTS line.
+      - dependency-name: node
+        versions: ['>= 25']
+    groups:
+      docker-minor-and-patch:
+        update-types: [minor, patch]
 
   - package-ecosystem: github-actions
     directories: [/, /.github/actions/*]
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
     cooldown:
       default-days: 7
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+    groups:
+      actions-minor-and-patch:
+        update-types: [minor, patch]
