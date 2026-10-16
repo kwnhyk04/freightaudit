@@ -1,0 +1,21 @@
+{
+  "scenario": "e2e",
+  "date": "2026-10-15",
+  "accepted": 20,
+  "refused": 0,
+  "statuses": {
+    "reconciled": 20,
+    "needs_review": 0,
+    "approved": 0,
+    "failed": 0
+  },
+  "pending": 0,
+  "provider": "real free-tier models",
+  "n": 20,
+  "e2e_ms": {
+    "p50": 3108,
+    "p90": 4162,
+    "max": 4663
+  },
+  "note": "n = 20: p95 is not meaningful; p90 and max are reported instead."
+}

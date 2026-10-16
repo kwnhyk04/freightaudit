@@ -2,7 +2,7 @@ import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import { openapiPath, typeDefs, type Resolvers } from '@freightaudit/contracts';
 import type { Storage } from '@freightaudit/pipeline';
-import { type Check, readiness } from '@freightaudit/telemetry';
+import { type Check, intakeRejected, readiness } from '@freightaudit/telemetry';
 import Fastify, { type FastifyError, type FastifyReply, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import openapiGlue from 'fastify-openapi-glue';
 import { createSchema, createYoga } from 'graphql-yoga';
@@ -64,6 +64,7 @@ export function buildApp(
   if (backlog) {
     app.addHook('onRequest', async (req, reply) => {
       if (!isUpload(req) || (await backlog.waiting()) <= backlog.highWater) return;
+      intakeRejected.add(1, { reason: 'backlog' });
       reply.header('retry-after', BACKLOG_RETRY_AFTER_S);
       throw fail(503, 'the extraction backlog is full; retry later');
     });

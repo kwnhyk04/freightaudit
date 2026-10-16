@@ -25,4 +25,4 @@ USER node
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.API_PORT}/healthz`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
-CMD ["node", "apps/api/dist/main.js"]
+CMD ["node", "--import", "./apps/api/dist/telemetry.js", "apps/api/dist/main.js"]

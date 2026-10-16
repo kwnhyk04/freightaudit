@@ -6,8 +6,10 @@ import { RateLimitError } from './errors.ts';
 export type Usage = { inputTokens: number; outputTokens: number };
 // A page as the model reads it: its text layer, or a JPEG render of a page without one.
 export type Part = { page: number; text: string } | { page: number; jpeg: Uint8Array };
-export type GenerateInput = { prompt: string; parts: Part[]; schema: object };
-export type Reply = { text: string; usage: Usage; latencyMs: number; servedModel: string | undefined };
+// step is for traces only; providers ignore it.
+export type GenerateInput = { prompt: string; parts: Part[]; schema: object; step?: Step | undefined };
+// finishReason as the provider reports it, such as Gemini's STOP or an OpenAI-compatible stop or length.
+export type Reply = { text: string; usage: Usage; latencyMs: number; servedModel: string | undefined; finishReason?: string | undefined };
 // A model behind the provider layer. It only reads documents; code checks every amount it returns. maxImages is the
 // most page images one request may carry, for a provider that caps it.
 export type Provider = { name: string; model: string; maxImages?: number | undefined; generate(input: GenerateInput): Promise<Reply> };
@@ -162,7 +164,7 @@ export async function extractInvoices(
     const started = performance.now();
     let reply: Reply;
     try {
-      reply = await provider.generate({ prompt, parts, schema: EXTRACTION_JSON_SCHEMA });
+      reply = await provider.generate({ prompt, parts, schema: EXTRACTION_JSON_SCHEMA, step });
     } catch (err) {
       await record(err instanceof RateLimitError ? 'rate_limited' : 'error', { inputTokens: 0, outputTokens: 0 }, Math.round(performance.now() - started), null);
       throw err;

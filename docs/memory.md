@@ -117,6 +117,27 @@ From the approved design doc:
 - 2026-10-15: Eval exit 1 (a broken floor) fails its job; exit 2 (a quota stop) is a warning (user). The smoke skips fork and Dependabot PRs, which get no Actions secrets.
 - 2026-10-15: CI runs unit tests with `pnpm test --force` (user): a pass replayed from Turborepo's cache is not a pass. Lint and typecheck keep caching, being deterministic on hashed inputs.
 - 2026-10-15: CI checks every golden and comparison PDF against its manifest's sha256 (user). Git treats every PDF here as binary, and all 105 committed blobs match their manifests.
+- 2026-10-16: Trace context crosses BullMQ in job data, as `data.otel` with only `traceparent` and `tracestate`, never baggage. `send()` writes it inside a PRODUCER span and `consume()` reads it into a CONSUMER span (`packages/pipeline/src/tracing.ts`); with no SDK running, `otel` is left out, so job data stays as before. Reason: the user asked for the traceparent in job data. BullMQ's own telemetry (`bullmq-otel`) puts it in job opts, adds a dependency, and traces every worker poll.
+- 2026-10-16: A split upload's flow is one `send extract` span. The collect parent and every part carry its context, so each part's spans are its children in the upload's trace. A replay drops the failed job's context and carries the replay request's instead. Reason: one trace per upload; "child jobs in a flow link to the parent span" is read as this parent-child edge (approved plan).
+- 2026-10-16: GenAI and messaging attribute names are inlined from semconv v1.41.1, and every tracer declares the schema URL `https://opentelemetry.io/schemas/1.41.1`. There is no semantic-conventions dependency. Reason: v1.42.0 moved GenAI to the separate semantic-conventions-genai repository, which has no release; the JS package deprecated its `ATTR_GEN_AI_*` exports and advises copying unstable names. The user asked to pin the version.
+- 2026-10-16: The model-call span (`packages/llm/src/trace.ts`) wraps only the provider call, inside the rate-limit bucket, so its time is the provider's. It records the model, tokens, finish reason, role and step. It never records the prompt, pages or output, and keeps only `error.type` on failure. Reason: no document content in spans.
+- 2026-10-16: Each app starts the SDK through `node --import ./src/telemetry.ts` (`startTelemetry` in `@freightaudit/telemetry/sdk`), in dev scripts and Docker CMDs alike.
+  - The import-in-the-middle hook is limited to the modules the instrumentations ask for (`createAddHookMessageChannel`).
+  - OTLP goes over http/json.
+  - ioredis keeps command names only; pg uses `requireParentSpan` and `ignoreConnectSpans`.
+  - @fastify/otel runs with `recordExceptions: false`; no log exporter.
+
+  Reason: ESM needs the hook before fastify, pg and ioredis load. The limit keeps the app's own .ts files and pdfjs unwrapped. JSON lets the span-scan test read exports without a protobuf decoder.
+- 2026-10-16: All instruments live in `packages/telemetry/src/metrics.ts`. The resource carries `service.instance.id = <hostname>-<pid>`, and the collector scrape keeps the exporter's `job`/`instance` labels (`honor_labels`). Reason: one place matches the dashboard and the rules; two workers would otherwise overwrite each other's counters.
+- 2026-10-16: Alert rules are a Prometheus rule file (`infra/prometheus-alerts.yml`) with a promtool test that CI's lint job runs, not Grafana-managed rules; Grafana lists them read-only. Reason: shorter, and testable.
+- 2026-10-16: The k6 load test has two parts that measure different things (user decision).
+  - **Part 1** (`SCENARIO=system`) is system throughput and backpressure at 3x the 2,000/h normal rate (the design's throughput target), on 2 workers x concurrency 8. Model latency and quotas are replaced by the recorded-fixture provider: real recorded replies after a fixed 2,300 ms.
+  - **Part 2** (`SCENARIO=e2e`) is the end-to-end latency one invoice sees from the real free-tier models at low load: 20 single-page golden cases, one every 15 s. It is paced below the free-tier ceiling of about 394/h, which Groq's 8K tokens a minute sets; at the design rate it would measure throttling again. It reports n, p50, p90 and max, since p95 is not meaningful at n = 20.
+  - Neither part measures real models at the design rate; that needs paid tiers.
+- 2026-10-16: The per-key rate limits became settings: `RATE_LIMIT_PER_MIN` (60) and `UPLOAD_RATE_LIMIT_PER_MIN` (10). The load test's env files raise them for its api. Reason: one k6 client sends the load, and part 2 polls every 500 ms; the limiter still runs on every request.
+- 2026-10-16: Part 1 runs on its own Redis prefix (`freightaudit-loadtest`) with a raised `DAILY_AI_TOKEN_BUDGET`. It adds two shipments for the recorded fixtures' PRO numbers (`loadtest/fixture-shipments.sql`). Reason:
+  - About 1,070 uploads at the recorded 1,300 to 1,600 tokens each pass the default 1,000,000 a day, which would park the rest until midnight, and the day counter would then block dev and part 2.
+  - `packages/llm/fixtures` predates the current small seed, so without the shipments every fixture invoice would stop at `no_shipment_match`.
 
 ## Preferences and Instructions
 
@@ -200,6 +221,15 @@ From the approved design doc:
 - 2026-10-15: pg_dump 18 writes `\restrict <random key>` lines; pass `--restrict-key` for dumps that compare.
 - 2026-10-15: Next's standalone `server.js` binds `HOSTNAME`, which Docker sets to the container id; the web image sets `HOSTNAME=0.0.0.0`.
 - 2026-10-15: Empty `TURBO_TOKEN` and `TURBO_TEAM` only disable remote caching ("Remote caching disabled"), so CI needs no condition around them.
+- 2026-10-16: The OpenTelemetry metrics API has no proxy: an instrument created before the SDK registers its MeterProvider stays a no-op for good. `packages/telemetry/src/sdk.ts` therefore must not import `metrics.ts` (or `index.ts`), and apps load the instruments only after `--import` has started the SDK.
+- 2026-10-16: With `createAddHookMessageChannel`, instrumentations send their hooks to the loader from their constructors. Build them after `register()`, and keep exactly one import-in-the-middle copy (`pnpm why import-in-the-middle`). Otherwise pg and ioredis spans silently vanish; the span-scan test asserts that both exist.
+- 2026-10-16: instrumentation-ioredis' default statement serializer keeps every `EVALSHA` argument, and BullMQ passes keys, job data and results that way. With the default, the span-scan test failed on `evalsha <sha> 1 <prefix>:extract: wait delayed`, so the serializer keeps the command name only.
+- 2026-10-16: In @opentelemetry/api 1.9 `trace.getTracer(name, version)` takes no options; a schema URL goes through `trace.getTracerProvider().getTracer(name, version, { schemaUrl })`.
+- 2026-10-16: Jaeger 2.22 serves only the v3 query API (`/api/v3/services`, `/api/v3/traces?query.service_name=...`); `/api/services` and `/api/traces` answer 404.
+- 2026-10-16: drizzle-orm 0.45's tracer never runs: its `otel` variable is never assigned (`tracing.js`). The database spans therefore come from instrumentation-pg alone, which records SQL with `$n` placeholders.
+- 2026-10-16: Git Bash rewrites `/loadtest/k6.js` in `docker compose run ... k6 run /loadtest/k6.js` into a Windows path, and k6 then exits 255. Run it from PowerShell, or set `MSYS_NO_PATHCONV=1`.
+- 2026-10-16: Splitting a PDF of identical blank pages gives byte-identical parts. Those parts share one content hash, so they become one invoice. Tests that split use page groups of different sizes (`makePdf(3)`, split into pages 1-2 and 3).
+- 2026-10-16: `module.register()` is documentation-deprecated in Node 24.15 and later (DEP0205); OTel 0.223 still documents it. import-in-the-middle 3.5 ships `register-hooks.mjs`, based on `module.registerHooks`, for the move.
 
 ## Rejected Approaches
 

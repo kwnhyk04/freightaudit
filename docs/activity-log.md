@@ -15,6 +15,62 @@ Chronological record of significant development activity, newest first. Skip tri
 
 ## Entries
 
+### 2026-10-16: Step 8 instrumentation and k6 load test
+
+- Changes:
+  - **OpenTelemetry:** OpenTelemetry through `packages/telemetry`.
+    - Each app loads `node --import ./src/telemetry.ts`, which runs NodeSDK with OTLP/JSON to the collector. The import-in-the-middle hook covers only the hooked modules.
+    - Instrumentations: http, @fastify/otel, pg (placeholders only), and ioredis (command names only).
+    - `service.instance.id` is set per process.
+  - **Trace context through BullMQ** (`packages/pipeline/src/tracing.ts`):
+    - `send()` stores the W3C traceparent in job data inside a producer span, and `consume()` runs each attempt as a consumer span under it.
+    - A split's flow shares one send span; a replay continues the replay request's trace.
+  - **GenAI model-call spans** (`packages/llm/src/trace.ts`): semconv v1.41.1 names inlined and the schema URL pinned. Each records the model, tokens, finish reason, role and step, never content. `finishReason` is now read from both clients.
+  - **Metrics** (`packages/telemetry/src/metrics.ts`):
+    - queue and dead-letter gauges, and the circuit breaker
+    - job duration and wait, and retries by error class
+    - tokens, paid-equivalent cost and 429s
+    - escalations, fallbacks, needs_review by reason, and intake 503s
+  - **Dashboard and alerts:**
+    - The Grafana dashboard `infra/grafana/freightaudit.json`, provisioned, on datasources with fixed uids.
+    - The Prometheus rule file `infra/prometheus-alerts.yml` with a promtool test, which CI's lint job runs.
+    - Prometheus now scrapes with `honor_labels`.
+  - **Rate limits:** the per-key limits became `RATE_LIMIT_PER_MIN` and `UPLOAD_RATE_LIMIT_PER_MIN`. `OTEL_SDK_DISABLED`, `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_METRIC_EXPORT_INTERVAL` are validated.
+  - **Span-scan test:** `apps/worker/src/telemetry.int.test.ts`.
+  - **k6 load test:**
+    - `loadtest/k6.js`, run as the compose service `k6`, profile `loadtest`, image `grafana/k6:2.3.0` by digest.
+    - The env files for both parts, and `fixture-shipments.sql`.
+    - The recorded-fixture model server: `pnpm --filter @freightaudit/llm fixture-models`, with `fakeModels` now taking async replies and a port.
+  - **README:** `evals/harness/report.ts` renders the README's end-to-end latency and throughput rows from the k6 results. The README gained Observability and Load test sections.
+- Files:
+  - packages: `packages/telemetry/**`, `packages/pipeline/src/{tracing,queues,dead-letters,index}.ts`, `packages/llm/{src/{trace,extract,gemini,openai,models,testing}.ts,scripts/fixture-models.ts,tsconfig*.json}`, `packages/config/src/env.ts`
+  - apps: `apps/{api,worker}/{src/telemetry.ts,package.json,Dockerfile}`, `apps/api/src/{main,app,service}.ts`, `apps/worker/src/{main,workers,extract,reconcile,telemetry.int.test}.ts`
+  - infra: `infra/{docker-compose.yml,prometheus.yml,prometheus-alerts.yml,prometheus-alerts.test.yml,grafana-datasources.yml,grafana/*}`
+  - load test and evals: `loadtest/*`, `evals/harness/report.ts`
+  - root: `.github/workflows/ci.yml`, `.dockerignore`, `.env.example`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `README.md`
+  - docs and screenshots: `docs/*`, `docs/screenshots/{jaeger-trace,grafana-load-test}.png`
+- Validation:
+  - `pnpm turbo run build typecheck lint` passes; `pnpm turbo run test --force`: 16 tasks, 0 cached, passed.
+  - `pnpm test:int`: 93 of 93 (21.1 s).
+  - The span-scan test passes in 4.8 s. It fails with the default ioredis serializer (an `evalsha` statement with keys) and with a `send` that drops the context (6 traces instead of 1).
+  - promtool: rules check (4 rules) and tests pass. actionlint exits 0.
+  - In Jaeger: one upload is one trace with 2 services and about 50 spans. It runs from `POST /v1/invoices` through `process extract`, the model call and `process reconcile` (screenshot from a real Gemini call).
+  - The api and worker images build, start healthy with the `--import` CMD, and the worker's metrics reach Prometheus through the collector.
+  - k6 Part 1 (2026-10-15 20:19 UTC), on the recorded fixtures with 2 workers:
+    - 1,083 uploads at up to 6,000/h: 1,083 reconciled, 0 lost, 0 refused.
+    - Upload p50 30 ms, p95 86 ms, p99 155 ms.
+    - The extract queue held about 4 active and 0 waiting at 3x.
+    - Everything was final within 5 s of the last upload.
+  - k6 Part 2 (2026-10-15 20:41 UTC), on the real models:
+    - 20 single-page golden cases, one every 15 s, all reconciled, no 429.
+    - End-to-end p50 3,108 ms, p90 4,162 ms, max 4,663 ms.
+    - A first run had 21 invoices: the 300 s arrival window started one at its end, so the window became 290 s.
+- Outstanding:
+  - No run measures real models at the design rate; that needs paid tiers.
+  - Web and mock-tms are not instrumented, and logs carry no trace ids.
+  - A batch upload is one trace.
+  - Step 7's test PR still waits for the repository.
+
 ### 2026-10-15: Step 7 CI/CD written and checked locally
 
 - Changes: GitHub Actions. `ci.yml` (pull requests, and `workflow_call`): lint, typecheck and actionlint; unit tests with `--force`; `test:int` with the Playwright Chromium; contracts check and oasdiff against the base commit; migrations on a fresh database and on a small-seeded snapshot built from the base, with schemas compared; golden and comparison PDF checksums; the eval smoke (`pnpm eval --suite extraction --subset ci`, exit 2 warns, one PR comment updated in place); a Docker build and Trivy scan per image; gitleaks; `pnpm audit`. `release.yml` (push to main): the same checks, then build, scan and push to GHCR as `sha-<short>` and `latest` with provenance and the GHA cache; migrate and deploy jobs gated by `DEPLOY_ENABLED`. `nightly-eval.yml`: the full eval weekly with a cache kept per workflow run, the report as an artifact, an issue on a broken floor. `dependabot.yml` and a composite setup action. Multi-stage Dockerfiles for api, worker and web (turbo prune, Node 24 alpine by digest, non-root, HEALTHCHECK), `.dockerignore`, Next standalone output. `@freightaudit/config` tooling moved to devDependencies. The Toxiproxy test's fake TMS binds `TOXIPROXY_UPSTREAM_HOST` (the bridge gateway on a Linux engine). turbo.json passes `GEMINI_API_KEY` and `GROQ_API_KEY` to `eval` and `OASDIFF_BASE_REF` to `contracts:breaking`. `pnpm audit` accepts two dev-only advisories.

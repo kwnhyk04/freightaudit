@@ -32,8 +32,8 @@ function digest(body: string) {
   return createHash('sha256').update(masked).digest('hex');
 }
 
-async function listen(server: ReturnType<typeof createServer>) {
-  server.listen(0, '127.0.0.1');
+async function listen(server: ReturnType<typeof createServer>, port = 0) {
+  server.listen(port, '127.0.0.1');
   await once(server, 'listening');
   return {
     url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
@@ -97,13 +97,15 @@ export async function cassetteServer(name: string, upstream: string) {
 }
 
 // A reply from a recorded success of each protocol with its text swapped, so fakes answer in the providers' real shapes:
-// Gemini generateContent, or an OpenAI-compatible chat completion.
-export function replyWith(protocol: 'gemini' | 'openai', text: string) {
+// Gemini generateContent, or an OpenAI-compatible chat completion. Without a text it is the recorded reply itself:
+// Gemini's reading of fixtures/scanned.pdf, or Groq's of fixtures/digital.pdf.
+export function replyWith(protocol: 'gemini' | 'openai', text?: string) {
   const [exchange] = cassette(protocol === 'gemini' ? 'gemini-scanned' : 'groq-digital').exchanges;
   const body = structuredClone(exchange!.body) as {
     candidates?: { content: { parts: { text: string }[] } }[];
     choices?: { message: { content: string } }[];
   };
+  if (text === undefined) return { status: 200, body };
   if (protocol === 'gemini') body.candidates![0]!.content.parts = [{ text }];
   else body.choices![0]!.message.content = text;
   return { status: 200, body };
@@ -120,10 +122,10 @@ export type FakeCall = {
 };
 export type FakeReply = { status: number; headers?: Record<string, string>; body?: unknown } | 'hang';
 
-// A local model server for both protocols. `reply` answers each call, numbered from 0; 'hang' never answers. The call
-// says which protocol and model it is for and how many pages it carries. GET requests get an empty TMS page, for
-// workers that run the TMS sync.
-export async function fakeModels(reply: (call: FakeCall) => FakeReply) {
+// A local model server for both protocols, on a random port unless one is given. `reply` answers each call, numbered
+// from 0; 'hang' never answers. The call says which protocol and model it is for and how many pages it carries. GET
+// requests get an empty TMS page, for workers that run the TMS sync.
+export async function fakeModels(reply: (call: FakeCall) => FakeReply | Promise<FakeReply>, port = 0) {
   let calls = 0;
   const server = createServer(async (req, res) => {
     const text = await readBody(req);
@@ -143,10 +145,10 @@ export async function fakeModels(reply: (call: FakeCall) => FakeReply) {
       headers: req.headers,
       body,
     };
-    const answer = reply(call);
+    const answer = await reply(call);
     if (answer === 'hang') return;
     res.writeHead(answer.status, { 'content-type': 'application/json', ...answer.headers }).end(JSON.stringify(answer.body ?? {}));
   });
-  const { url, close } = await listen(server);
+  const { url, close } = await listen(server, port);
   return { url, calls: () => calls, close };
 }

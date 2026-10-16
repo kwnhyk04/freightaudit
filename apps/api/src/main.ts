@@ -1,6 +1,6 @@
 import { loadEnv } from '@freightaudit/config/env';
 import { backlog, createQueues, createStorage } from '@freightaudit/pipeline';
-import { httpCheck, serverOptions, tcpCheck } from '@freightaudit/telemetry';
+import { httpCheck, serverOptions, shutdownTelemetry, tcpCheck } from '@freightaudit/telemetry';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Redis } from 'ioredis';
 import pg from 'pg';
@@ -21,6 +21,8 @@ const env = loadEnv([
   'S3_BUCKET',
   'TENANT_ID',
   'EXTRACT_HIGH_WATER',
+  'RATE_LIMIT_PER_MIN',
+  'UPLOAD_RATE_LIMIT_PER_MIN',
 ]);
 // One reconnect attempt per command, so a request fails fast while Redis is down instead of hanging.
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1 });
@@ -37,6 +39,7 @@ const app = buildApp(serverOptions(env.LOG_LEVEL), {
   storage: createStorage({ endpoint: env.S3_ENDPOINT, accessKey: env.S3_ACCESS_KEY, secretKey: env.S3_SECRET_KEY, bucket: env.S3_BUCKET }),
   redis,
   prefix: env.REDIS_PREFIX,
+  rateLimits: { general: env.RATE_LIMIT_PER_MIN, upload: env.UPLOAD_RATE_LIMIT_PER_MIN },
   backlog: { waiting: () => backlog(queues.queue('extract')), highWater: env.EXTRACT_HIGH_WATER },
 });
 
@@ -45,6 +48,7 @@ async function shutdown(signal: string) {
   app.log.info({ signal }, 'shutting down');
   try {
     await app.close();
+    await shutdownTelemetry();
     await queues.close();
     await redis.quit();
     await pool.end();

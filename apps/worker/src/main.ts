@@ -1,7 +1,7 @@
 import { configError, LLM_SETTINGS, llmRoles, loadEnv } from '@freightaudit/config/env';
 import { createLimits, createModels, hasPrice } from '@freightaudit/llm';
-import { createQueues, createStorage } from '@freightaudit/pipeline';
-import { readiness, serverOptions, tcpCheck } from '@freightaudit/telemetry';
+import { createQueues, createStorage, observeQueues } from '@freightaudit/pipeline';
+import { readiness, serverOptions, shutdownTelemetry, tcpCheck } from '@freightaudit/telemetry';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import Fastify from 'fastify';
 import { Redis } from 'ioredis';
@@ -37,6 +37,7 @@ const app = Fastify(serverOptions(env.LOG_LEVEL));
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
 const pool = new pg.Pool({ connectionString: env.DATABASE_URL });
 const queues = createQueues(redis, env.REDIS_PREFIX);
+observeQueues(queues);
 const limits = createLimits(redis, { prefix: env.REDIS_PREFIX, enabled: env.AI_ENABLED, dailyTokenBudget: env.DAILY_AI_TOKEN_BUDGET, roles });
 const workers = startWorkers(
   {
@@ -67,6 +68,8 @@ async function shutdown(signal: string) {
   app.log.info({ signal }, 'shutting down');
   try {
     await workers.close();
+    // Before Redis closes: the final metric export reads the queue gauges.
+    await shutdownTelemetry();
     await queues.close();
     await app.close();
     await redis.quit();

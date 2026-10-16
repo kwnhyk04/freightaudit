@@ -2,6 +2,7 @@ import type { Models, Role } from './extract.ts';
 import { createGeminiProvider } from './gemini.ts';
 import { type Limits, metered } from './limits.ts';
 import { createOpenAiProvider } from './openai.ts';
+import { traced } from './trace.ts';
 
 export type ModelConfig = { provider: string; model: string; baseUrl: string; apiKey?: string | undefined };
 
@@ -10,7 +11,7 @@ export type ModelConfig = { provider: string; model: string; baseUrl: string; ap
 const MAX_IMAGES: Record<string, number> = { mistral: 8, groq: 3 };
 
 // One provider per role, each waiting on its role's limits: Gemini through its SDK, every other provider through the
-// OpenAI-compatible client.
+// OpenAI-compatible client. The trace span sits inside the limits, so a bucket wait is not counted as model time.
 export function createModels(roles: Record<Role, ModelConfig>, limits: Limits): Models {
   const build = (role: Role) => {
     const { provider, model, baseUrl, apiKey } = roles[role];
@@ -18,7 +19,7 @@ export function createModels(roles: Record<Role, ModelConfig>, limits: Limits): 
       provider === 'gemini'
         ? createGeminiProvider({ apiKey: apiKey ?? '', model, baseUrl })
         : createOpenAiProvider({ name: provider, baseUrl, model, apiKey });
-    return { ...metered(client, limits, role), maxImages: MAX_IMAGES[provider] };
+    return { ...metered(traced(client, role), limits, role), maxImages: MAX_IMAGES[provider] };
   };
   return { primary: build('primary'), text: build('text'), fallback: build('fallback') };
 }

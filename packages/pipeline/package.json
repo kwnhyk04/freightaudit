@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@freightaudit/db": "workspace:*",
+    "@freightaudit/telemetry": "workspace:*",
+    "@opentelemetry/api": "catalog:",
     "bullmq": "catalog:",
     "drizzle-orm": "catalog:",
     "ioredis": "catalog:"

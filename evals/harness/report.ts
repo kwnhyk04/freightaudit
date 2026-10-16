@@ -56,6 +56,38 @@ function throughput(scores: Score[], roles: Roles) {
   return busiest > 0 ? (60 * scores.length) / busiest : undefined;
 }
 
+// The k6 load test's results (README, Load test), which replace the eval's throttled end-to-end latency and free-tier
+// ceiling in the README table: part 2 gives end-to-end latency at low load on the real models, part 1 throughput on the
+// recorded-fixture provider. Neither measures real models at the design rate, which needs paid tiers.
+type E2eResults = { date: string; n: number; e2e_ms: { p50: number; p90: number; max: number } };
+type SystemResults = { date: string; accepted: number; lost: number; offered_per_hour: number; drain_s: number };
+const LOAD_TEST = new URL('../../loadtest/', import.meta.url);
+const results = async <T>(name: string) => {
+  const file = new URL(name, LOAD_TEST);
+  return existsSync(file) ? (JSON.parse(await readFile(file, 'utf8')) as T) : undefined;
+};
+
+export async function loadTestRows() {
+  const e2e = await results<E2eResults>('e2e-results.json');
+  const system = await results<SystemResults>('system-results.json');
+  const rows: string[] = [];
+  // n = 20 cannot give a meaningful p95, so max stands in for it: the target is met only if every invoice made it.
+  if (e2e) {
+    const { p50, p90, max } = e2e.e2e_ms;
+    rows.push(
+      `| End-to-end latency at low load with real free-tier models (k6, n = ${e2e.n}, one every 15 s; p95 is not meaningful at this n) | p95 ≤ 30,000 ms | p50 ${fmt('ms', p50)}, p90 ${fmt('ms', p90)}, max ${fmt('ms', max)} | n/a | ${max <= 30_000 ? 'yes' : 'no'} | all roles | ${e2e.date} |`,
+    );
+  }
+  if (system) {
+    // k6's drain starts 5 s after the last upload, so its time plus 5 s bounds when the last invoice finished.
+    const { offered_per_hour: offered, accepted, lost, drain_s: drain } = system;
+    rows.push(
+      `| Throughput (k6: recorded-fixture model provider at 3x the 2,000/h normal rate, 2 workers x 8) | ≥ 2,000 / h | ${fmt('per_hour', offered)} / h sustained for 10 min: ${fmt('per_hour', accepted)} accepted, ${lost} lost, all final within ${drain + 5} s of the last upload | n/a | ${lost === 0 && offered >= 2_000 ? 'yes' : 'no'} | recorded fixtures | ${system.date} |`,
+    );
+  }
+  return rows;
+}
+
 const usage = (runs: Run[]) => {
   const rows = new Map<string, { calls: number; input: number; output: number; served: Set<string> }>();
   for (const run of runs)
@@ -143,7 +175,7 @@ export async function report({ subset, runs, durationMs, setFloors }: { subset: 
     lines.push(
       `| Throughput (free-tier ceiling, not a load test) | ≥ 2,000 / h | ${yes((ceiling ?? 0) >= 2_000)} | - | - | ${fmt('per_hour', ceiling)} / h | computed, no interval | ${scores.length} |`,
       '',
-      "End-to-end latency is measured from upload to final status under this run's own throttling and concurrency, not under normal load; throughput is the ceiling the pinned roles' free-tier per-minute limits allow at the measured calls and tokens per invoice, not a load test. Step 8's k6 load test measures both.",
+      "End-to-end latency is measured from upload to final status under this run's own throttling and concurrency, not under normal load; throughput is the ceiling the pinned roles' free-tier per-minute limits allow at the measured calls and tokens per invoice, not a load test. The k6 load test measures both (README, Load test).",
     );
     if (suggestions.length > 0) lines.push('', '## Floors to tighten', '', ...suggestions.map((text) => `- ${text}`));
     const misses = scores.filter((s) => s.header.correct < s.header.total || s.lines.fp + s.lines.fn > 0 || s.overcharges.fp + s.overcharges.fn > 0 || s.outcomes.ok < s.outcomes.total);
@@ -172,10 +204,11 @@ export async function report({ subset, runs, durationMs, setFloors }: { subset: 
         '',
         '| Metric | Target | Measured | 95% CI | Met | Model | Date |',
         '| --- | --- | --- | --- | --- | --- | --- |',
+        // End-to-end latency and throughput come from the k6 load test; this run's throttled ones stay in its report.
         ...rows
-          .filter(({ metric }) => metric.target)
+          .filter(({ metric }) => metric.target && metric.metric !== 'e2e_latency_p95_ms')
           .map(({ m, metric }) => `| ${metric.label} | ${bound(metric.target!.op, metric.unit, metric.target!.value)} | ${fmt(metric.unit, m.value)} | ${ci(metric.unit, m.ci)} | ${meets(m.value, metric.target!) ? 'yes' : 'no'} | ${modelOf(m.metric)} | ${date} |`),
-        `| Throughput (free-tier ceiling, not a load test) | ≥ 2,000 / h | ${fmt('per_hour', ceiling)} / h | computed | ${(ceiling ?? 0) >= 2_000 ? 'yes' : 'no'} | all roles | ${date} |`,
+        ...(await loadTestRows()),
         '<!-- eval:end -->',
       ].join('\n');
       const readme = await readFile(README, 'utf8');

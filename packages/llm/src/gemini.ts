@@ -29,6 +29,7 @@ export function createGeminiProvider({ apiKey, model, baseUrl, timeoutMs = 60_00
           usage: { inputTokens: usage.promptTokenCount ?? 0, outputTokens: (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0) },
           latencyMs: Math.round(performance.now() - started),
           servedModel: response.modelVersion,
+          finishReason: response.candidates?.[0]?.finishReason,
         };
       } catch (err) {
         throw err instanceof ApiError ? apiError(err) : classify(err);

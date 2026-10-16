@@ -6,6 +6,7 @@ import {
   type Extraction,
   extractInvoices,
   MAX_PAGES,
+  paidCost,
   PermanentError,
   ProviderConfigError,
   readPages,
@@ -14,7 +15,8 @@ import {
   TransientError,
   type Usage,
 } from '@freightaudit/llm';
-import { type InvoiceJob, jobOptions } from '@freightaudit/pipeline';
+import { type InvoiceJob, jobOptions, send } from '@freightaudit/pipeline';
+import { extractEscalations, extractFallbacks, invoicesNeedsReview, llmPaidEquivalent, llmRateLimited, llmTokens } from '@freightaudit/telemetry';
 import { DelayedError, type Job } from 'bullmq';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
@@ -41,7 +43,9 @@ async function loadInvoice({ db }: Deps, invoiceId: string) {
 }
 
 const queueReconcile = ({ queues }: Deps, invoice: Invoice) =>
-  queues.queue('reconcile').add('reconcile', { tenantId: invoice.tenantId, invoiceId: invoice.id }, { jobId: invoice.contentSha256 });
+  send('reconcile', invoice.contentSha256, (trace) =>
+    queues.queue('reconcile').add('reconcile', { tenantId: invoice.tenantId, invoiceId: invoice.id, ...trace }, { jobId: invoice.contentSha256 }),
+  );
 
 // Extracts one uploaded or split-out invoice. Safe to rerun from any point: the status guards and the unique
 // extraction row mean a recovered or duplicated job never writes twice. Each model call is recorded as it ends.
@@ -83,6 +87,9 @@ export async function extract(deps: Deps, job: Job<InvoiceJob>, token?: string) 
     if (err instanceof ProviderConfigError) return pauseExtract(deps, job, token, err);
     throw err;
   }
+  // More than a first pass, by the step the ladder ended on; and the fallback wanted, run or past its page cap.
+  if (result.step !== 'first_pass') extractEscalations.add(1, { step: result.step });
+  if (result.fallbackReason) extractFallbacks.add(1, { reason: result.fallbackReason });
   if (result.step === 'needs_review') return needsReview(deps, invoice, result);
   if (result.invoices.length > 1) {
     if (invoice.parentInvoiceId) throw new PermanentError('a split-out part holds more than one invoice');
@@ -93,7 +100,8 @@ export async function extract(deps: Deps, job: Job<InvoiceJob>, token?: string) 
   return { invoiceId: invoice.id, status: 'extracted' };
 }
 
-// Kept as each call ends, so the spend of an attempt that fails later is not lost.
+// Kept as each call ends, so the spend of an attempt that fails later is not lost. The metrics price the call at paid
+// rates even on a free tier, where the row's cost is 0.
 async function recordCall({ db }: Deps, invoice: Invoice, { usage, ...call }: Call) {
   await db.insert(llmCalls).values({
     tenantId: invoice.tenantId,
@@ -102,6 +110,11 @@ async function recordCall({ db }: Deps, invoice: Invoice, { usage, ...call }: Ca
     ...usage,
     costMicroUsd: callCost(call.provider, call.model, usage),
   });
+  const labels = { role: call.role, provider: call.provider, model: call.model };
+  llmTokens.add(usage.inputTokens, { ...labels, type: 'input' });
+  llmTokens.add(usage.outputTokens, { ...labels, type: 'output' });
+  llmPaidEquivalent.add(Number(paidCost(call.provider, call.model, usage)), labels);
+  if (call.outcome === 'rate_limited') llmRateLimited.add(1, labels);
 }
 
 // A rejected key or a retired model fails every job alike, so the queue pauses and the alert goes out instead of
@@ -122,6 +135,7 @@ async function needsReview({ db }: Deps, invoice: Invoice, { model, usage, step,
     await tx.insert(extractions).values(extraction).onConflictDoNothing();
     await tx.update(invoices).set({ status: 'needs_review' }).where(and(eq(invoices.id, invoice.id), eq(invoices.status, 'extracting')));
   });
+  invoicesNeedsReview.add(1, { reason: problems.some((problem) => problem.startsWith('fallback_page_cap')) ? 'fallback_page_cap' : 'invalid_output' });
   return { invoiceId: invoice.id, status: 'needs_review' };
 }
 
@@ -172,19 +186,23 @@ async function split({ db, storage, queues }: Deps, invoice: Invoice, pdf: Pdf, 
       .where(and(eq(invoices.tenantId, invoice.tenantId), eq(invoices.contentSha256, contentSha256)));
     children.push({ invoiceId: child!.id, jobId: contentSha256 });
   }
-  await queues.flows.add({
-    name: 'collect',
-    queueName: 'extract',
-    data: { tenantId: invoice.tenantId, invoiceId: invoice.id, model, usage, step, fallbackReason, parts: children } satisfies CollectJob,
-    opts: { ...jobOptions, jobId: `split-${invoice.contentSha256}` },
-    children: children.map(({ invoiceId, jobId }) => ({
-      name: 'extract',
+  // One producer span for the whole flow: the parent and every part carry its context, so each part's extract and
+  // reconcile stay in the upload's trace.
+  await send('extract', `split-${invoice.contentSha256}`, (trace) =>
+    queues.flows.add({
+      name: 'collect',
       queueName: 'extract',
-      data: { tenantId: invoice.tenantId, invoiceId } satisfies InvoiceJob,
-      // A failed part must not fail the upload; the parent reads the failure instead.
-      opts: { ...jobOptions, jobId, ignoreDependencyOnFailure: true },
-    })),
-  });
+      data: { tenantId: invoice.tenantId, invoiceId: invoice.id, model, usage, step, fallbackReason, parts: children, ...trace } satisfies CollectJob,
+      opts: { ...jobOptions, jobId: `split-${invoice.contentSha256}` },
+      children: children.map(({ invoiceId, jobId }) => ({
+        name: 'extract',
+        queueName: 'extract',
+        data: { tenantId: invoice.tenantId, invoiceId, ...trace } satisfies InvoiceJob,
+        // A failed part must not fail the upload; the parent reads the failure instead.
+        opts: { ...jobOptions, jobId, ignoreDependencyOnFailure: true },
+      })),
+    }),
+  );
   return { invoiceId: invoice.id, split: children.length };
 }
 

@@ -1,5 +1,6 @@
 import { type Limits, type Models, PermanentError } from '@freightaudit/llm';
 import {
+  consume,
   deadLetter,
   isFinalFailure,
   jitteredBackoff,
@@ -81,14 +82,16 @@ export function startWorkers(
     maxStalledCount: 1,
     settings: { backoffStrategy },
   };
+  // Each attempt runs as a consumer span in the trace of the span that added the job, with its metrics.
   const workers = [
     new Worker(
       'extract',
-      (job: Job, token?: string) => failFast(() => (job.name === 'collect' ? collect(deps, job) : extract(deps, job, token))),
+      (job: Job, token?: string) =>
+        consume('extract', job, () => failFast(() => (job.name === 'collect' ? collect(deps, job) : extract(deps, job, token)))),
       { ...common, concurrency: 8 },
     ),
-    new Worker('reconcile', (job: Job) => failFast(() => reconcile(deps, job)), { ...common, concurrency: 8 }),
-    new Worker('tms-sync', (job: Job) => failFast(() => syncShipments(deps, job, backoffStrategy)), common),
+    new Worker('reconcile', (job: Job) => consume('reconcile', job, () => failFast(() => reconcile(deps, job))), { ...common, concurrency: 8 }),
+    new Worker('tms-sync', (job: Job) => consume('tms-sync', job, () => failFast(() => syncShipments(deps, job, backoffStrategy))), common),
   ];
 
   // Dead-letter moves still running; close() waits for them before the connections go away.

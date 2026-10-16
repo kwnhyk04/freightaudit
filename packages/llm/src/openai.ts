@@ -2,7 +2,11 @@ import { classify, httpError, parseRetryAfter } from './errors.ts';
 import type { Part, Provider } from './extract.ts';
 
 type OpenAiOptions = { name: string; baseUrl: string; model: string; apiKey?: string; timeoutMs?: number };
-type ChatReply = { model?: string; choices?: { message?: { content?: string | null } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+type ChatReply = {
+  model?: string;
+  choices?: { message?: { content?: string | null }; finish_reason?: string | null }[];
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
+};
 type ChatError = { code?: unknown; type?: unknown; error?: { code?: unknown; type?: unknown } };
 
 // One client for every OpenAI-compatible chat API (Groq, Mistral, OpenRouter, NVIDIA, Ollama): strict JSON schema output
@@ -39,6 +43,7 @@ export function createOpenAiProvider({ name, baseUrl, model, apiKey, timeoutMs =
           usage: { inputTokens: reply.usage?.prompt_tokens ?? 0, outputTokens: reply.usage?.completion_tokens ?? 0 },
           latencyMs: Math.round(performance.now() - started),
           servedModel: reply.model,
+          finishReason: reply.choices?.[0]?.finish_reason ?? undefined,
         };
       } catch (err) {
         throw classify(err);
