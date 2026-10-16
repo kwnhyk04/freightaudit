@@ -2,8 +2,12 @@ import { classify, httpError, parseRetryAfter } from './errors.ts';
 import type { Part, Provider } from './extract.ts';
 
 type OpenAiOptions = { name: string; baseUrl: string; model: string; apiKey?: string; timeoutMs?: number };
-type ChatReply = { model?: string; choices?: { message?: { content?: string | null } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
-type ChatError = { code?: unknown; type?: unknown; error?: { code?: unknown; type?: unknown } };
+type ChatReply = {
+  model?: string;
+  choices?: { message?: { content?: string | null }; finish_reason?: string | null }[];
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
+};
+type ChatError = { code?: unknown; type?: unknown; error?: { code?: unknown; type?: unknown; message?: unknown } };
 
 // One client for every OpenAI-compatible chat API (Groq, Mistral, OpenRouter, NVIDIA, Ollama): strict JSON schema output
 // at temperature 0, page text as text and scans as JPEG data URLs. Ollama needs no key.
@@ -30,8 +34,9 @@ export function createOpenAiProvider({ name, baseUrl, model, apiKey, timeoutMs =
           signal: AbortSignal.timeout(timeoutMs),
         });
         if (!response.ok) {
-          const code = errorCode((await response.json().catch(() => ({}))) as ChatError);
-          throw httpError(response.status, `${name} HTTP ${response.status}${code ? ` ${code}` : ''}`, parseRetryAfter(response.headers.get('retry-after')));
+          const body = (await response.json().catch(() => ({}))) as ChatError;
+          const detail = [errorCode(body), limitName(body)].filter(Boolean).join(' ');
+          throw httpError(response.status, `${name} HTTP ${response.status}${detail ? ` ${detail}` : ''}`, parseRetryAfter(response.headers.get('retry-after')));
         }
         const reply = (await response.json()) as ChatReply;
         return {
@@ -39,6 +44,7 @@ export function createOpenAiProvider({ name, baseUrl, model, apiKey, timeoutMs =
           usage: { inputTokens: reply.usage?.prompt_tokens ?? 0, outputTokens: reply.usage?.completion_tokens ?? 0 },
           latencyMs: Math.round(performance.now() - started),
           servedModel: reply.model,
+          finishReason: reply.choices?.[0]?.finish_reason ?? undefined,
         };
       } catch (err) {
         throw classify(err);
@@ -61,6 +67,12 @@ function userContent(parts: Part[]) {
           { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${Buffer.from(part.jpeg).toString('base64')}` } },
         ],
   );
+}
+
+// The limit a Groq 429 names, such as TPM (tokens per minute) or TPD (tokens per day), and nothing else of its message.
+function limitName(body: ChatError) {
+  const message = body.error?.message;
+  return typeof message === 'string' ? (/\((TPM|TPD|RPM|RPD)\)/.exec(message)?.[1] ?? '') : '';
 }
 
 // The provider's error code, never its message: Groq's json_validate_failed message echoes the model's output, line

@@ -1,0 +1,240 @@
+{
+  "uid": "freightaudit",
+  "title": "FreightAudit",
+  "description": "Queues, jobs, model calls and the api, from the OpenTelemetry metrics of api and worker (packages/telemetry/src/metrics.ts). Alerts: infra/prometheus-alerts.yml.",
+  "tags": ["freightaudit"],
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": false,
+  "graphTooltip": 1,
+  "time": { "from": "now-30m", "to": "now" },
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Queue depth",
+      "description": "Jobs per queue and state. Under steady load the wait line levels off; a line that keeps rising means the workers fall behind.",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "max by (queue, state) (freightaudit_queue_jobs)", "legendFormat": "{{queue}} {{state}}" }],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "API latency p99 by route",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.99, sum by (le, http_request_method, http_route) (rate(http_server_request_duration_seconds_bucket{job=\"freightaudit-api\"}[$__rate_interval])))",
+          "legendFormat": "{{http_request_method}} {{http_route}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Invoices finished per hour",
+      "description": "Reconcile jobs completed, per hour: the throughput of the whole pipeline.",
+      "gridPos": { "x": 0, "y": 8, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(freightaudit_job_duration_seconds_count{queue=\"reconcile\", outcome=\"completed\"}[$__rate_interval])) * 3600",
+          "legendFormat": "finished"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"freightaudit-api\", http_route=\"/v1/invoices\", http_request_method=\"POST\"}[$__rate_interval])) * 3600",
+          "legendFormat": "uploaded"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Extract wait p95",
+      "description": "Time from upload to the first extract attempt that ran. Alert above 60 s for 5 minutes.",
+      "gridPos": { "x": 8, "y": 8, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(freightaudit_job_wait_seconds_bucket{queue=\"extract\", name=\"extract\"}[$__rate_interval])))",
+          "legendFormat": "p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 60 }] },
+          "custom": { "thresholdsStyle": { "mode": "line" } }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Job duration p50 and p95",
+      "gridPos": { "x": 16, "y": 8, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by (le, queue) (rate(freightaudit_job_duration_seconds_bucket{outcome=\"completed\", queue!=\"tms-sync\"}[$__rate_interval])))",
+          "legendFormat": "{{queue}} p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le, queue) (rate(freightaudit_job_duration_seconds_bucket{outcome=\"completed\", queue!=\"tms-sync\"}[$__rate_interval])))",
+          "legendFormat": "{{queue}} p95"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Job attempts per minute",
+      "gridPos": { "x": 0, "y": 16, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (queue, outcome) (rate(freightaudit_job_duration_seconds_count[$__rate_interval])) * 60",
+          "legendFormat": "{{queue}} {{outcome}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Retries per minute by error class",
+      "gridPos": { "x": 8, "y": 16, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (queue, error_class) (rate(freightaudit_job_retries_total[$__rate_interval])) * 60",
+          "legendFormat": "{{queue}} {{error_class}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "noValue": "0" }, "overrides": [] }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Dead letters waiting",
+      "description": "Jobs in each <queue>-dlq. Alert while above 0 for 10 minutes; replay with POST /v1/dead-letters/{id}/replay.",
+      "gridPos": { "x": 16, "y": 16, "w": 4, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "max by (queue) (freightaudit_queue_dead_letters)", "legendFormat": "{{queue}}" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "background", "graphMode": "none", "textMode": "value_and_name" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Extract circuit breaker",
+      "description": "Open when a provider rejected the model settings (401, 403, 404): fix them, restart the worker, then pnpm extract:resume.",
+      "gridPos": { "x": 20, "y": 16, "w": 4, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "max(freightaudit_extract_paused)", "legendFormat": "extract" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "background", "graphMode": "none", "textMode": "value" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "type": "value", "options": { "0": { "text": "closed", "color": "green" }, "1": { "text": "open", "color": "red" } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Model tokens per minute",
+      "gridPos": { "x": 0, "y": 24, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (provider, model, type) (rate(freightaudit_llm_tokens_total[$__rate_interval])) * 60",
+          "legendFormat": "{{provider}}/{{model}} {{type}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Paid-equivalent cost per invoice, last hour",
+      "description": "Model calls priced at paid rates (packages/llm/prices.json) even on free tiers, per extracted invoice. Alert above $0.05.",
+      "gridPos": { "x": 8, "y": 24, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(freightaudit_llm_paid_equivalent_micro_usd_total[1h])) / sum(increase(freightaudit_job_duration_seconds_count{queue=\"extract\", name=\"extract\", outcome=\"completed\"}[1h])) / 1e6",
+          "legendFormat": "per invoice"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 0.05 }] },
+          "custom": { "thresholdsStyle": { "mode": "line" } }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Escalations, fallbacks and provider 429s per minute",
+      "gridPos": { "x": 16, "y": 24, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum by (step) (rate(freightaudit_extract_escalations_total[$__rate_interval])) * 60", "legendFormat": "escalated to {{step}}" },
+        { "refId": "B", "expr": "sum by (reason) (rate(freightaudit_extract_fallbacks_total[$__rate_interval])) * 60", "legendFormat": "fallback: {{reason}}" },
+        { "refId": "C", "expr": "sum by (provider, model) (rate(freightaudit_llm_rate_limited_total[$__rate_interval])) * 60", "legendFormat": "429 {{provider}}/{{model}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "noValue": "0" }, "overrides": [] }
+    },
+    {
+      "id": 13,
+      "type": "bargauge",
+      "title": "needs_review by reason (time range)",
+      "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum by (reason) (increase(freightaudit_invoices_needs_review_total[$__range]))", "legendFormat": "{{reason}}", "instant": true }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "basic" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "decimals": 0 }, "overrides": [] }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Uploads refused with 503 per minute",
+      "description": "Backpressure: uploads refused while more extract jobs than EXTRACT_HIGH_WATER wait.",
+      "gridPos": { "x": 12, "y": 32, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum by (reason) (rate(freightaudit_intake_rejected_total[$__rate_interval])) * 60", "legendFormat": "{{reason}}" }],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "noValue": "0" }, "overrides": [] }
+    }
+  ]
+}

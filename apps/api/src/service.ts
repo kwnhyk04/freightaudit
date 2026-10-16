@@ -1,6 +1,6 @@
 import type { components, operations } from '@freightaudit/contracts';
 import { carriers, deadLetters, discrepancies, idempotencyKeys, invoiceLines, invoices } from '@freightaudit/db';
-import { type Queues, replayDeadLetter } from '@freightaudit/pipeline';
+import { type Queues, replayDeadLetter, send } from '@freightaudit/pipeline';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { PgColumn } from 'drizzle-orm/pg-core';
@@ -112,7 +112,8 @@ export function createService(deps: ServiceDeps) {
           .from(invoices)
           .where(and(eq(invoices.tenantId, tenantId), eq(invoices.contentSha256, sha256)));
     if (invoice!.status === 'received') {
-      await queues.queue('extract').add('extract', { tenantId, invoiceId: invoice!.id }, { jobId: sha256 });
+      // The job carries this request's trace, so the worker's extract and reconcile join it.
+      await send('extract', sha256, (trace) => queues.queue('extract').add('extract', { tenantId, invoiceId: invoice!.id, ...trace }, { jobId: sha256 }));
     }
     return { id: invoice!.id, created: created !== undefined };
   }

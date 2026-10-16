@@ -5,6 +5,8 @@ packages:
 
 catalog:
   "@faker-js/faker": ^10.6.0
+  # The API alone: libraries record spans and metrics through it; only packages/telemetry starts the SDK.
+  "@opentelemetry/api": ^1.9.1
   "@types/jest": ^30.0.0
   "@types/node": ^24.19.2
   "@types/pg": ^8.23.1

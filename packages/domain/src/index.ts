@@ -1,4 +1,5 @@
-// Pure functions: money as bigint cents, rate-card math, reconciliation. No I/O.
+// Pure functions: money as bigint cents, rate-card math, carrier matching, reconciliation. No I/O.
+export { type CarrierMatchRule, matchCarrier } from './carrier.ts';
 export { BASIS_POINTS, divRound, formatUsd, MICRO_USD, microUsd, percentOf, tokenCost } from './money.ts';
 export { mileageCents, rateShipment, type MileageBand, type RateCard } from './rating.ts';
 export { currencyReview, reconcileInvoice, versionInForce, type BilledLine, type Discrepancy, type RateCardVersion } from './reconcile.ts';

@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { connect } from 'node:net';
 
-// Logging and readiness shared by apps; OpenTelemetry joins later. Never record PDF contents or line items.
+// Logging, readiness and telemetry instruments shared by apps; ./sdk starts OpenTelemetry. Never record PDF contents,
+// line items or keys, in logs or in spans.
+export * from './metrics.ts';
+export { shutdownTelemetry } from './shutdown.ts';
 
 // Credential fields at the top level or one object deep, such as req.headers.
 const redact = [

@@ -36,6 +36,9 @@ jobs:
       - run: pnpm typecheck
       - name: actionlint
         run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+      # Each alert rule fires on its condition and stays quiet without it.
+      - name: alert rules
+        run: docker run --rm -v "$PWD/infra:/infra:ro" --entrypoint promtool prom/prometheus:v3.15.0-busybox@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e test rules /infra/prometheus-alerts.test.yml
 
   unit:
     name: unit tests
@@ -188,6 +191,7 @@ jobs:
           {
             echo "status=$status"
             echo "report=$(git ls-files --others --modified --exclude-standard -- 'evals/reports/*-ci.md')"
+            echo "json=$(git ls-files --others --modified --exclude-standard -- 'evals/reports/*-ci.json')"
           } >> "$GITHUB_OUTPUT"
           if [ "$status" -eq 2 ]; then
             echo "::warning title=eval smoke::Stopped on a free-tier quota before every case ran; rerun this job once the quota resets."
@@ -198,7 +202,10 @@ jobs:
         if: ${{ always() && steps.eval.outputs.report != '' }}
         with:
           name: eval-smoke-report
-          path: ${{ steps.eval.outputs.report }}
+          # The .md for the PR comment; the .json adds per-case scores and every failed call.
+          path: |
+            ${{ steps.eval.outputs.report }}
+            ${{ steps.eval.outputs.json }}
 
   eval-comment:
     name: eval smoke comment

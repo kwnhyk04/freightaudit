@@ -7,7 +7,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "dev": "node --env-file-if-exists=../../.env --watch src/main.ts",
+    "dev": "node --env-file-if-exists=../../.env --import ./src/telemetry.ts --watch src/main.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },

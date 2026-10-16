@@ -11,6 +11,7 @@
 .github
 docs
 infra
+loadtest
 evals/.cache
 evals/comparison
 evals/fixtures/out

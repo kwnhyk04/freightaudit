@@ -38,6 +38,14 @@ export const settings = {
   TENANT_ID: z.uuid(),
   // Uploads get 503 while more extract jobs than this are waiting.
   EXTRACT_HIGH_WATER: integer(5_000),
+  // Requests per API key and minute: everything but uploads, and the two upload routes. Load tests raise them.
+  RATE_LIMIT_PER_MIN: perMinute(60),
+  UPLOAD_RATE_LIMIT_PER_MIN: perMinute(10),
+  // OpenTelemetry (api and worker): traces and metrics go as OTLP/JSON to the collector of the observability profile.
+  OTEL_SDK_DISABLED: z.stringbool().default(false),
+  OTEL_EXPORTER_OTLP_ENDPOINT: httpUrl.default('http://localhost:4318'),
+  // Milliseconds between metric exports; Prometheus scrapes the collector every 15 s.
+  OTEL_METRIC_EXPORT_INTERVAL: z.string().regex(/^\d+$/).transform(Number).pipe(z.int().min(100)).default(15_000),
   // Kill switch: false stops every model call, and extract jobs wait instead.
   AI_ENABLED: z.stringbool().default(false),
   DAILY_AI_TOKEN_BUDGET: integer(1_000_000),

@@ -1,13 +1,15 @@
 import { CHARGE_CODES } from '@freightaudit/db';
 import { checkArithmetic } from '@freightaudit/domain';
 import { z } from 'zod';
-import { RateLimitError } from './errors.ts';
+import { type FailureClass, failureOf, RateLimitError } from './errors.ts';
 
 export type Usage = { inputTokens: number; outputTokens: number };
 // A page as the model reads it: its text layer, or a JPEG render of a page without one.
 export type Part = { page: number; text: string } | { page: number; jpeg: Uint8Array };
-export type GenerateInput = { prompt: string; parts: Part[]; schema: object };
-export type Reply = { text: string; usage: Usage; latencyMs: number; servedModel: string | undefined };
+// step is for traces only; providers ignore it. onWait hears how long the call first waited on its role's rate limit.
+export type GenerateInput = { prompt: string; parts: Part[]; schema: object; step?: Step | undefined; onWait?: ((ms: number) => void) | undefined };
+// finishReason as the provider reports it, such as Gemini's STOP or an OpenAI-compatible stop or length.
+export type Reply = { text: string; usage: Usage; latencyMs: number; servedModel: string | undefined; finishReason?: string | undefined };
 // A model behind the provider layer. It only reads documents; code checks every amount it returns. maxImages is the
 // most page images one request may carry, for a provider that caps it.
 export type Provider = { name: string; model: string; maxImages?: number | undefined; generate(input: GenerateInput): Promise<Reply> };
@@ -26,7 +28,13 @@ export type Call = {
   servedModel: string | null;
   outcome: 'valid' | 'invalid' | 'rate_limited' | 'error';
   usage: Usage;
+  // The call's own time, and the time it waited on its role's rate limit before it was sent.
   latencyMs: number;
+  waitMs: number;
+  // Why a failed call failed (failureOf); null for a call that returned a reply.
+  errorClass: FailureClass | null;
+  httpStatus: number | null;
+  errorMessage: string | null;
 };
 
 type Code = keyof typeof CHARGE_CODES;
@@ -157,14 +165,33 @@ export async function extractInvoices(
   const call = async (role: Role, step: Step, prompt: string) => {
     const provider = models[role];
     model = `${provider.name}/${provider.model}`;
-    const record = (outcome: Call['outcome'], callUsage: Usage, latencyMs: number, servedModel: string | null) =>
-      onCall?.({ role, step, provider: provider.name, model: provider.model, servedModel, outcome, usage: callUsage, latencyMs });
+    let waitMs = 0;
+    const record = (outcome: Call['outcome'], callUsage: Usage, latencyMs: number, servedModel: string | null, failure?: ReturnType<typeof failureOf>) =>
+      onCall?.({
+        role,
+        step,
+        provider: provider.name,
+        model: provider.model,
+        servedModel,
+        outcome,
+        usage: callUsage,
+        latencyMs,
+        waitMs,
+        errorClass: failure?.errorClass ?? null,
+        httpStatus: failure?.httpStatus ?? null,
+        errorMessage: failure?.errorMessage ?? null,
+      });
     const started = performance.now();
     let reply: Reply;
     try {
-      reply = await provider.generate({ prompt, parts, schema: EXTRACTION_JSON_SCHEMA });
+      const onWait = (ms: number) => {
+        waitMs = ms;
+      };
+      reply = await provider.generate({ prompt, parts, schema: EXTRACTION_JSON_SCHEMA, step, onWait });
     } catch (err) {
-      await record(err instanceof RateLimitError ? 'rate_limited' : 'error', { inputTokens: 0, outputTokens: 0 }, Math.round(performance.now() - started), null);
+      // A reply's latency is the provider's alone; a failed call's is everything after its rate-limit wait.
+      const latencyMs = Math.max(0, Math.round(performance.now() - started) - waitMs);
+      await record(err instanceof RateLimitError ? 'rate_limited' : 'error', { inputTokens: 0, outputTokens: 0 }, latencyMs, null, failureOf(err));
       throw err;
     }
     usage.inputTokens += reply.usage.inputTokens;

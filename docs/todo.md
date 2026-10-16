@@ -6,7 +6,9 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Pending
 
-- [ ] With step 8: measure end-to-end latency p95 (target 30 s) and throughput (2,000 invoices an hour on 2 workers x concurrency 8) under normal load with the k6 load test. The eval reports end-to-end latency only under its own free-tier throttling (143 s p95 on 2026-10-15) and throughput only as the free-tier ceiling (394 an hour).
+- [ ] PR #13's next eval smoke: read its Failed calls section (or the artifact's json) for the class, status and message of the Gemini failures that broke the failed-calls floor (6 against 1), then choose the fix from that cause. No floor changes until then.
+- [ ] Full-subset floors for rate-limit waits and wait time, which the 2026-10-15 baseline could not give (no waits recorded): set them from the next full run on fresh results, `pnpm eval --suite extraction --subset full --fresh --set-floors` (cached cases from before 0011 report no waits).
+- [ ] Golden set v2 dev case for a carrier name beside a title line (the remit layout's "<carrier> — Freight Bill"), then a prompt change tuned on the dev split only (user decision E, 2026-10-16).
 - [ ] Multi-currency support (user request): rate cards per currency, or FX at the invoice date. Until then an invoice in any currency but USD ends needs_review with `unsupported_currency`.
 - [ ] Golden set v2 (a new version, never v1 edited): harder layouts, real-world noise, more adversarial cases, and dev cases for the 6b test-split findings (a title line beside the carrier, as in remit; a repeated scanned page), so a prompt fix for them is tuned on dev, not test.
 - [ ] (manual, user) Create the GitHub repository and add the Actions secrets `GEMINI_API_KEY` and `GROQ_API_KEY` (optional: secret `TURBO_TOKEN`, variable `TURBO_TEAM`); then push and open a test PR, step 7's last check.
@@ -20,7 +22,6 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 - [ ] When 0007 reaches a database with synced shipments (production, step 10): clear the TMS sync cursor so the next sync writes their miles, and enter linehaul terms for the existing rate card versions.
 - [ ] Contract for 0007, in a later release once every rate card version has terms and every shipment has miles: `VALIDATE` the `NOT VALID` checks, `SET NOT NULL` through a validated check (as in 0003a), and delete the flat `LINEHAUL` and `FUEL` rates nothing reads.
 - [ ] After `gemini-3.8-flash`'s daily quota resets: `pnpm eval --suite extraction --subset compare` to finish its 15th comparison case (the run resumes from the cache).
-- [ ] 8. Instrumentation: OpenTelemetry traces span services end to end; dashboard and alerts committed; screenshots saved
 - [ ] 9. Review UI and demo mode: resolvers, login, backend-for-frontend, demo snapshot shown when the backend is offline; Playwright tests pass
 - [ ] 10. Deploy: UI on Vercel, backend on the PC via Tailscale Funnel; phone test passes; 401 without API key; demo mode when the PC is off
 - [ ] GraphQL resolvers for the review UI, including a runtime `Cents` scalar (bigint to JSON number)
@@ -31,6 +32,17 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Completed
 
+- [x] PR #13 checks on 4fbb550: docker (api) and docker (worker) pass with the store fetched into a layer, as does every other check except the eval smoke, whose ci p95 now gates on the design target (2026-10-16).
+- [x] PR #13 eval smoke (user decisions A and C, 2026-10-16): extraction latency counts successful calls only, without rate-limit waits, and the report shows rate-limit waits, their total time and failed or timed-out calls, each with a floor; the latency floors, recomputed from the main baseline, are unchanged. The extracted carrier is matched in code (`matchCarrier`), its rule recorded in `extractions.carrier_match`, with unit tests for a title-line suffix, two carriers sharing words and no match. Dev split once: 20 of 20 with no miss. Lint 12 of 12, `pnpm turbo run test --force` 60 tests, `test:int` 93 of 93. The ci subset once: every floor kept, and g010 reconciled despite its title-line reading.
+- [x] 8. Instrumentation (2026-10-16):
+  - **Traces:** one upload is one trace across api and worker in Jaeger (`docs/screenshots/jaeger-trace.png`).
+  - **Load test:** the k6 burst at 3x the 2,000/h design rate shows queue depth plateauing on the Grafana dashboard (`docs/screenshots/grafana-load-test.png`), with 1,083 uploads and 0 lost.
+  - **Low-load latency** on real free-tier models: n = 20, p50 3.1 s, p90 4.2 s, max 4.7 s.
+  - **Tests:**
+    - The span-scan test passes.
+    - `pnpm turbo run test --force` and `test:int` (93 of 93) pass.
+    - promtool and actionlint pass.
+  - **README:** the eval table shows both k6 results in place of the throttled 143 s p95 and the 394/h ceiling.
 - [x] The Toxiproxy test's fake TMS listens on `TOXIPROXY_UPSTREAM_HOST`: the containers' bridge gateway when it is an address of this host (a Linux engine), else 127.0.0.1 (Docker Desktop). On a docker:dind engine `pnpm test:int` passed 92 of 92 with the Playwright Chromium, and the old 127.0.0.1 binding failed there; on this PC 92 of 92 (2026-10-15).
 
 - [x] 6b. AI evals: golden set v1 (90 cases, dev 20, ci 20, `evals/golden/v1`, 28 MB) built from the generator; `pnpm eval --suite extraction --subset ci|dev|full|compare` with 95% bootstrap intervals, a per-case cache, quota stops and regression floors; the full run lists every target met or missed (17 met; missed: overcharge precision 0.944, end-to-end p95 143 s under the eval's throttling, throughput ceiling 394 an hour on free tiers); README opens with the eval table; the ci subset ran in 155 s from a cold cache; primary kept on `gemini-3.5-flash-lite` by the comparison on a separate set; non-USD invoices end needs_review (0010). `pnpm turbo run test --force` passed 54 tests three runs in a row and `test:int` with its build forced 92 of 92 three runs in a row (Jest 20.5 to 22.2 s) (2026-10-15).

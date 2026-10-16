@@ -15,6 +15,163 @@ Chronological record of significant development activity, newest first. Skip tri
 
 ## Entries
 
+### 2026-10-16: PR #13 eval smoke: failed calls made diagnosable
+
+- Changes:
+  - **What CI showed:** on d230b19 the smoke broke the failed-calls floor (6 against 1, 95% CI 1 to 13). All 6 failures were Gemini calls: 14 Gemini calls for 8 scans, with Gemini input tokens equal to 8 replies, while Groq made its usual 14. The job log could not say why, since the harness discarded the worker's warnings and printed no call error; so the absence of "429" in it proved nothing.
+  - **Failure records:** `failureOf` in packages/llm classifies each failed call (timeout, 429, 5xx, network, parse_or_schema, other) and keeps the HTTP status and the first line of the message: at most 200 characters, key-shaped tokens masked, and a JSON parse error reduced to fixed text. Errors carry `status` from `httpError`, and timeouts and lost connections carry `kind` from `classify`.
+    - A Gemini 429 now names its quota (`quotaId`), and a Groq 429 names its limit (TPM, TPD, RPM or RPD), nothing else of either message.
+    - The worker stores the class, status and message in `llm_calls` (migration 0012).
+  - **Eval harness:** it masks every configured key once more and logs a `call failed` line (case, provider, model, class, status, message) as each case ends. The report gains a Failed calls section in the .md and `failures` in the .json, and the eval-smoke artifact uploads the .json beside the .md (output `json`, as in nightly-eval.yml).
+  - **Stalls:** the quota stop now also watches a split case's part jobs. A case past its 30-minute deadline stops with its calls and its last failure instead of throwing: a 429 makes it a quota stop (exit 2, report written), and any other stall fails the run after its failed calls are logged. This came from the local run below, which died at g084 with no report.
+  - **CI against local:** the same models, limits, base URLs (defaults on both sides), concurrency 4, timeouts, retries and lock. They differ in Node (local 24.21.0, CI the latest 24.x for "24"), network and region, and possibly the keys, which cannot be read here. Turbo passes the eval task only `DOCKER_*`, `TESTCONTAINERS_*`, `HOME`, `USERPROFILE` and the two keys. No local run overlapped that CI run. Other compose projects' services (filinglens api, embed and ingest) were up on this PC; if they share these provider accounts, they share the per-minute and daily quotas, which no one process's bucket sees.
+- Files: packages/llm/src/{errors.ts,extract.ts,gemini.ts,openai.ts,extract.test.ts,gemini.int.test.ts,openai.int.test.ts}, packages/db/{migrations/0012_llm_call_errors.sql,src/schema.ts,src/migrations.int.test.ts}, apps/worker/src/extract.int.test.ts, evals/harness/{metrics.ts,metrics.test.ts,run.ts,report.ts}, evals/reports/2026-10-16-ci.{json,md}, .github/workflows/ci.yml, docs/{context,memory,migrations,todo,activity-log}.md
+- Validation:
+  - Typecheck 21 of 21, `pnpm lint` 12 of 12, and actionlint 1.7.12 on the workflows pass. `pnpm turbo run test --force`: 16 of 16 tasks, 0 cached, 70 tests in 7 packages. `pnpm test:int` 94 of 94, covering 0012, the worker's recorded 429 (class, status, message), the Gemini quota id and status, and a Groq 429 naming TPD.
+  - **The ci subset once** (`--fresh`): it hit Groq's daily token cap. 19 cases finished, logging their failed calls; g010, g011 and g058 had 4 Groq 429s between them. g084 (split) then sat in 429 retries until the old 30-minute deadline threw, with no report. Groq probes then showed that a small request passes (888 of 1,000 daily requests left), while a part-sized one gets 429 naming TPD with "try again in 5m41s".
+  - Rerun from the cache (all 20 cached, g084 from the 06:22 run), the report lists the 4 failures by case, provider, model, class, status and message. It exits 1 on failed calls (4 against 1) and end-to-end p95 (211,118 ms against 174,600 ms), both from the cap. The other floors held, and no floor was changed.
+- Outstanding: read the breakdown on PR #13's next smoke for the class of the Gemini failures (docs/todo.md). Groq's daily cap, about 20,000 tokens per ci run, limits how many eval runs a day can share the key. Not committed.
+
+### 2026-10-16: PR #13 eval smoke: ci extraction latency p95 gated on the design target
+
+- Changes:
+  - **Diagnosis:** PR #13's smoke on 4fbb550 broke only the extraction latency p95 floor: 10,191 ms (95% CI 7,478 to 31,380 ms) against 8,900 ms, with p50 2,625 ms. Every other check on that commit passed, docker (api) and docker (worker) included.
+    - The PR comment, read through the public API, has no per-case latency: the artifact is the `.md` only, and job logs need authentication.
+    - Its totals show no repair: Groq made 14 calls, as in every ci run (12 cases plus g084's two split parts), with arithmetic consistency 1.000 and escalation 0. Its one failed call was a Gemini call, which latency excludes. The slow cases were therefore slow single replies.
+    - With n = 20, p95 is the 19th value plus 5% of the gap to the 20th, so the result fits one case near 9 s and one near 31 s.
+    - A fresh local rerun on the same code passed (p95 7,732 ms, 6,400 to 8,026 ms, 0 failed calls, no repair). Its slowest case was g050: one Gemini first pass of 8,026 ms for the same 1,325 input tokens that took 2.3 to 4.4 s on 2026-10-15. No code in the measured path changed, so this is provider variance, not a regression.
+  - **Gate:** the ci floor for extraction latency p95 is now its design target (`"max": 12000, "from": "design target"`), by the user's written reason. The report never proposes tightening a floor whose `from` is "design target". ci p50 keeps 4,400 ms, and the full run keeps its derived p95 floor of 9,900 ms. The floor rules text in `evals/thresholds.json` and `report.ts` states the exception.
+- Files: evals/harness/report.ts, evals/thresholds.json, evals/reports/2026-10-16-ci.{json,md}, README.md, docs/{context,memory,todo,activity-log}.md
+- Validation:
+  - `pnpm lint` 12 of 12, typecheck 21 of 21, and `pnpm turbo run test --force` 16 of 16 tasks, 0 cached, 60 tests in 7 packages.
+  - **ci subset once on the final code** (`--fresh`, 168 s): exit 0, every floor kept. Extraction latency p95 6,079 ms (5,340 to 7,249 ms) against 12,000 ms, and p50 4,058 ms (2,717 to 5,235 ms) against 4,400 ms. 10 rate-limit waits totalling 373,362 ms, and 0 failed calls.
+    - g010 needed a repair (an invalid first pass of 1,541 ms, then a valid repair of 2,657 ms); outcome accuracy 1.000.
+    - Every scan was one Gemini call of 3.9 to 6.0 s, so p50, which falls between the digital and scanned cases, sat 342 ms under its floor.
+- Outstanding: ci p50 is the next floor that a slow day on Gemini could break, since its interval reached 5,235 ms. Not committed.
+
+### 2026-10-16: PR #13 docker (api) and docker (worker) checks: offline production install
+
+- Changes:
+  - **Cause:** the eval fix commit (7ebcee7) changed no manifest, lockfile, workspace file or Dockerfile; between it and b208980 only sources differ. Its push hit CI's gha layer cache for the full install, whose store lived in a BuildKit cache mount, which the gha cache does not keep. The fresh builder's mount was therefore empty when the build step, a cache miss, was followed by `pnpm install --frozen-lockfile --prod --offline`.
+  - **Fix:** in `apps/api/Dockerfile` and `apps/worker/Dockerfile`, the build stage copies the pruned root `package.json`, `pnpm-lock.yaml` and `pnpm-workspace.yaml`, runs `pnpm fetch --store-dir /pnpm/store` into the layer, then runs the full install `--offline` and the production install `--frozen-lockfile --offline` from that store. The cache mounts on these installs are gone. The web Dockerfile keeps its mount, since no step after its install reads the store.
+- Files: apps/api/Dockerfile, apps/worker/Dockerfile, docs/{context,memory,todo,activity-log}.md
+- Validation:
+  - **Reproduced** with a fresh docker-container builder per run, like each CI job. Run 1 built b208980 and exported a `type=local` cache (`mode=max`), then passed. Run 2 used a new builder, built 7ebcee7 with that cache imported, and failed for both apps: install `CACHED`, build run, then `ERR_PNPM_NO_OFFLINE_TARBALL`, "Failed to fetch tarball for @whatwg-node/promise-helpers@1.3.2 ... in offline mode: snapshot not present in local store" (api; worker: `color-convert@2.0.1`).
+  - **Control:** 7ebcee7 built on a fresh builder without the imported cache passed, so the commit itself was sound.
+  - **Fixed Dockerfiles, same two-run sequence:** both apps pass. In run 2 the fetch and full-install layers are `CACHED`, the build runs, and the offline production install succeeds (13 to 16 s).
+  - **Local builds:** `docker build -f apps/{api,worker}/Dockerfile .` from the working tree passes for both.
+  - **Same runtime contents:** against images from the old Dockerfiles at the same commit, `node_modules/.pnpm` lists the same packages, holds the same 17,766 files (api), and every file's md5 matches for both apps. The fixed images hardlink identical files (6,637 in api, 7,351 in worker), which the old cross-mount install copied: api 515 MB against 543 MB, worker 502 MB against 534 MB.
+  - **Checks:** `pnpm lint` 12 of 12 (7 replayed from cache), and `pnpm turbo run test --force` 16 of 16 tasks, 0 cached, 60 tests in 7 packages.
+  - **Cleanup:** the repro builder, the four check images and the scratch caches were removed.
+- Outstanding: the docker checks on PR #13's next push (docs/todo.md). Not committed.
+
+### 2026-10-16: PR #13 eval smoke: latency without rate-limit waits (A) and carrier matching in code (C)
+
+- Changes:
+  - **A, extraction latency:** it now sums only the calls that returned a reply (first pass, repairs, fallback), each the provider's time, so rate-limit waits and failed calls are out of it.
+    - The report table gains three rows with their own floors: rate-limit waits, their total time, and failed or timed-out calls.
+    - `take` returns how long it waited, `metered` hands that to the call through `GenerateInput.onWait`, and each `llm_calls` row records it in `wait_ms` (migration 0011). A failed call's `latency_ms` no longer includes the wait.
+    - The floor rule's text covers the new rows: failed calls take the accuracy rule (one call above a run without any), waits the efficiency rule (upper bound times 1.5).
+  - **C, carrier matching:** `matchCarrier` in packages/domain, called by the extract job against the tenant's carriers.
+    - Order: equal after normalizing case and spacing, then the one known name the reading holds as whole tokens. No match, or more than one, leaves the invoice without a carrier, so reconcile still ends it at needs_review.
+    - The rule (`exact`, `normalized` or `contained`) is kept in `extractions.carrier_match` (0011) as the audit record of a normalized name.
+    - Change log: found through a CI miss on a test case (g010, test split and ci subset, a remit title line read as the carrier). The fix is general: any carrier name printed with other text around it. No prompt was changed, and nothing was tuned on the test split.
+  - **E:** queued in docs/todo.md (a golden v2 dev case for title-line carrier names, then a prompt change tuned on dev only). B and D were rejected by the user.
+  - Docs: context.md had no word on migration 0010 and still named `linesMatchTotal`, which 6a replaced with `checkArithmetic`; both fixed with this change.
+- Files: packages/llm/src/{extract.ts,limits.ts,extract.test.ts,limits.int.test.ts}, packages/domain/src/{carrier.ts,carrier.test.ts,index.ts}, packages/db/{migrations/0011_call_wait_and_carrier_match.sql,src/schema.ts,src/migrations.int.test.ts}, apps/worker/src/{extract.ts,extract.int.test.ts}, evals/harness/{metrics.ts,metrics.test.ts,report.ts,run.ts}, evals/thresholds.json, evals/reports/2026-10-16-{dev,ci}.{json,md}, README.md, docs/{context,memory,migrations,todo,activity-log}.md
+- Validation:
+  - **Floors from the main baseline** (the cached `2026-10-15-ci` and `2026-10-15` runs, read by a scratch script through the harness's own `evaluate`, `scoreCase`, `measure` and `floorFrom`, no model calls):
+    - All 22 ci calls and 98 full calls had returned a reply (96 valid, 2 invalid), and a reply's latency never held its bucket wait. So the latency floors are unchanged under the new definition: ci p50 4,400 ms and p95 8,900 ms (p95 measured 5,341 ms, interval 3,147 to 5,872 ms), full 4,000 and 9,900 ms.
+    - Failed calls: 0 in both, so a floor of 1 for ci and full.
+    - Rate-limit waits: the baseline recorded none (n/a), so their ci floors come from this ci run, and full has none yet.
+  - **Unit tests:** the matcher has unit tests for a title-line suffix like g010's, two carriers sharing words (no match), and no match. The first version dropped punctuation, and its own test matched "Halcyon Ridge — Freight Bill" to Halcyon Ridge Freight; punctuation marks now stay tokens. Two mutations each fail one test: taking the first of several matches, and containment without token boundaries.
+  - **Checks:** typecheck 21 of 21. `pnpm lint` 12 of 12. `pnpm turbo run test --force`: 16 of 16 tasks, 0 cached, 60 tests in 7 packages (domain 100 % coverage). `pnpm test:int` 93 of 93; it first failed only on the migrations test's list and count of migrations, which now include 0011.
+  - **Dev split once** (`--fresh`, real models, 186 s): 20 of 20 cases with no miss, every accuracy metric and outcome accuracy 1.000, as on 2026-10-15. Extraction latency p50 2,024 ms and p95 4,035 ms. 13 rate-limit waits totalling 512,517 ms, and 0 failed calls.
+  - **ci subset once** (`--fresh --set-floors`, real models, 146 s): exit 0, every floor kept (`evals/reports/2026-10-16-ci.md`).
+    - Extraction latency p50 2,374 ms and p95 6,868 ms, against floors of 4,400 and 8,900 ms.
+    - 8 rate-limit waits totalling 359,011 ms (intervals 3 to 14 and 83,843 to 703,426 ms), which set their ci floors at 21 waits and 1,055,200 ms. The report prints those two rows without a floor, since `--set-floors` adds a floor after measuring.
+    - 0 failed calls, against a floor of 1.
+    - g010 again read its title line as the carrier ("Quarry Lane Transport — Freight Bill", 5 of 6 header fields) and now reconciled through the `contained` match. In the baseline the same reading ended needs_review (`no_shipment_match`). Outcome accuracy 1.000; g010's carrier field is the run's only miss.
+- Outstanding: full-subset floors for the two wait rows (docs/todo.md). The ci report suggests tightening three floors (tokens per invoice to 3,400 digital and 3,650 scanned, outcome accuracy to 0.98); not applied. The baseline cache was copied to `evals/.cache/baseline-2026-10-15` before the fresh runs overwrote the 40 dev and ci cases. Not committed.
+
+### 2026-10-16: PR #13 eval smoke failure investigated (no change made)
+
+- Changes: none to code or floors; the decision waits on the user.
+- Files: docs only (activity log, memory, todo).
+- Validation:
+  - **The broken floor is not g010.** The PR comment's floors table shows only one broken floor: extraction latency p95 (3 pages or fewer) measured 90,028 ms against a floor of ≤ 8,900 ms. Its 95% interval runs from 6,864 to 273,545 ms, and p50 was a normal 2,122 ms.
+  - **g010 broke nothing:**
+    - It read 5 of 6 header fields and ended needs_review.
+    - Digital header accuracy kept its floor: 0.987 against ≥ 0.950.
+    - Expected outcome kept its floor: 0.952 against ≥ 0.830.
+  - **The model path is unchanged.** `git diff main origin/step-8-instrumentation -- packages/llm`:
+    - It adds an optional `GenerateInput.step`; both clients destructure only prompt, parts and schema, so it is never sent.
+    - It reads `finishReason` for spans only.
+    - `traced()` passes input and reply through untouched.
+    - Request parameters, prompt (hash 19f0c19627c4 on both), schema, temperature 0, retries and parsing are unchanged.
+  - **g010 alone, 3 runs per branch**, through the harness's `runCase` in fresh containers, with no eval cache and `fallbackOnRateLimit` false, all on Groq `openai/gpt-oss-120b`:
+    - main: run 1 reconciled after a repair; run 2 needs_review, with carrier read as "Quarry Lane Transport — Freight Bill" against "Quarry Lane Transport" (`no_shipment_match`); run 3 reconciled.
+    - Branch: 3 of 3 reconciled, one after a repair.
+    - Both branches sent 767 input tokens on the first pass and 950 on the repair. Call latencies were 1.5 to 2.2 s on both.
+  - The CI job log and the report artifact need authentication (HTTP 403), and gh is not installed here, so CI's per-case latencies are not visible.
+- Outstanding: the user chooses how to handle the remit title misread and the noisy free-tier latency floor (options in docs/todo.md). No floor changes and no retries until then.
+
+### 2026-10-16: Step 8 instrumentation and k6 load test
+
+- Changes:
+  - **OpenTelemetry:** OpenTelemetry through `packages/telemetry`.
+    - Each app loads `node --import ./src/telemetry.ts`, which runs NodeSDK with OTLP/JSON to the collector. The import-in-the-middle hook covers only the hooked modules.
+    - Instrumentations: http, @fastify/otel, pg (placeholders only), and ioredis (command names only).
+    - `service.instance.id` is set per process.
+  - **Trace context through BullMQ** (`packages/pipeline/src/tracing.ts`):
+    - `send()` stores the W3C traceparent in job data inside a producer span, and `consume()` runs each attempt as a consumer span under it.
+    - A split's flow shares one send span; a replay continues the replay request's trace.
+  - **GenAI model-call spans** (`packages/llm/src/trace.ts`): semconv v1.41.1 names inlined and the schema URL pinned. Each records the model, tokens, finish reason, role and step, never content. `finishReason` is now read from both clients.
+  - **Metrics** (`packages/telemetry/src/metrics.ts`):
+    - queue and dead-letter gauges, and the circuit breaker
+    - job duration and wait, and retries by error class
+    - tokens, paid-equivalent cost and 429s
+    - escalations, fallbacks, needs_review by reason, and intake 503s
+  - **Dashboard and alerts:**
+    - The Grafana dashboard `infra/grafana/freightaudit.json`, provisioned, on datasources with fixed uids.
+    - The Prometheus rule file `infra/prometheus-alerts.yml` with a promtool test, which CI's lint job runs.
+    - Prometheus now scrapes with `honor_labels`.
+  - **Rate limits:** the per-key limits became `RATE_LIMIT_PER_MIN` and `UPLOAD_RATE_LIMIT_PER_MIN`. `OTEL_SDK_DISABLED`, `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_METRIC_EXPORT_INTERVAL` are validated.
+  - **Span-scan test:** `apps/worker/src/telemetry.int.test.ts`.
+  - **k6 load test:**
+    - `loadtest/k6.js`, run as the compose service `k6`, profile `loadtest`, image `grafana/k6:2.3.0` by digest.
+    - The env files for both parts, and `fixture-shipments.sql`.
+    - The recorded-fixture model server: `pnpm --filter @freightaudit/llm fixture-models`, with `fakeModels` now taking async replies and a port.
+  - **README:** `evals/harness/report.ts` renders the README's end-to-end latency and throughput rows from the k6 results. The README gained Observability and Load test sections.
+- Files:
+  - packages: `packages/telemetry/**`, `packages/pipeline/src/{tracing,queues,dead-letters,index}.ts`, `packages/llm/{src/{trace,extract,gemini,openai,models,testing}.ts,scripts/fixture-models.ts,tsconfig*.json}`, `packages/config/src/env.ts`
+  - apps: `apps/{api,worker}/{src/telemetry.ts,package.json,Dockerfile}`, `apps/api/src/{main,app,service}.ts`, `apps/worker/src/{main,workers,extract,reconcile,telemetry.int.test}.ts`
+  - infra: `infra/{docker-compose.yml,prometheus.yml,prometheus-alerts.yml,prometheus-alerts.test.yml,grafana-datasources.yml,grafana/*}`
+  - load test and evals: `loadtest/*`, `evals/harness/report.ts`
+  - root: `.github/workflows/ci.yml`, `.dockerignore`, `.env.example`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `README.md`
+  - docs and screenshots: `docs/*`, `docs/screenshots/{jaeger-trace,grafana-load-test}.png`
+- Validation:
+  - `pnpm turbo run build typecheck lint` passes; `pnpm turbo run test --force`: 16 tasks, 0 cached, passed.
+  - `pnpm test:int`: 93 of 93 (21.1 s).
+  - The span-scan test passes in 4.8 s. It fails with the default ioredis serializer (an `evalsha` statement with keys) and with a `send` that drops the context (6 traces instead of 1).
+  - promtool: rules check (4 rules) and tests pass. actionlint exits 0.
+  - In Jaeger: one upload is one trace with 2 services and about 50 spans. It runs from `POST /v1/invoices` through `process extract`, the model call and `process reconcile` (screenshot from a real Gemini call).
+  - The api and worker images build, start healthy with the `--import` CMD, and the worker's metrics reach Prometheus through the collector.
+  - k6 Part 1 (2026-10-15 20:19 UTC), on the recorded fixtures with 2 workers:
+    - 1,083 uploads at up to 6,000/h: 1,083 reconciled, 0 lost, 0 refused.
+    - Upload p50 30 ms, p95 86 ms, p99 155 ms.
+    - The extract queue held about 4 active and 0 waiting at 3x.
+    - Everything was final within 5 s of the last upload.
+  - k6 Part 2 (2026-10-15 20:41 UTC), on the real models:
+    - 20 single-page golden cases, one every 15 s, all reconciled, no 429.
+    - End-to-end p50 3,108 ms, p90 4,162 ms, max 4,663 ms.
+    - A first run had 21 invoices: the 300 s arrival window started one at its end, so the window became 290 s.
+- Outstanding:
+  - No run measures real models at the design rate; that needs paid tiers.
+  - Web and mock-tms are not instrumented, and logs carry no trace ids.
+  - A batch upload is one trace.
+  - Step 7's test PR still waits for the repository.
+
 ### 2026-10-15: Step 7 CI/CD written and checked locally
 
 - Changes: GitHub Actions. `ci.yml` (pull requests, and `workflow_call`): lint, typecheck and actionlint; unit tests with `--force`; `test:int` with the Playwright Chromium; contracts check and oasdiff against the base commit; migrations on a fresh database and on a small-seeded snapshot built from the base, with schemas compared; golden and comparison PDF checksums; the eval smoke (`pnpm eval --suite extraction --subset ci`, exit 2 warns, one PR comment updated in place); a Docker build and Trivy scan per image; gitleaks; `pnpm audit`. `release.yml` (push to main): the same checks, then build, scan and push to GHCR as `sha-<short>` and `latest` with provenance and the GHA cache; migrate and deploy jobs gated by `DEPLOY_ENABLED`. `nightly-eval.yml`: the full eval weekly with a cache kept per workflow run, the report as an artifact, an issue on a broken floor. `dependabot.yml` and a composite setup action. Multi-stage Dockerfiles for api, worker and web (turbo prune, Node 24 alpine by digest, non-root, HEALTHCHECK), `.dockerignore`, Next standalone output. `@freightaudit/config` tooling moved to devDependencies. The Toxiproxy test's fake TMS binds `TOXIPROXY_UPSTREAM_HOST` (the bridge gateway on a Linux engine). turbo.json passes `GEMINI_API_KEY` and `GROQ_API_KEY` to `eval` and `OASDIFF_BASE_REF` to `contracts:breaking`. `pnpm audit` accepts two dev-only advisories.

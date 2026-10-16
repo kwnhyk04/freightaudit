@@ -3,9 +3,10 @@ import type { Job } from 'bullmq';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { isQueueName, type QueueName, type Queues } from './queues.ts';
+import { send, type TraceCarrier } from './tracing.ts';
 
 type Deps = { db: NodePgDatabase; queues: Queues };
-type JobData = { tenantId: string; invoiceId?: string };
+type JobData = { tenantId: string; invoiceId?: string; otel?: TraceCarrier };
 
 // Lifecycle (docs/context.md): the status an invoice holds while a queue's step runs, and the one a replay restores.
 const RUNNING = { extract: 'extracting', reconcile: 'reconciling' } as const;
@@ -56,11 +57,13 @@ export async function replayDeadLetter({ db, queues }: Deps, tenantId: string, i
   if (!row || !isQueueName(row.queue)) return undefined;
   const queueName = row.queue;
   const copy = await queues.dlq(queueName).getJob(row.jobId);
-  const data = (copy?.data ?? { ...(row.payload as object), tenantId }) as JobData;
+  const data = { ...((copy?.data ?? { ...(row.payload as object), tenantId }) as JobData) };
+  // The replay continues the trace of the request that asked for it, not the one the job failed in.
+  delete data.otel;
   const name = copy?.name ?? DEFAULT_JOB_NAME[queueName];
   // The failed original still holds the job id, and adding a job with a taken id is a no-op.
   await queues.queue(queueName).remove(row.jobId);
-  await queues.queue(queueName).add(name, data, { jobId: row.jobId });
+  await send(queueName, row.jobId, (trace) => queues.queue(queueName).add(name, { ...data, ...trace }, { jobId: row.jobId }));
   await db.transaction(async (tx) => {
     await tx.update(deadLetters).set({ replayedAt: sql`now()` }).where(eq(deadLetters.id, row.id));
     // Only a queue's own step restarts the lifecycle; other jobs, such as a split's collect, move the status themselves.

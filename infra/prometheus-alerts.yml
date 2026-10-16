@@ -1,0 +1,42 @@
+# Alerts on the app metrics of packages/telemetry/src/metrics.ts, loaded by Prometheus as /etc/prometheus/alerts.yml.
+# Test them with promtool (prometheus-alerts.test.yml, README, Observability).
+groups:
+  - name: freightaudit
+    rules:
+      # Jobs that used up their retries: fix the cause, then replay them (POST /v1/dead-letters/{id}/replay).
+      - alert: DeadLettersWaiting
+        expr: max by (queue) (freightaudit_queue_dead_letters) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.queue }} dead letters have waited 10 minutes"
+
+      # Uploads wait long before a worker picks them up. A split's collect job waits on its parts by design, so only
+      # extract jobs count.
+      - alert: ExtractWaitHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(freightaudit_job_wait_seconds_bucket{queue="extract", name="extract"}[5m]))) > 60
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Extract jobs wait more than 60 s (p95)"
+
+      # Model spend at paid prices, even on free tiers, per extracted invoice over the last hour: $0.05 is 50,000 micro-dollars.
+      - alert: CostPerInvoiceHigh
+        expr: >-
+          sum(increase(freightaudit_llm_paid_equivalent_micro_usd_total[1h]))
+          / sum(increase(freightaudit_job_duration_seconds_count{queue="extract", name="extract", outcome="completed"}[1h]))
+          > 50000
+        labels:
+          severity: warning
+        annotations:
+          summary: "Paid-equivalent model cost per invoice is above $0.05 over the last hour"
+
+      # A provider rejected the model settings (401, 403, 404): fix them, restart the worker, then pnpm extract:resume.
+      - alert: ExtractCircuitOpen
+        expr: max(freightaudit_extract_paused) == 1
+        labels:
+          severity: critical
+        annotations:
+          summary: "The extract queue is paused by the circuit breaker"

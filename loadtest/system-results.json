@@ -1,0 +1,24 @@
+{
+  "scenario": "system",
+  "date": "2026-10-15",
+  "accepted": 1083,
+  "refused": 0,
+  "statuses": {
+    "reconciled": 1083,
+    "needs_review": 0,
+    "approved": 0,
+    "failed": 0
+  },
+  "pending": 0,
+  "provider": "recorded-fixture",
+  "normal_per_hour": 2000,
+  "offered_per_hour": 6000,
+  "lost": 0,
+  "upload_ms": {
+    "p50": 30,
+    "p95": 86,
+    "p99": 155,
+    "max": 230
+  },
+  "drain_s": 0
+}

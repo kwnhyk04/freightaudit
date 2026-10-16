@@ -3,14 +3,17 @@
 // exit code is 2 when a quota stop left cases unrun, 1 when a metric breaks its floor, else 0.
 import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
-import { type Measured, measure, meets, type Metric, METRICS, scoreCase, type Score } from './metrics.ts';
+import { failuresOf, type Measured, measure, meets, type Metric, METRICS, scoreCase, type Score } from './metrics.ts';
 import type { Roles, Run, Subset } from './run.ts';
 
 // Floors per subset: a minimum for metrics where higher is better, a maximum for the others. Floors only tighten;
-// loosening one needs a written reason in docs/memory.md naming the run that justified it.
+// loosening one needs a written reason in docs/memory.md naming the run that justified it. `from` names the run that
+// set the floor, or is "design target" for a floor set to the target by such a reason.
 type Floor = { min?: number; max?: number; from: string };
 type Thresholds = { _rules?: string } & Partial<Record<Subset, Record<string, Floor>>>;
 const THRESHOLDS = new URL('../thresholds.json', import.meta.url);
+const RULES =
+  "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). Exception: the ci subset gates extraction latency p95 on its design target (12,000 ms), not a derived floor: with n = 20 its p95 is effectively the slowest single case, and its interval is too wide for a floor tighter than the target to separate regressions from noise (docs/memory.md, 2026-10-16). Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
 const README = new URL('../../README.md', import.meta.url);
 
 const metricOf = (name: string) => METRICS.find((def) => def.metric === name)!;
@@ -25,14 +28,15 @@ const bound = (op: string, unit: string, value: number) => `${op === '>=' ? '≥
 const yes = (ok: boolean) => (ok ? 'met' : 'missed');
 // A floor from this run (user rules). Accuracy: the looser of the run's 95% bound and the design target, so a perfect
 // run's degenerate interval (1.000 to 1.000) never makes a floor that one miss would break; without a target, the bound
-// with a 0.02 margin, at most 0.98 for a minimum, at least 0.02 for a maximum. Efficiency (tokens, cost, latency): the
-// upper bound times 1.5, so a 50% regression breaks it, capped at the design target unless the run already exceeds it
-// (end-to-end latency under the eval's throttling), where a cap would break the floor with no regression. Cost as
-// billed stays 0: any billed cost means a paid key was used by mistake. Rounded away from the run to the unit's step.
-function floorFrom({ metric, unit, higherIsBetter, target }: Metric, [lo, hi]: [number, number]) {
+// with a 0.02 margin, at most 0.98 for a minimum, at least 0.02 for a maximum. Failed calls are outcomes like these, so
+// a run without any gets a floor of one call. Efficiency (tokens, cost, latency, rate-limit waits): the upper bound times
+// 1.5, so a 50% regression breaks it, capped at the design target unless the run already exceeds it (end-to-end latency
+// under the eval's throttling), where a cap would break the floor with no regression. Cost as billed stays 0: any
+// billed cost means a paid key was used by mistake. Rounded away from the run to the unit's step.
+export function floorFrom({ metric, unit, higherIsBetter, target }: Metric, [lo, hi]: [number, number]) {
   if (metric === 'free_tier_cost_per_invoice_usd') return 0;
-  const step = { ratio: 0.01, ms: 100, tokens: 10, usd: 0.0001, per_hour: 1 }[unit] ?? 1;
-  const efficiency = !higherIsBetter && (unit === 'ms' || unit === 'tokens' || unit === 'usd');
+  const step = { ratio: 0.01, ms: 100, tokens: 10, usd: 0.0001, per_hour: 1, waits: 1, calls: 1 }[unit];
+  const efficiency = !higherIsBetter && (unit === 'ms' || unit === 'tokens' || unit === 'usd' || unit === 'waits');
   const raw = efficiency
     ? target && target.value >= hi ? Math.min(hi * 1.5, target.value) : hi * 1.5
     : higherIsBetter
@@ -54,6 +58,38 @@ function throughput(scores: Score[], roles: Roles) {
   };
   const busiest = Math.max(minutes('digital', 'text'), minutes('scanned', 'primary'));
   return busiest > 0 ? (60 * scores.length) / busiest : undefined;
+}
+
+// The k6 load test's results (README, Load test), which replace the eval's throttled end-to-end latency and free-tier
+// ceiling in the README table: part 2 gives end-to-end latency at low load on the real models, part 1 throughput on the
+// recorded-fixture provider. Neither measures real models at the design rate, which needs paid tiers.
+type E2eResults = { date: string; n: number; e2e_ms: { p50: number; p90: number; max: number } };
+type SystemResults = { date: string; accepted: number; lost: number; offered_per_hour: number; drain_s: number };
+const LOAD_TEST = new URL('../../loadtest/', import.meta.url);
+const results = async <T>(name: string) => {
+  const file = new URL(name, LOAD_TEST);
+  return existsSync(file) ? (JSON.parse(await readFile(file, 'utf8')) as T) : undefined;
+};
+
+export async function loadTestRows() {
+  const e2e = await results<E2eResults>('e2e-results.json');
+  const system = await results<SystemResults>('system-results.json');
+  const rows: string[] = [];
+  // n = 20 cannot give a meaningful p95, so max stands in for it: the target is met only if every invoice made it.
+  if (e2e) {
+    const { p50, p90, max } = e2e.e2e_ms;
+    rows.push(
+      `| End-to-end latency at low load with real free-tier models (k6, n = ${e2e.n}, one every 15 s; p95 is not meaningful at this n) | p95 ≤ 30,000 ms | p50 ${fmt('ms', p50)}, p90 ${fmt('ms', p90)}, max ${fmt('ms', max)} | n/a | ${max <= 30_000 ? 'yes' : 'no'} | all roles | ${e2e.date} |`,
+    );
+  }
+  if (system) {
+    // k6's drain starts 5 s after the last upload, so its time plus 5 s bounds when the last invoice finished.
+    const { offered_per_hour: offered, accepted, lost, drain_s: drain } = system;
+    rows.push(
+      `| Throughput (k6: recorded-fixture model provider at 3x the 2,000/h normal rate, 2 workers x 8) | ≥ 2,000 / h | ${fmt('per_hour', offered)} / h sustained for 10 min: ${fmt('per_hour', accepted)} accepted, ${lost} lost, all final within ${drain + 5} s of the last upload | n/a | ${lost === 0 && offered >= 2_000 ? 'yes' : 'no'} | recorded fixtures | ${system.date} |`,
+    );
+  }
+  return rows;
 }
 
 const usage = (runs: Run[]) => {
@@ -118,7 +154,8 @@ export async function report({ subset, runs, durationMs, setFloors }: { subset: 
       if (floorOk === false) code = Math.max(code, 1);
       // A run that clears its floor by more than its own interval's width earns a tighter floor, when the rule gives one.
       const proposed = m.ci && floorFrom(metric, m.ci);
-      const tighter = proposed !== undefined && floorBound && (metric.higherIsBetter ? proposed > floorBound.value : proposed < floorBound.value);
+      // A floor pinned to the design target by a written decision is never proposed for tightening.
+      const tighter = floor?.from !== 'design target' && proposed !== undefined && floorBound && (metric.higherIsBetter ? proposed > floorBound.value : proposed < floorBound.value);
       if (tighter && m.value !== undefined && m.ci && Math.abs(m.value - floorBound.value) > m.ci[1] - m.ci[0] && floorOk)
         suggestions.push(`${metric.label}: measured ${fmt(metric.unit, m.value)} clears the floor ${fmt(metric.unit, floorBound.value)} by more than the interval's width; consider tightening it to ${fmt(metric.unit, proposed)}.`);
       if (setFloors && !floor && m.value !== undefined && m.ci) {
@@ -127,8 +164,7 @@ export async function report({ subset, runs, durationMs, setFloors }: { subset: 
       return { m, metric, floorBound, floorOk };
     });
     if (setFloors) {
-      thresholds._rules ??=
-        "Regression floors per subset, set from that subset's own run. Accuracy: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost and latency: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
+      thresholds._rules ??= RULES;
       await writeFile(THRESHOLDS, `${JSON.stringify(thresholds, null, 2)}\n`);
     }
     const wide = subset === 'full' ? '90 cases give wide intervals: read each measurement with its 95% interval.' : `${scores.length} cases give very wide intervals; this subset guards against regressions, it does not measure the targets.`;
@@ -143,17 +179,30 @@ export async function report({ subset, runs, durationMs, setFloors }: { subset: 
     lines.push(
       `| Throughput (free-tier ceiling, not a load test) | ≥ 2,000 / h | ${yes((ceiling ?? 0) >= 2_000)} | - | - | ${fmt('per_hour', ceiling)} / h | computed, no interval | ${scores.length} |`,
       '',
-      "End-to-end latency is measured from upload to final status under this run's own throttling and concurrency, not under normal load; throughput is the ceiling the pinned roles' free-tier per-minute limits allow at the measured calls and tokens per invoice, not a load test. Step 8's k6 load test measures both.",
+      "Extraction latency counts the calls that returned a reply (first pass, repair, fallback), each from its request to its answer, without the time spent waiting on a provider's rate limit: on free tiers those waits measure the provider plan, not the pipeline, so the rate-limit rows count them, and failed or timed-out calls, apart. End-to-end latency is measured from upload to final status under this run's own throttling and concurrency, not under normal load; throughput is the ceiling the pinned roles' free-tier per-minute limits allow at the measured calls and tokens per invoice, not a load test. The k6 load test measures both (README, Load test).",
     );
     if (suggestions.length > 0) lines.push('', '## Floors to tighten', '', ...suggestions.map((text) => `- ${text}`));
     const misses = scores.filter((s) => s.header.correct < s.header.total || s.lines.fp + s.lines.fn > 0 || s.overcharges.fp + s.overcharges.fn > 0 || s.outcomes.ok < s.outcomes.total);
     const kinds = new Map(run.cases.map((golden) => [golden.id, golden.kind]));
-    lines.push('', '## Model use', '', ...usageTable, '', '## Cases with any miss', '', '| Case | Kind | Path | Header fields | Lines tp/fp/fn | Findings tp/fp/fn | Outcome | Status |', '| --- | --- | --- | --- | --- | --- | --- | --- |');
+    const failures = failuresOf(
+      run.cases.map((golden) => golden.id),
+      run.results,
+    );
+    const cell = (text: string | null) => (text ?? 'unknown').replaceAll('|', '\\|');
+    lines.push('', '## Model use', '', ...usageTable, '', '## Failed calls', '');
+    if (failures.length === 0) lines.push('None.');
+    else
+      lines.push(
+        '| Case | Provider | Model | Class | HTTP | Error |',
+        '| --- | --- | --- | --- | --- | --- |',
+        ...failures.map((f) => `| ${f.id} | ${f.provider} | ${f.model} | ${cell(f.class)} | ${f.status ?? '-'} | ${cell(f.message)} |`),
+      );
+    lines.push('', '## Cases with any miss', '', '| Case | Kind | Path | Header fields | Lines tp/fp/fn | Findings tp/fp/fn | Outcome | Status |', '| --- | --- | --- | --- | --- | --- | --- | --- |');
     for (const s of misses) {
       const result = run.results.get(s.id)!;
       lines.push(`| ${s.id} | ${kinds.get(s.id)} | ${s.path} | ${s.header.correct}/${s.header.total} | ${s.lines.tp}/${s.lines.fp}/${s.lines.fn} | ${s.overcharges.tp}/${s.overcharges.fp}/${s.overcharges.fn} | ${s.outcomes.ok}/${s.outcomes.total} | ${result.status}${result.error ? ` (${result.error})` : ''} |`);
     }
-    Object.assign(json, { golden: 'v1', promptHash: run.promptHash, pins: pins(run.roles), cases: scores.length, computed: run.computed, metrics: measured, throughputPerHour: ceiling ?? null, floors, scores });
+    Object.assign(json, { golden: 'v1', promptHash: run.promptHash, pins: pins(run.roles), cases: scores.length, computed: run.computed, metrics: measured, throughputPerHour: ceiling ?? null, floors, failures, scores });
 
     if (subset === 'full' && !stopped) {
       // Every pinned role with the model version the provider reported serving, or that it was never called.
@@ -172,10 +221,11 @@ export async function report({ subset, runs, durationMs, setFloors }: { subset: 
         '',
         '| Metric | Target | Measured | 95% CI | Met | Model | Date |',
         '| --- | --- | --- | --- | --- | --- | --- |',
+        // End-to-end latency and throughput come from the k6 load test; this run's throttled ones stay in its report.
         ...rows
-          .filter(({ metric }) => metric.target)
+          .filter(({ metric }) => metric.target && metric.metric !== 'e2e_latency_p95_ms')
           .map(({ m, metric }) => `| ${metric.label} | ${bound(metric.target!.op, metric.unit, metric.target!.value)} | ${fmt(metric.unit, m.value)} | ${ci(metric.unit, m.ci)} | ${meets(m.value, metric.target!) ? 'yes' : 'no'} | ${modelOf(m.metric)} | ${date} |`),
-        `| Throughput (free-tier ceiling, not a load test) | ≥ 2,000 / h | ${fmt('per_hour', ceiling)} / h | computed | ${(ceiling ?? 0) >= 2_000 ? 'yes' : 'no'} | all roles | ${date} |`,
+        ...(await loadTestRows()),
         '<!-- eval:end -->',
       ].join('\n');
       const readme = await readFile(README, 'utf8');

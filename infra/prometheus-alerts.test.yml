@@ -1,0 +1,98 @@
+# Each alert fires on its condition and stays quiet before it or without it. Run (README, Observability):
+# docker run --rm -v "$PWD/infra:/infra:ro" --entrypoint promtool prom/prometheus:v3.15.0-busybox test rules /infra/prometheus-alerts.test.yml
+rule_files: [prometheus-alerts.yml]
+evaluation_interval: 1m
+
+tests:
+  # A dead letter from minute 5 on: pending for 10 minutes, then firing; an empty queue never fires.
+  - interval: 1m
+    input_series:
+      - series: 'freightaudit_queue_dead_letters{queue="extract", job="freightaudit-worker", instance="w1"}'
+        values: "0x4 1x20"
+      - series: 'freightaudit_queue_dead_letters{queue="reconcile", job="freightaudit-worker", instance="w1"}'
+        values: "0x25"
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: DeadLettersWaiting
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: DeadLettersWaiting
+        exp_alerts:
+          - exp_labels: { severity: warning, queue: extract }
+            exp_annotations: { summary: "extract dead letters have waited 10 minutes" }
+
+  # Every extract job waits 60 to 120 s; collect jobs, which wait on their parts, are ignored.
+  - interval: 1m
+    input_series:
+      - series: 'freightaudit_job_wait_seconds_bucket{queue="extract", name="extract", le="60"}'
+        values: "0x20"
+      - series: 'freightaudit_job_wait_seconds_bucket{queue="extract", name="extract", le="120"}'
+        values: "0+10x20"
+      - series: 'freightaudit_job_wait_seconds_bucket{queue="extract", name="extract", le="+Inf"}'
+        values: "0+10x20"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ExtractWaitHigh
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: ExtractWaitHigh
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations: { summary: "Extract jobs wait more than 60 s (p95)" }
+
+  - interval: 1m
+    input_series:
+      - series: 'freightaudit_job_wait_seconds_bucket{queue="extract", name="extract", le="5"}'
+        values: "0+10x20"
+      - series: 'freightaudit_job_wait_seconds_bucket{queue="extract", name="extract", le="+Inf"}'
+        values: "0+10x20"
+      - series: 'freightaudit_job_wait_seconds_bucket{queue="extract", name="collect", le="120"}'
+        values: "0x20"
+      - series: 'freightaudit_job_wait_seconds_bucket{queue="extract", name="collect", le="+Inf"}'
+        values: "0+10x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ExtractWaitHigh
+        exp_alerts: []
+
+  # Ten invoices a minute at 600,000 micro-dollars a minute is $0.06 each; at 100,000 it is $0.01, under the limit.
+  - interval: 1m
+    input_series:
+      - series: 'freightaudit_llm_paid_equivalent_micro_usd_total{role="primary", provider="gemini", model="m", instance="w1"}'
+        values: "0+600000x70"
+      - series: 'freightaudit_job_duration_seconds_count{queue="extract", name="extract", outcome="completed", instance="w1"}'
+        values: "0+10x70"
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: CostPerInvoiceHigh
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations: { summary: "Paid-equivalent model cost per invoice is above $0.05 over the last hour" }
+
+  - interval: 1m
+    input_series:
+      - series: 'freightaudit_llm_paid_equivalent_micro_usd_total{role="primary", provider="gemini", model="m", instance="w1"}'
+        values: "0+100000x70"
+      - series: 'freightaudit_job_duration_seconds_count{queue="extract", name="extract", outcome="completed", instance="w1"}'
+        values: "0+10x70"
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: CostPerInvoiceHigh
+        exp_alerts: []
+
+  # The breaker opens at minute 3, reported by one of two workers.
+  - interval: 1m
+    input_series:
+      - series: 'freightaudit_extract_paused{instance="w1"}'
+        values: "0 0 0 1 1 1"
+      - series: 'freightaudit_extract_paused{instance="w2"}'
+        values: "0 0 0 0 0 0"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: ExtractCircuitOpen
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: ExtractCircuitOpen
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations: { summary: "The extract queue is paused by the circuit breaker" }

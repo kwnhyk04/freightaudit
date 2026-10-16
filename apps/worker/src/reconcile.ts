@@ -2,6 +2,7 @@ import { discrepancies, extractions, invoiceLines, invoices, rateCardBands, rate
 import { currencyReview, reconcileInvoice, versionInForce } from '@freightaudit/domain';
 import { type ExtractedInvoice, PermanentError, TransientError } from '@freightaudit/llm';
 import type { InvoiceJob } from '@freightaudit/pipeline';
+import { invoicesNeedsReview } from '@freightaudit/telemetry';
 import type { Job } from 'bullmq';
 import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import type { Deps, Tx } from './workers.ts';
@@ -32,7 +33,10 @@ export async function reconcile({ db }: Pick<Deps, 'db'>, { data }: Pick<Job<Inv
   if (split || (invoice.status !== 'extracted' && invoice.status !== 'reconciling')) return { invoiceId, skipped: invoice.status };
   // Committed on its own, so that a final failure finds the invoice reconciling and marks it failed.
   await db.update(invoices).set({ status: 'reconciling' }).where(and(eq(invoices.id, invoiceId), eq(invoices.status, 'extracted')));
-  return db.transaction((tx) => check(tx, invoiceId));
+  const result = await db.transaction((tx) => check(tx, invoiceId));
+  // Counted once committed, by the reason's code: unsupported_currency: CAD counts as unsupported_currency.
+  if ('reason' in result) invoicesNeedsReview.add(1, { reason: result.reason.split(':')[0]! });
+  return result;
 }
 
 // Sends the invoice to needs_review with the reason kept on its extraction, and writes nothing else.
