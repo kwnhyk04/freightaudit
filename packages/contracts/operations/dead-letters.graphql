@@ -1,0 +1,27 @@
+query DeadLetters($first: Int, $after: String, $status: DeadLetterStatus) {
+  deadLetters(first: $first, after: $after, status: $status) {
+    edges {
+      cursor
+      node {
+        id
+        queue
+        jobId
+        error
+        attempts
+        createdAt
+        replayedAt
+        invoice {
+          id
+          number
+          filename
+          carrier
+          status
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

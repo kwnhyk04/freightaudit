@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { BASIS_POINTS, checkArithmetic, divRound, formatUsd, MICRO_USD, microUsd, percentOf, tokenCost } from './index.ts';
+import { BASIS_POINTS, checkArithmetic, divRound, formatMoney, formatUsd, MICRO_USD, microUsd, percentOf, tokenCost } from './index.ts';
 
 // A fixed seed: every run checks the same cases, and a failure prints the counterexample it shrank to.
 fc.configureGlobal({ seed: 42, numRuns: 1_000 });
@@ -44,6 +44,20 @@ test('percentOf takes basis points of an amount to the nearest cent', () => {
   expect(percentOf(10n, 500n)).toBe(1n); // half a cent rounds away from zero
   expect(percentOf(-10n, 500n)).toBe(-1n);
   fc.assert(fc.property(cents, (amount) => percentOf(amount, BASIS_POINTS) === amount && percentOf(amount, 0n) === 0n));
+});
+
+test('formatMoney shows cents exactly in their currency, with no float on the way', () => {
+  expect(formatMoney(123_456n)).toBe('$1,234.56');
+  expect(formatMoney(-213_076, 'USD')).toBe('-$2,130.76');
+  expect(formatMoney(5n, 'CAD')).toBe('CA$0.05');
+  expect(formatMoney(100n, 'eur')).toBe('$1.00');
+  // Amounts past the float's exact range still read back digit for digit.
+  fc.assert(
+    fc.property(cents, (n) => {
+      const digits = formatMoney(n).replace(/[$,]/g, '');
+      return BigInt(digits.replace('.', '')) === n;
+    }),
+  );
 });
 
 test('formatUsd writes cents as dollars that read back to the same cents', () => {

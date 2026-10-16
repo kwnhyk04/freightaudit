@@ -8,3 +8,6 @@ coverage/
 .env
 evals/fixtures/out/
 evals/.cache/
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/e2e/.auth/

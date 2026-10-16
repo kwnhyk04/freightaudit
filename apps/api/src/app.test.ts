@@ -1,6 +1,8 @@
 import { createMemoryStorage } from '@freightaudit/pipeline';
 import { serverOptions } from '@freightaudit/telemetry';
+import { Kind } from 'graphql';
 import { buildApp } from './app.ts';
+import { Cents } from './graphql.ts';
 
 const apiKey = 'k'.repeat(40);
 const storage = createMemoryStorage();
@@ -40,4 +42,16 @@ test('logs are JSON lines with a UUID request id and redacted credentials', asyn
     apiKey: '[Redacted]',
   });
   expect(lines.join('')).not.toMatch(new RegExp(`${apiKey}|token-`));
+});
+
+test('Cents crosses the wire as an integer number and refuses what it cannot carry exactly', () => {
+  expect(Cents.serialize(123_456n)).toBe(123_456);
+  expect(Cents.serialize(-500n)).toBe(-500);
+  expect(() => Cents.serialize(2n ** 53n)).toThrow('safe range');
+  expect(Cents.parseValue(42)).toBe(42n);
+  expect(() => Cents.parseValue(1.5)).toThrow('safe range');
+  expect(() => Cents.parseValue('42')).toThrow('safe range');
+  expect(Cents.parseLiteral({ kind: Kind.INT, value: '-7' })).toBe(-7n);
+  expect(() => Cents.parseLiteral({ kind: Kind.FLOAT, value: '4.2' })).toThrow('safe range');
+  expect(() => Cents.parseLiteral({ kind: Kind.INT, value: '9007199254740993' })).toThrow('safe range');
 });

@@ -68,6 +68,44 @@ test('the status trigger rejects invoice moves the lifecycle does not list, and 
     await move('approved', 1);
   }));
 
+test('a reviewer may send a needs_review invoice back to matching or reject it, and pipeline moves are audited (0013)', () =>
+  withDatabase(async (client, url) => {
+    await migrate(url, { log: quiet });
+    const { rows: tenants } = await client.query("INSERT INTO tenants (name) VALUES ('Test tenant') RETURNING id");
+    const { rows: invoices } = await client.query(
+      "INSERT INTO invoices (tenant_id, filename, content_sha256, status) VALUES ($1, 'a.pdf', repeat('a', 64), 'needs_review'), ($1, 'b.pdf', repeat('b', 64), 'needs_review') RETURNING id",
+      [tenants[0].id],
+    );
+    const move = (status: string, invoice = 0) => client.query('UPDATE invoices SET status = $1 WHERE id = $2', [status, invoices[invoice].id]);
+    const events = async () => (await client.query('SELECT invoice_id, actor, action, changes FROM audit_events ORDER BY created_at, id')).rows;
+    // An insert fires nothing, so seeded invoices start without audit rows.
+    expect(await events()).toEqual([]);
+
+    await move('extracted');
+    await move('rejected', 1);
+    // rejected is final.
+    for (const status of ['received', 'needs_review', 'approved', 'extracted']) await expect(move(status, 1)).rejects.toMatchObject({ code: '23514' });
+
+    // A reviewer action sets app.actor for its transaction and writes its own row, so the trigger skips the move; the
+    // setting ends with the transaction, so the next move is recorded again.
+    await client.query('BEGIN');
+    await client.query("SELECT set_config('app.actor', 'reviewer', true)");
+    await move('reconciling');
+    await client.query('COMMIT');
+    await move('reconciled');
+    const status = (invoice: number, from: string, to: string) => ({
+      invoice_id: invoices[invoice].id,
+      actor: null,
+      action: 'status',
+      changes: [{ field: 'status', from, to }],
+    });
+    expect(await events()).toEqual([status(0, 'needs_review', 'extracted'), status(1, 'needs_review', 'rejected'), status(0, 'reconciling', 'reconciled')]);
+
+    // Audit rows are append-only.
+    await expect(client.query("UPDATE audit_events SET reason = 'edited'")).rejects.toMatchObject({ code: '23514' });
+    await expect(client.query('DELETE FROM audit_events')).rejects.toMatchObject({ code: '23514' });
+  }));
+
 test('migrations apply cleanly from empty, re-run as a no-op, and match the Drizzle schema', () =>
   withDatabase(async (client, url) => {
     await migrate(url, { log: quiet });
@@ -87,6 +125,7 @@ test('migrations apply cleanly from empty, re-run as a no-op, and match the Driz
       '0010_review_reason',
       '0011_call_wait_and_carrier_match',
       '0012_llm_call_errors',
+      '0013_audit_and_rejection',
     ]);
 
     const tables = Object.values(schema as Record<string, unknown>).filter((value): value is PgTable => is(value, PgTable));
@@ -177,5 +216,5 @@ test('db:reset refuses a database off this machine or NODE_ENV=production, and o
     await resetDatabase(url, { nodeEnv: 'development', log: quiet });
     expect((await client.query('SELECT name FROM tenants')).rows).toEqual([{ name: 'Larkspur Outdoor Supply' }]);
     expect(await count(client, 'SELECT count(*) FROM invoices')).toBe(500);
-    expect(await count(client, 'SELECT count(*) FROM schema_migrations')).toBe(13);
+    expect(await count(client, 'SELECT count(*) FROM schema_migrations')).toBe(14);
   }));

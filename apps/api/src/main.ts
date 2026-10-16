@@ -28,6 +28,8 @@ const env = loadEnv([
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1 });
 const pool = new pg.Pool({ connectionString: env.DATABASE_URL });
 const queues = createQueues(redis, env.REDIS_PREFIX);
+const db = drizzle(pool);
+const storage = createStorage({ endpoint: env.S3_ENDPOINT, accessKey: env.S3_ACCESS_KEY, secretKey: env.S3_SECRET_KEY, bucket: env.S3_BUCKET });
 const app = buildApp(serverOptions(env.LOG_LEVEL), {
   apiKeys: env.API_KEYS,
   checks: {
@@ -35,8 +37,9 @@ const app = buildApp(serverOptions(env.LOG_LEVEL), {
     redis: tcpCheck(env.REDIS_URL, 6379),
     minio: httpCheck(new URL('/minio/health/live', env.S3_ENDPOINT).href),
   },
-  service: createService({ db: drizzle(pool), queues, tenantId: env.TENANT_ID }),
-  storage: createStorage({ endpoint: env.S3_ENDPOINT, accessKey: env.S3_ACCESS_KEY, secretKey: env.S3_SECRET_KEY, bucket: env.S3_BUCKET }),
+  service: createService({ db, queues, tenantId: env.TENANT_ID, storage }),
+  graphql: { db, queues, tenantId: env.TENANT_ID },
+  storage,
   redis,
   prefix: env.REDIS_PREFIX,
   rateLimits: { general: env.RATE_LIMIT_PER_MIN, upload: env.UPLOAD_RATE_LIMIT_PER_MIN },

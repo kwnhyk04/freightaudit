@@ -1,3 +1,4 @@
+import { queryError } from '@freightaudit/db';
 import { type Limits, type Models, PermanentError } from '@freightaudit/llm';
 import {
   consume,
@@ -56,12 +57,7 @@ export async function failFast(work: () => Promise<unknown>) {
     return await work();
   } catch (err) {
     if (err instanceof PermanentError) throw new UnrecoverableError(err.message);
-    if (err instanceof Error && 'query' in err && 'params' in err) {
-      const code = (err.cause as { code?: unknown } | undefined)?.code;
-      // eslint-disable-next-line preserve-caught-error -- the cause carries the bound values; only its code may leave.
-      throw new Error(`database query failed${typeof code === 'string' ? `: ${code}` : ''}`);
-    }
-    throw err;
+    throw queryError(err) ?? err;
   }
 }
 

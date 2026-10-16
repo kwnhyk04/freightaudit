@@ -40,8 +40,10 @@ pnpm install          # also sets git core.hooksPath to .githooks
 cp .env.example .env  # then set API_KEYS; the comment above it shows how to generate a key
 docker compose --env-file .env -f infra/docker-compose.yml up -d --wait
 pnpm db:migrate
-pnpm --filter @freightaudit/evals exec playwright install --only-shell chromium  # once, for pnpm fixtures
+pnpm --filter @freightaudit/evals exec playwright install --only-shell chromium  # once, for pnpm fixtures and pnpm e2e
 ```
+
+For the review UI also set `API_KEY` (one of `API_KEYS`), `SESSION_SECRET` (32 characters or more) and `DEMO_PASSWORD_HASH` (see Review UI).
 
 Add `--profile observability` to also start the OpenTelemetry Collector, Jaeger, Prometheus and Grafana. Stop infra with `docker compose -f infra/docker-compose.yml --profile observability down` (add `-v` to drop data).
 
@@ -66,6 +68,8 @@ Backend on this PC (production): `docker compose --env-file .env -f infra/docker
 | `pnpm db:reset` | Dev only: empty this deployment's BullMQ queues at `REDIS_URL` (jobs and their ids, so a PDF uploaded before the reset is extracted again), drop every app table and its data in the database at `DATABASE_URL`, migrate from empty and seed `--scale=small`. It refuses before deleting anything unless Postgres and Redis are on `localhost` or `127.0.0.1` and `NODE_ENV` is not `production`; set `NODE_ENV=production` in `.env` on a machine whose data must survive. Stop the api and worker first. Stored PDFs stay |
 | `pnpm test:int` | The Jest `integration` and `contract` projects in one root run (`jest.config.js`), against Postgres, Redis, MinIO and Toxiproxy containers that Testcontainers starts for the run on 127.0.0.1 and removes afterwards. Needs Docker, not the compose infra; each test uses a throwaway database, its own Redis key prefix and bucket. Covers migrations including expand, backfill and contract under the api's queries, the REST contract, keyset pagination under concurrent inserts, batch partial failure, rate limits and backpressure, the worker pipeline (retries, dead letters and replay, crash recovery, budget guard, multi-invoice split, TMS sync through 20 % connection resets and 300 ms latency), reconciliation against the small seed's planted overcharges, and the fixture determinism test (needs the Playwright Chromium) |
 | `pnpm fixtures [--count=60] [--seed=42]` | Render synthetic invoice PDFs from 6 templates, plus scanned variants, each with ground-truth JSON, into `evals/fixtures/out`; the same seed gives byte-identical files on one machine. Each invoice bills a shipment the small seed leaves unbilled, so it reconciles against `pnpm db:seed --scale=small`; the ground truth gives each line's expected cents and every planted overcharge |
+| `pnpm e2e` | The Playwright suite against the whole stack on this project's ports (see Review UI); needs Docker |
+| `pnpm e2e:screenshots` | Every screen in light and dark at 1440x900, and three on a 390 px phone, into `docs/screenshots/ui/` |
 | `pnpm extract:resume` | Restart the extract queue after the worker paused it because a provider rejected its key or model (401, 403, 404; the worker logs `alert: "extract_paused"`). Fix the setting and restart the worker first |
 | `pnpm eval --suite extraction --subset ci\|dev\|full\|compare [--fresh] [--set-floors]` | Runs golden set v1 (`evals/golden/v1`: 90 invoices, dev split 20, ci subset 20) through the real worker against the small seed in throwaway Postgres and Redis containers, with the pinned roles from `.env` (real model calls; needs Docker and the keys). Each case's result is cached in `evals/.cache`, so a run stopped by a spent quota (exit 2) resumes; `--fresh` ignores the cache. Writes `evals/reports/<date>[-<subset>].json` and `.md` with every target met or missed and the regression floors of `evals/thresholds.json` (exit 1 when one breaks); a full run rewrites the table above. `compare` runs `gemini-3.8-flash` beside the configured primary on `evals/comparison/v1`. Rebuild a set with `node evals/golden/build.ts --set golden\|comparison` only as a new version |
 
@@ -73,9 +77,40 @@ One project or file: `node --experimental-vm-modules node_modules/jest/bin/jest.
 
 Tests never call a real model provider: they replay responses recorded in `packages/llm/fixtures/recorded`. To re-record after changing a prompt or schema, run the affected integration tests with `LLM_RECORD=1` (keys come from `.env`); `LLM_PROVIDER=ollama` sends the recorded tests' requests to a local Ollama instead (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`).
 
-Apps (each answers `GET /healthz` and `GET /readyz`, bound to loopback): web `:3000`, api `:4000` (GraphQL at `/graphql`), worker `:4001`, mock-tms `:4010`. Every api route except the two probes requires the `X-API-Key` header and is rate limited per key (60 requests a minute and 10 uploads a minute by default: `RATE_LIMIT_PER_MIN`, `UPLOAD_RATE_LIMIT_PER_MIN`). Uploads go to MinIO and the `extract` queue; the worker extracts only when `AI_ENABLED=true` (pages with a text layer to the text model, others as images to the primary, one repair, then the fallback, then needs_review), records every model call in `llm_calls`, and otherwise holds extract jobs back. Node services log JSON lines (pino) with a request id, at `LOG_LEVEL`, with credentials redacted.
+Apps (each answers `GET /healthz` and `GET /readyz`, bound to loopback): web `:3000` (the review UI), api `:4000` (GraphQL at `/graphql`), worker `:4001`, mock-tms `:4010`. Every api route except the two probes requires the `X-API-Key` header and is rate limited per key (60 requests a minute and 10 uploads a minute by default: `RATE_LIMIT_PER_MIN`, `UPLOAD_RATE_LIMIT_PER_MIN`); everyone using the review UI shares its one key's limits. An upload is a PDF, PNG or JPG of at most 4 MB (4 MiB), and a PDF has at most 20 pages; an image is stored as a one-page PDF of it, and the same image always gives the same PDF, so duplicate uploads are still caught. Uploads go to MinIO and the `extract` queue; the worker extracts only when `AI_ENABLED=true` (pages with a text layer to the text model, others as images to the primary, one repair, then the fallback, then needs_review), records every model call in `llm_calls`, and otherwise holds extract jobs back. Node services log JSON lines (pino) with a request id, at `LOG_LEVEL`, with credentials redacted.
 
 Infra (bound to 127.0.0.1; host ports set in `.env`): Postgres `:5432`, Redis `:6379`, MinIO `:9000` (console `:9001`), Toxiproxy API `:8474` with proxies postgres `:15432`, redis `:16379`, mock-tms `:14010`. With `--profile observability`: OTLP `:4317`/`:4318`, Jaeger UI `:16686`, Prometheus `:9090`, Grafana `:3001`.
+
+## Review UI
+
+The web app (`apps/web`, Next.js) is where accounts-payable staff review invoices.
+
+![An invoice beside its lines, with three findings, light](docs/screenshots/ui/invoice-document-light.png)
+![The same invoice in dark mode](docs/screenshots/ui/invoice-document-dark.png)
+
+- **Pages:**
+  - Invoices: filtered by status, 25 a page by keyset cursor.
+  - An invoice: the PDF beside its lines, each flagged line with its expected and billed amount in place, the findings with their evidence, and the audit trail. It refreshes while the pipeline moves the invoice.
+  - Review queue: approve a charge or dispute it, with an optional note.
+  - Dead letters: replay a failed job.
+  - Upload: the size and type are checked in the browser before anything is sent.
+- **Out of needs review:** correct the carrier or PRO number and re-run matching, reject the invoice with a reason (a final status), or approve it as billed. The audit trail records every action with who, when and what changed, and every pipeline move, including how the carrier name matched and why a step failed.
+- **Backend for frontend:** the browser talks only to the Next.js server, which calls the api with `API_KEY`; the key never reaches the browser. Every page, route handler and action checks the session first.
+- **Sign-in:** one reviewer, recorded as `reviewer` in the audit trail. The password is checked against `DEMO_PASSWORD_HASH` (argon2id). The session cookie is httpOnly, Secure and SameSite=Lax and lasts 8 hours. Five failed attempts in 15 minutes lock sign-in; the count lives in each server instance's memory.
+- **Threats and mitigations:** `docs/threat-notes.md`.
+
+```bash
+pnpm --filter @freightaudit/web hash-password  # type the password, then Ctrl+D (Ctrl+Z, Enter on Windows); put the hash in DEMO_PASSWORD_HASH
+pnpm dev                                        # the UI on http://127.0.0.1:3000
+```
+
+**Sample data.** `/demo` shows a frozen sample with no sign-in: a few golden-set invoices, synthetic and read-only, served from `apps/web/public/demo/` without calling the api. The login page links to it. A signed-in user sees the same sample, under "Live backend offline, showing sample data", while the api's `/readyz` fails or `AI_ENABLED=false`. To regenerate it (about 10 real model calls):
+1. `pnpm db:reset`, then start the api, worker and mock-tms with `AI_ENABLED=true`.
+2. Upload golden v1 g054, g055, g056, g069, g002, g066, g081, g087 and g089. Clear the miles of g003's shipment in the dev database, then upload g003 too, so its reconcile fails into a dead letter.
+3. Dispute one finding, approve one charge, approve an invoice, correct g087's PRO number, reject g089 with a reason.
+4. `pnpm --filter @freightaudit/web demo:export --ids=<id>,<id>,...`. The export refuses any invoice whose file is not in the golden manifest, so a seeded or real invoice can never become public.
+
+**End-to-end tests.** `pnpm e2e` builds the web, starts this project's Postgres, Redis and MinIO with compose, and seeds its own database (`freightaudit_e2e`). Playwright then runs the recorded-fixture models (`:4011`), the api, the worker, the web (`:3000`) and a second web whose api is down (`E2E_OFFLINE_PORT`, default `:3002`), all on 127.0.0.1. A taken port stops the run. The suite covers sign-in, upload to Reconciled (PDF and PNG), deciding findings and approving, the way out of needs review, the public and offline sample, and the sign-in lockout. CI runs it in the `e2e` job.
 
 ## Observability
 
@@ -130,6 +165,7 @@ This part does not use real models.
 - 1,083 uploads: all accepted, all reconciled, none lost or refused.
 - Upload latency p50 30 ms, p95 86 ms, p99 155 ms.
 - Throughout the 3x phase the extract queue held about 4 active jobs and none waiting, so its depth plateaued (dashboard above).
+- What this shows is spare capacity, not backpressure: the queue never got near its high-water mark (`EXTRACT_HIGH_WATER`, 5,000 waiting jobs), so the api never answered "busy, try later". The proof of that path is step 4's tests in `apps/api/src/limits.int.test.ts`: uploads get 503 with `Retry-After: 30` while the backlog is above the mark, and the 11th upload in a minute gets 429.
 - Every invoice was final within 5 s of the last upload.
 
 ```powershell
@@ -164,7 +200,7 @@ docker compose --env-file .env -f infra/docker-compose.yml run --rm k6 run -e SC
 
 GitHub Actions, with every action pinned to a commit SHA, every tool image to a digest, and per-job token permissions.
 
-- `ci.yml` (pull requests, and the checks of `release.yml`): lint and typecheck (plus actionlint and the promtool alert rule tests), unit tests (`pnpm test --force`, so a cached pass never counts), integration tests (Testcontainers and the Playwright Chromium), contracts (`contracts:check` and oasdiff against the base), migrations (all of them on a fresh database, and this change's on a seeded snapshot built from the base, which must end in the same schema), golden set checksums, the eval smoke (`pnpm eval --suite extraction --subset ci` on same-repository PRs, report posted as a PR comment; a broken floor fails, a quota stop only warns), a Docker build and Trivy scan per image, gitleaks and `pnpm audit`.
+- `ci.yml` (pull requests, and the checks of `release.yml`): lint and typecheck (plus actionlint and the promtool alert rule tests), unit tests (`pnpm test --force`, so a cached pass never counts), integration tests (Testcontainers and the Playwright Chromium), end-to-end tests (`pnpm e2e`, the Playwright report kept on failure), contracts (`contracts:check` and oasdiff against the base), migrations (all of them on a fresh database, and this change's on a seeded snapshot built from the base, which must end in the same schema), golden set checksums, the eval smoke (`pnpm eval --suite extraction --subset ci` on same-repository PRs, report posted as a PR comment; a broken floor fails, a quota stop only warns), a Docker build and Trivy scan per image, gitleaks and `pnpm audit`.
 - `release.yml` (push to main): the same checks, then `ghcr.io/<owner>/freightaudit-{api,worker,web}` tagged `sha-<short>` and `latest` with provenance, then migrate and deploy jobs that stay off until step 10.
 - `nightly-eval.yml`: the full eval weekly (Mondays 03:23 UTC) or on demand, report as an artifact, an issue when a floor breaks; re-running that workflow run resumes from its cached cases.
 

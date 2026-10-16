@@ -1,6 +1,6 @@
-import { backlog, createMemoryStorage } from '@freightaudit/pipeline';
+import { backlog } from '@freightaudit/pipeline';
 import { buildApp } from './app.ts';
-import { apiKey, createTestEnv, formData, listen, pdf } from './testing.ts';
+import { apiKey, createTestEnv, formData, image, listen, pdf } from './testing.ts';
 
 let env: Awaited<ReturnType<typeof createTestEnv>> | undefined;
 let app: ReturnType<typeof buildApp> | undefined;
@@ -12,7 +12,7 @@ afterEach(async () => {
 
 async function start(deps: Partial<Parameters<typeof buildApp>[1]> = {}) {
   env ??= await createTestEnv();
-  app = buildApp({}, { apiKeys: [apiKey], storage: createMemoryStorage(), service: env.service, ...deps });
+  app = buildApp({}, { apiKeys: [apiKey], storage: env.storage, service: env.service, ...deps });
   return { env, baseUrl: await listen(app) };
 }
 
@@ -68,14 +68,15 @@ test('uploads get 503 with Retry-After while the extract backlog is above the hi
   expect((await upload(baseUrl, await pdf())).status).toBe(202);
 });
 
-test('input limits: over 10 MiB or 20 pages is 413, a file that is not a PDF is 415, and a batch rejects them one by one', async () => {
+test('input limits: over 4 MB, 20 pages or 25 megapixels is 413, a file that is not a PDF, PNG or JPG is 415, and a batch rejects them one by one', async () => {
   const { baseUrl } = await start({ rateLimits: { general: 100, upload: 100 } });
-  const huge = new Uint8Array(10 * 1024 * 1024 + 1);
+  const huge = new Uint8Array(4 * 1024 * 1024 + 1);
   huge.set(new TextEncoder().encode('%PDF-1.7\n'));
   const cases: [Blob, number, string][] = [
-    [new Blob([huge]), 413, 'file is larger than 10 MiB'],
+    [new Blob([huge]), 413, 'file is larger than 4 MB'],
     [await pdf('long', 21), 413, 'file has 21 pages; the limit is 20'],
-    [new Blob(['GIF89a']), 415, 'file must be a PDF'],
+    [image('png', 6000, 5000), 413, 'image is larger than 10,000 pixels a side or 25 megapixels'],
+    [new Blob(['GIF89a']), 415, 'file must be a PDF, PNG or JPG'],
     [new Blob(['%PDF-1.7 no objects']), 415, 'file is not a readable PDF'],
   ];
   for (const [file, status, detail] of cases) {
@@ -83,6 +84,16 @@ test('input limits: over 10 MiB or 20 pages is 413, a file that is not a PDF is 
     expect([response.status, (await response.json()).detail]).toEqual([status, detail]);
   }
   expect((await upload(baseUrl, await pdf('twenty pages', 20))).status).toBe(202);
+
+  // A PNG or JPEG is stored, and served back, as a one-page PDF.
+  for (const type of ['png', 'jpeg'] as const) {
+    const accepted = await upload(baseUrl, image(type));
+    expect(accepted.status).toBe(202);
+    const { id } = (await accepted.json()) as { id: string };
+    const document = await fetch(`${baseUrl}/v1/invoices/${id}/document`, { headers: { 'X-API-Key': apiKey } });
+    expect([document.status, document.headers.get('content-type')]).toEqual([200, 'application/pdf']);
+    expect(Buffer.from(await document.arrayBuffer()).subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  }
 
   const batch = await fetch(`${baseUrl}/v1/invoice-batches`, {
     method: 'POST',

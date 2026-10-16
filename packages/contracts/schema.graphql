@@ -36,6 +36,16 @@ type Query {
   Discrepancies across all invoices, newest first.
   """
   discrepancies(first: Int = 25, after: String, status: DiscrepancyStatus): DiscrepancyConnection!
+
+  """
+  Dead letters, newest first.
+  """
+  deadLetters(first: Int = 25, after: String, status: DeadLetterStatus): DeadLetterConnection!
+
+  """
+  This tenant's carriers by name. A plain list: a tenant has few carriers, and a correction picks one of them.
+  """
+  carriers: [Carrier!]!
 }
 
 """
@@ -51,6 +61,22 @@ type Mutation {
   Approves an invoice for payment.
   """
   approveInvoice(id: ID!): Invoice!
+
+  """
+  Corrects the carrier or PRO number that kept a NEEDS_REVIEW invoice from matching a shipment, then runs
+  matching again. Called on an EXTRACTED invoice, it only queues matching again.
+  """
+  correctInvoice(id: ID!, carrierId: ID, proNumber: String): Invoice!
+
+  """
+  Rejects a NEEDS_REVIEW invoice for payment; the reason is kept in its audit trail. Final.
+  """
+  rejectInvoice(id: ID!, reason: String!): Invoice!
+
+  """
+  Runs a dead letter's job again from the step that failed.
+  """
+  replayDeadLetter(id: ID!): DeadLetter!
 }
 
 """
@@ -98,13 +124,17 @@ enum InvoiceStatus {
   """
   RECONCILED
   """
-  The extraction could not be trusted, such as a carrier or PRO number that matches no shipment; a person must check the document.
+  The extraction could not be trusted, such as a carrier or PRO number that matches no shipment; a person must check the document, then correct it, approve it or reject it.
   """
   NEEDS_REVIEW
   """
   Approved for payment. Final.
   """
   APPROVED
+  """
+  A reviewer refused the invoice for payment. Final.
+  """
+  REJECTED
   """
   A step used up its retries; replaying its dead letter restarts that step.
   """
@@ -144,7 +174,6 @@ type Invoice implements Node {
   """
   Charge lines in invoice order.
   """
-  # eslint-disable-next-line @graphql-eslint/relay-edge-types -- plain list, not a connection: line items are bounded per invoice
   lineItems: [LineItem!]!
   """
   Shipment the invoice was matched to.
@@ -158,6 +187,172 @@ type Invoice implements Node {
   Discrepancies found on this invoice, newest first.
   """
   discrepancies(first: Int = 25, after: String, status: DiscrepancyStatus): DiscrepancyConnection!
+  """
+  PRO number used to match the shipment: a reviewer's correction, else what the model read.
+  """
+  proNumber: String
+  """
+  Why the invoice needs review, such as no_shipment_match or unsupported_currency: CAD; null unless status is NEEDS_REVIEW.
+  """
+  reviewReason: String
+  """
+  Number of this invoice's discrepancies still waiting for a decision.
+  """
+  openDiscrepancyCount: Int!
+  """
+  What the model read, before any correction; null until extraction ends.
+  """
+  extraction: Extraction
+  """
+  Everything that happened to the invoice, oldest first: pipeline moves and reviewer actions.
+  """
+  auditTrail: [AuditEntry!]!
+  """
+  The open dead letter of a FAILED invoice, to replay; null otherwise.
+  """
+  deadLetter: DeadLetter
+}
+
+"""
+How a carrier name read from a document matched a known carrier.
+"""
+enum CarrierMatch {
+  """
+  Printed exactly as the known name.
+  """
+  EXACT
+  """
+  Equal after normalizing case, spacing and Unicode forms.
+  """
+  NORMALIZED
+  """
+  The reading holds the known name as whole words, as beside a title line.
+  """
+  CONTAINED
+}
+
+"""
+What the model read from an invoice document.
+"""
+type Extraction {
+  id: ID!
+  """
+  Model whose answer was kept.
+  """
+  model: String!
+  """
+  Step that produced the answer: first_pass, repair or fallback; needs_review when no answer passed validation.
+  """
+  step: String
+  """
+  Carrier name as the model read it.
+  """
+  carrierRead: String
+  """
+  How the reading matched a known carrier; null when it matched none.
+  """
+  carrierMatch: CarrierMatch
+  """
+  Why the output failed validation, by field path; empty when it passed.
+  """
+  problems: [String!]!
+  """
+  Charge lines as read, in document order; empty when the output failed validation.
+  """
+  lines: [ExtractedLine!]!
+  extractedAt: DateTime!
+}
+
+"""
+A charge line as the model read it.
+"""
+type ExtractedLine {
+  """
+  Position on the invoice, starting at 1.
+  """
+  lineNumber: Int!
+  description: String!
+  """
+  Normalized charge code, for example LINEHAUL or FUEL.
+  """
+  chargeCode: String
+  amountCents: Cents!
+}
+
+"""
+Kind of entry in an invoice's audit trail.
+"""
+enum AuditAction {
+  """
+  The file was uploaded.
+  """
+  RECEIVED
+  """
+  The pipeline moved the invoice to another status.
+  """
+  STATUS_CHANGED
+  """
+  A reviewer corrected the carrier or PRO number and matching ran again.
+  """
+  CORRECTED
+  """
+  A reviewer rejected the invoice.
+  """
+  REJECTED
+  """
+  A reviewer approved the invoice for payment.
+  """
+  APPROVED
+  """
+  A reviewer confirmed a discrepancy: the overcharge is disputed.
+  """
+  DISCREPANCY_CONFIRMED
+  """
+  A reviewer dismissed a discrepancy: the billed amount stands.
+  """
+  DISCREPANCY_DISMISSED
+  """
+  A dead letter's job was run again.
+  """
+  REPLAYED
+}
+
+"""
+One entry in an invoice's audit trail.
+"""
+type AuditEntry {
+  id: ID!
+  at: DateTime!
+  """
+  Who acted: a reviewer's name, api-key:<id> for a direct API call, or null for the pipeline.
+  """
+  actor: String
+  action: AuditAction!
+  """
+  Text that goes with the entry: a reason, a note, a failure message, a review reason or how the carrier matched.
+  """
+  detail: String
+  """
+  Fields the entry changed, with their old and new values.
+  """
+  changes: [FieldChange!]!
+}
+
+"""
+A field's value before and after an audit entry.
+"""
+type FieldChange {
+  field: String!
+  from: String
+  to: String
+}
+
+"""
+A carrier this tenant works with.
+"""
+type Carrier implements Node {
+  id: ID!
+  name: String!
 }
 
 """
@@ -203,7 +398,10 @@ type RateCardVersion {
   Increases with each new version for the carrier.
   """
   version: Int!
-  effectiveFrom: Date!
+  """
+  Null for a version open at the start, as a backfilled first version is.
+  """
+  effectiveFrom: Date
   """
   Null while this version is current.
   """
@@ -313,4 +511,57 @@ A discrepancy in a connection.
 type DiscrepancyEdge {
   cursor: String!
   node: Discrepancy!
+}
+
+"""
+Review state of a dead letter.
+"""
+enum DeadLetterStatus {
+  """
+  Waiting for a replay.
+  """
+  OPEN
+  """
+  Its job was run again.
+  """
+  REPLAYED
+}
+
+"""
+A job that used up its retries or met data it cannot process.
+"""
+type DeadLetter implements Node {
+  id: ID!
+  """
+  Queue the job ran on: extract, reconcile or tms-sync.
+  """
+  queue: String!
+  jobId: String!
+  """
+  Error of the job's last attempt.
+  """
+  error: String!
+  attempts: Int!
+  createdAt: DateTime!
+  replayedAt: DateTime
+  """
+  Invoice the job worked on; null for TMS sync jobs.
+  """
+  invoice: Invoice
+}
+
+"""
+A page of dead letters.
+"""
+type DeadLetterConnection {
+  edges: [DeadLetterEdge!]!
+  pageInfo: PageInfo!
+}
+
+"""
+A dead letter in a connection.
+"""
+type DeadLetterEdge {
+  cursor: String!
+  node: DeadLetter!
 }

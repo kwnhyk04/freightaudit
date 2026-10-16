@@ -1,0 +1,6 @@
+mutation CorrectInvoice($id: ID!, $carrierId: ID, $proNumber: String) {
+  correctInvoice(id: $id, carrierId: $carrierId, proNumber: $proNumber) {
+    id
+    status
+  }
+}

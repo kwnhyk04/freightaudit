@@ -1,0 +1,8 @@
+# Breaking changes reviewed and accepted, each under its reason. oasdiff skips a change whose method, path and text match
+# a line here. Delete the lines once main contains the change (docs/todo.md).
+# Step 9 (2026-10-16): a reviewer can reject an invoice, a new final status (user decision); the web UI is the only client.
+GET /v1/invoices added the new `rejected` enum value to the `items/items/status` response property for the response status `200`
+GET /v1/invoices/{id} added the new `rejected` enum value to the `status` response property for the response status `200`
+# Step 9 (2026-10-16): uploads accept PNG and JPEG beside PDF (user request), so a client sending PDFs is unaffected.
+POST /v1/invoices the `file` request property contentMediaType changed from `application/pdf` to `application/octet-stream`
+POST /v1/invoice-batches the `files/items/` request property contentMediaType changed from `application/pdf` to `application/octet-stream`

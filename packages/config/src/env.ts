@@ -75,6 +75,18 @@ export const settings = {
   OPENROUTER_API_KEY: z.string().optional(),
   NVIDIA_API_KEY: z.string().optional(),
   MOCK_TMS_URL: httpUrl,
+  // web (backend-for-frontend): the api's base URL and one of its API_KEYS. Both stay on the server.
+  API_URL: httpUrl,
+  API_KEY: z.string().min(32, 'API_KEY needs at least 32 characters'),
+  // HMAC key of the session cookie; changing it signs everyone out.
+  SESSION_SECRET: z.string().min(32, 'SESSION_SECRET needs at least 32 characters'),
+  // The reviewer's password as an argon2id hash in PHC form.
+  DEMO_PASSWORD_HASH: z
+    .string()
+    .regex(
+      /^[$]argon2id[$]v=19[$]m=[0-9]+,t=[0-9]+,p=[0-9]+[$][A-Za-z0-9+/]+[$][A-Za-z0-9+/]+$/,
+      'DEMO_PASSWORD_HASH must be an argon2id hash; make one with pnpm --filter @freightaudit/web hash-password',
+    ),
   // How long a worker owns a job before another may recover it; the lock renews at half this while the job runs.
   JOB_LOCK_MS: integer(60_000),
   // production on a machine whose database must survive; dev tools such as pnpm db:reset refuse to run there.

@@ -1,10 +1,11 @@
 import type { components, operations } from '@freightaudit/contracts';
 import { carriers, deadLetters, discrepancies, idempotencyKeys, invoiceLines, invoices } from '@freightaudit/db';
-import { type Queues, replayDeadLetter, send } from '@freightaudit/pipeline';
+import { type Queues, replayDeadLetter, send, type Storage } from '@freightaudit/pipeline';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import type { PgColumn } from 'drizzle-orm/pg-core';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { actorOf } from './actor.ts';
+import { after, cursorAt, page } from './keyset.ts';
 import { fail, problem } from './problem.ts';
 import { type Upload, uploadsOf } from './uploads.ts';
 
@@ -12,44 +13,17 @@ type Invoice = components['schemas']['Invoice'];
 type BatchItemResult = components['schemas']['BatchItemResult'];
 // Validation applies the spec default, so limit is always set here.
 type PageQuery = { limit: number; cursor?: string };
-export type ServiceDeps = { db: NodePgDatabase; queues: Queues; tenantId: string };
-
-// Keyset cursor: the last row's created_at in UTC to the microsecond, and its id, as opaque base64url JSON.
-const AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const cursorAt = (column: PgColumn) => sql<string>`to_char(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
-
-// Rows after the cursor in (created_at DESC, id DESC) order, the order of the keyset indexes.
-function after(createdAt: PgColumn, id: PgColumn, cursor: string | undefined) {
-  if (cursor === undefined) return undefined;
-  let decoded: unknown;
-  try {
-    decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString());
-  } catch {
-    throw fail(400, 'cursor is invalid');
-  }
-  const [at, last] = Array.isArray(decoded) ? decoded : [];
-  if (typeof at !== 'string' || !AT.test(at) || typeof last !== 'string' || !UUID.test(last)) throw fail(400, 'cursor is invalid');
-  return sql`(${createdAt}, ${id}) < (${at}::timestamptz, ${last}::uuid)`;
-}
-
-// Fetch limit + 1 rows: the extra row only tells whether another page exists.
-function page<Row extends { id: string; cursorAt: string }, Item>(rows: Row[], limit: number, toItem: (row: Row) => Item) {
-  const items = rows.slice(0, limit);
-  const last = items.at(-1);
-  const next = rows.length > limit && last ? Buffer.from(JSON.stringify([last.cursorAt, last.id])).toString('base64url') : null;
-  return { items: items.map(toItem), next_cursor: next };
-}
+export type ServiceDeps = { db: NodePgDatabase; queues: Queues; tenantId: string; storage: Storage };
 
 // Why a failed invoice failed: the error of its open dead letter. Invoice jobs take the content hash as their id (a split
 // upload's collect job prefixes it), so the open-job index finds the row.
-const failureReason = sql<string | null>`(SELECT ${deadLetters.error} FROM ${deadLetters}
+export const failureReason = sql<string | null>`(SELECT ${deadLetters.error} FROM ${deadLetters}
   WHERE ${invoices.status} = 'failed' AND ${deadLetters.tenantId} = ${invoices.tenantId} AND ${deadLetters.replayedAt} IS NULL
     AND ${deadLetters.queue} IN ('extract', 'reconcile')
     AND ${deadLetters.jobId} IN (${invoices.contentSha256}, 'split-' || ${invoices.contentSha256})
   ORDER BY ${deadLetters.createdAt} DESC LIMIT 1)`;
 
-const invoiceColumns = {
+export const invoiceColumns = {
   id: invoices.id,
   status: invoices.status,
   failureReason,
@@ -94,7 +68,7 @@ const toInvoice = (row: InvoiceRow): Invoice => ({
 
 // REST handlers keyed by operationId, as fastify-openapi-glue expects.
 export function createService(deps: ServiceDeps) {
-  const { db, queues, tenantId } = deps;
+  const { db, queues, tenantId, storage } = deps;
   const selectInvoices = () => db.select(invoiceColumns).from(invoices).leftJoin(carriers, eq(carriers.id, invoices.carrierId));
 
   // A new file gets an invoice row and an extract job whose id is the content hash. An invoice still received is
@@ -170,6 +144,18 @@ export function createService(deps: ServiceDeps) {
       return toInvoice(row);
     },
 
+    // The stored PDF; an image upload comes back as the one-page PDF it was stored as. Seeded rows have none.
+    async getInvoiceDocument(req: FastifyRequest, reply: FastifyReply) {
+      const { id } = req.params as operations['getInvoiceDocument']['parameters']['path'];
+      const [row] = await db
+        .select({ contentSha256: invoices.contentSha256 })
+        .from(invoices)
+        .where(and(eq(invoices.tenantId, tenantId), eq(invoices.id, id)));
+      const bytes = row && (await storage.get(row.contentSha256));
+      if (!bytes) throw fail(404, `no document stored for invoice ${id}`);
+      return reply.type('application/pdf').header('cache-control', 'private, max-age=31536000, immutable').send(Buffer.from(bytes));
+    },
+
     async listDiscrepancies(req: FastifyRequest) {
       const { limit, cursor } = req.query as PageQuery;
       const rows = await db
@@ -209,7 +195,7 @@ export function createService(deps: ServiceDeps) {
 
     async replayDeadLetter(req: FastifyRequest, reply: FastifyReply) {
       const { id } = req.params as operations['replayDeadLetter']['parameters']['path'];
-      const replayed = await replayDeadLetter(deps, tenantId, id);
+      const replayed = await replayDeadLetter(deps, tenantId, id, actorOf(req));
       if (!replayed) throw fail(404, `dead letter ${id} not found`);
       return reply.code(202).send({ id: replayed.id, job_id: replayed.jobId });
     },

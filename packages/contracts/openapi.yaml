@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: FreightAudit API
-  version: 0.6.0
+  version: 0.7.0
   description: >-
-    Ingests carrier invoice PDFs and serves audit results. Money is integer cents.
+    Ingests carrier invoices (PDF, PNG or JPEG) and serves audit results. Money is integer cents.
     Errors use RFC 9457 Problem Details (application/problem+json).
     Every route except /healthz and /readyz requires the X-API-Key header.
 servers:
@@ -48,10 +48,10 @@ paths:
   /v1/invoices:
     post:
       operationId: createInvoice
-      summary: Upload one invoice PDF.
+      summary: Upload one invoice as a PDF, PNG or JPEG.
       description: >-
-        Files are deduplicated by the SHA-256 of their bytes. A retry with the same
-        Idempotency-Key and file returns the original invoice id.
+        A PNG or JPEG is stored as a one-page PDF. Files are deduplicated by the SHA-256 of
+        the stored PDF. A retry with the same Idempotency-Key and file returns the original invoice id.
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -64,8 +64,13 @@ paths:
               properties:
                 file:
                   type: string
-                  contentMediaType: application/pdf
-                  description: Invoice PDF, at most 10 MiB and 20 pages.
+                  contentMediaType: application/octet-stream
+                  description: >-
+                    Invoice file, at most 4 MB (4,194,304 bytes): a PDF of at most 20 pages, or a PNG or JPEG
+                    of at most 10,000 pixels a side and 25 megapixels.
+            encoding:
+              file:
+                contentType: application/pdf, image/png, image/jpeg
       responses:
         "200":
           description: This file was uploaded before; returns the existing invoice id.
@@ -155,10 +160,43 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /v1/invoices/{id}/document:
+    get:
+      operationId: getInvoiceDocument
+      summary: Download the stored PDF of one invoice.
+      description: A PNG or JPEG upload comes back as the one-page PDF it was stored as.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The PDF.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                contentMediaType: application/pdf
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   /v1/invoice-batches:
     post:
       operationId: createInvoiceBatch
-      summary: Upload up to 500 invoice PDFs.
+      summary: Upload up to 500 invoices, each a PDF, PNG or JPEG.
       description: >-
         Every file gets its own result, in request order. A bad file is reported as
         rejected and never fails the whole batch.
@@ -176,8 +214,13 @@ paths:
                   maxItems: 500
                   items:
                     type: string
-                    contentMediaType: application/pdf
-                    description: Invoice PDF, at most 10 MiB and 20 pages.
+                    contentMediaType: application/octet-stream
+                    description: >-
+                      Invoice file, at most 4 MB (4,194,304 bytes): a PDF of at most 20 pages, or a PNG or JPEG
+                      of at most 10,000 pixels a side and 25 megapixels.
+            encoding:
+              files:
+                contentType: application/pdf, image/png, image/jpeg
       responses:
         "202":
           description: Per-file results; accepted files are queued for extraction.
@@ -338,13 +381,16 @@ components:
           schema:
             $ref: "#/components/schemas/Problem"
     PayloadTooLarge:
-      description: The file is larger than 10 MiB or has more than 20 pages, or the request has more than 500 files. In a batch, such files are rejected one by one instead.
+      description: >-
+        The file is larger than 4 MB (4,194,304 bytes), also once an image is stored as a PDF; a PDF has more
+        than 20 pages; an image is larger than 10,000 pixels a side or 25 megapixels; or the request has more
+        than 500 files. In a batch, such files are rejected one by one instead.
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/Problem"
     UnsupportedMediaType:
-      description: The uploaded file is not a PDF.
+      description: The uploaded file is not a readable PDF, PNG or JPEG.
       content:
         application/problem+json:
           schema:
@@ -405,9 +451,10 @@ components:
         Processing status of an invoice. It moves through received, extracting, extracted and reconciling
         to reconciled, where each finding waits as an open discrepancy, and ends at approved once every
         discrepancy has a decision. needs_review means the extraction could not be trusted, such as a carrier
-        or PRO number that matches no shipment. failed means a step used up its retries; replaying its dead
-        letter restarts that step.
-      enum: [received, extracting, extracted, reconciling, reconciled, needs_review, approved, failed]
+        or PRO number that matches no shipment; a reviewer then corrects them and matching runs again, approves
+        the invoice, or rejects it. rejected is final. failed means a step used up its retries; replaying its
+        dead letter restarts that step.
+      enum: [received, extracting, extracted, reconciling, reconciled, needs_review, approved, rejected, failed]
     InvoiceRef:
       type: object
       required: [id]

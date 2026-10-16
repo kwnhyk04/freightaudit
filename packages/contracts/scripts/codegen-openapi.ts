@@ -2,10 +2,10 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import openapiTS, { astToString } from 'openapi-typescript';
 import ts from 'typescript';
 
-// PDF upload fields become Blob, so the typed client accepts files.
+// File fields (uploads and the stored PDF) become Blob, so the typed client sends and receives files.
 const ast = await openapiTS(new URL('../openapi.yaml', import.meta.url), {
   transform: (schema) =>
-    'contentMediaType' in schema && schema.contentMediaType === 'application/pdf'
+    'contentMediaType' in schema && typeof schema.contentMediaType === 'string'
       ? ts.factory.createTypeReferenceNode('Blob')
       : undefined,
 });

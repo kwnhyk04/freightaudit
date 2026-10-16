@@ -1,0 +1,6 @@
+mutation RejectInvoice($id: ID!, $reason: String!) {
+  rejectInvoice(id: $id, reason: $reason) {
+    id
+    status
+  }
+}

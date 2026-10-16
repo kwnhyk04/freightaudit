@@ -31,9 +31,14 @@ if (base === undefined) {
 const dir = mkdtempSync(join(tmpdir(), 'oasdiff-'));
 writeFileSync(join(dir, 'base.yaml'), base);
 copyFileSync(new URL('../openapi.yaml', import.meta.url), join(dir, 'head.yaml'));
+// Breaking changes already reviewed, each with its reason; oasdiff skips the ones listed.
+copyFileSync(new URL('../oasdiff-ignore.txt', import.meta.url), join(dir, 'ignore.txt'));
 const oasdiff = spawnSync(
   'docker',
-  ['run', '--rm', '-v', dir + ':/specs:ro', 'tufin/oasdiff:v1.33.0', 'breaking', '/specs/base.yaml', '/specs/head.yaml', '--fail-on', 'ERR'],
+  [
+    ...['run', '--rm', '-v', dir + ':/specs:ro', 'tufin/oasdiff:v1.33.0', 'breaking', '/specs/base.yaml', '/specs/head.yaml'],
+    ...['--fail-on', 'ERR', '--err-ignore', '/specs/ignore.txt'],
+  ],
   { stdio: 'inherit' },
 );
 rmSync(dir, { recursive: true, force: true });

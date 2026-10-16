@@ -23,6 +23,7 @@ export const invoiceStatus = pgEnum('invoice_status', [
   'reconciled',
   'needs_review',
   'approved',
+  'rejected',
   'failed',
 ]);
 export const discrepancyType = pgEnum('discrepancy_type', [
@@ -193,6 +194,20 @@ export const deadLetters = pgTable('dead_letters', {
   attempts: integer('attempts').notNull(),
   replayedAt: timestamp('replayed_at', { withTimezone: true }),
   ...timestamps,
+});
+
+// Append-only (0013): pipeline status moves have a null actor; review actions name theirs. changes is [{field, from, to}].
+export const auditEvents = pgTable('audit_events', {
+  id: id(),
+  tenantId: tenantId(),
+  invoiceId: uuid('invoice_id'),
+  discrepancyId: uuid('discrepancy_id'),
+  deadLetterId: uuid('dead_letter_id'),
+  actor: text('actor'),
+  action: text('action').notNull(),
+  changes: jsonb('changes').notNull().default([]),
+  reason: text('reason'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const tmsSyncState = pgTable('tms_sync_state', {
