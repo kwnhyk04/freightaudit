@@ -7,12 +7,13 @@ import { type Measured, measure, meets, type Metric, METRICS, scoreCase, type Sc
 import type { Roles, Run, Subset } from './run.ts';
 
 // Floors per subset: a minimum for metrics where higher is better, a maximum for the others. Floors only tighten;
-// loosening one needs a written reason in docs/memory.md naming the run that justified it.
+// loosening one needs a written reason in docs/memory.md naming the run that justified it. `from` names the run that
+// set the floor, or is "design target" for a floor set to the target by such a reason.
 type Floor = { min?: number; max?: number; from: string };
 type Thresholds = { _rules?: string } & Partial<Record<Subset, Record<string, Floor>>>;
 const THRESHOLDS = new URL('../thresholds.json', import.meta.url);
 const RULES =
-  "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
+  "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). Exception: the ci subset gates extraction latency p95 on its design target (12,000 ms), not a derived floor: with n = 20 its p95 is effectively the slowest single case, and its interval is too wide for a floor tighter than the target to separate regressions from noise (docs/memory.md, 2026-10-16). Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
 const README = new URL('../../README.md', import.meta.url);
 
 const metricOf = (name: string) => METRICS.find((def) => def.metric === name)!;
@@ -153,7 +154,8 @@ export async function report({ subset, runs, durationMs, setFloors }: { subset: 
       if (floorOk === false) code = Math.max(code, 1);
       // A run that clears its floor by more than its own interval's width earns a tighter floor, when the rule gives one.
       const proposed = m.ci && floorFrom(metric, m.ci);
-      const tighter = proposed !== undefined && floorBound && (metric.higherIsBetter ? proposed > floorBound.value : proposed < floorBound.value);
+      // A floor pinned to the design target by a written decision is never proposed for tightening.
+      const tighter = floor?.from !== 'design target' && proposed !== undefined && floorBound && (metric.higherIsBetter ? proposed > floorBound.value : proposed < floorBound.value);
       if (tighter && m.value !== undefined && m.ci && Math.abs(m.value - floorBound.value) > m.ci[1] - m.ci[0] && floorOk)
         suggestions.push(`${metric.label}: measured ${fmt(metric.unit, m.value)} clears the floor ${fmt(metric.unit, floorBound.value)} by more than the interval's width; consider tightening it to ${fmt(metric.unit, proposed)}.`);
       if (setFloors && !floor && m.value !== undefined && m.ci) {

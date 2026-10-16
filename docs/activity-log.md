@@ -15,6 +15,23 @@ Chronological record of significant development activity, newest first. Skip tri
 
 ## Entries
 
+### 2026-10-16: PR #13 eval smoke: ci extraction latency p95 gated on the design target
+
+- Changes:
+  - **Diagnosis:** PR #13's smoke on 4fbb550 broke only the extraction latency p95 floor: 10,191 ms (95% CI 7,478 to 31,380 ms) against 8,900 ms, with p50 2,625 ms. Every other check on that commit passed, docker (api) and docker (worker) included.
+    - The PR comment, read through the public API, has no per-case latency: the artifact is the `.md` only, and job logs need authentication.
+    - Its totals show no repair: Groq made 14 calls, as in every ci run (12 cases plus g084's two split parts), with arithmetic consistency 1.000 and escalation 0. Its one failed call was a Gemini call, which latency excludes. The slow cases were therefore slow single replies.
+    - With n = 20, p95 is the 19th value plus 5% of the gap to the 20th, so the result fits one case near 9 s and one near 31 s.
+    - A fresh local rerun on the same code passed (p95 7,732 ms, 6,400 to 8,026 ms, 0 failed calls, no repair). Its slowest case was g050: one Gemini first pass of 8,026 ms for the same 1,325 input tokens that took 2.3 to 4.4 s on 2026-10-15. No code in the measured path changed, so this is provider variance, not a regression.
+  - **Gate:** the ci floor for extraction latency p95 is now its design target (`"max": 12000, "from": "design target"`), by the user's written reason. The report never proposes tightening a floor whose `from` is "design target". ci p50 keeps 4,400 ms, and the full run keeps its derived p95 floor of 9,900 ms. The floor rules text in `evals/thresholds.json` and `report.ts` states the exception.
+- Files: evals/harness/report.ts, evals/thresholds.json, evals/reports/2026-10-16-ci.{json,md}, README.md, docs/{context,memory,todo,activity-log}.md
+- Validation:
+  - `pnpm lint` 12 of 12, typecheck 21 of 21, and `pnpm turbo run test --force` 16 of 16 tasks, 0 cached, 60 tests in 7 packages.
+  - **ci subset once on the final code** (`--fresh`, 168 s): exit 0, every floor kept. Extraction latency p95 6,079 ms (5,340 to 7,249 ms) against 12,000 ms, and p50 4,058 ms (2,717 to 5,235 ms) against 4,400 ms. 10 rate-limit waits totalling 373,362 ms, and 0 failed calls.
+    - g010 needed a repair (an invalid first pass of 1,541 ms, then a valid repair of 2,657 ms); outcome accuracy 1.000.
+    - Every scan was one Gemini call of 3.9 to 6.0 s, so p50, which falls between the digital and scanned cases, sat 342 ms under its floor.
+- Outstanding: ci p50 is the next floor that a slow day on Gemini could break, since its interval reached 5,235 ms. Not committed.
+
 ### 2026-10-16: PR #13 docker (api) and docker (worker) checks: offline production install
 
 - Changes:

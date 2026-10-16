@@ -2,7 +2,7 @@
   "suite": "extraction",
   "subset": "ci",
   "date": "2026-10-16",
-  "durationMs": 145525,
+  "durationMs": 168367,
   "stopped": null,
   "golden": "v1",
   "promptHash": "19f0c19627c4",
@@ -12,9 +12,9 @@
   "metrics": [
     {
       "metric": "header_accuracy_digital",
-      "value": 0.9871794871794872,
+      "value": 1,
       "ci": [
-        0.9583333333333334,
+        1,
         1
       ],
       "n": 12
@@ -102,37 +102,37 @@
     },
     {
       "metric": "extraction_latency_p50_ms",
-      "value": 2374,
+      "value": 4057.5,
       "ci": [
-        2098,
-        3073
+        2717,
+        5234.5
       ],
       "n": 20
     },
     {
       "metric": "extraction_latency_p95_ms",
-      "value": 6868.05,
+      "value": 6078.600000000001,
       "ci": [
-        3502.6000000000004,
-        7306
+        5340.15,
+        7249
       ],
       "n": 20
     },
     {
       "metric": "rate_limit_waits",
-      "value": 8,
+      "value": 10,
       "ci": [
-        3,
-        14
+        5,
+        16
       ],
       "n": 20
     },
     {
       "metric": "rate_limit_wait_ms",
-      "value": 359011,
+      "value": 373362,
       "ci": [
-        83842.77500000001,
-        703426.1249999997
+        110294.05,
+        708581.2249999999
       ],
       "n": 20
     },
@@ -147,64 +147,64 @@
     },
     {
       "metric": "e2e_latency_p95_ms",
-      "value": 96261.55000000002,
+      "value": 98392.85,
       "ci": [
-        11852.900000000056,
-        117115
+        23123.150000000034,
+        103729
       ],
       "n": 20
     },
     {
       "metric": "input_tokens_per_page_digital",
-      "value": 855.8461538461538,
+      "value": 928.9230769230769,
       "ci": [
-        772.9979166666667,
-        980.8016666666666
+        777.1645833333333,
+        1101.6733333333334
       ],
       "n": 12
     },
     {
       "metric": "output_tokens_per_page_digital",
-      "value": 698.9230769230769,
+      "value": 769.1538461538462,
       "ci": [
-        567.4124999999999,
-        830.87
+        614.9041666666666,
+        923.7545833333334
       ],
       "n": 12
     },
     {
       "metric": "tokens_per_invoice_digital",
-      "value": 1684.3333333333333,
+      "value": 1839.5833333333333,
       "ci": [
-        1344.4145833333334,
-        2265.36875
+        1397.7375,
+        2491.6666666666656
       ],
       "n": 12
     },
     {
       "metric": "tokens_per_invoice_scanned",
-      "value": 1879,
+      "value": 1901.5,
       "ci": [
-        1590.25,
-        2429.384375
+        1611.871875,
+        2447.2625
       ],
       "n": 8
     },
     {
       "metric": "cost_per_invoice_digital_usd",
-      "value": 0.0005934166666666667,
+      "value": 0.0006508333333333332,
       "ci": [
-        0.00045683125,
-        0.0008073437499999998
+        0.00048814999999999997,
+        0.0008931770833333334
       ],
       "n": 12
     },
     {
       "metric": "cost_per_invoice_scanned_usd",
-      "value": 0.0011743749999999999,
+      "value": 0.001230625,
       "ci": [
-        0.0010608718749999999,
-        0.00133350625
+        0.0011147437500000001,
+        0.001379796875
       ],
       "n": 8
     },
@@ -227,7 +227,7 @@
       "n": 20
     }
   ],
-  "throughputPerHour": 474.9653671086483,
+  "throughputPerHour": 434.881087202718,
   "floors": {
     "header_accuracy_digital": {
       "min": 0.95,
@@ -274,8 +274,8 @@
       "from": "2026-10-15-ci"
     },
     "extraction_latency_p95_ms": {
-      "max": 8900,
-      "from": "2026-10-15-ci"
+      "max": 12000,
+      "from": "design target"
     },
     "failed_calls": {
       "max": 1,
@@ -357,23 +357,23 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2033,
+      "latencyMs": 1554,
       "waits": 1,
-      "waitMs": 114612,
+      "waitMs": 96235,
       "failedCalls": 0,
-      "e2eMs": 117115,
+      "e2eMs": 98112,
       "inputTokens": 776,
-      "outputTokens": 615,
+      "outputTokens": 450,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 485
+      "paidMicroUsd": 386
     },
     {
       "id": "g010",
       "path": "digital",
       "pages": 1,
       "header": {
-        "correct": 5,
+        "correct": 6,
         "total": 6
       },
       "lines": {
@@ -398,16 +398,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 1574,
-      "waits": 1,
-      "waitMs": 93125,
+      "latencyMs": 4198,
+      "waits": 2,
+      "waitMs": 65346,
       "failedCalls": 0,
-      "e2eMs": 95164,
-      "inputTokens": 767,
-      "outputTokens": 475,
-      "calls": 1,
+      "e2eMs": 69961,
+      "inputTokens": 1717,
+      "outputTokens": 1031,
+      "calls": 2,
       "costMicroUsd": 0,
-      "paidMicroUsd": 400
+      "paidMicroUsd": 876
     },
     {
       "id": "g011",
@@ -439,16 +439,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2464,
+      "latencyMs": 2209,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 2897,
+      "e2eMs": 2385,
       "inputTokens": 747,
-      "outputTokens": 582,
+      "outputTokens": 748,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 461
+      "paidMicroUsd": 561
     },
     {
       "id": "g012",
@@ -480,16 +480,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2090,
+      "latencyMs": 2435,
       "waits": 1,
-      "waitMs": 54089,
+      "waitMs": 17960,
       "failedCalls": 0,
-      "e2eMs": 56607,
+      "e2eMs": 20658,
       "inputTokens": 808,
-      "outputTokens": 668,
+      "outputTokens": 636,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 522
+      "paidMicroUsd": 503
     },
     {
       "id": "g013",
@@ -521,16 +521,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 1881,
+      "latencyMs": 1682,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 2104,
+      "e2eMs": 1841,
       "inputTokens": 768,
-      "outputTokens": 709,
+      "outputTokens": 476,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 541
+      "paidMicroUsd": 401
     },
     {
       "id": "g014",
@@ -562,16 +562,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2429,
+      "latencyMs": 1945,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 2620,
+      "e2eMs": 2121,
       "inputTokens": 776,
-      "outputTokens": 398,
+      "outputTokens": 675,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 355
+      "paidMicroUsd": 521
     },
     {
       "id": "g049",
@@ -603,11 +603,11 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2386,
+      "latencyMs": 6017,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 2936,
+      "e2eMs": 6362,
       "inputTokens": 1325,
       "outputTokens": 247,
       "calls": 1,
@@ -644,11 +644,11 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2362,
+      "latencyMs": 5334,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 2908,
+      "e2eMs": 5846,
       "inputTokens": 1325,
       "outputTokens": 297,
       "calls": 1,
@@ -685,11 +685,11 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2096,
+      "latencyMs": 5185,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 2650,
+      "e2eMs": 5556,
       "inputTokens": 1325,
       "outputTokens": 292,
       "calls": 1,
@@ -726,16 +726,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 3123,
-      "waits": 0,
-      "waitMs": 0,
+      "latencyMs": 4291,
+      "waits": 1,
+      "waitMs": 678,
       "failedCalls": 0,
-      "e2eMs": 3407,
+      "e2eMs": 5286,
       "inputTokens": 806,
-      "outputTokens": 968,
+      "outputTokens": 948,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 702
+      "paidMicroUsd": 690
     },
     {
       "id": "g057",
@@ -767,16 +767,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 1362,
+      "latencyMs": 3221,
       "waits": 1,
-      "waitMs": 2589,
+      "waitMs": 81844,
       "failedCalls": 0,
-      "e2eMs": 4005,
+      "e2eMs": 85362,
       "inputTokens": 776,
-      "outputTokens": 448,
+      "outputTokens": 509,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 385
+      "paidMicroUsd": 422
     },
     {
       "id": "g058",
@@ -808,16 +808,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2134,
+      "latencyMs": 2999,
       "waits": 1,
-      "waitMs": 7747,
+      "waitMs": 8529,
       "failedCalls": 0,
-      "e2eMs": 10095,
+      "e2eMs": 11644,
       "inputTokens": 779,
-      "outputTokens": 739,
+      "outputTokens": 762,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 560
+      "paidMicroUsd": 574
     },
     {
       "id": "g067",
@@ -849,16 +849,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 3023,
+      "latencyMs": 3917,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 3437,
+      "e2eMs": 4232,
       "inputTokens": 1325,
-      "outputTokens": 291,
+      "outputTokens": 394,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 1125
+      "paidMicroUsd": 1383
     },
     {
       "id": "g070",
@@ -890,16 +890,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2100,
+      "latencyMs": 2048,
       "waits": 1,
-      "waitMs": 5561,
+      "waitMs": 4191,
       "failedCalls": 0,
-      "e2eMs": 7907,
+      "e2eMs": 6393,
       "inputTokens": 781,
-      "outputTokens": 744,
+      "outputTokens": 730,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 564
+      "paidMicroUsd": 555
     },
     {
       "id": "g076",
@@ -931,11 +931,11 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 3704,
+      "latencyMs": 5284,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 4243,
+      "e2eMs": 5837,
       "inputTokens": 1325,
       "outputTokens": 291,
       "calls": 1,
@@ -972,11 +972,11 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 3492,
+      "latencyMs": 5159,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 4515,
+      "e2eMs": 6070,
       "inputTokens": 3537,
       "outputTokens": 245,
       "calls": 1,
@@ -1013,16 +1013,16 @@
         "total": 2
       },
       "escalated": 0,
-      "latencyMs": 7306,
+      "latencyMs": 7249,
       "waits": 2,
-      "waitMs": 81288,
+      "waitMs": 98579,
       "failedCalls": 0,
-      "e2eMs": 86825,
+      "e2eMs": 103729,
       "inputTokens": 2550,
-      "outputTokens": 2138,
+      "outputTokens": 2433,
       "calls": 3,
       "costMicroUsd": 0,
-      "paidMicroUsd": 1666
+      "paidMicroUsd": 1842
     },
     {
       "id": "g086",
@@ -1054,16 +1054,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 6845,
+      "latencyMs": 5457,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 7145,
+      "e2eMs": 5821,
       "inputTokens": 1325,
-      "outputTokens": 220,
+      "outputTokens": 297,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 948
+      "paidMicroUsd": 1140
     },
     {
       "id": "g088",
@@ -1095,11 +1095,11 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 4125,
+      "latencyMs": 5972,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 4533,
+      "e2eMs": 6365,
       "inputTokens": 1325,
       "outputTokens": 337,
       "calls": 1,
@@ -1136,16 +1136,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2184,
+      "latencyMs": 3739,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 2402,
+      "e2eMs": 3963,
       "inputTokens": 792,
-      "outputTokens": 602,
+      "outputTokens": 601,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 480
+      "paidMicroUsd": 479
     }
   ]
 }
