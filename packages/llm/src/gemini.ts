@@ -3,7 +3,7 @@ import { classify, httpError, ProviderConfigError } from './errors.ts';
 import type { Part, Provider } from './extract.ts';
 
 type GeminiOptions = { apiKey: string; model: string; baseUrl?: string; timeoutMs?: number };
-type GeminiError = { error?: { status?: unknown; details?: { reason?: unknown; retryDelay?: unknown }[] } };
+type GeminiError = { error?: { status?: unknown; details?: { reason?: unknown; retryDelay?: unknown; violations?: { quotaId?: unknown }[] }[] } };
 
 // Gemini through the Gen AI SDK. The key is passed in code, so a GOOGLE_API_KEY in the environment cannot replace it,
 // and the SDK sends it in the x-goog-api-key header, never in the URL. SDK retries stay off: the job's backoff and the
@@ -58,8 +58,10 @@ function apiError({ status, message }: ApiError) {
   const { error } = parse(message);
   const details = error?.details ?? [];
   const reason = details.map((detail) => identifier(detail.reason)).find(Boolean);
-  const text = ['gemini HTTP', status, identifier(error?.status), reason].filter((part) => part !== undefined).join(' ');
-  if (status === 400 && reason === 'API_KEY_INVALID') return new ProviderConfigError(text);
+  // A 429's QuotaFailure names the quota it hit, such as a per-minute or a per-day one.
+  const quota = details.flatMap((detail) => detail.violations ?? []).map(({ quotaId }) => quotaId).find((id) => typeof id === 'string' && /^[A-Za-z0-9-]{1,100}$/.test(id));
+  const text = ['gemini HTTP', status, identifier(error?.status), reason, quota && `quota ${String(quota)}`].filter(Boolean).join(' ');
+  if (status === 400 && reason === 'API_KEY_INVALID') return new ProviderConfigError(text, { status });
   const delay = details.map((detail) => detail.retryDelay).find((value) => typeof value === 'string' && /^\d+(\.\d+)?s$/.test(value));
   return httpError(status, text, typeof delay === 'string' ? Math.ceil(Number.parseFloat(delay) * 1_000) : undefined);
 }

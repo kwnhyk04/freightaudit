@@ -1,5 +1,5 @@
 import type { GoldenCase } from '../golden/build.ts';
-import { bootstrap, type CaseResult, measure, quantile, scoreCase } from './metrics.ts';
+import { bootstrap, type CaseResult, failuresOf, measure, quantile, scoreCase } from './metrics.ts';
 
 const lines = [
   { line_number: 1, description: 'Linehaul', charge_code: 'LINEHAUL', amount_cents: 100_000, expected_cents: 100_000 },
@@ -70,6 +70,19 @@ test('extraction latency sums only the calls that returned a reply, repairs incl
   const failed = scoreCase(golden, { ...result(), calls: [calls[1]!] });
   expect(failed.latencyMs).toBeUndefined();
   expect(measure([failed]).find((m) => m.metric === 'extraction_latency_p95_ms')).toMatchObject({ value: undefined, n: 0 });
+});
+
+test('failed calls are listed by case with provider, model, class, status and message; older cached calls have none', () => {
+  const call = result().calls[0]!;
+  const failed = { ...call, provider: 'gemini', outcome: 'error', errorClass: '5xx', httpStatus: 503, errorMessage: 'gemini HTTP 503 UNAVAILABLE' };
+  const results = new Map([
+    ['g001', { ...result(), calls: [failed, call] }],
+    ['g002', { ...result(), id: 'g002', calls: [{ ...call, outcome: 'rate_limited' }] }],
+  ]);
+  expect(failuresOf(['g001', 'g002', 'g003'], results)).toEqual([
+    { id: 'g001', provider: 'gemini', model: 'm', class: '5xx', status: 503, message: 'gemini HTTP 503 UNAVAILABLE' },
+    { id: 'g002', provider: 'groq', model: 'm', class: null, status: null, message: null },
+  ]);
 });
 
 test('the bootstrap interval is seeded, so it repeats, and it brackets the value', () => {

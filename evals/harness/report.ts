@@ -3,7 +3,7 @@
 // exit code is 2 when a quota stop left cases unrun, 1 when a metric breaks its floor, else 0.
 import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
-import { type Measured, measure, meets, type Metric, METRICS, scoreCase, type Score } from './metrics.ts';
+import { failuresOf, type Measured, measure, meets, type Metric, METRICS, scoreCase, type Score } from './metrics.ts';
 import type { Roles, Run, Subset } from './run.ts';
 
 // Floors per subset: a minimum for metrics where higher is better, a maximum for the others. Floors only tighten;
@@ -184,12 +184,25 @@ export async function report({ subset, runs, durationMs, setFloors }: { subset: 
     if (suggestions.length > 0) lines.push('', '## Floors to tighten', '', ...suggestions.map((text) => `- ${text}`));
     const misses = scores.filter((s) => s.header.correct < s.header.total || s.lines.fp + s.lines.fn > 0 || s.overcharges.fp + s.overcharges.fn > 0 || s.outcomes.ok < s.outcomes.total);
     const kinds = new Map(run.cases.map((golden) => [golden.id, golden.kind]));
-    lines.push('', '## Model use', '', ...usageTable, '', '## Cases with any miss', '', '| Case | Kind | Path | Header fields | Lines tp/fp/fn | Findings tp/fp/fn | Outcome | Status |', '| --- | --- | --- | --- | --- | --- | --- | --- |');
+    const failures = failuresOf(
+      run.cases.map((golden) => golden.id),
+      run.results,
+    );
+    const cell = (text: string | null) => (text ?? 'unknown').replaceAll('|', '\\|');
+    lines.push('', '## Model use', '', ...usageTable, '', '## Failed calls', '');
+    if (failures.length === 0) lines.push('None.');
+    else
+      lines.push(
+        '| Case | Provider | Model | Class | HTTP | Error |',
+        '| --- | --- | --- | --- | --- | --- |',
+        ...failures.map((f) => `| ${f.id} | ${f.provider} | ${f.model} | ${cell(f.class)} | ${f.status ?? '-'} | ${cell(f.message)} |`),
+      );
+    lines.push('', '## Cases with any miss', '', '| Case | Kind | Path | Header fields | Lines tp/fp/fn | Findings tp/fp/fn | Outcome | Status |', '| --- | --- | --- | --- | --- | --- | --- | --- |');
     for (const s of misses) {
       const result = run.results.get(s.id)!;
       lines.push(`| ${s.id} | ${kinds.get(s.id)} | ${s.path} | ${s.header.correct}/${s.header.total} | ${s.lines.tp}/${s.lines.fp}/${s.lines.fn} | ${s.overcharges.tp}/${s.overcharges.fp}/${s.overcharges.fn} | ${s.outcomes.ok}/${s.outcomes.total} | ${result.status}${result.error ? ` (${result.error})` : ''} |`);
     }
-    Object.assign(json, { golden: 'v1', promptHash: run.promptHash, pins: pins(run.roles), cases: scores.length, computed: run.computed, metrics: measured, throughputPerHour: ceiling ?? null, floors, scores });
+    Object.assign(json, { golden: 'v1', promptHash: run.promptHash, pins: pins(run.roles), cases: scores.length, computed: run.computed, metrics: measured, throughputPerHour: ceiling ?? null, floors, failures, scores });
 
     if (subset === 'full' && !stopped) {
       // Every pinned role with the model version the provider reported serving, or that it was never called.

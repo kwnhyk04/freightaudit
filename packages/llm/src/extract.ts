@@ -1,7 +1,7 @@
 import { CHARGE_CODES } from '@freightaudit/db';
 import { checkArithmetic } from '@freightaudit/domain';
 import { z } from 'zod';
-import { RateLimitError } from './errors.ts';
+import { type FailureClass, failureOf, RateLimitError } from './errors.ts';
 
 export type Usage = { inputTokens: number; outputTokens: number };
 // A page as the model reads it: its text layer, or a JPEG render of a page without one.
@@ -31,6 +31,10 @@ export type Call = {
   // The call's own time, and the time it waited on its role's rate limit before it was sent.
   latencyMs: number;
   waitMs: number;
+  // Why a failed call failed (failureOf); null for a call that returned a reply.
+  errorClass: FailureClass | null;
+  httpStatus: number | null;
+  errorMessage: string | null;
 };
 
 type Code = keyof typeof CHARGE_CODES;
@@ -162,8 +166,21 @@ export async function extractInvoices(
     const provider = models[role];
     model = `${provider.name}/${provider.model}`;
     let waitMs = 0;
-    const record = (outcome: Call['outcome'], callUsage: Usage, latencyMs: number, servedModel: string | null) =>
-      onCall?.({ role, step, provider: provider.name, model: provider.model, servedModel, outcome, usage: callUsage, latencyMs, waitMs });
+    const record = (outcome: Call['outcome'], callUsage: Usage, latencyMs: number, servedModel: string | null, failure?: ReturnType<typeof failureOf>) =>
+      onCall?.({
+        role,
+        step,
+        provider: provider.name,
+        model: provider.model,
+        servedModel,
+        outcome,
+        usage: callUsage,
+        latencyMs,
+        waitMs,
+        errorClass: failure?.errorClass ?? null,
+        httpStatus: failure?.httpStatus ?? null,
+        errorMessage: failure?.errorMessage ?? null,
+      });
     const started = performance.now();
     let reply: Reply;
     try {
@@ -174,7 +191,7 @@ export async function extractInvoices(
     } catch (err) {
       // A reply's latency is the provider's alone; a failed call's is everything after its rate-limit wait.
       const latencyMs = Math.max(0, Math.round(performance.now() - started) - waitMs);
-      await record(err instanceof RateLimitError ? 'rate_limited' : 'error', { inputTokens: 0, outputTokens: 0 }, latencyMs, null);
+      await record(err instanceof RateLimitError ? 'rate_limited' : 'error', { inputTokens: 0, outputTokens: 0 }, latencyMs, null, failureOf(err));
       throw err;
     }
     usage.inputTokens += reply.usage.inputTokens;

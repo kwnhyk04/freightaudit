@@ -145,6 +145,12 @@ Migrate: the reconcile job writes it from this release. Contract: none needed.
 
 Migrate: the worker writes both from this release. Contract: none needed.
 
+## 0012 model call errors (expand)
+
+`llm_calls.error_class` (text), `http_status` (integer) and `error_message` (text), all nullable, record why a call failed: the class (`timeout`, `429`, `5xx`, `network`, `parse_or_schema` or `other`), the HTTP status the provider sent, and the first line of the error message, at most 200 characters with key-shaped tokens masked (`failureOf` in packages/llm). Calls that returned a reply, and rows before 0012, have none. No check constraint: a class added later needs no migration.
+
+Migrate: the worker writes them from this release. Contract: none needed.
+
 ## Tests (`pnpm test:int`)
 
 Each test runs in a throwaway database on the Postgres container that `pnpm test:int` starts for the run.

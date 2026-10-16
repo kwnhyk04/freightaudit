@@ -21,7 +21,7 @@ import pg from 'pg';
 import { GenericContainer, type StartedTestContainer, Wait } from 'testcontainers';
 import { z } from 'zod';
 import type { GoldenCase, Manifest } from '../golden/build.ts';
-import type { CaseResult, PredictedInvoice, Read } from './metrics.ts';
+import { type CallRow, type CaseResult, type PredictedInvoice, type Read, replied } from './metrics.ts';
 import { report } from './report.ts';
 
 export type Roles = Record<'primary' | 'text' | 'fallback', LlmRole>;
@@ -154,12 +154,18 @@ export async function runCase(env: Environment, root: URL, golden: GoldenCase): 
     const done = parts.length === 0 ? TERMINAL.has(own.status) : (own.status === 'extracted' || own.status === 'failed') && parts.every((part) => TERMINAL.has(part.status));
     if (done) break;
     if (env.alerts.length > 0) throw new Error(`the worker paused extraction: ${JSON.stringify(env.alerts[0])}`);
-    // A 429 whose wait outlasts 10 minutes (a spent daily quota) stops the run here, to resume after the reset.
-    const job = await env.queues.queue('extract').getJob(contentSha256);
-    if (job && (await job.isDelayed()) && job.delay > 600_000 && /HTTP 429/.test(job.failedReason ?? '')) {
-      return { id: golden.id, status: 'stopped', error: `${job.failedReason}, retry in ${Math.round(job.delay / 1000)} s`, e2eMs: 0, invoices: [], calls: [] };
+    // A 429 whose wait outlasts 10 minutes (a spent daily quota), on the upload or any of its parts, stops the case here,
+    // to resume after the reset. So does the deadline, naming the case's last failure. Either way its calls go along.
+    const stop = async (error: string) => ({ id: golden.id, status: 'stopped', error, e2eMs: 0, invoices: [], calls: await callsOf(env, rows.map((row) => row.id)) });
+    for (const row of rows) {
+      const job = await env.queues.queue('extract').getJob(row.hash);
+      if (job && (await job.isDelayed()) && job.delay > 600_000 && /HTTP 429/.test(job.failedReason ?? '')) return stop(`${job.failedReason}, retry in ${Math.round(job.delay / 1000)} s`);
     }
-    if (Date.now() > deadline) throw new Error(`${golden.id} did not finish in 30 minutes`);
+    if (Date.now() > deadline) {
+      const stopped = await stop('did not finish in 30 minutes');
+      const last = stopped.calls.filter((call) => !replied(call)).at(-1)?.errorMessage;
+      return last ? { ...stopped, error: `${stopped.error}; last failure: ${last}` } : stopped;
+    }
     await setTimeout(250);
     rows = await read();
   }
@@ -187,11 +193,6 @@ export async function runCase(env: Environment, root: URL, golden: GoldenCase): 
       findings: findings.map((found) => ({ line_number: found.line, type: found.type, expected_cents: Number(found.expected), billed_cents: Number(found.billed) })),
     });
   }
-  const calls = await env.db
-    .select()
-    .from(llmCalls)
-    .where(inArray(llmCalls.invoiceId, rows.map((row) => row.id)))
-    .orderBy(asc(llmCalls.createdAt), asc(llmCalls.id));
   const [dead] = await env.db.select({ error: deadLetters.error }).from(deadLetters).where(inArray(deadLetters.jobId, rows.map((row) => row.hash)));
   return {
     id: golden.id,
@@ -199,7 +200,17 @@ export async function runCase(env: Environment, root: URL, golden: GoldenCase): 
     error: dead?.error ?? null,
     e2eMs,
     invoices: out,
-    calls: calls.map((call) => ({
+    calls: await callsOf(
+      env,
+      rows.map((row) => row.id),
+    ),
+  };
+}
+
+// Every model call recorded for these invoices, in order, as the harness caches it.
+async function callsOf(env: Environment, invoiceIds: string[]): Promise<CallRow[]> {
+  const calls = await env.db.select().from(llmCalls).where(inArray(llmCalls.invoiceId, invoiceIds)).orderBy(asc(llmCalls.createdAt), asc(llmCalls.id));
+  return calls.map((call) => ({
       role: call.role,
       step: call.step,
       provider: call.provider,
@@ -210,10 +221,12 @@ export async function runCase(env: Environment, root: URL, golden: GoldenCase): 
       outputTokens: call.outputTokens,
       latencyMs: call.latencyMs,
       waitMs: call.waitMs,
+      errorClass: call.errorClass,
+      httpStatus: call.httpStatus,
+      errorMessage: call.errorMessage,
       costMicroUsd: Number(call.costMicroUsd),
       paidMicroUsd: Number(paidCost(call.provider, call.model, call)),
-    })),
-  };
+  }));
 }
 
 // Runs every selected case not yet cached for these pins, prompt and set version, `concurrency` at a time.
@@ -257,6 +270,9 @@ export async function evaluate({
     if (!fresh && existsSync(file)) results.set(golden.id, JSON.parse(await readFile(file, 'utf8')) as CaseResult);
   }
   const todo = cases.filter((golden) => !results.has(golden.id));
+  // No configured key reaches the cache, the log or the report, whatever an error message held.
+  const keys = Object.values(roles).flatMap(({ apiKey }) => (apiKey ? [apiKey] : []));
+  const mask = (text: string | null | undefined) => (text ? keys.reduce((masked, key) => masked.replaceAll(key, '[redacted]'), text) : null);
   let stopped: string | undefined;
   if (todo.length > 0 && !cachedOnly) {
     const env = await environment(roles);
@@ -266,8 +282,17 @@ export async function evaluate({
         Array.from({ length: concurrency }, async () => {
           for (let golden = queue.shift(); golden && !stopped; golden = queue.shift()) {
             const result = await runCase(env, root, golden);
+            // Each failed call goes to the job log as its case ends, with a configured key masked as in the cache.
+            for (const call of result.calls.filter((row) => !replied(row))) {
+              call.errorMessage = mask(call.errorMessage);
+              const { provider, model, errorClass, httpStatus, errorMessage } = call;
+              console.log(JSON.stringify({ msg: 'call failed', run: label, id: golden.id, provider, model, class: errorClass ?? null, status: httpStatus ?? null, error: errorMessage }));
+            }
             // A 429 that outlasted every retry is a spent quota: leave the case uncached and stop.
-            if (result.error && /HTTP 429/.test(result.error)) {
+            // A case stopped on a long 429 wait, ending on a 429 after every retry, or stalled with a 429 as its last
+            // failure is a spent quota: leave it uncached and stop with the report. Any other stall fails the run.
+            if (result.status === 'stopped' || (result.error && /HTTP 429/.test(result.error))) {
+              if (!/HTTP 429/.test(result.error ?? '')) throw new Error(`${golden.id}: ${result.error}`);
               stopped = `${golden.id}: ${result.error}`;
               break;
             }

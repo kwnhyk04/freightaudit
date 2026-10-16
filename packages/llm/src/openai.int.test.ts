@@ -63,6 +63,14 @@ test('sends a strict JSON schema at temperature 0 with page text and JPEG data U
 const groqError = (code: string, extra = {}) => ({ error: { message: 'Something went wrong for Halcyon Ridge Freight', type: 'invalid_request_error', code, ...extra } });
 test.each([
   { status: 429, headers: { 'retry-after': '11' }, body: groqError('rate_limit_exceeded'), error: RateLimitError, message: 'groq HTTP 429 rate_limit_exceeded', retryAfterMs: 11_000 },
+  {
+    status: 429,
+    headers: { 'retry-after': '563' },
+    body: groqError('rate_limit_exceeded', { message: 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_x` on tokens per day (TPD): Limit 200000, Used 199000, Requested 1806. Please try again in 9m23s.', type: 'tokens' }),
+    error: RateLimitError,
+    message: 'groq HTTP 429 rate_limit_exceeded TPD',
+    retryAfterMs: 563_000,
+  },
   { status: 401, body: groqError('invalid_api_key'), error: ProviderConfigError, message: 'groq HTTP 401 invalid_api_key' },
   { status: 403, body: groqError('permission_denied'), error: ProviderConfigError, message: 'groq HTTP 403 permission_denied' },
   { status: 404, body: groqError('model_not_found'), error: ProviderConfigError, message: 'groq HTTP 404 model_not_found' },

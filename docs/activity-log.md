@@ -15,6 +15,23 @@ Chronological record of significant development activity, newest first. Skip tri
 
 ## Entries
 
+### 2026-10-16: PR #13 eval smoke: failed calls made diagnosable
+
+- Changes:
+  - **What CI showed:** on d230b19 the smoke broke the failed-calls floor (6 against 1, 95% CI 1 to 13). All 6 failures were Gemini calls: 14 Gemini calls for 8 scans, with Gemini input tokens equal to 8 replies, while Groq made its usual 14. The job log could not say why, since the harness discarded the worker's warnings and printed no call error; so the absence of "429" in it proved nothing.
+  - **Failure records:** `failureOf` in packages/llm classifies each failed call (timeout, 429, 5xx, network, parse_or_schema, other) and keeps the HTTP status and the first line of the message: at most 200 characters, key-shaped tokens masked, and a JSON parse error reduced to fixed text. Errors carry `status` from `httpError`, and timeouts and lost connections carry `kind` from `classify`.
+    - A Gemini 429 now names its quota (`quotaId`), and a Groq 429 names its limit (TPM, TPD, RPM or RPD), nothing else of either message.
+    - The worker stores the class, status and message in `llm_calls` (migration 0012).
+  - **Eval harness:** it masks every configured key once more and logs a `call failed` line (case, provider, model, class, status, message) as each case ends. The report gains a Failed calls section in the .md and `failures` in the .json, and the eval-smoke artifact uploads the .json beside the .md (output `json`, as in nightly-eval.yml).
+  - **Stalls:** the quota stop now also watches a split case's part jobs. A case past its 30-minute deadline stops with its calls and its last failure instead of throwing: a 429 makes it a quota stop (exit 2, report written), and any other stall fails the run after its failed calls are logged. This came from the local run below, which died at g084 with no report.
+  - **CI against local:** the same models, limits, base URLs (defaults on both sides), concurrency 4, timeouts, retries and lock. They differ in Node (local 24.21.0, CI the latest 24.x for "24"), network and region, and possibly the keys, which cannot be read here. Turbo passes the eval task only `DOCKER_*`, `TESTCONTAINERS_*`, `HOME`, `USERPROFILE` and the two keys. No local run overlapped that CI run. Other compose projects' services (filinglens api, embed and ingest) were up on this PC; if they share these provider accounts, they share the per-minute and daily quotas, which no one process's bucket sees.
+- Files: packages/llm/src/{errors.ts,extract.ts,gemini.ts,openai.ts,extract.test.ts,gemini.int.test.ts,openai.int.test.ts}, packages/db/{migrations/0012_llm_call_errors.sql,src/schema.ts,src/migrations.int.test.ts}, apps/worker/src/extract.int.test.ts, evals/harness/{metrics.ts,metrics.test.ts,run.ts,report.ts}, evals/reports/2026-10-16-ci.{json,md}, .github/workflows/ci.yml, docs/{context,memory,migrations,todo,activity-log}.md
+- Validation:
+  - Typecheck 21 of 21, `pnpm lint` 12 of 12, and actionlint 1.7.12 on the workflows pass. `pnpm turbo run test --force`: 16 of 16 tasks, 0 cached, 70 tests in 7 packages. `pnpm test:int` 94 of 94, covering 0012, the worker's recorded 429 (class, status, message), the Gemini quota id and status, and a Groq 429 naming TPD.
+  - **The ci subset once** (`--fresh`): it hit Groq's daily token cap. 19 cases finished, logging their failed calls; g010, g011 and g058 had 4 Groq 429s between them. g084 (split) then sat in 429 retries until the old 30-minute deadline threw, with no report. Groq probes then showed that a small request passes (888 of 1,000 daily requests left), while a part-sized one gets 429 naming TPD with "try again in 5m41s".
+  - Rerun from the cache (all 20 cached, g084 from the 06:22 run), the report lists the 4 failures by case, provider, model, class, status and message. It exits 1 on failed calls (4 against 1) and end-to-end p95 (211,118 ms against 174,600 ms), both from the cap. The other floors held, and no floor was changed.
+- Outstanding: read the breakdown on PR #13's next smoke for the class of the Gemini failures (docs/todo.md). Groq's daily cap, about 20,000 tokens per ci run, limits how many eval runs a day can share the key. Not committed.
+
 ### 2026-10-16: PR #13 eval smoke: ci extraction latency p95 gated on the design target
 
 - Changes:

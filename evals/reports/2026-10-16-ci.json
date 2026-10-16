@@ -2,13 +2,13 @@
   "suite": "extraction",
   "subset": "ci",
   "date": "2026-10-16",
-  "durationMs": 168367,
+  "durationMs": 41,
   "stopped": null,
   "golden": "v1",
   "promptHash": "19f0c19627c4",
   "pins": "primary gemini/gemini-3.5-flash-lite, text groq/openai/gpt-oss-120b, fallback groq/qwen/qwen3.8-27b",
   "cases": 20,
-  "computed": 20,
+  "computed": 0,
   "metrics": [
     {
       "metric": "header_accuracy_digital",
@@ -102,18 +102,18 @@
     },
     {
       "metric": "extraction_latency_p50_ms",
-      "value": 4057.5,
+      "value": 2793,
       "ci": [
-        2717,
-        5234.5
+        2126,
+        3901
       ],
       "n": 20
     },
     {
       "metric": "extraction_latency_p95_ms",
-      "value": 6078.600000000001,
+      "value": 5854.4000000000015,
       "ci": [
-        5340.15,
+        4020.3,
         7249
       ],
       "n": 20
@@ -122,89 +122,89 @@
       "metric": "rate_limit_waits",
       "value": 10,
       "ci": [
-        5,
-        16
+        4,
+        17
       ],
       "n": 20
     },
     {
       "metric": "rate_limit_wait_ms",
-      "value": 373362,
+      "value": 600794,
       "ci": [
-        110294.05,
-        708581.2249999999
+        140620,
+        1182435.0499999996
       ],
       "n": 20
     },
     {
       "metric": "failed_calls",
-      "value": 0,
+      "value": 4,
       "ci": [
         0,
-        0
+        9
       ],
       "n": 20
     },
     {
       "metric": "e2e_latency_p95_ms",
-      "value": 98392.85,
+      "value": 211117.8500000002,
       "ci": [
-        23123.150000000034,
-        103729
+        24307.10000000006,
+        508313
       ],
       "n": 20
     },
     {
       "metric": "input_tokens_per_page_digital",
-      "value": 928.9230769230769,
+      "value": 914.9230769230769,
       "ci": [
-        777.1645833333333,
-        1101.6733333333334
+        776.3312500000001,
+        1078.5383333333332
       ],
       "n": 12
     },
     {
       "metric": "output_tokens_per_page_digital",
-      "value": 769.1538461538462,
+      "value": 667.6153846153846,
       "ci": [
-        614.9041666666666,
-        923.7545833333334
+        528.3312500000001,
+        846.5433333333333
       ],
       "n": 12
     },
     {
       "metric": "tokens_per_invoice_digital",
-      "value": 1839.5833333333333,
+      "value": 1714.4166666666667,
       "ci": [
-        1397.7375,
-        2491.6666666666656
+        1314.9145833333334,
+        2375.879166666666
       ],
       "n": 12
     },
     {
       "metric": "tokens_per_invoice_scanned",
-      "value": 1901.5,
+      "value": 1928.875,
       "ci": [
-        1611.871875,
-        2447.2625
+        1627.5,
+        2474.5125
       ],
       "n": 8
     },
     {
       "metric": "cost_per_invoice_digital_usd",
-      "value": 0.0006508333333333332,
+      "value": 0.0005826666666666666,
       "ci": [
-        0.00048814999999999997,
-        0.0008931770833333334
+        0.00043658125000000004,
+        0.0008315854166666667
       ],
       "n": 12
     },
     {
       "metric": "cost_per_invoice_scanned_usd",
-      "value": 0.001230625,
+      "value": 0.001299125,
       "ci": [
-        0.0011147437500000001,
-        0.001379796875
+        0.00114425,
+        0.001448
       ],
       "n": 8
     },
@@ -227,7 +227,7 @@
       "n": 20
     }
   ],
-  "throughputPerHour": 434.881087202718,
+  "throughputPerHour": 466.63102124143296,
   "floors": {
     "header_accuracy_digital": {
       "min": 0.95,
@@ -326,6 +326,40 @@
       "from": "2026-10-16-ci"
     }
   },
+  "failures": [
+    {
+      "id": "g010",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "class": "429",
+      "status": 429,
+      "message": "groq HTTP 429 rate_limit_exceeded"
+    },
+    {
+      "id": "g011",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "class": "429",
+      "status": 429,
+      "message": "groq HTTP 429 rate_limit_exceeded"
+    },
+    {
+      "id": "g058",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "class": "429",
+      "status": 429,
+      "message": "groq HTTP 429 rate_limit_exceeded"
+    },
+    {
+      "id": "g058",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "class": "429",
+      "status": 429,
+      "message": "groq HTTP 429 rate_limit_exceeded"
+    }
+  ],
   "scores": [
     {
       "id": "g009",
@@ -357,16 +391,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 1554,
-      "waits": 1,
-      "waitMs": 96235,
+      "latencyMs": 2268,
+      "waits": 0,
+      "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 98112,
+      "e2eMs": 2588,
       "inputTokens": 776,
-      "outputTokens": 450,
+      "outputTokens": 447,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 386
+      "paidMicroUsd": 385
     },
     {
       "id": "g010",
@@ -398,16 +432,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 4198,
+      "latencyMs": 2579,
       "waits": 2,
-      "waitMs": 65346,
-      "failedCalls": 0,
-      "e2eMs": 69961,
-      "inputTokens": 1717,
-      "outputTokens": 1031,
+      "waitMs": 131140,
+      "failedCalls": 1,
+      "e2eMs": 137361,
+      "inputTokens": 767,
+      "outputTokens": 660,
       "calls": 2,
       "costMicroUsd": 0,
-      "paidMicroUsd": 876
+      "paidMicroUsd": 511
     },
     {
       "id": "g011",
@@ -439,16 +473,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2209,
-      "waits": 0,
-      "waitMs": 0,
-      "failedCalls": 0,
-      "e2eMs": 2385,
+      "latencyMs": 1563,
+      "waits": 2,
+      "waitMs": 191386,
+      "failedCalls": 1,
+      "e2eMs": 195476,
       "inputTokens": 747,
-      "outputTokens": 748,
-      "calls": 1,
+      "outputTokens": 521,
+      "calls": 2,
       "costMicroUsd": 0,
-      "paidMicroUsd": 561
+      "paidMicroUsd": 425
     },
     {
       "id": "g012",
@@ -480,16 +514,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2435,
+      "latencyMs": 1984,
       "waits": 1,
-      "waitMs": 17960,
+      "waitMs": 17969,
       "failedCalls": 0,
-      "e2eMs": 20658,
+      "e2eMs": 20127,
       "inputTokens": 808,
-      "outputTokens": 636,
+      "outputTokens": 644,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 503
+      "paidMicroUsd": 508
     },
     {
       "id": "g013",
@@ -521,11 +555,11 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 1682,
+      "latencyMs": 1850,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 1841,
+      "e2eMs": 2122,
       "inputTokens": 768,
       "outputTokens": 476,
       "calls": 1,
@@ -562,16 +596,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 1945,
+      "latencyMs": 2860,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 2121,
+      "e2eMs": 2933,
       "inputTokens": 776,
-      "outputTokens": 675,
+      "outputTokens": 681,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 521
+      "paidMicroUsd": 525
     },
     {
       "id": "g049",
@@ -603,11 +637,11 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 6017,
+      "latencyMs": 3887,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 6362,
+      "e2eMs": 4243,
       "inputTokens": 1325,
       "outputTokens": 247,
       "calls": 1,
@@ -644,16 +678,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 5334,
+      "latencyMs": 4005,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 5846,
+      "e2eMs": 4509,
       "inputTokens": 1325,
-      "outputTokens": 297,
+      "outputTokens": 400,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 1140
+      "paidMicroUsd": 1398
     },
     {
       "id": "g051",
@@ -685,16 +719,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 5185,
+      "latencyMs": 5781,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 5556,
+      "e2eMs": 6311,
       "inputTokens": 1325,
-      "outputTokens": 292,
+      "outputTokens": 395,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 1128
+      "paidMicroUsd": 1385
     },
     {
       "id": "g056",
@@ -726,16 +760,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 4291,
-      "waits": 1,
-      "waitMs": 678,
+      "latencyMs": 1869,
+      "waits": 0,
+      "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 5286,
+      "e2eMs": 2110,
       "inputTokens": 806,
-      "outputTokens": 948,
+      "outputTokens": 647,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 690
+      "paidMicroUsd": 509
     },
     {
       "id": "g057",
@@ -767,16 +801,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 3221,
+      "latencyMs": 1562,
       "waits": 1,
-      "waitMs": 81844,
+      "waitMs": 8024,
       "failedCalls": 0,
-      "e2eMs": 85362,
+      "e2eMs": 9815,
       "inputTokens": 776,
-      "outputTokens": 509,
+      "outputTokens": 452,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 422
+      "paidMicroUsd": 388
     },
     {
       "id": "g058",
@@ -808,16 +842,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2999,
+      "latencyMs": 1697,
       "waits": 1,
-      "waitMs": 8529,
-      "failedCalls": 0,
-      "e2eMs": 11644,
+      "waitMs": 150774,
+      "failedCalls": 2,
+      "e2eMs": 508313,
       "inputTokens": 779,
-      "outputTokens": 762,
-      "calls": 1,
+      "outputTokens": 507,
+      "calls": 3,
       "costMicroUsd": 0,
-      "paidMicroUsd": 574
+      "paidMicroUsd": 421
     },
     {
       "id": "g067",
@@ -849,11 +883,11 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 3917,
+      "latencyMs": 3765,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 4232,
+      "e2eMs": 4273,
       "inputTokens": 1325,
       "outputTokens": 394,
       "calls": 1,
@@ -890,16 +924,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 2048,
+      "latencyMs": 2602,
       "waits": 1,
-      "waitMs": 4191,
+      "waitMs": 2922,
       "failedCalls": 0,
-      "e2eMs": 6393,
-      "inputTokens": 781,
+      "e2eMs": 5817,
+      "inputTokens": 1549,
       "outputTokens": 730,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 555
+      "paidMicroUsd": 670
     },
     {
       "id": "g076",
@@ -931,16 +965,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 5284,
+      "latencyMs": 4311,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 5837,
+      "e2eMs": 4744,
       "inputTokens": 1325,
-      "outputTokens": 291,
+      "outputTokens": 394,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 1125
+      "paidMicroUsd": 1383
     },
     {
       "id": "g079",
@@ -972,11 +1006,11 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 5159,
+      "latencyMs": 5451,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 6070,
+      "e2eMs": 6243,
       "inputTokens": 3537,
       "outputTokens": 245,
       "calls": 1,
@@ -1054,11 +1088,11 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 5457,
+      "latencyMs": 3345,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 5821,
+      "e2eMs": 3706,
       "inputTokens": 1325,
       "outputTokens": 297,
       "calls": 1,
@@ -1095,16 +1129,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 5972,
+      "latencyMs": 3915,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 6365,
+      "e2eMs": 4243,
       "inputTokens": 1325,
-      "outputTokens": 337,
+      "outputTokens": 247,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 1240
+      "paidMicroUsd": 1015
     },
     {
       "id": "g090",
@@ -1136,16 +1170,16 @@
         "total": 1
       },
       "escalated": 0,
-      "latencyMs": 3739,
+      "latencyMs": 2726,
       "waits": 0,
       "waitMs": 0,
       "failedCalls": 0,
-      "e2eMs": 3963,
+      "e2eMs": 2916,
       "inputTokens": 792,
-      "outputTokens": 601,
+      "outputTokens": 481,
       "calls": 1,
       "costMicroUsd": 0,
-      "paidMicroUsd": 479
+      "paidMicroUsd": 407
     }
   ]
 }

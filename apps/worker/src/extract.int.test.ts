@@ -53,7 +53,8 @@ test('a 429 on the primary falls back to the fallback model, and the extraction 
   expect(await steps(invoice.id)).toEqual(['primary first_pass rate_limited', 'fallback first_pass valid']);
   const [limited, read] = await callsOf(invoice.id);
   expect(limited).toMatchObject({ provider: 'gemini', model: 'fake-primary', inputTokens: 0, outputTokens: 0, costMicroUsd: 0n, waitMs: expect.any(Number) });
-  expect(read).toMatchObject({ provider: 'groq', model: 'fake-fallback', servedModel: expect.any(String), costMicroUsd: 0n, waitMs: expect.any(Number) });
+  expect(limited).toMatchObject({ errorClass: '429', httpStatus: 429, errorMessage: 'gemini HTTP 429 RESOURCE_EXHAUSTED' });
+  expect(read).toMatchObject({ provider: 'groq', model: 'fake-fallback', servedModel: expect.any(String), costMicroUsd: 0n, waitMs: expect.any(Number), errorClass: null });
   expect(read!.inputTokens).toBeGreaterThan(0);
   expect(read!.latencyMs).toBeGreaterThanOrEqual(0);
   // No retry was needed.

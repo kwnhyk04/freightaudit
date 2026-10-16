@@ -71,7 +71,7 @@ const rejected = (status: number, grpc: string, reason?: string) => ({
 });
 
 test.each([
-  { status: 429, body: quota, error: RateLimitError, message: 'gemini HTTP 429 RESOURCE_EXHAUSTED', retryAfterMs: 37_000 },
+  { status: 429, body: quota, error: RateLimitError, message: 'gemini HTTP 429 RESOURCE_EXHAUSTED quota GenerateRequestsPerDayPerProjectPerModel-FreeTier', retryAfterMs: 37_000 },
   { status: 401, body: rejected(401, 'UNAUTHENTICATED', 'ACCESS_TOKEN_TYPE_UNSUPPORTED'), error: ProviderConfigError, message: 'gemini HTTP 401 UNAUTHENTICATED ACCESS_TOKEN_TYPE_UNSUPPORTED' },
   { status: 403, body: rejected(403, 'PERMISSION_DENIED'), error: ProviderConfigError, message: 'gemini HTTP 403 PERMISSION_DENIED' },
   { status: 404, body: rejected(404, 'NOT_FOUND'), error: ProviderConfigError, message: 'gemini HTTP 404 NOT_FOUND' },
@@ -80,9 +80,10 @@ test.each([
   { status: 503, body: rejected(503, 'UNAVAILABLE'), error: TransientError, message: 'gemini HTTP 503 UNAVAILABLE' },
 ])('HTTP $status $message maps onto the taxonomy and keeps no message text', async ({ status, body, error, message, retryAfterMs }) => {
   fake = await fakeModels(() => ({ status, body }));
-  const err = (await failure(provider().generate(input))) as Error & { retryAfterMs?: number };
+  const err = (await failure(provider().generate(input))) as Error & { retryAfterMs?: number; status?: number };
   expect(err).toBeInstanceOf(error);
   expect(err.message).toBe(message);
+  expect(err.status).toBe(status);
   if (error === PermanentError) expect(err).not.toBeInstanceOf(ProviderConfigError);
   expect(err.retryAfterMs).toBe(retryAfterMs);
 });

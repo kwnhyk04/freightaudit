@@ -160,6 +160,13 @@ From the approved design doc:
   - Diagnosis: provider variance, not a regression. The run had no repair: Groq made 14 calls, as in every ci run (12 cases plus g084's two split parts), with arithmetic consistency 1.000 and escalation 0. Its one failed call was a Gemini call, which latency excludes, so its slow cases were slow single replies. CI publishes no per-case latency, since the report artifact is the `.md` only.
   - A local rerun on the same code passed (p95 7,732 ms). Its slowest case was g050: one Gemini first pass of 8,026 ms for the same 1,325 input tokens that took 2.3 to 4.4 s on 2026-10-15.
   - In `evals/thresholds.json` that floor reads `from: "design target"`, and the report never proposes tightening such a floor.
+- 2026-10-16: Every failed model call is recorded and reported with its cause (user request, after PR #13's smoke broke the failed-calls floor with 6 against 1).
+  - `failureOf` in packages/llm gives a class (timeout, 429, 5xx, network, parse_or_schema, other), the HTTP status a provider sent, and the first line of the message: at most 200 characters, key-shaped tokens masked, and a JSON parse error reduced to fixed text, since V8 quotes the input it failed on.
+  - The worker stores them in `llm_calls` (0012). The eval harness masks every configured key once more and logs a `call failed` line per failure as its case ends. It lists every failure in the report's Failed calls section and in the json's `failures`; the eval-smoke artifact now carries the json too.
+  - A Gemini 429 names the quota it hit (the QuotaFailure `quotaId`), which tells a per-minute limit from a per-day one.
+  - Reason: the job log could not show a cause. The harness discarded the worker's warnings and printed no call error, so "no 429 in the log" said nothing.
+  - A Groq 429 names its limit (TPM, TPD, RPM or RPD), and nothing else of its message.
+  - Stalls: the quota stop also watches a split case's part jobs. A case past its 30-minute deadline stops with its calls and last failure instead of throwing. With a 429 as that failure it is a quota stop (exit 2, report written); any other stall fails the run after its failed calls are logged. Before, a deadline ended the run with no report, which hid g084's 429s in the first local run.
 
 ## Preferences and Instructions
 
@@ -256,6 +263,13 @@ From the approved design doc:
 - 2026-10-16: The eval smoke's extraction-latency floor is noisy on the free tiers. PR #13 broke it with a p95 of 90,028 ms against a floor of 8,900 ms, with a p50 of 2,122 ms and the same code path as main. The metric summed every call's latency, and a call that fails has waited on its rate-limit bucket or run into the 60 s timeout. Read the floors table before blaming the case with a miss. Since decision A (same day) the metric counts successful calls only, and waits and failed calls have their own rows. On the ci subset its p95 now gates on the design target (same day, after PR #13's smoke broke the derived floor again on a slow provider reply).
 
 - 2026-10-16: A BuildKit cache mount does not travel with the layer cache. CI's `type=gha` cache restores layers, each job starts a fresh builder, and its cache mounts start empty. If a step that fills a mount is a layer cache hit, the mount stays empty for the steps after it. PR #13's eval-fix push changed sources only, so the api and worker images' full install was a cache hit, the build was not, and the `--offline` production install found no packages (`ERR_PNPM_NO_OFFLINE_TARBALL`). Reproduced locally with a fresh docker-container builder and a `type=local` cache exported by a build of the previous commit.
+- 2026-10-16: CI against local for PR #13's 6 failed calls. All were Gemini calls: 14 Gemini calls for 8 scans, while Groq made its usual 14.
+  - **Same:** models, limits and base URLs. Both use the defaults, since the local `.env` sets no `LLM_*` and the workflow sets only the two keys. Turbo's eval task passes only `DOCKER_*`, `TESTCONTAINERS_*`, `HOME`, `USERPROFILE` and the two keys, so an `LLM_*` set in CI would not reach the harness. Also the same: concurrency 4, the 60 s call timeout, 5 attempts with the jittered backoff, and the 300 s lock.
+  - **Differ:** Node (local 24.21.0, while CI takes the latest 24.x for `.nvmrc`'s "24"), and the network and region (GitHub's US runners against this PC). Possibly the keys as well: whether CI's secrets are the local keys, and so share their quotas and project, cannot be read from here.
+  - **Ruled out:** a local run competing for the same quotas (none overlapped: the last ended 06:25:01 UTC and CI started at 06:27:54), and Groq quotas (its calls were normal).
+  - **Unknown** until the breakdown runs in CI: the class of the 6 Gemini failures.
+  - Shared quotas: other compose projects' services (filinglens api, embed and ingest) were running on this PC. If they use these provider accounts, they share the per-minute and daily quotas, which no one process's bucket sees.
+- 2026-10-16: Groq's daily token cap (TPD) on `openai/gpt-oss-120b` ran out after about 20 eval runs that day, local and CI together. A ci run uses about 20,000 Groq tokens. With the cap spent, a small request still passed (888 of 1,000 daily requests left), while a part-sized one got 429 naming TPD with a retry of minutes. The local ci run then logged 4 Groq 429s and stalled on g084.
 
 ## Rejected Approaches
 

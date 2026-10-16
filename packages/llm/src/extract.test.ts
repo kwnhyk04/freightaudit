@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 import { PDFDocument } from 'pdf-lib';
-import { PermanentError, ProviderConfigError, RateLimitError } from './errors.ts';
+import { classify, failureOf, httpError, PermanentError, ProviderConfigError, RateLimitError, TransientError } from './errors.ts';
 import { type Call, extractInvoices, type Models, type Part, type Provider } from './extract.ts';
 import { readPdf, splitPdf } from './pdf.ts';
 
@@ -61,8 +61,27 @@ test('valid output passes on the first call, and the call is recorded with token
     usage: { inputTokens: 10, outputTokens: 5 },
   });
   expect(calls).toEqual([
-    { role: 'primary', step: 'first_pass', provider: 'gemini', model: 'gemini-model', servedModel: 'gemini-served', outcome: 'valid', usage: { inputTokens: 10, outputTokens: 5 }, latencyMs: 7, waitMs: 0 },
+    { role: 'primary', step: 'first_pass', provider: 'gemini', model: 'gemini-model', servedModel: 'gemini-served', outcome: 'valid', usage: { inputTokens: 10, outputTokens: 5 }, latencyMs: 7, waitMs: 0, errorClass: null, httpStatus: null, errorMessage: null },
   ]);
+});
+
+test.each([
+  [httpError(429, 'groq HTTP 429 rate_limit_exceeded'), '429', 429, 'groq HTTP 429 rate_limit_exceeded'],
+  [httpError(503, 'gemini HTTP 503 UNAVAILABLE'), '5xx', 503, 'gemini HTTP 503 UNAVAILABLE'],
+  [classify(Object.assign(new Error('aborted'), { name: 'TimeoutError' })), 'timeout', null, 'request timed out'],
+  [classify(new TypeError('fetch failed', { cause: { code: 'ECONNRESET' } })), 'network', null, 'connection failed: ECONNRESET'],
+  [httpError(400, 'groq HTTP 400 json_validate_failed'), 'parse_or_schema', 400, 'groq HTTP 400 json_validate_failed'],
+  [new SyntaxError('Unexpected token \'<\', "<html>Halcyon" is not valid JSON'), 'parse_or_schema', null, 'SyntaxError: the response is not valid JSON'],
+  [httpError(400, 'gemini HTTP 400 INVALID_ARGUMENT'), 'other', 400, 'gemini HTTP 400 INVALID_ARGUMENT'],
+  [new Error('sent with gsk_0123456789abcdefghijklmn and Bearer abc.def\nsecond line'), 'other', null, 'Error: sent with [redacted] and [redacted]'],
+])('a failed call is recorded as %s: class %s, HTTP %s, first message line without keys', (err, errorClass, httpStatus, errorMessage) => {
+  expect(failureOf(err)).toEqual({ errorClass, httpStatus, errorMessage });
+});
+
+test('the ladder records why a call failed', async () => {
+  const { calls, run } = ladder({ primary: [httpError(503, 'gemini HTTP 503 UNAVAILABLE')] });
+  await expect(run()).rejects.toBeInstanceOf(TransientError);
+  expect(calls[0]).toMatchObject({ outcome: 'error', errorClass: '5xx', httpStatus: 503, errorMessage: 'gemini HTTP 503 UNAVAILABLE' });
 });
 
 test('each call records its rate-limit wait apart from its latency, a failed call included', async () => {

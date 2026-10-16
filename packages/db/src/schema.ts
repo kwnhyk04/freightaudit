@@ -138,6 +138,11 @@ export const llmCalls = pgTable('llm_calls', {
   latencyMs: integer('latency_ms').notNull(),
   // Time spent waiting on the role's rate limit before the call was sent, outside latency_ms; rows before 0011 have none.
   waitMs: integer('wait_ms'),
+  // Why a failed call failed: class, HTTP status and the first line of the message, keys masked; rows before 0012 and
+  // calls that returned a reply have none.
+  errorClass: text('error_class'),
+  httpStatus: integer('http_status'),
+  errorMessage: text('error_message'),
   // Integer micro-dollars (1,000,000 is $1).
   costMicroUsd: bigint('cost_micro_usd', { mode: 'bigint' }).notNull(),
   ...timestamps,

@@ -32,9 +32,22 @@ export type CallRow = {
   outputTokens: number;
   latencyMs: number;
   waitMs?: number | null;
+  // Why a failed call failed (migration 0012); null for a reply, absent in results cached before 0012.
+  errorClass?: string | null;
+  httpStatus?: number | null;
+  errorMessage?: string | null;
   costMicroUsd: number;
   paidMicroUsd: number;
 };
+// A call that got a reply, valid or not; the others failed (429s, timeouts, other errors).
+export const replied = (call: CallRow) => call.outcome === 'valid' || call.outcome === 'invalid';
+// Every call that got no reply, in case order; calls cached before migration 0012 have no class, status or message.
+export const failuresOf = (ids: string[], results: Map<string, CaseResult>) =>
+  ids.flatMap((id) =>
+    (results.get(id)?.calls ?? [])
+      .filter((call) => !replied(call))
+      .map(({ provider, model, errorClass, httpStatus, errorMessage }) => ({ id, provider, model, class: errorClass ?? null, status: httpStatus ?? null, message: errorMessage ?? null })),
+  );
 // One case as the harness caches it.
 export type CaseResult = { id: string; status: string; error: string | null; e2eMs: number; invoices: PredictedInvoice[]; calls: CallRow[] };
 
@@ -114,7 +127,7 @@ function arithmeticHolds(read: Read | null) {
 // reply (first pass, repairs, fallback), each from request to answer; failed calls and rate-limit waits count apart,
 // since on free tiers they measure the provider plan, not the pipeline.
 export function scoreCase(truth: GoldenCase, result: CaseResult): Score {
-  const replied = result.calls.filter((call) => call.outcome === 'valid' || call.outcome === 'invalid');
+  const answered = result.calls.filter(replied);
   const waitsKnown = result.calls.every((call) => typeof call.waitMs === 'number');
   const score: Score = {
     id: truth.id,
@@ -126,10 +139,10 @@ export function scoreCase(truth: GoldenCase, result: CaseResult): Score {
     overcharges: { tp: 0, fp: 0, fn: 0, recovered: 0, planted: 0, cleanLines: 0 },
     outcomes: { ok: 0, total: 0 },
     escalated: result.calls.some((call) => call.role === 'fallback') ? 1 : 0,
-    latencyMs: replied.length > 0 ? replied.reduce((sum, call) => sum + call.latencyMs, 0) : undefined,
+    latencyMs: answered.length > 0 ? answered.reduce((sum, call) => sum + call.latencyMs, 0) : undefined,
     waits: waitsKnown ? result.calls.filter((call) => (call.waitMs ?? 0) > 0).length : undefined,
     waitMs: waitsKnown ? result.calls.reduce((sum, call) => sum + (call.waitMs ?? 0), 0) : undefined,
-    failedCalls: result.calls.length - replied.length,
+    failedCalls: result.calls.length - answered.length,
     e2eMs: result.e2eMs,
     inputTokens: result.calls.reduce((sum, call) => sum + call.inputTokens, 0),
     outputTokens: result.calls.reduce((sum, call) => sum + call.outputTokens, 0),
