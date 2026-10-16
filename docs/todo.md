@@ -6,6 +6,7 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Pending
 
+- [ ] PR #13: docker (api) and docker (worker) pass on the next push, with the store fetched into a layer (activity log, 2026-10-16); fixed and checked locally under the same cache sequence.
 - [ ] Full-subset floors for rate-limit waits and wait time, which the 2026-10-15 baseline could not give (no waits recorded): set them from the next full run on fresh results, `pnpm eval --suite extraction --subset full --fresh --set-floors` (cached cases from before 0011 report no waits).
 - [ ] Golden set v2 dev case for a carrier name beside a title line (the remit layout's "<carrier> — Freight Bill"), then a prompt change tuned on the dev split only (user decision E, 2026-10-16).
 - [ ] Multi-currency support (user request): rate cards per currency, or FX at the invoice date. Until then an invoice in any currency but USD ends needs_review with `unsupported_currency`.

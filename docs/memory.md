@@ -153,6 +153,7 @@ From the approved design doc:
   - The rule (`exact`, `normalized`, `contained`) is kept in `extractions.carrier_match` (0011), and the reading stays in `result`.
   - The eval's header accuracy still scores the reading, so a title line read as the carrier is still a misread there, while the outcome is now right.
   - Found through a CI miss on a test case (g010, test split and ci subset). It fixes a general class of error, a carrier name printed with other text around it, not g010 alone.
+- 2026-10-16: The api and worker images fetch their packages with `pnpm fetch` into a store inside an image layer, keyed by the pruned lockfile and root manifests, and install from it with `--frozen-lockfile --offline` twice (full, then production-only). There is no cache mount for these installs. Reason: a cached layer then brings its store along, so the offline production install never depends on a mount being filled (pitfall of the same date). The store stays in the build stage. The runtime images hold byte-identical `node_modules`, now with identical files hardlinked, which made them about 30 MB smaller.
 
 ## Preferences and Instructions
 
@@ -247,6 +248,8 @@ From the approved design doc:
 - 2026-10-16: `module.register()` is documentation-deprecated in Node 24.15 and later (DEP0205); OTel 0.223 still documents it. import-in-the-middle 3.5 ships `register-hooks.mjs`, based on `module.registerHooks`, for the move.
 - 2026-10-16: Groq's `openai/gpt-oss-120b` is not deterministic at temperature 0. g010, a remit layout, read its title line "Quarry Lane Transport — Freight Bill" as the carrier in 1 of 3 runs on main and 0 of 3 on step 8, with identical requests (767 input tokens). That one misread ends needs_review (`no_shipment_match`), which explains the remit misses of the 2026-10-15 full run.
 - 2026-10-16: The eval smoke's extraction-latency floor is noisy on the free tiers. PR #13 broke it with a p95 of 90,028 ms against a floor of 8,900 ms, with a p50 of 2,122 ms and the same code path as main. The metric summed every call's latency, and a call that fails has waited on its rate-limit bucket or run into the 60 s timeout. Read the floors table before blaming the case with a miss. Since decision A (same day) the metric counts successful calls only, and waits and failed calls have their own rows.
+
+- 2026-10-16: A BuildKit cache mount does not travel with the layer cache. CI's `type=gha` cache restores layers, each job starts a fresh builder, and its cache mounts start empty. If a step that fills a mount is a layer cache hit, the mount stays empty for the steps after it. PR #13's eval-fix push changed sources only, so the api and worker images' full install was a cache hit, the build was not, and the `--offline` production install found no packages (`ERR_PNPM_NO_OFFLINE_TARBALL`). Reproduced locally with a fresh docker-container builder and a `type=local` cache exported by a build of the previous commit.
 
 ## Rejected Approaches
 

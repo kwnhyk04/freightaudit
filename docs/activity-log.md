@@ -15,6 +15,22 @@ Chronological record of significant development activity, newest first. Skip tri
 
 ## Entries
 
+### 2026-10-16: PR #13 docker (api) and docker (worker) checks: offline production install
+
+- Changes:
+  - **Cause:** the eval fix commit (7ebcee7) changed no manifest, lockfile, workspace file or Dockerfile; between it and b208980 only sources differ. Its push hit CI's gha layer cache for the full install, whose store lived in a BuildKit cache mount, which the gha cache does not keep. The fresh builder's mount was therefore empty when the build step, a cache miss, was followed by `pnpm install --frozen-lockfile --prod --offline`.
+  - **Fix:** in `apps/api/Dockerfile` and `apps/worker/Dockerfile`, the build stage copies the pruned root `package.json`, `pnpm-lock.yaml` and `pnpm-workspace.yaml`, runs `pnpm fetch --store-dir /pnpm/store` into the layer, then runs the full install `--offline` and the production install `--frozen-lockfile --offline` from that store. The cache mounts on these installs are gone. The web Dockerfile keeps its mount, since no step after its install reads the store.
+- Files: apps/api/Dockerfile, apps/worker/Dockerfile, docs/{context,memory,todo,activity-log}.md
+- Validation:
+  - **Reproduced** with a fresh docker-container builder per run, like each CI job. Run 1 built b208980 and exported a `type=local` cache (`mode=max`), then passed. Run 2 used a new builder, built 7ebcee7 with that cache imported, and failed for both apps: install `CACHED`, build run, then `ERR_PNPM_NO_OFFLINE_TARBALL`, "Failed to fetch tarball for @whatwg-node/promise-helpers@1.3.2 ... in offline mode: snapshot not present in local store" (api; worker: `color-convert@2.0.1`).
+  - **Control:** 7ebcee7 built on a fresh builder without the imported cache passed, so the commit itself was sound.
+  - **Fixed Dockerfiles, same two-run sequence:** both apps pass. In run 2 the fetch and full-install layers are `CACHED`, the build runs, and the offline production install succeeds (13 to 16 s).
+  - **Local builds:** `docker build -f apps/{api,worker}/Dockerfile .` from the working tree passes for both.
+  - **Same runtime contents:** against images from the old Dockerfiles at the same commit, `node_modules/.pnpm` lists the same packages, holds the same 17,766 files (api), and every file's md5 matches for both apps. The fixed images hardlink identical files (6,637 in api, 7,351 in worker), which the old cross-mount install copied: api 515 MB against 543 MB, worker 502 MB against 534 MB.
+  - **Checks:** `pnpm lint` 12 of 12 (7 replayed from cache), and `pnpm turbo run test --force` 16 of 16 tasks, 0 cached, 60 tests in 7 packages.
+  - **Cleanup:** the repro builder, the four check images and the scratch caches were removed.
+- Outstanding: the docker checks on PR #13's next push (docs/todo.md). Not committed.
+
 ### 2026-10-16: PR #13 eval smoke: latency without rate-limit waits (A) and carrier matching in code (C)
 
 - Changes:
