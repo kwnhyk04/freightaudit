@@ -48,6 +48,10 @@
       "max": 8900,
       "from": "2026-10-15-ci"
     },
+    "failed_calls": {
+      "max": 1,
+      "from": "2026-10-15-ci"
+    },
     "e2e_latency_p95_ms": {
       "max": 174600,
       "from": "2026-10-15-ci"
@@ -83,9 +87,17 @@
     "outcome_accuracy": {
       "min": 0.83,
       "from": "2026-10-15-ci"
+    },
+    "rate_limit_waits": {
+      "max": 21,
+      "from": "2026-10-16-ci"
+    },
+    "rate_limit_wait_ms": {
+      "max": 1055200,
+      "from": "2026-10-16-ci"
     }
   },
-  "_rules": "Regression floors per subset, set from that subset's own run. Accuracy: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost and latency: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.",
+  "_rules": "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.",
   "full": {
     "header_accuracy_digital": {
       "min": 0.98,
@@ -133,6 +145,10 @@
     },
     "extraction_latency_p95_ms": {
       "max": 9900,
+      "from": "2026-10-15"
+    },
+    "failed_calls": {
+      "max": 1,
       "from": "2026-10-15"
     },
     "e2e_latency_p95_ms": {

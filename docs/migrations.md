@@ -139,6 +139,12 @@ Migrate: the worker writes both columns and `llm_calls` from this release; the s
 
 Migrate: the reconcile job writes it from this release. Contract: none needed.
 
+## 0011 call waits and carrier match (expand)
+
+`llm_calls.wait_ms` (integer, nullable) is the time a model call waited on its role's rate-limit bucket before it was sent. From this release `latency_ms` excludes that wait for every call: a reply's latency was already the provider's alone, and a failed call's latency, which used to include its wait, no longer does. `extractions.carrier_match` (text, nullable) records how the carrier read from the document matched a known carrier: `exact` (as printed), `normalized` (after case and spacing) or `contained` (the one known name inside the reading, such as beside a title line); null when none matched. Both are nullable with no check: rows before 0011 have none, and only the eval harness reads `wait_ms` (a case with a call without it reports no wait metrics).
+
+Migrate: the worker writes both from this release. Contract: none needed.
+
 ## Tests (`pnpm test:int`)
 
 Each test runs in a throwaway database on the Postgres container that `pnpm test:int` starts for the run.

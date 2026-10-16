@@ -11,6 +11,8 @@ import type { Roles, Run, Subset } from './run.ts';
 type Floor = { min?: number; max?: number; from: string };
 type Thresholds = { _rules?: string } & Partial<Record<Subset, Record<string, Floor>>>;
 const THRESHOLDS = new URL('../thresholds.json', import.meta.url);
+const RULES =
+  "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
 const README = new URL('../../README.md', import.meta.url);
 
 const metricOf = (name: string) => METRICS.find((def) => def.metric === name)!;
@@ -25,14 +27,15 @@ const bound = (op: string, unit: string, value: number) => `${op === '>=' ? '≥
 const yes = (ok: boolean) => (ok ? 'met' : 'missed');
 // A floor from this run (user rules). Accuracy: the looser of the run's 95% bound and the design target, so a perfect
 // run's degenerate interval (1.000 to 1.000) never makes a floor that one miss would break; without a target, the bound
-// with a 0.02 margin, at most 0.98 for a minimum, at least 0.02 for a maximum. Efficiency (tokens, cost, latency): the
-// upper bound times 1.5, so a 50% regression breaks it, capped at the design target unless the run already exceeds it
-// (end-to-end latency under the eval's throttling), where a cap would break the floor with no regression. Cost as
-// billed stays 0: any billed cost means a paid key was used by mistake. Rounded away from the run to the unit's step.
-function floorFrom({ metric, unit, higherIsBetter, target }: Metric, [lo, hi]: [number, number]) {
+// with a 0.02 margin, at most 0.98 for a minimum, at least 0.02 for a maximum. Failed calls are outcomes like these, so
+// a run without any gets a floor of one call. Efficiency (tokens, cost, latency, rate-limit waits): the upper bound times
+// 1.5, so a 50% regression breaks it, capped at the design target unless the run already exceeds it (end-to-end latency
+// under the eval's throttling), where a cap would break the floor with no regression. Cost as billed stays 0: any
+// billed cost means a paid key was used by mistake. Rounded away from the run to the unit's step.
+export function floorFrom({ metric, unit, higherIsBetter, target }: Metric, [lo, hi]: [number, number]) {
   if (metric === 'free_tier_cost_per_invoice_usd') return 0;
-  const step = { ratio: 0.01, ms: 100, tokens: 10, usd: 0.0001, per_hour: 1 }[unit] ?? 1;
-  const efficiency = !higherIsBetter && (unit === 'ms' || unit === 'tokens' || unit === 'usd');
+  const step = { ratio: 0.01, ms: 100, tokens: 10, usd: 0.0001, per_hour: 1, waits: 1, calls: 1 }[unit];
+  const efficiency = !higherIsBetter && (unit === 'ms' || unit === 'tokens' || unit === 'usd' || unit === 'waits');
   const raw = efficiency
     ? target && target.value >= hi ? Math.min(hi * 1.5, target.value) : hi * 1.5
     : higherIsBetter
@@ -159,8 +162,7 @@ export async function report({ subset, runs, durationMs, setFloors }: { subset: 
       return { m, metric, floorBound, floorOk };
     });
     if (setFloors) {
-      thresholds._rules ??=
-        "Regression floors per subset, set from that subset's own run. Accuracy: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost and latency: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
+      thresholds._rules ??= RULES;
       await writeFile(THRESHOLDS, `${JSON.stringify(thresholds, null, 2)}\n`);
     }
     const wide = subset === 'full' ? '90 cases give wide intervals: read each measurement with its 95% interval.' : `${scores.length} cases give very wide intervals; this subset guards against regressions, it does not measure the targets.`;
@@ -175,7 +177,7 @@ export async function report({ subset, runs, durationMs, setFloors }: { subset: 
     lines.push(
       `| Throughput (free-tier ceiling, not a load test) | ≥ 2,000 / h | ${yes((ceiling ?? 0) >= 2_000)} | - | - | ${fmt('per_hour', ceiling)} / h | computed, no interval | ${scores.length} |`,
       '',
-      "End-to-end latency is measured from upload to final status under this run's own throttling and concurrency, not under normal load; throughput is the ceiling the pinned roles' free-tier per-minute limits allow at the measured calls and tokens per invoice, not a load test. The k6 load test measures both (README, Load test).",
+      "Extraction latency counts the calls that returned a reply (first pass, repair, fallback), each from its request to its answer, without the time spent waiting on a provider's rate limit: on free tiers those waits measure the provider plan, not the pipeline, so the rate-limit rows count them, and failed or timed-out calls, apart. End-to-end latency is measured from upload to final status under this run's own throttling and concurrency, not under normal load; throughput is the ceiling the pinned roles' free-tier per-minute limits allow at the measured calls and tokens per invoice, not a load test. The k6 load test measures both (README, Load test).",
     );
     if (suggestions.length > 0) lines.push('', '## Floors to tighten', '', ...suggestions.map((text) => `- ${text}`));
     const misses = scores.filter((s) => s.header.correct < s.header.total || s.lines.fp + s.lines.fn > 0 || s.overcharges.fp + s.overcharges.fn > 0 || s.outcomes.ok < s.outcomes.total);

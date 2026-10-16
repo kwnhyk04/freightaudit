@@ -117,6 +117,9 @@ export const extractions = pgTable('extractions', {
   fallbackReason: text('fallback_reason'),
   // Why reconciliation sent the invoice to needs_review, such as unsupported_currency: CAD; rows before 0010 have none.
   reviewReason: text('review_reason'),
+  // How the carrier read from the document matched a known carrier: exact, normalized or contained; null when none
+  // matched, and on rows before 0011.
+  carrierMatch: text('carrier_match'),
   ...timestamps,
 });
 
@@ -133,6 +136,8 @@ export const llmCalls = pgTable('llm_calls', {
   inputTokens: integer('input_tokens').notNull(),
   outputTokens: integer('output_tokens').notNull(),
   latencyMs: integer('latency_ms').notNull(),
+  // Time spent waiting on the role's rate limit before the call was sent, outside latency_ms; rows before 0011 have none.
+  waitMs: integer('wait_ms'),
   // Integer micro-dollars (1,000,000 is $1).
   costMicroUsd: bigint('cost_micro_usd', { mode: 'bigint' }).notNull(),
   ...timestamps,

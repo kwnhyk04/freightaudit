@@ -1,4 +1,5 @@
 import { carriers, extractions, invoices, llmCalls } from '@freightaudit/db';
+import { matchCarrier } from '@freightaudit/domain';
 import {
   type Call,
   callCost,
@@ -18,7 +19,7 @@ import {
 import { type InvoiceJob, jobOptions, send } from '@freightaudit/pipeline';
 import { extractEscalations, extractFallbacks, invoicesNeedsReview, llmPaidEquivalent, llmRateLimited, llmTokens } from '@freightaudit/telemetry';
 import { DelayedError, type Job } from 'bullmq';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import type { Deps } from './workers.ts';
 
@@ -141,19 +142,19 @@ async function needsReview({ db }: Deps, invoice: Invoice, { model, usage, step,
 
 async function save({ db }: Deps, invoice: Invoice, data: ExtractedInvoice, { model, usage, step, fallbackReason }: Extraction) {
   await db.transaction(async (tx) => {
+    // The model copies the carrier as printed, in capitals or with a title line beside it; the domain matches it to one
+    // known carrier or none (needs_review at reconcile), and the extraction keeps the rule that matched.
+    // ponytail: loads every carrier of the tenant; match in SQL if a tenant ever has thousands.
+    const known = await tx.select({ id: carriers.id, name: carriers.name }).from(carriers).where(eq(carriers.tenantId, invoice.tenantId));
+    const match = matchCarrier(data.carrier, known);
     // The unique invoice_id makes this a no-op when another run already saved.
-    const extraction = { tenantId: invoice.tenantId, invoiceId: invoice.id, model, ...usage, step, fallbackReason, result: data };
+    const extraction = { tenantId: invoice.tenantId, invoiceId: invoice.id, model, ...usage, step, fallbackReason, carrierMatch: match?.rule ?? null, result: data };
     await tx.insert(extractions).values(extraction).onConflictDoNothing();
-    // Invoices often print the carrier in capitals, and the model copies what is printed.
-    const [carrier] = await tx
-      .select({ id: carriers.id })
-      .from(carriers)
-      .where(and(eq(carriers.tenantId, invoice.tenantId), sql`lower(${carriers.name}) = lower(${data.carrier})`));
     await tx
       .update(invoices)
       .set({
         status: 'extracted',
-        carrierId: carrier?.id ?? null,
+        carrierId: match?.carrier.id ?? null,
         invoiceNumber: data.invoice_number,
         proNumber: data.pro_number,
         invoiceDate: data.invoice_date,

@@ -209,6 +209,7 @@ export async function runCase(env: Environment, root: URL, golden: GoldenCase): 
       inputTokens: call.inputTokens,
       outputTokens: call.outputTokens,
       latencyMs: call.latencyMs,
+      waitMs: call.waitMs,
       costMicroUsd: Number(call.costMicroUsd),
       paidMicroUsd: Number(paidCost(call.provider, call.model, call)),
     })),

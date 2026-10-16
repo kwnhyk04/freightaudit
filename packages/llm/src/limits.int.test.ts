@@ -37,10 +37,10 @@ test('the token bucket hands out a minute of tokens at once, then makes callers 
     dailyTokenBudget: 1e9,
     clock: { now: () => clock.now, sleep: clock.sleep },
   });
-  expect(await limits.take('primary', 60_000)).toBe(60_000);
+  expect(await limits.take('primary', 60_000)).toEqual({ tokens: 60_000, waitedMs: 0 });
   expect(clock.waits).toEqual([]);
-  // Empty: 500 tokens take 500 ms to come back.
-  expect(await limits.take('primary', 500)).toBe(500);
+  // Empty: 500 tokens take 500 ms to come back, and the caller hears how long it waited.
+  expect(await limits.take('primary', 500)).toEqual({ tokens: 500, waitedMs: 500 });
   expect(clock.waits).toEqual([500]);
   // 250 ms later 250 tokens are back, so 1,000 wait another 750 ms.
   clock.now += 250;
@@ -48,7 +48,7 @@ test('the token bucket hands out a minute of tokens at once, then makes callers 
   expect(clock.waits).toEqual([500, 750]);
   // A call that used 2,000 tokens more than it reserved takes the bucket below zero; the next caller waits that out.
   await limits.record('primary', { inputTokens: 1_500, outputTokens: 500 }, 0, clock.now);
-  expect(await limits.take('primary', 100)).toBe(100);
+  expect(await limits.take('primary', 100)).toEqual({ tokens: 100, waitedMs: 2_100 });
   expect(clock.waits).toEqual([500, 750, 2_100]);
 });
 

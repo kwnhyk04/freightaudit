@@ -15,6 +15,57 @@ Chronological record of significant development activity, newest first. Skip tri
 
 ## Entries
 
+### 2026-10-16: PR #13 eval smoke: latency without rate-limit waits (A) and carrier matching in code (C)
+
+- Changes:
+  - **A, extraction latency:** it now sums only the calls that returned a reply (first pass, repairs, fallback), each the provider's time, so rate-limit waits and failed calls are out of it.
+    - The report table gains three rows with their own floors: rate-limit waits, their total time, and failed or timed-out calls.
+    - `take` returns how long it waited, `metered` hands that to the call through `GenerateInput.onWait`, and each `llm_calls` row records it in `wait_ms` (migration 0011). A failed call's `latency_ms` no longer includes the wait.
+    - The floor rule's text covers the new rows: failed calls take the accuracy rule (one call above a run without any), waits the efficiency rule (upper bound times 1.5).
+  - **C, carrier matching:** `matchCarrier` in packages/domain, called by the extract job against the tenant's carriers.
+    - Order: equal after normalizing case and spacing, then the one known name the reading holds as whole tokens. No match, or more than one, leaves the invoice without a carrier, so reconcile still ends it at needs_review.
+    - The rule (`exact`, `normalized` or `contained`) is kept in `extractions.carrier_match` (0011) as the audit record of a normalized name.
+    - Change log: found through a CI miss on a test case (g010, test split and ci subset, a remit title line read as the carrier). The fix is general: any carrier name printed with other text around it. No prompt was changed, and nothing was tuned on the test split.
+  - **E:** queued in docs/todo.md (a golden v2 dev case for title-line carrier names, then a prompt change tuned on dev only). B and D were rejected by the user.
+  - Docs: context.md had no word on migration 0010 and still named `linesMatchTotal`, which 6a replaced with `checkArithmetic`; both fixed with this change.
+- Files: packages/llm/src/{extract.ts,limits.ts,extract.test.ts,limits.int.test.ts}, packages/domain/src/{carrier.ts,carrier.test.ts,index.ts}, packages/db/{migrations/0011_call_wait_and_carrier_match.sql,src/schema.ts,src/migrations.int.test.ts}, apps/worker/src/{extract.ts,extract.int.test.ts}, evals/harness/{metrics.ts,metrics.test.ts,report.ts,run.ts}, evals/thresholds.json, evals/reports/2026-10-16-{dev,ci}.{json,md}, README.md, docs/{context,memory,migrations,todo,activity-log}.md
+- Validation:
+  - **Floors from the main baseline** (the cached `2026-10-15-ci` and `2026-10-15` runs, read by a scratch script through the harness's own `evaluate`, `scoreCase`, `measure` and `floorFrom`, no model calls):
+    - All 22 ci calls and 98 full calls had returned a reply (96 valid, 2 invalid), and a reply's latency never held its bucket wait. So the latency floors are unchanged under the new definition: ci p50 4,400 ms and p95 8,900 ms (p95 measured 5,341 ms, interval 3,147 to 5,872 ms), full 4,000 and 9,900 ms.
+    - Failed calls: 0 in both, so a floor of 1 for ci and full.
+    - Rate-limit waits: the baseline recorded none (n/a), so their ci floors come from this ci run, and full has none yet.
+  - **Unit tests:** the matcher has unit tests for a title-line suffix like g010's, two carriers sharing words (no match), and no match. The first version dropped punctuation, and its own test matched "Halcyon Ridge — Freight Bill" to Halcyon Ridge Freight; punctuation marks now stay tokens. Two mutations each fail one test: taking the first of several matches, and containment without token boundaries.
+  - **Checks:** typecheck 21 of 21. `pnpm lint` 12 of 12. `pnpm turbo run test --force`: 16 of 16 tasks, 0 cached, 60 tests in 7 packages (domain 100 % coverage). `pnpm test:int` 93 of 93; it first failed only on the migrations test's list and count of migrations, which now include 0011.
+  - **Dev split once** (`--fresh`, real models, 186 s): 20 of 20 cases with no miss, every accuracy metric and outcome accuracy 1.000, as on 2026-10-15. Extraction latency p50 2,024 ms and p95 4,035 ms. 13 rate-limit waits totalling 512,517 ms, and 0 failed calls.
+  - **ci subset once** (`--fresh --set-floors`, real models, 146 s): exit 0, every floor kept (`evals/reports/2026-10-16-ci.md`).
+    - Extraction latency p50 2,374 ms and p95 6,868 ms, against floors of 4,400 and 8,900 ms.
+    - 8 rate-limit waits totalling 359,011 ms (intervals 3 to 14 and 83,843 to 703,426 ms), which set their ci floors at 21 waits and 1,055,200 ms. The report prints those two rows without a floor, since `--set-floors` adds a floor after measuring.
+    - 0 failed calls, against a floor of 1.
+    - g010 again read its title line as the carrier ("Quarry Lane Transport — Freight Bill", 5 of 6 header fields) and now reconciled through the `contained` match. In the baseline the same reading ended needs_review (`no_shipment_match`). Outcome accuracy 1.000; g010's carrier field is the run's only miss.
+- Outstanding: full-subset floors for the two wait rows (docs/todo.md). The ci report suggests tightening three floors (tokens per invoice to 3,400 digital and 3,650 scanned, outcome accuracy to 0.98); not applied. The baseline cache was copied to `evals/.cache/baseline-2026-10-15` before the fresh runs overwrote the 40 dev and ci cases. Not committed.
+
+### 2026-10-16: PR #13 eval smoke failure investigated (no change made)
+
+- Changes: none to code or floors; the decision waits on the user.
+- Files: docs only (activity log, memory, todo).
+- Validation:
+  - **The broken floor is not g010.** The PR comment's floors table shows only one broken floor: extraction latency p95 (3 pages or fewer) measured 90,028 ms against a floor of ≤ 8,900 ms. Its 95% interval runs from 6,864 to 273,545 ms, and p50 was a normal 2,122 ms.
+  - **g010 broke nothing:**
+    - It read 5 of 6 header fields and ended needs_review.
+    - Digital header accuracy kept its floor: 0.987 against ≥ 0.950.
+    - Expected outcome kept its floor: 0.952 against ≥ 0.830.
+  - **The model path is unchanged.** `git diff main origin/step-8-instrumentation -- packages/llm`:
+    - It adds an optional `GenerateInput.step`; both clients destructure only prompt, parts and schema, so it is never sent.
+    - It reads `finishReason` for spans only.
+    - `traced()` passes input and reply through untouched.
+    - Request parameters, prompt (hash 19f0c19627c4 on both), schema, temperature 0, retries and parsing are unchanged.
+  - **g010 alone, 3 runs per branch**, through the harness's `runCase` in fresh containers, with no eval cache and `fallbackOnRateLimit` false, all on Groq `openai/gpt-oss-120b`:
+    - main: run 1 reconciled after a repair; run 2 needs_review, with carrier read as "Quarry Lane Transport — Freight Bill" against "Quarry Lane Transport" (`no_shipment_match`); run 3 reconciled.
+    - Branch: 3 of 3 reconciled, one after a repair.
+    - Both branches sent 767 input tokens on the first pass and 950 on the repair. Call latencies were 1.5 to 2.2 s on both.
+  - The CI job log and the report artifact need authentication (HTTP 403), and gh is not installed here, so CI's per-case latencies are not visible.
+- Outstanding: the user chooses how to handle the remit title misread and the noisy free-tier latency floor (options in docs/todo.md). No floor changes and no retries until then.
+
 ### 2026-10-16: Step 8 instrumentation and k6 load test
 
 - Changes:

@@ -6,6 +6,8 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Pending
 
+- [ ] Full-subset floors for rate-limit waits and wait time, which the 2026-10-15 baseline could not give (no waits recorded): set them from the next full run on fresh results, `pnpm eval --suite extraction --subset full --fresh --set-floors` (cached cases from before 0011 report no waits).
+- [ ] Golden set v2 dev case for a carrier name beside a title line (the remit layout's "<carrier> — Freight Bill"), then a prompt change tuned on the dev split only (user decision E, 2026-10-16).
 - [ ] Multi-currency support (user request): rate cards per currency, or FX at the invoice date. Until then an invoice in any currency but USD ends needs_review with `unsupported_currency`.
 - [ ] Golden set v2 (a new version, never v1 edited): harder layouts, real-world noise, more adversarial cases, and dev cases for the 6b test-split findings (a title line beside the carrier, as in remit; a repeated scanned page), so a prompt fix for them is tuned on dev, not test.
 - [ ] (manual, user) Create the GitHub repository and add the Actions secrets `GEMINI_API_KEY` and `GROQ_API_KEY` (optional: secret `TURBO_TOKEN`, variable `TURBO_TEAM`); then push and open a test PR, step 7's last check.
@@ -29,6 +31,7 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Completed
 
+- [x] PR #13 eval smoke (user decisions A and C, 2026-10-16): extraction latency counts successful calls only, without rate-limit waits, and the report shows rate-limit waits, their total time and failed or timed-out calls, each with a floor; the latency floors, recomputed from the main baseline, are unchanged. The extracted carrier is matched in code (`matchCarrier`), its rule recorded in `extractions.carrier_match`, with unit tests for a title-line suffix, two carriers sharing words and no match. Dev split once: 20 of 20 with no miss. Lint 12 of 12, `pnpm turbo run test --force` 60 tests, `test:int` 93 of 93. The ci subset once: every floor kept, and g010 reconciled despite its title-line reading.
 - [x] 8. Instrumentation (2026-10-16):
   - **Traces:** one upload is one trace across api and worker in Jaeger (`docs/screenshots/jaeger-trace.png`).
   - **Load test:** the k6 burst at 3x the 2,000/h design rate shows queue depth plateauing on the Grafana dashboard (`docs/screenshots/grafana-load-test.png`), with 1,083 uploads and 0 lost.

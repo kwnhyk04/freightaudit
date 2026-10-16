@@ -1,3 +1,4 @@
+import { setTimeout } from 'node:timers/promises';
 import { PDFDocument } from 'pdf-lib';
 import { PermanentError, ProviderConfigError, RateLimitError } from './errors.ts';
 import { type Call, extractInvoices, type Models, type Part, type Provider } from './extract.ts';
@@ -60,8 +61,22 @@ test('valid output passes on the first call, and the call is recorded with token
     usage: { inputTokens: 10, outputTokens: 5 },
   });
   expect(calls).toEqual([
-    { role: 'primary', step: 'first_pass', provider: 'gemini', model: 'gemini-model', servedModel: 'gemini-served', outcome: 'valid', usage: { inputTokens: 10, outputTokens: 5 }, latencyMs: 7 },
+    { role: 'primary', step: 'first_pass', provider: 'gemini', model: 'gemini-model', servedModel: 'gemini-served', outcome: 'valid', usage: { inputTokens: 10, outputTokens: 5 }, latencyMs: 7, waitMs: 0 },
   ]);
+});
+
+test('each call records its rate-limit wait apart from its latency, a failed call included', async () => {
+  const { roles, calls, run } = ladder({ text: [new RateLimitError('groq HTTP 429')], fallback: [reply(invoice())] });
+  // A text model that waits 200 ms on its bucket, then gets a 429 at once.
+  const generate = roles.text.provider.generate;
+  roles.text.provider.generate = async (input) => {
+    await setTimeout(200);
+    input.onWait?.(200);
+    return generate(input);
+  };
+  await run(text);
+  expect(calls.map(({ role, outcome, waitMs }) => `${role} ${outcome} ${waitMs}`)).toEqual(['text rate_limited 200', 'fallback valid 0']);
+  expect(calls[0]!.latencyMs).toBeLessThan(200);
 });
 
 test('a document whose every page has a text layer goes to the text model, any other to the primary', async () => {

@@ -63,11 +63,15 @@ export function createLimits(redis: Redis, { prefix, enabled, dailyTokenBudget, 
       return midnight.getTime();
     },
     // Waits until the role's bucket has a request and `tokens` (at most a minute's worth), takes them, and returns the
-    // tokens taken.
+    // tokens taken and the ms it waited for them.
     async take(role: Role, tokens: number) {
       const want = Math.min(tokens, roles[role].tpm);
-      for (let wait = await bucket(role, want); wait > 0; wait = await bucket(role, want)) await sleep(wait);
-      return want;
+      let waitedMs = 0;
+      for (let wait = await bucket(role, want); wait > 0; wait = await bucket(role, want)) {
+        await sleep(wait);
+        waitedMs += wait;
+      }
+      return { tokens: want, waitedMs };
     },
     // Counts a finished call against the UTC day and trues up the role's bucket from what was taken to real usage.
     async record(role: Role, usage: Usage, taken: number, now = Date.now()) {
@@ -84,12 +88,14 @@ export type Limits = ReturnType<typeof createLimits>;
 // Design target per page: about 4,000 input and 1,200 output tokens.
 const TOKENS_PER_PAGE = 5_200;
 
-// Every call, repairs included, waits for its role's bucket and counts its real tokens against the day.
+// Every call, repairs included, waits for its role's bucket, reports that wait, and counts its real tokens against the
+// day.
 // ponytail: a failed call keeps its reservation; refund it if 429 storms starve the bucket.
 export const metered = (provider: Provider, limits: Limits, role: Role): Provider => ({
   ...provider,
   async generate(input) {
-    const taken = await limits.take(role, input.parts.length * TOKENS_PER_PAGE);
+    const { tokens: taken, waitedMs } = await limits.take(role, input.parts.length * TOKENS_PER_PAGE);
+    input.onWait?.(waitedMs);
     const output = await provider.generate(input);
     await limits.record(role, output.usage, taken);
     return output;

@@ -50,6 +50,28 @@ test('a misread line, a missed finding and a false one each count against the ri
   expect(scoreCase(golden, result({ read: null, findings: [] }))).toMatchObject({ header: { correct: 0 }, lines: { tp: 0, fn: 2 }, arithmetic: { ok: 0 } });
 });
 
+test('extraction latency sums only the calls that returned a reply, repairs included; waits and failed calls count apart', () => {
+  const call = result().calls[0]!;
+  const calls = [
+    { ...call, outcome: 'rate_limited', latencyMs: 300, waitMs: 5_000 },
+    { ...call, outcome: 'error', latencyMs: 60_000, waitMs: 0 },
+    { ...call, outcome: 'invalid', latencyMs: 1_500, waitMs: 0 },
+    { ...call, step: 'repair', outcome: 'valid', latencyMs: 2_000, waitMs: 3_000 },
+  ];
+  const score = scoreCase(golden, { ...result(), calls });
+  expect(score).toMatchObject({ latencyMs: 3_500, waits: 2, waitMs: 8_000, failedCalls: 2 });
+  const metrics = Object.fromEntries(measure([score]).map((m) => [m.metric, m.value]));
+  expect(metrics).toMatchObject({ extraction_latency_p95_ms: 3_500, rate_limit_waits: 2, rate_limit_wait_ms: 8_000, failed_calls: 2 });
+
+  // Calls recorded before waits were leave the wait metrics unknown, never zero.
+  const before = Object.fromEntries(measure([scoreCase(golden, result())]).map((m) => [m.metric, m.value]));
+  expect(before).toMatchObject({ rate_limit_waits: undefined, rate_limit_wait_ms: undefined, failed_calls: 0 });
+  // A case where no call returned a reply has no extraction latency.
+  const failed = scoreCase(golden, { ...result(), calls: [calls[1]!] });
+  expect(failed.latencyMs).toBeUndefined();
+  expect(measure([failed]).find((m) => m.metric === 'extraction_latency_p95_ms')).toMatchObject({ value: undefined, n: 0 });
+});
+
 test('the bootstrap interval is seeded, so it repeats, and it brackets the value', () => {
   const scores = [1, 0, 1, 1, 0, 1, 1, 1].map((ok, i) => ({ ...scoreCase(golden, result()), id: `g${i}`, escalated: 1 - ok }));
   const compute = (s: typeof scores) => s.reduce((sum, x) => sum + x.escalated, 0) / s.length;

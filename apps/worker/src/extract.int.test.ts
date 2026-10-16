@@ -52,8 +52,8 @@ test('a 429 on the primary falls back to the fallback model, and the extraction 
   expect(await savedExtraction(invoice.id)).toMatchObject({ step: 'first_pass', fallbackReason: 'rate_limited', model: 'groq/fake-fallback' });
   expect(await steps(invoice.id)).toEqual(['primary first_pass rate_limited', 'fallback first_pass valid']);
   const [limited, read] = await callsOf(invoice.id);
-  expect(limited).toMatchObject({ provider: 'gemini', model: 'fake-primary', inputTokens: 0, outputTokens: 0, costMicroUsd: 0n });
-  expect(read).toMatchObject({ provider: 'groq', model: 'fake-fallback', servedModel: expect.any(String), costMicroUsd: 0n });
+  expect(limited).toMatchObject({ provider: 'gemini', model: 'fake-primary', inputTokens: 0, outputTokens: 0, costMicroUsd: 0n, waitMs: expect.any(Number) });
+  expect(read).toMatchObject({ provider: 'groq', model: 'fake-fallback', servedModel: expect.any(String), costMicroUsd: 0n, waitMs: expect.any(Number) });
   expect(read!.inputTokens).toBeGreaterThan(0);
   expect(read!.latencyMs).toBeGreaterThanOrEqual(0);
   // No retry was needed.
@@ -123,14 +123,14 @@ test('an arithmetic failure triggers the repair, whose output is saved', async (
   expect(await steps(invoice.id)).toEqual(['primary first_pass invalid', 'primary repair valid']);
 });
 
-test('the extracted carrier finds its carrier whatever case the invoice printed it in', async () => {
-  const { env } = await setup((call) => replyWith(call.protocol, extraction().replace('Halcyon Ridge Freight', 'HALCYON RIDGE FREIGHT')));
+test('the extracted carrier finds its carrier when printed in capitals beside a title line, and the extraction records how', async () => {
+  const { env } = await setup((call) => replyWith(call.protocol, extraction().replace('Halcyon Ridge Freight', 'HALCYON RIDGE FREIGHT — Freight Bill')));
   env.runWorkers({ modelsUrl: fake!.url });
   const invoice = await env.upload(await makePdf());
 
   const [carrier] = await env.db.select({ id: carriers.id }).from(carriers).where(eq(carriers.tenantId, env.tenantId));
   const carrierOf = async () => (await env.db.select({ carrierId: invoices.carrierId }).from(invoices).where(eq(invoices.id, invoice.id)))[0]?.carrierId;
-  await savedExtraction(invoice.id);
+  expect(await savedExtraction(invoice.id)).toMatchObject({ carrierMatch: 'contained', result: { carrier: 'HALCYON RIDGE FREIGHT — Freight Bill' } });
   expect(await carrierOf()).toBe(carrier!.id);
 });
 

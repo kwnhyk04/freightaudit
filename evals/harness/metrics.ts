@@ -20,7 +20,21 @@ export type Read = {
 export type Finding = { line_number: number; type: string; expected_cents: number; billed_cents: number };
 // One invoice as the pipeline left it, in page order.
 export type PredictedInvoice = { status: string; step: string | null; reviewReason: string | null; read: Read | null; findings: Finding[] };
-export type CallRow = { role: string; step: string; provider: string; model: string; servedModel: string | null; outcome: string; inputTokens: number; outputTokens: number; latencyMs: number; costMicroUsd: number; paidMicroUsd: number };
+// waitMs is the time the call waited on its role's rate limit; null or absent for calls recorded before migration 0011.
+export type CallRow = {
+  role: string;
+  step: string;
+  provider: string;
+  model: string;
+  servedModel: string | null;
+  outcome: string;
+  inputTokens: number;
+  outputTokens: number;
+  latencyMs: number;
+  waitMs?: number | null;
+  costMicroUsd: number;
+  paidMicroUsd: number;
+};
 // One case as the harness caches it.
 export type CaseResult = { id: string; status: string; error: string | null; e2eMs: number; invoices: PredictedInvoice[]; calls: CallRow[] };
 
@@ -34,7 +48,12 @@ export type Score = {
   overcharges: { tp: number; fp: number; fn: number; recovered: number; planted: number; cleanLines: number };
   outcomes: { ok: number; total: number };
   escalated: number;
-  latencyMs: number;
+  // Undefined when no call returned a reply.
+  latencyMs: number | undefined;
+  // Calls that waited on a rate limit and their total wait; undefined when any call predates the wait record.
+  waits: number | undefined;
+  waitMs: number | undefined;
+  failedCalls: number;
   e2eMs: number;
   inputTokens: number;
   outputTokens: number;
@@ -91,8 +110,12 @@ function arithmeticHolds(read: Read | null) {
 }
 
 // One case's contribution to every metric. Truth and prediction pair up by page order; a missing invoice scores
-// nothing, and an extra one counts its lines and findings as false.
+// nothing, and an extra one counts its lines and findings as false. Extraction latency sums the calls that returned a
+// reply (first pass, repairs, fallback), each from request to answer; failed calls and rate-limit waits count apart,
+// since on free tiers they measure the provider plan, not the pipeline.
 export function scoreCase(truth: GoldenCase, result: CaseResult): Score {
+  const replied = result.calls.filter((call) => call.outcome === 'valid' || call.outcome === 'invalid');
+  const waitsKnown = result.calls.every((call) => typeof call.waitMs === 'number');
   const score: Score = {
     id: truth.id,
     path: truth.path,
@@ -103,7 +126,10 @@ export function scoreCase(truth: GoldenCase, result: CaseResult): Score {
     overcharges: { tp: 0, fp: 0, fn: 0, recovered: 0, planted: 0, cleanLines: 0 },
     outcomes: { ok: 0, total: 0 },
     escalated: result.calls.some((call) => call.role === 'fallback') ? 1 : 0,
-    latencyMs: result.calls.reduce((sum, call) => sum + call.latencyMs, 0),
+    latencyMs: replied.length > 0 ? replied.reduce((sum, call) => sum + call.latencyMs, 0) : undefined,
+    waits: waitsKnown ? result.calls.filter((call) => (call.waitMs ?? 0) > 0).length : undefined,
+    waitMs: waitsKnown ? result.calls.reduce((sum, call) => sum + (call.waitMs ?? 0), 0) : undefined,
+    failedCalls: result.calls.length - replied.length,
     e2eMs: result.e2eMs,
     inputTokens: result.calls.reduce((sum, call) => sum + call.inputTokens, 0),
     outputTokens: result.calls.reduce((sum, call) => sum + call.outputTokens, 0),
@@ -156,7 +182,7 @@ export type Metric = {
   // The metric's name in reports and floors, such as header_accuracy_digital.
   metric: string;
   label: string;
-  unit: 'ratio' | 'ms' | 'tokens' | 'usd' | 'per_hour';
+  unit: 'ratio' | 'ms' | 'tokens' | 'usd' | 'per_hour' | 'waits' | 'calls';
   // Which cases it is computed over; the bootstrap resamples only those.
   path?: 'digital' | 'scanned';
   where?: (score: Score) => boolean;
@@ -169,7 +195,12 @@ const f1 = (scores: Score[]) => {
   return ratio(2 * tp, 2 * tp + total(scores, (s) => s.lines.fp) + total(scores, (s) => s.lines.fn));
 };
 const perCase = (pick: (score: Score) => number) => (scores: Score[]) => ratio(total(scores, pick), scores.length);
-const pages3 = (score: Score) => score.pages <= 3;
+// Cases of 3 pages or fewer where some call returned a reply.
+const pages3 = (score: Score) => score.pages <= 3 && score.latencyMs !== undefined;
+const latencies = (scores: Score[]) => scores.map((x) => x.latencyMs ?? 0);
+// A total over every case, or undefined when a case has no wait record.
+const waitTotal = (pick: (score: Score) => number | undefined) => (scores: Score[]) =>
+  scores.some((x) => pick(x) === undefined) ? undefined : total(scores, (x) => pick(x) ?? 0);
 
 export const METRICS: Metric[] = [
   { metric: 'header_accuracy_digital', label: 'Header field accuracy (digital)', unit: 'ratio', path: 'digital', higherIsBetter: true, target: { op: '>=', value: 0.98 }, compute: (s) => ratio(total(s, (x) => x.header.correct), total(s, (x) => x.header.total)) },
@@ -182,8 +213,11 @@ export const METRICS: Metric[] = [
   { metric: 'dollar_recovery', label: 'Dollar recovery', unit: 'ratio', higherIsBetter: true, target: { op: '>=', value: 0.9 }, compute: (s) => ratio(total(s, (x) => x.overcharges.recovered), total(s, (x) => x.overcharges.planted)) },
   { metric: 'false_flag_rate', label: 'False flag rate', unit: 'ratio', higherIsBetter: false, target: { op: '<=', value: 0.03 }, compute: (s) => ratio(total(s, (x) => x.overcharges.fp), total(s, (x) => x.overcharges.cleanLines)) },
   { metric: 'escalation_rate', label: 'Escalation rate', unit: 'ratio', higherIsBetter: false, target: { op: '<=', value: 0.1 }, compute: perCase((x) => x.escalated) },
-  { metric: 'extraction_latency_p50_ms', label: 'Extraction latency p50 (3 pages or fewer)', unit: 'ms', where: pages3, higherIsBetter: false, target: { op: '<=', value: 5_000 }, compute: (s) => quantile(s.map((x) => x.latencyMs), 0.5) },
-  { metric: 'extraction_latency_p95_ms', label: 'Extraction latency p95 (3 pages or fewer)', unit: 'ms', where: pages3, higherIsBetter: false, target: { op: '<=', value: 12_000 }, compute: (s) => quantile(s.map((x) => x.latencyMs), 0.95) },
+  { metric: 'extraction_latency_p50_ms', label: 'Extraction latency p50 (3 pages or fewer)', unit: 'ms', where: pages3, higherIsBetter: false, target: { op: '<=', value: 5_000 }, compute: (s) => quantile(latencies(s), 0.5) },
+  { metric: 'extraction_latency_p95_ms', label: 'Extraction latency p95 (3 pages or fewer)', unit: 'ms', where: pages3, higherIsBetter: false, target: { op: '<=', value: 12_000 }, compute: (s) => quantile(latencies(s), 0.95) },
+  { metric: 'rate_limit_waits', label: 'Rate-limit waits (calls that waited for their per-minute limit)', unit: 'waits', higherIsBetter: false, compute: waitTotal((x) => x.waits) },
+  { metric: 'rate_limit_wait_ms', label: 'Rate-limit wait time (total, outside extraction latency)', unit: 'ms', higherIsBetter: false, compute: waitTotal((x) => x.waitMs) },
+  { metric: 'failed_calls', label: 'Failed or timed-out calls (429s, timeouts, other errors)', unit: 'calls', higherIsBetter: false, compute: (s) => total(s, (x) => x.failedCalls) },
   { metric: 'e2e_latency_p95_ms', label: 'End-to-end latency p95 (under eval throttling, not normal load)', unit: 'ms', higherIsBetter: false, target: { op: '<=', value: 30_000 }, compute: (s) => quantile(s.map((x) => x.e2eMs), 0.95) },
   { metric: 'input_tokens_per_page_digital', label: 'Input tokens per page (text path)', unit: 'tokens', path: 'digital', higherIsBetter: false, target: { op: '<=', value: 4_000 }, compute: (s) => ratio(total(s, (x) => x.inputTokens), total(s, (x) => x.pages)) },
   { metric: 'output_tokens_per_page_digital', label: 'Output tokens per page (text path)', unit: 'tokens', path: 'digital', higherIsBetter: false, target: { op: '<=', value: 1_200 }, compute: (s) => ratio(total(s, (x) => x.outputTokens), total(s, (x) => x.pages)) },
