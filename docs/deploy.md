@@ -92,7 +92,7 @@ Run every command in your own terminal, not through `!` in a Claude Code chat; n
 
 1. Sign up with GitHub and install the Vercel GitHub App on `kwnhyk04/freightaudit` only. Do not start a Pro trial.
 2. New project from the repository: Root Directory `apps/web`, framework Next.js. Leave the build, install and output
-   commands at their defaults; `apps/web/vercel.json` skips every build but production.
+   commands at their defaults. `apps/web/vercel.json` lets only main deploy (`git.deploymentEnabled`, see below).
 3. Environment variables, Production only (the table below), before the first deploy. Mark `API_KEY`, `SESSION_SECRET`
    and `DEMO_PASSWORD_HASH` Sensitive. Clipboard commands for PowerShell, which print nothing:
    ```powershell
@@ -112,6 +112,20 @@ Run every command in your own terminal, not through `!` in a Claude Code chat; n
    `freightaudit-<scope>.vercel.app` both did. `freightaudit.vercel.app` belongs to another project.
 9. Signed in on that domain, open Invoices. The web's `GET /readyz` and `POST /graphql` must then appear in
    `docker logs freightaudit-prod-api-1`; with neither, the web never reached the api (see Troubleshooting).
+
+Only main deploys. `apps/web/vercel.json` sets `git.deploymentEnabled` to `{"**": false, "main": true}`:
+- Vercel matches branch names with minimatch, and `**` also covers names with slashes (`fix/...`, `dependabot/...`).
+- A branch that matches several rules deploys when one of them is `true` (Vercel's Git configuration docs).
+
+This replaced an `ignoreCommand` of `[ "$VERCEL_ENV" != production ]`. That command canceled the pushes of #20 and #21 to
+main ("Canceled by Ignored Build Step"), although the Production environment tracks main and system variables are
+exposed. Why is still unknown; #21 went live only through a redeploy with "Use project's Ignore Build Step" unticked.
+
+After a merge, confirm:
+- GitHub's status for the merge commit (`https://api.github.com/repos/kwnhyk04/freightaudit/commits/<sha>/status`) shows
+  the Vercel context with a completed deployment, reached without a manual redeploy.
+- The pull request's head commit has no Vercel status, and Vercel lists no deployment for its branch.
+- A route the change touched answers the new way on the production domain.
 
 ### GitHub
 

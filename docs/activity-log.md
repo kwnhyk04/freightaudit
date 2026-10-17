@@ -19,6 +19,113 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-18: Vercel deploys main by branch rule, not by VERCEL_ENV (branch fix/vercel-production-builds, not committed)
+
+- **Branch:**
+  - What happened: `git switch -c fix/vercel-production-builds` from main `dc6703b`. It carries the doc updates made since #21 (activity log, context, memory, todo).
+  - Why: the user asked for those updates to go in this change set.
+  - What we did: created the branch on top of the working tree.
+- **What the user found in Vercel (setting checked):**
+  - What happened: the Production environment tracks main, and "Automatically expose System Environment Variables" is on. Settings, Build and Deployment, Ignored Build Step reads "Overridden" by the vercel.json command, with the dashboard on Automatic. The canceled deployments' build logs cannot be opened.
+  - Why: the canceled #20 and #21 builds.
+  - What we did: kept the cause as unknown, and made the fix independent of `VERCEL_ENV`.
+- **Docs checked before the change:**
+  - What happened: Vercel's Git configuration page (updated 2026-08-25) gives `git.deploymentEnabled` as branch-pattern-to-boolean or a boolean, default `true` for unlisted branches, with minimatch patterns. It also says: "If a branch matches multiple rules and at least one rule is `true`, a deployment will occur."
+  - Why: the user asked for the matching to be confirmed before relying on it, since branch names here contain slashes.
+  - What we did: fetched the page. It agrees with `{"**": false, "main": true}`, so we went ahead.
+- **Change:**
+  - What happened: `apps/web/vercel.json` lost `ignoreCommand` and gained `git.deploymentEnabled` `{"**": false, "main": true}`. `node -e` parsed it. No test or workflow reads the file (searched).
+  - Why: a rule by branch name cannot be affected by what `VERCEL_ENV` held during the ignore step.
+  - What we did: updated docs/deploy.md (Vercel step 2, a section on why, the checks after merge), docs/context.md, docs/memory.md (decision) and docs/todo.md (In Progress). GateGuard asked for facts before the first edit of `vercel.json`, as before.
+- Files: apps/web/vercel.json, docs/{activity-log,context,deploy,memory,todo}.md
+- Validation: the JSON parses. Nothing else applies before merge; the checks after merge are in docs/deploy.md.
+- Outstanding: the pull request, merge, and the checks after merge. Nothing committed.
+
+### 2026-10-18: Phone test closed (not committed)
+
+Times are UTC.
+
+- **The user's answers:**
+  - What happened: the user confirmed uploading g001 from the Upload page during the second try, and said that sign-out landed on the login page.
+  - Why: the reply in the previous entry had left both as placeholders.
+  - What we did: recorded both. The `POST /v1/invoices` (200) at 19:31:59 was therefore the user's own upload of an existing file, and production's sign-out answered with its redirect to `/login`. We closed the phone test in docs/todo.md: one document request for the view, none for the three zooms.
+- **Scanner probe:**
+  - What happened: at 19:38:18 the api answered `GET /wp-content/plugins/translatepress-multilingual/readme.txt` with 401 in 1 ms.
+  - Why: the Funnel's certificate puts its hostname in public certificate logs, which scanners read. Every route but the probes needs `X-API-Key`.
+  - What we did: nothing; it was the expected answer.
+- Files: docs/{activity-log,todo}.md
+- Outstanding: the cause of the skipped Vercel builds (docs/todo.md, Pending). Nothing committed.
+
+### 2026-10-18: Phone test, second try: one document request, no refetch on zoom (not committed)
+
+Times are UTC.
+
+- **Answers left as placeholders:**
+  - What happened: the user's pasted reply kept "[the login page / something else]" and "[did / did not]" unfilled.
+  - Why: not confirmed; probably pasted before being filled in.
+  - What we did: answered both cases from the log and the code. Where sign-out landed stays not reported.
+- **The POST /v1/invoices at 19:31:59:**
+  - What happened, in order:
+    - 19:31:46: a live page loaded (`/readyz`, `/graphql`).
+    - 19:31:49: a `/readyz` alone, as the upload page renders without GraphQL.
+    - 19:31:58.678: `/readyz`, the upload action's liveness probe.
+    - 19:31:59.171: `POST /v1/invoices` answered 200 in 219 ms.
+    - 19:31:59.931: `/graphql` for the invoice page.
+    - 19:32:02.431: `GET /v1/invoices/01a14b05-…/document` answered 200 in 7 ms.
+  - Why: only the web's `upload` server action (`apps/web/app/actions.ts:79`) sends that request. It needs a session and a file chosen in the upload page's form, and its redirect opens the invoice. The upload page's samples are download links (`<a href="/samples/<file>" download>`) and send nothing. The file matched g001 by content hash, so the api answered 200. Per `apps/api/src/service.ts:76-109` that inserts no invoice, queues nothing (g001 is reconciled) and records one `idempotency_keys` row. The rows confirm it: 1 key, 0 invoices, 0 model calls, 0 audit events, and g001 unchanged since 17:59:50.
+  - What we did: read the api log from 19:31:30 with statuses, counted the rows written since 19:31 with `psql` (counts only), and read the upload page and the api's upload code.
+- **Result:**
+  - What happened: between 19:31:58 and the end of the log (19:35:14), the api saw exactly one document request, for the view. None came for the three zooms. After the view, three `/readyz` and `/graphql` pairs (19:32:26 to 19:32:41) were page loads or Next's link prefetches (not confirmed), with no document request.
+  - Why: the viewer now fetches once per mount. The first try's 0 came from the phone's old copy, which was gone by the second try for the same URL. That is consistent with the first try's sign-out sending `Clear-Site-Data: "cache"`.
+  - What we did: closed the cache item in docs/todo.md. The open Vercel question moved to Pending, out of the cache item's sub-items, where the previous update had put it by mistake.
+- Files: docs/{activity-log,context,todo}.md
+- Outstanding: the cause of the skipped Vercel builds (docs/todo.md, Pending). Nothing committed.
+
+### 2026-10-18: #21 live on both sides; the phone's first view came from its old copy (not committed)
+
+Times are UTC.
+
+- **Forced redeploy (setting changed):**
+  - What happened: the user found that Vercel's Production environment tracks main and that system environment variables are exposed. The user then redeployed the canceled `dc6703b` deployment with "Use project's Ignore Build Step" unticked, and it showed Ready.
+  - Why: the merge's build had been canceled by the Ignored Build Step, as #20's was. The cause is still open (memory, Unresolved Questions).
+  - What we did: added a todo to read the canceled build's log.
+- **Check 1, production web:**
+  - What happened: `GET /logout` on `freightaudit-bay.vercel.app` answered 405 at 19:25:39, with `x-vercel-id: sin1::hkg1::…`.
+  - Why: the merged route accepts only POST, and the proxy no longer catches `/logout`.
+  - What we did: `curl.exe -s -o NUL -D -`, printing the status line and two headers.
+- **Check 2, api image:**
+  - What happened: `freightaudit-prod-api-1` was started at 19:25:11 by the user's `pnpm demo:up`, with image `sha256:2ea34661…` and revision label `dc6703b12cbc…`. GHCR's `sha-dc6703b` and `latest` both point to that digest.
+  - Why: Release run `39061034495` had finished its publish jobs by 19:10:46 (user).
+  - What we did: `docker inspect --format` (image fields only), the image's labels, and HEAD requests on GHCR's manifests.
+- **Phone test, first try:**
+  - What happened: the user signed in, opened g001's PDF, zoomed in three times and signed out. From 19:25 to 19:30:24 the api logged 0 document requests, only page loads: `/readyz` 6 times and `/graphql` 2 times, all 200.
+  - Why: not confirmed. The likely cause is that the phone's browser served the view from its copy of that PDF, stored under the old `immutable` header during the 17:56 to 17:59 tests, without asking. The zero for zooms is expected either way.
+  - What we did: read the api log since 19:25 in full, beside the live watch. The test ended with a sign-out on the new web, whose `Clear-Site-Data: "cache"` should have cleared that copy, so the next step is a second try (docs/todo.md).
+- Files: docs/{activity-log,memory,todo}.md
+- Outstanding: the second phone try, then the cause of the skipped Vercel builds. Nothing committed.
+
+### 2026-10-18: After #21 merged: neither the web nor the api runs it yet (not committed)
+
+Times are UTC.
+
+- **Api image:**
+  - What happened: the running `freightaudit-prod-api-1` uses `ghcr.io/kwnhyk04/freightaudit-api@sha256:66e8b1b9…` (revision label `ae68611`) and was started at 18:22:27. GHCR had no `sha-dc6703b`, and its `latest` is the #20 build (revision `1493832`). The local `latest` tag is still the `ae68611` build.
+  - Why: Release run `39061034495` for `dc6703b` had passed every check, integration and e2e included, but its four publish jobs were still running at 19:10. The `pnpm demo:up` the user mentioned pulled nothing new: whether it ran after #20 published is not confirmed.
+  - What we did: read the container with `docker inspect --format` (image fields only), the image's labels, GHCR's tags and the `latest` config through the anonymous registry API, and the run's jobs through the GitHub API.
+- **Web on Vercel:**
+  - What happened: `GET /logout` on `freightaudit-bay.vercel.app` answered 307 to `/login?next=%2Flogout`, the old proxy's answer; the merged route would answer 405 to a GET. GitHub's status for `dc6703b` reads "Canceled by Ignored Build Step", as does #20's `1493832`. `ae68611`'s reads "Deployment has completed" (17:55, the user's redeploy).
+  - Why: not confirmed. `vercel.json` cancels only when `VERCEL_ENV` is not `production`.
+  - What we did: read the commit statuses (public GitHub API) and listed the Vercel settings to check in docs/todo.md.
+- **Still 401:**
+  - What happened: the production document URL without a session answered 401, with no `age` and no `x-vercel-cache`, and `x-vercel-id: sin1::…`.
+  - What we did: `curl.exe -s -o NUL -D -`, printing only those headers.
+- **Phone test held:**
+  - What happened: the api log watch started at 19:10:36, but the test cannot tell old code from new yet.
+  - Why: on the old web, zooms re-read the phone's year-long cached copy, so they send no request either.
+  - What we did: asked the user to wait until production runs `dc6703b`.
+- Files: docs/{activity-log,memory,todo}.md
+- Outstanding: a production deployment of `dc6703b`, Release's publish then `pnpm demo:up`, then the phone test. Nothing committed.
+
 ### 2026-10-18: Documents never cached; sign-out clears the browser cache (branch fix/document-no-store, not committed)
 
 - **Branch:**

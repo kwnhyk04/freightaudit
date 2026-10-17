@@ -28,7 +28,17 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## In Progress
 
-- [ ] Documents never cached, and sign-out clears the cache (branch `fix/document-no-store` from main `1493832`; not committed).
+- [ ] Vercel builds main without the Ignored Build Step (branch `fix/vercel-production-builds` from main `dc6703b`; not committed; carries the doc updates made since #21).
+  - [x] `apps/web/vercel.json`: `ignoreCommand` removed. `git.deploymentEnabled` is `{"**": false, "main": true}`, checked against Vercel's Git configuration docs: minimatch patterns, and a branch matching several rules deploys if one is `true`.
+  - [x] docs/deploy.md: why, and the checks after merge.
+  - [ ] After merge:
+    - The merge commit's GitHub status shows a completed Vercel deployment with no manual redeploy.
+    - The pull request's branch got no Vercel deployment.
+  - The cause of the old cancellations stays unknown. The user checked: Production tracks main, system variables are exposed, the Ignored Build Step is "Overridden" by vercel.json with Automatic behind it, and the canceled builds' logs cannot be opened.
+
+## Completed
+
+- [x] Documents never cached, and sign-out clears the cache (PR #21, merged as `dc6703b`, live 2026-10-18).
   - Found 2026-10-18: `private, max-age=31536000, immutable` let a browser keep each viewed PDF for a year, after sign-out and while the backend was offline.
   - [x] `private, no-store` on the web's `/api/invoices/[id]/document` and on the api's `/v1/invoices/{id}/document` (user decision: both alike).
   - [x] Sign-out is `POST /logout` (`apps/web/app/logout/route.ts`), since a server action cannot set response headers. It applies Next's own origin rule for actions (`sameOrigin`), expires the cookie with the shared `SESSION_COOKIE_ATTRIBUTES`, sends `Clear-Site-Data: "cache"` and answers 303 to `/login`; the proxy lets it through.
@@ -37,10 +47,14 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
     - unit: `sameOrigin`
     - e2e: both headers on a signed-in view, a cross-site sign-out refused (403), sign-out answering 303 with `Clear-Site-Data` and leaving no cookie, and zoom without a request
   - [x] Checks (2026-10-18): lint 12/12, typecheck 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm e2e` 9/9.
-  - [ ] Pull request and merge. Then Vercel's production build (automatic on main), and for the api, release.yml's images and `pnpm demo:up`.
-  - [ ] Clear the phone's copies kept under the old header: sign out once after the deploy, or delete the site's data.
-
-## Completed
+  - [x] Pull request #21, merged as `dc6703b`.
+  - [x] Vercel production build of `dc6703b`, deployed by the forced redeploy below. As of 19:10 UTC: canceled ("Canceled by Ignored Build Step", GitHub status), as was #20's `1493832`. Production still serves the earlier deployment: `GET /logout` answers 307 to `/login`, where the new route answers 405. Cause not confirmed: `vercel.json` cancels only when `VERCEL_ENV` is not `production`. Check the project's Production Branch (Settings, Git) and Ignored Build Step (Settings, Build and Deployment), then deploy `dc6703b` to production.
+  - [x] Api: Release run `39061034495` for `dc6703b` passed every check and was still publishing at 19:10 UTC (no `sha-dc6703b` yet). The running api is the `ae68611` build, since no pull has happened since step 10. Then `pnpm demo:up`.
+  - [x] Production runs `dc6703b` (19:25 UTC). The user redeployed the canceled deployment with "Use project's Ignore Build Step" unticked. `GET /logout` answers 405 (`x-vercel-id: sin1::hkg1::…`).
+  - [x] The api runs the `dc6703b` image: `sha256:2ea34661…`, revision label `dc6703b…`, started 19:25:11 UTC by `pnpm demo:up`. GHCR's `sha-dc6703b` and `latest` both point to it.
+  - [x] Phone test, first try (19:27 to 19:30 UTC): 0 document requests, none for the view and none for the zooms. The view never reached the api, because the phone showed its copy of that PDF kept under the old year-long `immutable` header (not confirmed; the second try supports it). The test ended with a sign-out on the new web, which sends `Clear-Site-Data: "cache"`.
+  - [x] Phone test, second try (19:31:46 to 19:32:41 UTC): exactly one document request, `GET /v1/invoices/01a14b05-…/document` (200) at 19:32:02, and none for the three zooms. The view followed the user's own re-upload of g001 from the Upload page (`POST /v1/invoices` 200 at 19:31:59, an existing file; confirmed by the user). That wrote one `idempotency_keys` row and nothing else. Sign-out then landed on the login page (user). Phone test closed.
+  - [x] The phone's old copy is gone: the second view reached the server for the same URL. This is consistent with the first try's sign-out clearing it.
 
 - [x] 10. Deploy, done 2026-10-18 (user decision: the two offline gaps found by the phone check are Pending items). Plan approved 2026-10-17: `C:\Users\kwonhyuk\.claude\plans\pasted-content-id-e34d-pr-15-concurrent-lobster.md`), branch `step-10-deploy` from main `8f345f4`. Done when: from a phone on mobile data the Vercel link loads, sign-in works, an upload is processed end to end, the Funnel URL without `X-API-Key` answers 401, and with the PC backend stopped the UI shows the sample instead of errors.
   - [x] Compose: `infra/docker-compose.prod.yml` as project `freightaudit-prod` (internal networks `data` and `edge`, network `egress`; migrate, api, worker and a tailscale sidecar; no host port; hardening), `infra/tailscale/serve.json`, `.env.prod.example`, `.gitignore` and `.dockerignore` entries.
