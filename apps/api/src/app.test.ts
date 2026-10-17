@@ -19,6 +19,30 @@ test('GraphQL answers with a valid API key and returns 401 without one', async (
   expect(anonymous.statusCode).toBe(401);
 });
 
+test('every response carries the security headers, and a request from a browser is refused with 403', async () => {
+  const anonymous = await app.inject({ method: 'GET', url: '/v1/invoices' });
+  expect(anonymous.statusCode).toBe(401);
+  expect(anonymous.headers).toMatchObject({
+    'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'DENY',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains',
+  });
+
+  const headers = { 'x-api-key': apiKey, origin: 'https://example.com' };
+  const browser = await app.inject({ method: 'POST', url: '/graphql', headers, payload: { query: '{ health }' } });
+  expect(browser.statusCode).toBe(403);
+  expect(browser.headers['access-control-allow-origin']).toBeUndefined();
+});
+
+test('readiness probes within 2 s share one round of checks', async () => {
+  let rounds = 0;
+  const probed = buildApp({}, { apiKeys: [apiKey], storage, checks: { postgres: async () => void rounds++ } });
+  for (let probe = 0; probe < 3; probe++) expect((await probed.inject({ method: 'GET', url: '/readyz' })).statusCode).toBe(200);
+  await probed.close();
+  expect(rounds).toBe(1);
+});
+
 test('logs are JSON lines with a UUID request id and redacted credentials', async () => {
   const lines: string[] = [];
   const options = serverOptions('info');

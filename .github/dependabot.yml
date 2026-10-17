@@ -18,7 +18,7 @@ updates:
         update-types: [minor, patch]
 
   - package-ecosystem: docker
-    directories: [/apps/api, /apps/worker, /apps/web]
+    directories: [/apps/api, /apps/worker, /apps/web, /infra/squid]
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -32,6 +32,21 @@ updates:
         versions: ['>= 25']
     groups:
       docker-minor-and-patch:
+        update-types: [minor, patch]
+
+  # The image references in infra/docker-compose*.yml: stores, monitoring, tailscale, k6.
+  - package-ecosystem: docker-compose
+    directory: /infra
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+    groups:
+      compose-minor-and-patch:
         update-types: [minor, patch]
 
   - package-ecosystem: github-actions

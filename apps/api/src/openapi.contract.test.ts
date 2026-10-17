@@ -4,6 +4,7 @@ import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { parse } from 'yaml';
 import { buildApp } from './app.ts';
 import { apiKey, createTestEnv, formData, listen, pdf } from './testing.ts';
@@ -87,6 +88,8 @@ test('GET /readyz answers 200 when every check passes and 503 naming the failed 
   expect(ready.data).toEqual({ status: 'ok', checks: { postgres: 'ok', redis: 'ok' } });
 
   redisUp = false;
+  // Probes within 2 s share one round of checks (app.test.ts), so the next one waits it out.
+  await sleep(2_100);
   const unready = await client.GET('/readyz');
   redisUp = true;
   expectMatchesSpec('/readyz', 'get', unready.response, unready.error);

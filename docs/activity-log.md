@@ -15,6 +15,80 @@ Chronological record of significant development activity, newest first. Skip tri
 
 ## Entries
 
+### 2026-10-17: Own squid image for the egress proxy (branch step-10-deploy, not committed)
+
+- Changes:
+  - **Image:** `infra/squid/Dockerfile` installs Ubuntu's newest squid from noble-security on `ubuntu:24.04` (by digest), with no recommends, prints the version and fails below 6.14-0ubuntu0.24.04.4. It runs as `proxy`. Reason: ubuntu/squid's 24.04 images carried 6.13 (beta) and 6.14-0ubuntu0.24.04.2 (edge, the newest), both missing 2026 ICP, FTP gateway and cache digest fixes.
+  - **CI:** ci.yml's docker job and release.yml's publish job build it as `freightaudit-squid` (matrix `include` with a `dockerfile` field), with Trivy like the rest. The compose file and `pnpm demo:up` pull it.
+  - **squid.conf:** `icp_port 0`, `htcp_port 0` and `snmp_port 0` restate defaults, and no `cache_peer` line exists. `digest_generation off` is new: this build enables cache digests.
+  - **Dependabot:** the docker entry covers `/infra/squid`; a new docker-compose entry covers `/infra` with the same weekly schedule, cooldown, major-ignore and grouping.
+  - **docs/deploy.md:** reviewing a squid update includes `dpkg-query -W squid` in the new image, and the first real start uses the CI-built squid.
+- Files: `infra/squid/Dockerfile` (new), `infra/squid.conf`, `infra/docker-compose.prod.yml`, `scripts/demo.ts`, `.github/workflows/{ci,release}.yml`, `.github/dependabot.yml`, docs.
+- Validation:
+  - **Build:** local build shows `squid 6.14-0ubuntu0.24.04.4`, user `proxy`, `--enable-cache-digests`. `squid -k parse` is clean. actionlint passes.
+  - **Probes:** the full table matches the previous run. From the worker (.2), tailscale (.3) and another `outbound` container (.10), every `host.docker.internal` and 192.168.65.254 target gets 403 on both ports. Each port allows only its client's hosts, and the other container gets 403 for everything.
+  - **Gemini:** scanned golden g085 went received, extracting, reconciled in 4 s (gemini-3.5-flash-lite, valid, 2,454 ms). Squid logged the tunnel from 10.231.231.2.
+- Outstanding: unchanged (first real start: Funnel and the tailscale allowlist after login; the user's setup and the phone check).
+
+### 2026-10-17: Egress proxy on squid's beta channel, each port tied to its client (branch step-10-deploy, not committed)
+
+- Changes:
+  - **Image:** `ubuntu/squid:6.6-24.04_beta` by digest (Squid 6.13, was the edge build with 6.14). User decision: beta is the more tested channel for 24.04.
+  - **Fixed addresses:** `outbound` is 10.231.231.0/28, with dynamic addresses only in .8 to .15. The worker is fixed at 10.231.231.2 and tailscale at 10.231.231.3.
+  - **Port binding:** squid serves 3128 only to the worker's address and 3129 only to tailscale's. On a shared port, a compromised worker could reach Tailscale's servers and tunnel out through another tailnet.
+  - **Threat notes:** two accepted risks. Squid itself can reach the PC; an allowlist of large API services cannot stop data leaving through those services.
+- Files: `infra/docker-compose.prod.yml`, `infra/squid.conf`, docs (threat notes, deploy, context, memory, todo).
+- Validation (dry run, Squid 6.13; `squid -k parse` clean):
+  - **From the worker (.2):** every `host.docker.internal` and 192.168.65.254 target gets 403 on both ports (the 17 listed ports). Gemini and Groq get 200 on 3128. On 3129 everything gets 403, `controlplane.tailscale.com` included (it got 200 before the binding).
+  - **From tailscale (.3):** the same host targets get 403 on both ports. On 3129 `controlplane.tailscale.com` and `log.tailscale.com` get 200 and the rest 403. On 3128 everything gets 403, Gemini and Groq included.
+  - **From another container on `outbound` (.10):** 403 for everything on both ports.
+  - **Gemini:** scanned golden g076 went received, extracting, reconciled in 4 s (gemini-3.5-flash-lite, first pass, valid, 2,986 ms). Squid logged `TCP_TUNNEL/200 CONNECT generativelanguage.googleapis.com:443` from 10.231.231.2 (7.0 s, 6,279 bytes).
+- Outstanding: unchanged. The Funnel check and timing, and the tailscale allowlist after login (stop at any bare-IP CONNECT), on the first real start; then the user's setup and the phone check.
+
+### 2026-10-17: Step 10 egress proxy (branch step-10-deploy, not committed)
+
+- Changes:
+  - **Proxy:** `egress-proxy` (squid 6.14, `ubuntu/squid:6.6-24.04_edge` by digest, `infra/squid.conf`) is the only container on `egress`. The worker and tailscale moved to the internal network `outbound`.
+  - **Rules:** a port per client by port name (3128 worker, 3129 tailscale); CONNECT to 443 only; private, loopback, link-local and CGNAT ranges refused by resolved address before the allowlists; `dstdomain -n`, so no bare IP matches; no cache; no published port.
+  - **Clients:** the worker has `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY` and `NO_PROXY` (postgres, redis, minio, api, otel-collector, loopback); its Node is 24.22.0. tailscaled has `HTTPS_PROXY`.
+  - **Allowlists from the access log:**
+    - Worker: `generativelanguage.googleapis.com`, `api.groq.com`.
+    - Tailscale: `controlplane.tailscale.com` and `log.tailscale.com` (what tailscaled asked for before login), plus `acme-v02.api.letsencrypt.org`, still to confirm. `login.tailscale.com` was never asked for and was dropped.
+  - **Squid ACL:** `::ffff:0:0/96` was removed from the private ranges: squid read it as all of IPv4.
+  - **Runbook:** `docs/deploy.md` makes deleting the dry run's two data volumes, by exact name, the first step of the real setup.
+- Files: `infra/squid.conf` (new), `infra/docker-compose.prod.yml`, docs (deploy, context, threat notes, memory, todo).
+- Validation, in the requested order:
+  1. **Reachability:**
+     - From the worker, `host.docker.internal` does not resolve and 192.168.65.254 answers ENETUNREACH on every listed port.
+     - From the tailscale container, 192.168.65.254 refuses every port, and the name gets SERVFAIL.
+     - Through both proxy ports, every CONNECT to either one is refused with 403 (`host.docker.internal:445`, `192.168.65.254:443` and the rest). So are `1.1.1.1:443`, `example.com:443`, a plain GET, and each client's hosts on the other port. The allowed hosts get 200.
+  2. **Gemini:** scanned golden g068 went received, extracting, reconciled in 4 s. `llm_calls` has gemini-3.5-flash-lite, first pass, valid, 3,609 ms. Squid logged `TCP_TUNNEL/200 CONNECT generativelanguage.googleapis.com:443` (7.6 s, 6,218 bytes). The dry run used the dev `.env`'s keys, never printed.
+  3. **Funnel:** not run. There is no Tailscale login yet (`.env.prod` does not exist), so no public URL and no timing to compare.
+  4. **Checks:** lint 12/12, typecheck 21/21, unit 18 tasks, `test:int` 103/103 in 22 suites, `e2e` 9/9.
+- Outstanding:
+  - **Funnel:** the public check with its timing, and the tailscale allowlist after login (Let's Encrypt, relays; report any bare-IP CONNECT), on the first real start.
+  - **Unblocked by the proxy:** the proxy container can still reach the PC.
+  - **Then:** the user's setup and the phone check.
+
+### 2026-10-17: Step 10 deploy, built up to the dry run (branch step-10-deploy, not committed)
+
+- Changes:
+  - **Compose:** `infra/docker-compose.prod.yml` is now its own project, `freightaudit-prod`. Networks `data` and `edge` are internal, `egress` is not. Services: migrate (migrations, then `seed.ts --if-empty`), api, worker and a tailscale sidecar (userspace, external state volume, `infra/tailscale/serve.json`). No host port. api, worker, migrate and tailscale run read-only with all capabilities dropped. Each service gets only its own settings from `.env.prod`. No Claude backup; `DAILY_AI_TOKEN_BUDGET` is 100,000.
+  - **Scripts:** `scripts/demo.ts` behind `pnpm demo:init`, `demo:up`, `demo:down`, `db:backup` and `db:reset-demo`.
+  - **api:** six security headers in the first hook; a request with an `Origin` header gets 403; Yoga `cors: false`; `UPLOAD_ALLOWLIST` refuses files outside the golden manifest with 403; `/readyz` answers from a 2 s cache.
+  - **Worker and db:** an empty `MOCK_TMS_URL` removes the TMS sync schedule. faker and domain are dependencies of `packages/db`, and `seed.ts` takes `--if-empty`.
+  - **Web:** `hash-password` asks twice without echo and `--write-env` writes only the hash (`lib/env-file.ts`). The upload page offers g001, g067 and g071 from `public/samples/`. A failed api call marks the backend offline at once, the error page links to the sample, and `vercel.json` skips non-production builds.
+  - **CI:** release.yml's migrate and deploy jobs are deleted.
+  - **Docs:** `docs/deploy.md` (new), README Live demo section, threat notes for the public api, `.env.example`, `.env.prod.example`, memory, AGENTS.md (compose name).
+- Files: `infra/docker-compose.prod.yml`, `infra/tailscale/serve.json`, `.env.prod.example`, `scripts/demo.ts`, `package.json`, `apps/api/src/{app,main,uploads,graphql}.ts` with `app.test.ts`, `uploads.test.ts` and `openapi.contract.test.ts`, `apps/worker/src/{main,workers}.ts`, `packages/config/src/env.ts`, `packages/db/{package.json,scripts/seed.ts}`, `apps/web/{scripts/hash-password.ts,lib/{env-file,samples,server}.ts,lib/deploy.test.ts,app/actions.ts,app/(app)/{upload/page,error}.tsx,app/api/invoices/[id]/document/route.ts,app/globals.css,vercel.json,public/samples/}`, `.github/workflows/release.yml`, `.gitignore`, `.dockerignore`, docs.
+- Validation:
+  - **Checks:** lint 12/12, typecheck 21/21, `scripts/demo.ts` passes eslint and strict tsc, `pnpm turbo run test --force` 18 tasks. `test:int` passed 102 of 103: the readyz contract test met the new cache, now waits it out, and the contract project passed 12/12. `e2e` 9/9.
+  - **Dry run** (images built from this tree, placeholder settings, AI off, no tailscale login): all five services healthy with read-only filesystems; no published port; migrate seeded once, then skipped; the api cannot reach the internet; the worker reaches Gemini's host and logs no TMS sync; golden g001 gets 202, a changed copy 403, an `Origin` header 403, no key 401.
+  - **Host reachability** (user request): from the worker and from a container on `egress` alone (the tailscale container's outbound network), `host.docker.internal` (192.168.65.254) answers on dev Postgres 5432, Redis 6379, MinIO 9000 and 9001, FilingLens 4100, 5433, 5672, 15672 and 6380, Windows RPC 135 and SMB 445. 3389 and the dev apps' ports refuse. The bridge gateway (172.22.0.1) refuses every port, and the api (internal networks only) reaches nothing. Docker Desktop forwards that address to the PC's loopback, so an `extra_hosts` override would not block it: the IP itself answers.
+- Outstanding:
+  - **Block (waiting on the user):** an allowlisting egress proxy as the only container on `egress`. The worker and tailscale move to an internal network shared only with it. The proxy allows CONNECT on 443 to the Gemini and Groq API hosts (worker) and to Tailscale's control, relay and Let's Encrypt hosts (tailscale). The worker uses `HTTPS_PROXY` with `NODE_USE_ENV_PROXY=1`, tailscaled `HTTPS_PROXY`. Direct UDP paths stop, so Funnel traffic goes through Tailscale's relays.
+  - **Not done yet:** the dry run's volumes must go before the real setup (placeholder passwords). `pnpm demo:up` needs images released after this branch merges. context.md is still to update. The user's manual steps (Tailscale, Vercel, `.env.prod`) and the phone check remain.
+
 ### 2026-10-17: Claude Haiku 5.5 as a paid backup (branch claude-provider)
 
 - Changes:

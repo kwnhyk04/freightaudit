@@ -41,6 +41,9 @@ export const settings = {
   // Requests per API key and minute: everything but uploads, and the two upload routes. Load tests raise them.
   RATE_LIMIT_PER_MIN: perMinute(60),
   UPLOAD_RATE_LIMIT_PER_MIN: perMinute(10),
+  // A manifest file (cases[].sha256, as evals/golden/v1/manifest.json) whose PDFs alone may be uploaded; empty accepts
+  // any file. The public demo sets it, so only synthetic invoices reach it.
+  UPLOAD_ALLOWLIST: z.string().default(''),
   // OpenTelemetry (api and worker): traces and metrics go as OTLP/JSON to the collector of the observability profile.
   OTEL_SDK_DISABLED: z.stringbool().default(false),
   OTEL_EXPORTER_OTLP_ENDPOINT: httpUrl.default('http://localhost:4318'),
@@ -79,7 +82,8 @@ export const settings = {
   OPENROUTER_API_KEY: z.string().optional(),
   NVIDIA_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
-  MOCK_TMS_URL: httpUrl,
+  // Empty turns the TMS sync off (the public demo bills seeded shipments only).
+  MOCK_TMS_URL: z.union([httpUrl, z.literal('')]),
   // web (backend-for-frontend): the api's base URL and one of its API_KEYS. Both stay on the server.
   API_URL: httpUrl,
   API_KEY: z.string().min(32, 'API_KEY needs at least 32 characters'),

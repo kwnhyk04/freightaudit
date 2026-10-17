@@ -55,6 +55,8 @@ export async function clientKey() {
 }
 
 let probe: { at: number; live: boolean } | undefined;
+// A failed api call counts as offline at once, so the next page goes to the sample instead of waiting out the cache.
+export const markOffline = () => void (probe = { at: Date.now(), live: false });
 // Live while AI is on and the api's /readyz answers within 2.5 s (its own checks take up to 2 s), cached 5 s.
 export const isLive = cache(async () => {
   if (!env().AI_ENABLED) return false;
@@ -93,6 +95,7 @@ export async function gql<Result, Variables>(document: TypedDocumentString<Resul
       body: JSON.stringify({ query: document.toString(), variables }),
     });
   } catch {
+    markOffline();
     throw new ApiError('The FreightAudit API did not answer. Try again in a moment.', 'UNAVAILABLE');
   }
   if (response.status === 429) {

@@ -6,7 +6,7 @@ import { readiness, serverOptions, shutdownTelemetry, tcpCheck } from '@freighta
 import { drizzle } from 'drizzle-orm/node-postgres';
 import Fastify from 'fastify';
 import { Redis } from 'ioredis';
-import { scheduleTmsSync, startWorkers } from './workers.ts';
+import { scheduleTmsSync, startWorkers, unscheduleTmsSync } from './workers.ts';
 
 const env = loadEnv([
   'HOST',
@@ -56,7 +56,8 @@ const workers = startWorkers(
   },
   { lockDuration: env.JOB_LOCK_MS },
 );
-await scheduleTmsSync(queues, env.TENANT_ID);
+// An empty MOCK_TMS_URL (the public demo, which bills seeded shipments) turns the sync off.
+await (env.MOCK_TMS_URL ? scheduleTmsSync(queues, env.TENANT_ID) : unscheduleTmsSync(queues));
 
 const checks = { postgres: tcpCheck(env.DATABASE_URL, 5432), redis: tcpCheck(env.REDIS_URL, 6379) };
 app.get('/healthz', async () => ({ status: 'ok' }));

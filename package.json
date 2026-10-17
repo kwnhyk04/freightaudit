@@ -24,7 +24,12 @@
     "codegen": "turbo run codegen",
     "eval": "turbo run eval --",
     "contracts:check": "turbo run contracts:check",
-    "contracts:breaking": "turbo run contracts:breaking"
+    "contracts:breaking": "turbo run contracts:breaking",
+    "demo:init": "node scripts/demo.ts init",
+    "demo:up": "node scripts/demo.ts up",
+    "demo:down": "node scripts/demo.ts down",
+    "db:backup": "node scripts/demo.ts backup",
+    "db:reset-demo": "node scripts/demo.ts reset"
   },
   "devDependencies": {
     "@freightaudit/config": "workspace:*",

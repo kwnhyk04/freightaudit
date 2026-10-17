@@ -20,6 +20,17 @@ const uploadRoutes = new Set(['/v1/invoices', '/v1/invoice-batches']);
 const isUpload = (req: FastifyRequest) => req.method === 'POST' && uploadRoutes.has(req.routeOptions.url ?? '');
 // Seconds a client turned away by the extraction backlog waits before trying again.
 const BACKLOG_RETRY_AFTER_S = 30;
+// The probes are public through the tunnel; within this window they share one round of checks.
+const READY_CACHE_MS = 2_000;
+// Only the web's server calls the api, so no response may be framed, embedded, sniffed or sent with a referrer.
+const SECURITY_HEADERS = {
+  'strict-transport-security': 'max-age=31536000; includeSubDomains',
+  'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+  'cross-origin-resource-policy': 'same-origin',
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+  'referrer-policy': 'no-referrer',
+};
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest();
 
@@ -38,11 +49,13 @@ type Deps = {
   backlog?: { waiting: () => Promise<number>; highWater: number };
   // The database and queues GraphQL reads and writes; without them only health resolves.
   graphql?: GraphqlDeps;
+  // SHA-256 digests of the only files uploads may carry (the public demo's golden set); without it any file may.
+  uploadAllowlist?: ReadonlySet<string>;
 };
 
 export function buildApp(
   opts: FastifyServerOptions,
-  { apiKeys, storage, checks = {}, service = {}, redis, prefix = 'freightaudit', rateLimits = { general: 60, upload: 10 }, backlog, graphql }: Deps,
+  { apiKeys, storage, checks = {}, service = {}, redis, prefix = 'freightaudit', rateLimits = { general: 60, upload: 10 }, backlog, graphql, uploadAllowlist }: Deps,
 ) {
   // A client must send the whole request within 30 s.
   const app = Fastify({ requestTimeout: 30_000, ...opts });
@@ -50,6 +63,13 @@ export function buildApp(
   // The digest of the key each request used: limits count per key, audit rows name direct callers by it, and the key
   // itself never reaches Redis or the database.
   app.decorateRequest('apiKeyId', '');
+
+  // First, so every response carries the headers, refusals included. A browser sends Origin on every cross-origin
+  // request, and no browser may call the api: the web's server does, and server-side fetch sends no Origin.
+  app.addHook('onRequest', async (req, reply) => {
+    reply.headers(SECURITY_HEADERS);
+    if (req.headers.origin !== undefined) throw fail(403, 'browser requests are not accepted');
+  });
 
   // Runs before body parsing, so an upload without a valid key is rejected before its bytes are read.
   // Equal-length digests let timingSafeEqual compare keys in constant time.
@@ -104,10 +124,12 @@ export function buildApp(
   // cut off and rejected on its own, so one bad file never fails a whole batch.
   app.register(multipart, {
     attachFieldsToBody: 'keyValues',
-    onFile: createOnFile(storage),
+    onFile: createOnFile(storage, uploadAllowlist),
     limits: { files: 500, fileSize: MAX_UPLOAD_BYTES },
     throwFileSizeLimit: false,
   });
+  // A probe flood shares one round of checks, so it opens no new backend connections per request.
+  let probed: { at: number; result: ReturnType<typeof readiness> } | undefined;
   // Routes, request validation and response serialization all come from openapi.yaml.
   app.register(openapiGlue, {
     specification: openapiPath,
@@ -115,7 +137,8 @@ export function buildApp(
       ...service,
       getHealthz: async () => ({ status: 'ok' }),
       async getReadyz(req: FastifyRequest, reply: FastifyReply) {
-        const { ready, body } = await readiness(checks, req.log);
+        if (!probed || Date.now() - probed.at >= READY_CACHE_MS) probed = { at: Date.now(), result: readiness(checks, req.log) };
+        const { ready, body } = await probed.result;
         return reply.code(ready ? 200 : 503).send(body);
       },
     },

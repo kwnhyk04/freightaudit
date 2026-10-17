@@ -29,8 +29,13 @@ jobs:
       contents: read
       packages: write
     strategy:
+      # squid is the public demo's egress proxy (infra/squid/Dockerfile); the PC pulls it like the rest.
       matrix:
-        app: [api, worker, web]
+        include:
+          - { app: api, dockerfile: apps/api/Dockerfile }
+          - { app: worker, dockerfile: apps/worker/Dockerfile }
+          - { app: web, dockerfile: apps/web/Dockerfile }
+          - { app: squid, dockerfile: infra/squid/Dockerfile }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -53,7 +58,7 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          file: apps/${{ matrix.app }}/Dockerfile
+          file: ${{ matrix.dockerfile }}
           tags: ${{ steps.image.outputs.name }}:scan
           load: true
           cache-from: type=gha,scope=${{ matrix.app }}
@@ -70,7 +75,7 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          file: apps/${{ matrix.app }}/Dockerfile
+          file: ${{ matrix.dockerfile }}
           tags: ${{ steps.image.outputs.tags }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -79,58 +84,5 @@ jobs:
           provenance: mode=max
           cache-from: type=gha,scope=${{ matrix.app }}
 
-  # The backend runs on the PC, reached over Tailscale. The deploy key's authorized_keys entry there forces a script
-  # that accepts only `migrate <tag>` and `deploy <tag>`. Both jobs stay off until step 10 sets that up and the
-  # repository variable DEPLOY_ENABLED is true.
-  migrate:
-    name: migrate
-    needs: publish
-    if: vars.DEPLOY_ENABLED == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment: production
-    permissions:
-      # Tailscale workload identity federation, so no Tailscale secret is stored.
-      id-token: write
-    steps:
-      - uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
-        with:
-          oauth-client-id: ${{ vars.TS_OAUTH_CLIENT_ID }}
-          audience: ${{ vars.TS_AUDIENCE }}
-          tags: tag:ci
-      - name: Run the migrations from this release's api image
-        env:
-          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
-          TARGET: ${{ vars.DEPLOY_SSH_TARGET }}
-        run: |
-          install -d -m 700 ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy -o BatchMode=yes "$TARGET" migrate "sha-${GITHUB_SHA::7}"
-
-  deploy:
-    name: deploy
-    needs: migrate
-    if: vars.DEPLOY_ENABLED == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment: production
-    permissions:
-      id-token: write
-    steps:
-      - uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
-        with:
-          oauth-client-id: ${{ vars.TS_OAUTH_CLIENT_ID }}
-          audience: ${{ vars.TS_AUDIENCE }}
-          tags: tag:ci
-      - name: Start this release's api and worker
-        env:
-          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
-          TARGET: ${{ vars.DEPLOY_SSH_TARGET }}
-        run: |
-          install -d -m 700 ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy -o BatchMode=yes "$TARGET" deploy "sha-${GITHUB_SHA::7}"
+  # Nothing deploys from here: the backend on the PC is reachable only through Tailscale Funnel, so it pulls these
+  # images itself (pnpm demo:up, docs/deploy.md). The UI deploys from Vercel's Git integration.

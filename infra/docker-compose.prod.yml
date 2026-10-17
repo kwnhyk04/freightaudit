@@ -1,40 +1,192 @@
-# Production override for the backend on this PC, layered on docker-compose.yml:
-#   docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d --wait
-# Data stores publish no host ports, services restart unless stopped, and each has a memory limit.
+# The public demo's backend on this PC, layered on docker-compose.yml as its own compose project, so its containers,
+# volumes and networks never mix with the dev stack's. Run it through pnpm demo:up (scripts/demo.ts), which passes
+# --env-file .env.prod; docs/deploy.md lists every setting. No service publishes a host port: the internet reaches only
+# the api, through the tailscale container's Funnel (infra/tailscale/serve.json).
+name: freightaudit-prod
+
+# The stores live on `data`, which has no route out. `edge` joins the api to the tailscale container alone. The worker
+# and the tailscale container reach the internet only through egress-proxy on `outbound`: Docker Desktop lets any
+# container on a routed network reach the PC's own listeners at host.docker.internal, so only the proxy sits on `egress`.
+networks:
+  data: { internal: true }
+  edge: { internal: true }
+  # Fixed addresses for the proxy's two clients (infra/squid.conf ties each port to one); other containers get .8 to .15.
+  outbound:
+    internal: true
+    ipam: { config: [{ subnet: 10.231.231.0/28, ip_range: 10.231.231.8/29 }] }
+  egress: {}
+
+volumes:
+  # The node's login and certificate. External, so no `down -v` can delete it (a new login needs a new auth key).
+  tailscale-state:
+    external: true
+    name: freightaudit-prod-tailscale-state
+
+x-kept: &kept
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: "3" }
+
+# The app containers write nothing to disk and need no capability.
+x-hardened: &hardened
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+x-database-url: &database-url
+  DATABASE_URL: postgres://freightaudit:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod; see docs/deploy.md}@postgres:5432/freightaudit
+
+x-backend-env: &backend-env
+  <<: *database-url
+  REDIS_URL: redis://redis:6379
+  S3_ENDPOINT: http://minio:9000
+  S3_ACCESS_KEY: ${MINIO_ROOT_USER:-freightaudit}
+  S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env.prod; see docs/deploy.md}
+  TENANT_ID: ${TENANT_ID:?set TENANT_ID in .env.prod; see docs/deploy.md}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  # The monitoring stack stays local to the dev project.
+  OTEL_SDK_DISABLED: "true"
+
 services:
   postgres:
+    <<: *kept
     ports: !reset []
-    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod; see docs/deploy.md}
+    networks: [data]
     deploy: { resources: { limits: { memory: 512m } } }
 
   redis:
+    <<: *kept
     ports: !reset []
     # At the limit Redis rejects writes instead of being OOM-killed; BullMQ requires noeviction.
     command: ["redis-server", "--maxmemory", "200mb", "--maxmemory-policy", "noeviction"]
-    restart: unless-stopped
+    networks: [data]
     deploy: { resources: { limits: { memory: 256m } } }
 
   minio:
+    <<: *kept
     ports: !reset []
-    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-freightaudit}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env.prod; see docs/deploy.md}
+    networks: [data]
     deploy: { resources: { limits: { memory: 512m } } }
 
-  otel-collector:
-    restart: unless-stopped
-    deploy: { resources: { limits: { memory: 256m } } }
-
-  jaeger:
-    restart: unless-stopped
+  # One-off, run by pnpm demo:up before the api starts: migrations, then the small seed on an empty database.
+  migrate:
+    <<: *hardened
+    profiles: [tools]
+    image: ${IMAGE_REPO:-ghcr.io/kwnhyk04}/freightaudit-api:${IMAGE_TAG:-latest}
+    command: ["sh", "-c", "node packages/db/dist/migrate.js && node packages/db/scripts/seed.ts --scale=small --if-empty"]
+    environment:
+      <<: *database-url
+    networks: [data]
+    depends_on: { postgres: { condition: service_healthy } }
+    healthcheck: { disable: true }
     deploy: { resources: { limits: { memory: 512m } } }
 
-  prometheus:
-    restart: unless-stopped
+  api:
+    <<: [*kept, *hardened]
+    image: ${IMAGE_REPO:-ghcr.io/kwnhyk04}/freightaudit-api:${IMAGE_TAG:-latest}
+    environment:
+      <<: *backend-env
+      API_KEYS: ${API_KEYS:?set API_KEYS in .env.prod; see docs/deploy.md}
+      # Only the golden set's synthetic invoices may be uploaded.
+      UPLOAD_ALLOWLIST: /golden/manifest.json
+    volumes: ["../evals/golden/v1/manifest.json:/golden/manifest.json:ro"]
+    networks: [data, edge]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 512m } } }
 
-  grafana:
-    restart: unless-stopped
-    deploy: { resources: { limits: { memory: 256m } } }
+  worker:
+    <<: [*kept, *hardened]
+    image: ${IMAGE_REPO:-ghcr.io/kwnhyk04}/freightaudit-worker:${IMAGE_TAG:-latest}
+    # No Claude backup and no paid key: the demo runs on free tiers only.
+    environment:
+      <<: *backend-env
+      AI_ENABLED: ${AI_ENABLED:-true}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?set GEMINI_API_KEY in .env.prod; see docs/deploy.md}
+      GROQ_API_KEY: ${GROQ_API_KEY:?set GROQ_API_KEY in .env.prod; see docs/deploy.md}
+      # The Groq account is shared with other projects and CI; about 3 resets and 25 uploads a day.
+      DAILY_AI_TOKEN_BUDGET: ${DAILY_AI_TOKEN_BUDGET:-100000}
+      # The demo bills seeded shipments, so there is no TMS to sync.
+      MOCK_TMS_URL: ""
+      # Model calls go through egress-proxy, which allows only the Gemini and Groq API hosts. Node 24 reads
+      # HTTPS_PROXY only with NODE_USE_ENV_PROXY=1; every internal service stays direct.
+      NODE_USE_ENV_PROXY: "1"
+      HTTPS_PROXY: http://egress-proxy:3128
+      NO_PROXY: postgres,redis,minio,api,otel-collector,localhost,127.0.0.1,::1
+    networks:
+      data: {}
+      outbound: { ipv4_address: 10.231.231.2 }
+    # Longer than the slowest job (a 60 s model call), so SIGTERM lets running jobs finish.
+    stop_grace_period: 90s
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      egress-proxy: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 1g } } }
 
-  # Fault injection is for tests, and its proxies would publish Postgres and Redis.
+  # The tailnet node is this container, not the PC. Userspace networking needs no capability; Funnel serves the api.
+  tailscale:
+    <<: [*kept, *hardened]
+    image: tailscale/tailscale:v1.102.5@sha256:c507f3a2a6ab1cabd8d809b98edeb41edbd5c3fb6ad9632ffd098b4c7d0b4065
+    hostname: ${TS_HOSTNAME:-freightaudit}
+    environment:
+      # A one-off key tagged tag:freightaudit, used once; the login then lives in tailscale-state.
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_AUTH_ONCE: "true"
+      TS_HOSTNAME: ${TS_HOSTNAME:-freightaudit}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SOCKET: /tmp/tailscaled.sock
+      TS_USERSPACE: "true"
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_ENABLE_HEALTH_CHECK: "true"
+      TS_LOCAL_ADDR_PORT: 127.0.0.1:9002
+      # Control, relays, logs and the certificate go through egress-proxy's tailscale port. With no UDP route out,
+      # traffic, Funnel's included, rides Tailscale's relays.
+      HTTPS_PROXY: http://egress-proxy:3129
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - ./tailscale:/config:ro
+    networks:
+      edge: {}
+      outbound: { ipv4_address: 10.231.231.3 }
+    depends_on:
+      api: { condition: service_healthy }
+      egress-proxy: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9002/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+    deploy: { resources: { limits: { memory: 128m } } }
+
+  # The only container with a route out (infra/squid.conf): HTTPS CONNECT on 443, a port and an allowlist per client,
+  # and no destination in a private range. It publishes no port.
+  egress-proxy:
+    <<: [*kept, *hardened]
+    # Built by CI from infra/squid/Dockerfile (Ubuntu's newest squid, never older than 6.14-0ubuntu0.24.04.4).
+    image: ${IMAGE_REPO:-ghcr.io/kwnhyk04}/freightaudit-squid:${IMAGE_TAG:-latest}
+    tmpfs: [/tmp, /var/spool/squid, /var/log/squid, /run]
+    volumes: ["./squid.conf:/etc/squid/squid.conf:ro"]
+    networks: [outbound, egress]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/3128 && echo > /dev/tcp/127.0.0.1/3129"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    deploy: { resources: { limits: { memory: 128m } } }
+
+  # Fault injection is for tests, and its proxies would publish ports.
   toxiproxy:
     profiles: [chaos]

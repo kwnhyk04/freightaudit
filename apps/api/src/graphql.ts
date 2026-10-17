@@ -325,6 +325,8 @@ export function createGraphql(log: FastifyBaseLogger, deps?: GraphqlDeps) {
     logging: false,
     graphiql: false,
     landingPage: false,
+    // No browser calls the api, so it sends no CORS headers.
+    cors: false,
     maskedErrors: { maskError: (error, message) => maskError(log, error, message) },
   });
 }

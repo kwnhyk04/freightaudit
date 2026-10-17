@@ -13,7 +13,7 @@ import { redirect } from 'next/navigation';
 import { randomUUID } from 'node:crypto';
 import { createLimiter } from '../lib/limiter.ts';
 import { verifyPassword } from '../lib/password.ts';
-import { ApiError, clientKey, currentSession, env, gql, isLive, log, rest, REVIEWER } from '../lib/server.ts';
+import { ApiError, clientKey, currentSession, env, gql, isLive, log, markOffline, rest, REVIEWER } from '../lib/server.ts';
 import { createToken, safeNext, SESSION_COOKIE, SESSION_SECONDS } from '../lib/session.ts';
 
 export type ActionState = { error?: string };
@@ -102,7 +102,10 @@ export async function upload(_: ActionState, form: FormData): Promise<ActionStat
     id = data.id;
   } catch (err) {
     if (err instanceof ApiError) return { error: sentence(err.message) };
-    if (err instanceof TypeError) return { error: 'The FreightAudit API did not answer. Try again in a moment.' };
+    if (err instanceof TypeError) {
+      markOffline();
+      return { error: 'The FreightAudit API did not answer. Try again in a moment.' };
+    }
     throw err;
   }
   redirect(`/invoices/${id}`);
