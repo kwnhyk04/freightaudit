@@ -165,7 +165,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc }: Where & { d
       </div>
       <StatusPoller active={IN_FLIGHT.has(invoice.status)} label={STATUS[invoice.status].label} />
       <div className="review">
-        <DocumentViewer src={documentSrc} />
+        <DocumentViewer key={documentSrc} src={documentSrc} />
         <div>
           {invoice.status === 'NEEDS_REVIEW' && (
             <section className="panel attention" aria-label="Needs review">

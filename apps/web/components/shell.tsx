@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { logout } from '../app/actions.ts';
 import { NavLinks } from './client.tsx';
 
 // The frame of every page: the sidebar, an optional banner and the work. base is '' for live pages and '/demo' for the
@@ -23,7 +22,7 @@ export function Shell({ base, signedIn, banner, children }: { base: string; sign
         <div className="sidebar-foot">
           {sample && signedIn && <Link href="/invoices">Try live data</Link>}
           {signedIn ? (
-            <form action={logout}>
+            <form method="post" action="/logout">
               <button className="button small">Sign out</button>
             </form>
           ) : (

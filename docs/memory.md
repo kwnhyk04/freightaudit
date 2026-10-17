@@ -213,6 +213,18 @@ From the approved design doc:
   - Why: with no UDP route out, tailscaled measures every region's relays over HTTPS through the proxy to choose a home relay, and Funnel's traffic needs one. The allowlist had only the control plane, logs and Let's Encrypt.
   - What we did: added the two lines to `infra/squid.conf`, ran `-k parse` on it in a throwaway container of `ghcr.io/kwnhyk04/freightaudit-squid:latest` with the file mounted, then `docker restart freightaudit-prod-egress-proxy-1` (no `.env.prod` needed). Squid then logged relay tunnels and no denial, and Funnel answered. Best because Tailscale adds and renames relays, so a list of the 87 names would break Funnel quietly, and nearby regions only would keep netcheck's denials flooding the log with no failover. The rule stays bound to tailscale's address on 3129, with `-n`. Residual risk: a compromised tailscale container could send data to any Tailscale node through a relay, and fewer relay names would not prevent that, since any relay forwards to any node connected to it.
 - 2026-10-18: Both document endpoints are to answer `private, no-store`: the web's `/api/invoices/[id]/document` and the api's `/v1/invoices/{id}/document` (user decision). The change goes in its own small pull request after `deploy/relay-allowlist` merges, with `Clear-Site-Data: "cache"` on sign-out and an e2e header check. What happened: viewed PDFs stayed in the phone's browser for a year (Known Issues, same day). Why: the year-long `immutable` header on both. What we did: no code change yet; the fix is in docs/todo.md. Reason: one rule for every copy of a document, and a separate change keeps the deploy commit to its own subject.
+- 2026-10-18: Sign-out is a POST route handler, `apps/web/app/logout/route.ts`, no longer a server action.
+  - What happened: the document cache fix needed sign-out to answer `Clear-Site-Data: "cache"`.
+  - Why: a server action cannot set response headers. `headers()` is read-only (Next 16.4's bundled docs, `headers.md`), and `cookies()` writes only Set-Cookie.
+  - What we did: moved sign-out to `POST /logout`.
+    - It applies Next's own origin rule for actions: `sameOrigin` in `lib/session.ts`, taken from `next/dist/server/app-render/action-handler.js`. A request without an Origin passes, and another host is refused.
+    - It expires the cookie with the attributes now shared as `SESSION_COOKIE_ATTRIBUTES`, and answers 303 to `/login`.
+    - `proxy.ts` lets `/logout` through, so an expired session can still sign out, and the shell's form posts there.
+  - Reason: the smallest way to send the header that keeps the action's protection and the `__Host-` cookie's attributes.
+- 2026-10-18: The document viewer fetches the PDF once per mount, and zoom only redraws it (`DocumentViewer`, keyed by its `src`).
+  - What happened: its effect depended on `[src, zoom]`, so every zoom click downloaded the whole PDF again. The year-long cache had made that free.
+  - Why: with `no-store`, each zoom would cross Vercel and Funnel to the PC. That costs one function invocation, one api request against the key's 60 a minute, and the whole file (uploads up to 4 MiB; the golden set's median is 45 KB), at about 0.5 to 1.7 s from this PC.
+  - What we did: split the effect into a load per `src`, which destroys the loading task on unmount, and a redraw per zoom, with an e2e check that zooming sends no request.
 
 ## Preferences and Instructions
 

@@ -17,7 +17,7 @@ async function db<Row>(sql: string) {
 const badge = (page: Page, text: string) => page.locator('.badge', { hasText: text }).first();
 
 test.describe('login', () => {
-  test('pages need a session; the cookie is httpOnly, Secure and SameSite=Lax; the browser never calls the API', async ({ browser }) => {
+  test('pages need a session; the cookie is httpOnly, Secure and SameSite=Lax; the browser never calls the API; sign-out drops the cookie and the cache and refuses another site', async ({ browser }) => {
     const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const page = await context.newPage();
     const requests: string[] = [];
@@ -35,14 +35,25 @@ test.describe('login', () => {
     const cookie = (await context.cookies()).find((each) => each.name === '__Host-session');
     expect(cookie).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Lax', path: '/' });
     expect(requests.filter((url) => url.includes(':4000'))).toEqual([]);
-    await page.getByRole('button', { name: 'Sign out' }).click();
+    // A sign-out posted from another site is refused, and the session stays.
+    const forged = await page.request.post('/logout', { headers: { origin: 'https://evil.example' } });
+    expect(forged.status()).toBe(403);
+    expect((await context.cookies()).some((each) => each.name === '__Host-session')).toBe(true);
+    // Sign-out expires the cookie and asks the browser to drop this site's cache, viewed PDFs included.
+    const [signOut] = await Promise.all([
+      page.waitForResponse((response) => response.url().endsWith('/logout') && response.request().method() === 'POST'),
+      page.getByRole('button', { name: 'Sign out' }).click(),
+    ]);
+    // allHeaders(): headers() leaves out the ones Playwright counts as security-related.
+    expect([signOut.status(), (await signOut.allHeaders())['clear-site-data']]).toEqual([303, '"cache"']);
     await expect(page).toHaveURL(/\/login$/);
+    expect((await context.cookies()).some((each) => each.name === '__Host-session')).toBe(false);
     await context.close();
   });
 });
 
 test.describe('upload', () => {
-  test('refuses before sending what the api refuses, and a fixture PDF moves from received to reconciled', async ({ page }) => {
+  test('refuses before sending what the api refuses, and a fixture PDF moves from received to reconciled', async ({ page, request }) => {
     await page.goto('/upload');
     const file = page.getByLabel('Invoice file');
     await file.setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
@@ -53,10 +64,28 @@ test.describe('upload', () => {
     await expect(page.locator('.form-error')).toHaveText('big.pdf is 4.0 MB; the limit is 4 MB.');
     const digital = readFileSync(new URL('../../../packages/llm/fixtures/digital.pdf', import.meta.url));
     await file.setInputFiles({ name: 'digital.pdf', mimeType: 'application/pdf', buffer: digital });
+    const viewed = page.waitForResponse((response) => /\/api\/invoices\/[0-9a-f-]{36}\/document$/.test(response.url()));
     await page.getByRole('button', { name: 'Upload invoice' }).click();
     await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
+    // Neither the web nor the api lets anyone keep a copy of the document.
+    expect((await viewed).headers()['cache-control']).toBe('private, no-store');
+    const stored = await request.get(`http://127.0.0.1:${env.API_PORT}/v1/invoices/${page.url().split('/').at(-1)}/document`, {
+      headers: { 'x-api-key': env.API_KEY! },
+    });
+    expect([stored.status(), stored.headers()['cache-control']]).toEqual([200, 'private, no-store']);
     await expect(badge(page, 'Reconciled')).toBeVisible({ timeout: 45_000 });
     await expect(page.getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
+    // Zoom redraws the document the viewer holds; a refetch would cross Vercel and Funnel to the PC each time.
+    const fetched: string[] = [];
+    page.on('request', (sent) => {
+      if (sent.url().includes('/document')) fetched.push(sent.url());
+    });
+    // The drawn bitmap's width, since CSS caps the shown width at the panel's (max-width: 100%).
+    const width = () => page.getByRole('img', { name: 'Page 1 of 1' }).evaluate((canvas) => (canvas as HTMLCanvasElement).width);
+    const before = await width();
+    await page.getByRole('button', { name: 'Zoom in' }).click();
+    await expect.poll(width).toBeGreaterThan(before);
+    expect(fetched).toEqual([]);
   });
 
   test('a PNG is accepted and kept as a one-page PDF', async ({ page }) => {

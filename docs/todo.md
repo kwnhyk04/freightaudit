@@ -6,11 +6,7 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Pending
 
-- [ ] Viewed PDFs stay in the browser (found 2026-10-18). Not started: it goes in its own small pull request after `deploy/relay-allowlist` merges (user decision). `apps/web/app/api/invoices/[id]/document/route.ts` answers `cache-control: private, max-age=31536000, immutable`, so a browser keeps each viewed PDF for a year and may show it again without asking the server: after sign-out (`logout()` only clears the cookie), from history, and while the backend is offline. Fix:
-  - Send `private, no-store` from that route.
-  - Send `private, no-store` from the api's `/v1/invoices/{id}/document` too (`apps/api/src/service.ts:156`, today the same year-long header), so both answer the same way (user decision).
-  - Answer sign-out with `Clear-Site-Data: "cache"`, for copies kept under the old header.
-  - Assert the header in the e2e document check.
+- [ ] Zoom in shows no change in the document viewer (found 2026-10-18; it predates the cache fix). `.doc-pages canvas { max-width: 100% }` (`apps/web/app/globals.css:482`) caps each drawn page at the panel's width, so zoom in only sharpens it and only zoom out is visible. Fix: let the canvas keep its drawn width (the panel already scrolls, `overflow: auto`), or cap it only at 100%.
 - [ ] Relay probes through squid: 168 tunnels in the first 116 s after a start (2026-10-18), about 5,200 log lines and 27 MB an hour at that rate. Measure again after an hour. If the rate holds, squid's 30 MB of json-file logs cover about a day and a half, and a smaller DERP map in the tailnet policy would cut both (not confirmed).
 - [ ] Offline, a live invoice's page ends at a bare 404 (found 2026-10-18; no code change yet).
   - Why: `livePage` sends it to `/demo/invoices/<id>`, the sample knows only its snapshot's 11 ids, and `notFound()` renders Next's default 404 page, since no `not-found.tsx` exists. The page has no banner and no way back.
@@ -31,6 +27,18 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 - [ ] Step 10: the sign-in limiter counts per Vercel instance (user decision); move it to a hosted Redis such as Upstash if sign-in must lock across instances.
 
 ## In Progress
+
+- [ ] Documents never cached, and sign-out clears the cache (branch `fix/document-no-store` from main `1493832`; not committed).
+  - Found 2026-10-18: `private, max-age=31536000, immutable` let a browser keep each viewed PDF for a year, after sign-out and while the backend was offline.
+  - [x] `private, no-store` on the web's `/api/invoices/[id]/document` and on the api's `/v1/invoices/{id}/document` (user decision: both alike).
+  - [x] Sign-out is `POST /logout` (`apps/web/app/logout/route.ts`), since a server action cannot set response headers. It applies Next's own origin rule for actions (`sameOrigin`), expires the cookie with the shared `SESSION_COOKIE_ATTRIBUTES`, sends `Clear-Site-Data: "cache"` and answers 303 to `/login`; the proxy lets it through.
+  - [x] The viewer fetches the PDF once per mount and redraws on zoom. It used to refetch on every zoom, which `no-store` would have sent through Vercel and Funnel.
+  - [x] Tests:
+    - unit: `sameOrigin`
+    - e2e: both headers on a signed-in view, a cross-site sign-out refused (403), sign-out answering 303 with `Clear-Site-Data` and leaving no cookie, and zoom without a request
+  - [x] Checks (2026-10-18): lint 12/12, typecheck 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm e2e` 9/9.
+  - [ ] Pull request and merge. Then Vercel's production build (automatic on main), and for the api, release.yml's images and `pnpm demo:up`.
+  - [ ] Clear the phone's copies kept under the old header: sign out once after the deploy, or delete the site's data.
 
 ## Completed
 

@@ -1,6 +1,6 @@
 import { createLimiter, MAX_FAILURES, WINDOW_MS } from './limiter.ts';
 import { hashPassword, verifyPassword } from './password.ts';
-import { createToken, readToken, safeNext } from './session.ts';
+import { createToken, readToken, safeNext, sameOrigin } from './session.ts';
 
 test('a password hash is standard argon2id PHC: the reference vector verifies, and our own hashes round-trip', async () => {
   // phc-winner-argon2's test vector (argon2id, v19, m=65536, t=2, p=1, "password", salt "somesalt"), so any argon2
@@ -31,6 +31,16 @@ test('a session token holds only while signed with the secret and unexpired', ()
 test('after sign-in only a path on this site is followed', () => {
   expect(safeNext('/invoices/1?status=open')).toBe('/invoices/1?status=open');
   for (const next of ['//evil.example', '/\\evil.example', 'https://evil.example', '', undefined]) expect(safeNext(next)).toBe('/invoices');
+});
+
+test('sign-out takes a post from this site, or one without an Origin, as Next takes its actions', () => {
+  const from = (headers: Record<string, string>) => sameOrigin(new Headers(headers));
+  expect(from({ origin: 'https://demo.example', host: 'demo.example' })).toBe(true);
+  expect(from({ host: 'demo.example' })).toBe(true);
+  expect(from({ origin: 'https://demo.example', 'x-forwarded-host': 'demo.example, edge.internal', host: 'fn.internal' })).toBe(true);
+  for (const origin of ['https://evil.example', 'https://demo.example:8443', 'null', 'not a url']) expect(from({ origin, host: 'demo.example' })).toBe(false);
+  expect(from({ origin: 'https://demo.example' })).toBe(false);
+  expect(from({ origin: 'https://demo.example', 'x-forwarded-host': 'evil.example', host: 'demo.example' })).toBe(false);
 });
 
 test('five failed sign-ins in 15 minutes lock a client out until the oldest leaves the window; a success clears them', () => {

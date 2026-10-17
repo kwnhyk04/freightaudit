@@ -1,6 +1,7 @@
 import { currentSession, markOffline, rest } from '../../../../../lib/server.ts';
 
-// The stored PDF of an invoice, streamed from the api with the server's key. An id's bytes never change.
+// The stored PDF of an invoice, streamed from the api with the server's key. No-store: each view asks again, so no
+// copy outlives sign-out or shows while the backend is offline.
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await currentSession())) return Response.json({ detail: 'sign in first' }, { status: 401 });
   const { id } = await params;
@@ -16,5 +17,5 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!response.ok || !response.body) {
     return Response.json({ detail: 'no document stored for this invoice' }, { status: response.status === 404 ? 404 : 502 });
   }
-  return new Response(response.body, { headers: { 'content-type': 'application/pdf', 'cache-control': 'private, max-age=31536000, immutable' } });
+  return new Response(response.body, { headers: { 'content-type': 'application/pdf', 'cache-control': 'private, no-store' } });
 }

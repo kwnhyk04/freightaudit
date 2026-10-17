@@ -2,6 +2,7 @@
 import { checkUpload, MAX_PDF_PAGES, MAX_UPLOAD_LABEL, type UploadCheck } from '@freightaudit/contracts/limits';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
 import { type ReactNode, useActionState, useEffect, useRef, useState } from 'react';
 import { type ActionState, login, review, upload } from '../app/actions.ts';
 
@@ -64,26 +65,46 @@ export function StatusPoller({ active, label }: { active: boolean; label: string
 }
 
 // The document, drawn with pdf.js page by page at the panel's width. Headless browsers and phones show it the same way,
-// which a browser's own PDF viewer does not.
+// which a browser's own PDF viewer does not. It is fetched once per mount and zoom only redraws it: the document route
+// answers no-store, so each fetch would cross Vercel and Funnel to the PC again.
 export function DocumentViewer({ src }: { src: string }) {
   const pages = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
+  const [doc, setDoc] = useState<PDFDocumentProxy>();
   const [state, setState] = useState<{ count?: number; error?: string }>({});
   useEffect(() => {
     let cancelled = false;
+    let task: PDFDocumentLoadingTask | undefined;
     (async () => {
       try {
         // The worker module runs on this thread, so no worker file has to be served.
         // @ts-expect-error -- the worker module ships no types; importing it only registers it.
         await import('pdfjs-dist/build/pdf.worker.min.mjs');
         const pdfjs = await import('pdfjs-dist');
-        const doc = await pdfjs.getDocument({ url: src }).promise;
-        const host = pages.current;
-        if (cancelled || !host) return;
+        task = pdfjs.getDocument({ url: src });
+        const loaded = await task.promise;
+        if (!cancelled) setDoc(loaded);
+      } catch (err) {
+        const missing = (err as { status?: number }).status === 404;
+        if (!cancelled) setState({ error: missing ? 'No document is stored for this invoice.' : 'The document could not be shown.' });
+      }
+    })();
+    return () => {
+      cancelled = true;
+      void task?.destroy();
+    };
+  }, [src]);
+  useEffect(() => {
+    const host = pages.current;
+    if (!doc || !host) return;
+    let cancelled = false;
+    (async () => {
+      try {
         host.replaceChildren();
         const width = Math.max(host.clientWidth - 32, 240);
         for (let number = 1; number <= doc.numPages && !cancelled; number++) {
           const page = await doc.getPage(number);
+          if (cancelled) return;
           const scale = (width / page.getViewport({ scale: 1 }).width) * zoom;
           const viewport = page.getViewport({ scale: scale * window.devicePixelRatio });
           const canvas = document.createElement('canvas');
@@ -96,15 +117,14 @@ export function DocumentViewer({ src }: { src: string }) {
           await page.render({ canvas, viewport }).promise;
         }
         if (!cancelled) setState({ count: doc.numPages });
-      } catch (err) {
-        const missing = (err as { status?: number }).status === 404;
-        if (!cancelled) setState({ error: missing ? 'No document is stored for this invoice.' : 'The document could not be shown.' });
+      } catch {
+        if (!cancelled) setState({ error: 'The document could not be shown.' });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [src, zoom]);
+  }, [doc, zoom]);
   return (
     <section className="doc" aria-label="Invoice document">
       <div className="doc-bar">
