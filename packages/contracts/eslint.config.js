@@ -16,7 +16,7 @@ export default [
     rules: {
       ...graphql.configs['flat/schema-recommended'].rules,
       ...graphql.configs['flat/schema-relay'].rules,
-      // Keyset pagination is forward-only: first and after, without last and before.
+      // Keyset pagination goes forward (first, after) or back (last, before).
       '@graphql-eslint/relay-arguments': ['error', { includeBoth: false }],
       // Small bounded lists (line items, carriers, audit entries, problems) are plain lists, not connections.
       '@graphql-eslint/relay-edge-types': ['error', { listTypeCanWrapOnlyEdgeType: false }],
@@ -25,7 +25,7 @@ export default [
         'error',
         {
           exceptions: {
-            types: ['PageInfo', 'ExtractedLine', 'FieldChange'],
+             types: ['PageInfo', 'ExtractedLine', 'FieldChange', 'InvoiceSummary', 'InvoiceStatusCount'],
             suffixes: ['Connection', 'Edge'],
           },
         },

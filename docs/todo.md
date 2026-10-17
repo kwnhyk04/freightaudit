@@ -6,12 +6,7 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Pending
 
-- [ ] Zoom in shows no change in the document viewer (found 2026-10-18; it predates the cache fix). `.doc-pages canvas { max-width: 100% }` (`apps/web/app/globals.css:482`) caps each drawn page at the panel's width, so zoom in only sharpens it and only zoom out is visible. Fix: let the canvas keep its drawn width (the panel already scrolls, `overflow: auto`), or cap it only at 100%.
 - [ ] Relay probes through squid: 168 tunnels in the first 116 s after a start (2026-10-18), about 5,200 log lines and 27 MB an hour at that rate. Measure again after an hour. If the rate holds, squid's 30 MB of json-file logs cover about a day and a half, and a smaller DERP map in the tailnet policy would cut both (not confirmed).
-- [ ] Offline, a live invoice's page ends at a bare 404 (found 2026-10-18; no code change yet).
-  - Why: `livePage` sends it to `/demo/invoices/<id>`, the sample knows only its snapshot's 11 ids, and `notFound()` renders Next's default 404 page, since no `not-found.tsx` exists. The page has no banner and no way back.
-  - Fix: send an id the sample lacks to `/demo/invoices`, the sample list under the banner, and add a `not-found.tsx` inside the shell for other misses.
-  - Test: cover a live invoice's page in the offline e2e spec.
 - [ ] PR #13's next eval smoke: read its Failed calls section (or the artifact's json) for the class, status and message of the Gemini failures that broke the failed-calls floor (6 against 1), then choose the fix from that cause. No floor changes until then.
 - [ ] Full-subset floors for rate-limit waits and wait time, which the 2026-10-15 baseline could not give (no waits recorded): set them from the next full run on fresh results, `pnpm eval --suite extraction --subset full --fresh --set-floors` (cached cases from before 0011 report no waits).
 - [ ] Golden set v2 dev case for a carrier name beside a title line (the remit layout's "<carrier> — Freight Bill"), then a prompt change tuned on the dev split only (user decision E, 2026-10-16).
@@ -27,6 +22,26 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 - [ ] Step 10: the sign-in limiter counts per Vercel instance (user decision); move it to a hosted Redis such as Upstash if sign-in must lock across instances.
 
 ## In Progress
+
+- [ ] UI round 1 (plan approved 2026-10-18: `C:\Users\kwonhyuk\.claude\plans\pasted-content-id-aa61-start-ui-melodic-scroll.md`): the invoice list, invoice detail and upload screens as the approved pictures in `_design-reference/freightaudit/approved` (light, dark, phone), one-tap samples, and the two items moved here from Pending (offline 404, zoom). Two PRs, api first: Vercel deploys the web on every merge to main, while the demo api changes only with `pnpm demo:up`.
+  - [ ] Phase A, api (branch `ui-round-1` from main `5fb695e`). It changes no operation, so the web deployed from its merge asks only for what the old api serves.
+    - [x] Domain: `overchargeCents`, `reviewAmounts` and `lineExpectedCents` with fast-check properties; coverage stays at 100% (36 tests).
+    - [ ] Contract: `invoiceSummary`; `invoices(last, before, search)` with `totalCount` and `offset`; `decideInvoice` with `InvoiceDecision`, `SeenDiscrepancy` and `Discrepancy.version`; codegen. Done except the user's two lines in the protected `packages/contracts/eslint.config.js`: at line 28, `types: ['PageInfo', 'ExtractedLine', 'FieldChange', 'InvoiceSummary', 'InvoiceStatusCount'],`; at line 19, the comment `// Keyset pagination goes forward (first, after) or back (last, before).`
+    - [x] Api: backward keyset paging and counts, search, the summary, `decideInvoice` (one transaction, the versions the reviewer saw, `decide:` keys in `idempotency_keys`), and `resolveDiscrepancy` locking the invoice first.
+    - [x] Tests: `graphql.int.test.ts` (summary, search, paging both ways); `decide.int.test.ts` (each decision, rollback part-way, "changed", retry, two at once, lock order). The old lock order and a removed version check each failed their test.
+    - [ ] Checks (2026-10-18): typecheck 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 115/115, `pnpm contracts:check`, `pnpm contracts:breaking` (no changes) and `pnpm e2e` 9/9 pass. Lint is 11 of 12: contracts waits for the ESLint lines above.
+    - [x] Docs: context, memory, activity log.
+    - [ ] The user commits and merges PR A, Release publishes, the user runs `pnpm demo:up`, and the demo api's revision label is the merge commit.
+  - [ ] Phase B, web (branch `ui-round-1-web` from main once PR A is live on the demo):
+    - [ ] Shell: counts, skip link, stacked phone nav; the summary cached 10 s; the poller slows to 60 s after 2 minutes.
+    - [ ] List: stat cards, tab counts, search, status reason lines, Billed, Expected and Difference, "Showing a to b of N" with Previous and Next.
+    - [ ] Detail: bulk decisions through `decideInvoice`, findings, charges against the rate card, invoice details, the audit trail in plain words.
+    - [ ] Document marks on digital PDFs (one place only; the ordinal rule for identical lines; carrier ignores case); pdf.js pinned to exactly 6.4.299, with the eval and sandbox guard tests.
+    - [ ] Upload: dropzone, recent uploads, one-tap samples (g001, g067, and g062 in place of g071) through the same checks as a file; the sample PDFs traced into the upload function.
+    - [ ] Offline 404 (found 2026-10-18): `livePage` sends a live invoice to `/demo/invoices/<id>`, the sample knows only its 11 ids, and Next's default 404 shows with no banner. Fix: an id the sample lacks goes to `/demo/invoices`; not-found pages inside the live and demo shells.
+    - [ ] Zoom (found 2026-10-18): `.doc-pages canvas { max-width: 100% }` caps the drawn page at the panel's width, so zoom in only sharpens. Fix: the canvas keeps its drawn width in a page wrapper, and the panel scrolls.
+    - [ ] Tests: marks over the golden PDFs, pdf.js guards, e2e (upload, samples, bulk decision, "changed", search, paging, zoom, offline, not-found), `pnpm e2e:screenshots` round-1 shots beside the approved pictures.
+    - [ ] Docs and README screenshots (sample g056). PR B merges only after the demo api runs phase A.
 
 - [ ] Vercel builds main without the Ignored Build Step (branch `fix/vercel-production-builds` from main `dc6703b`; not committed; carries the doc updates made since #21).
   - [x] `apps/web/vercel.json`: `ignoreCommand` removed. `git.deploymentEnabled` is `{"**": false, "main": true}`, checked against Vercel's Git configuration docs: minimatch patterns, and a branch matching several rules deploys if one is `true`.

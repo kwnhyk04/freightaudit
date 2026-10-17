@@ -1,9 +1,9 @@
-import { auditEvents, invoices } from '@freightaudit/db';
+import { auditEvents, deadLetters, discrepancies, invoices, invoiceStatus } from '@freightaudit/db';
 import { seed } from '@freightaudit/db/scripts/seed';
 import { createTestDatabase, testEnv } from '@freightaudit/db/testing';
 import { createMemoryStorage, createQueues, type Queues } from '@freightaudit/pipeline';
 import { serverOptions } from '@freightaudit/telemetry';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Redis } from 'ioredis';
 import { randomBytes } from 'node:crypto';
@@ -79,6 +79,96 @@ test('invoices page by keyset with no gap or repeat, filtered by status, with mo
   } while (after);
   expect(new Set(seen).size).toBe(seen.length);
   expect(seen.sort()).toEqual((await idsWith('needs_review')).sort());
+});
+
+test('invoices page forward to the end and back to the start, with the total, each page offset and no gap or repeat', async () => {
+  const page = async (variables: Record<string, unknown>) => {
+    const query = `query ($first: Int, $after: String, $last: Int, $before: String) {
+      invoices(first: $first, after: $after, last: $last, before: $before, status: APPROVED) {
+        totalCount offset edges { node { id } } pageInfo { hasNextPage hasPreviousPage startCursor endCursor } } }`;
+    const { data, errors } = await gql(query, variables);
+    expect(errors).toBeUndefined();
+    return data!.invoices as {
+      totalCount: number;
+      offset: number;
+      edges: { node: { id: string } }[];
+      pageInfo: { hasNextPage: boolean; hasPreviousPage: boolean; startCursor: string; endCursor: string };
+    };
+  };
+  const ids = (each: Awaited<ReturnType<typeof page>>) => each.edges.map(({ node }) => node.id);
+  const approved = await db
+    .select({ id: invoices.id })
+    .from(invoices)
+    .where(and(eq(invoices.tenantId, tenantId), eq(invoices.status, 'approved')))
+    .orderBy(desc(invoices.createdAt), desc(invoices.id));
+  const forward: string[][] = [];
+  let current = await page({ first: 40 });
+  for (;;) {
+    expect([current.totalCount, current.offset, current.pageInfo.hasPreviousPage]).toEqual([approved.length, forward.flat().length, forward.length > 0]);
+    forward.push(ids(current));
+    if (!current.pageInfo.hasNextPage) break;
+    current = await page({ first: 40, after: current.pageInfo.endCursor });
+  }
+  expect(forward.length).toBeGreaterThan(2);
+  expect(forward.flat()).toEqual(approved.map((row) => row.id));
+  // Back from the last page, each page is the one that came before it going forward.
+  let cursor = current.pageInfo.startCursor;
+  for (let i = forward.length - 2; i >= 0; i--) {
+    const back = await page({ last: 40, before: cursor });
+    expect(ids(back)).toEqual(forward[i]);
+    expect([back.offset, back.pageInfo.hasPreviousPage, back.pageInfo.hasNextPage]).toEqual([i * 40, i > 0, true]);
+    cursor = back.pageInfo.startCursor;
+  }
+  expect((await gql('{ invoices(after: "x", before: "y") { totalCount } }')).errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
+  expect((await gql('{ invoices(last: 0) { totalCount } }')).errors?.[0]?.message).toBe('last must be between 1 and 100');
+});
+
+test('search finds invoices by number, PRO or carrier, ignoring case, and takes LIKE wildcards literally', async () => {
+  const search = async (term: string, status?: string) => {
+    const query = 'query ($term: String, $status: InvoiceStatus) { invoices(first: 100, search: $term, status: $status) { totalCount edges { node { id status } } } }';
+    const { data, errors } = await gql(query, { term, status });
+    expect(errors).toBeUndefined();
+    return data!.invoices as { totalCount: number; edges: { node: { id: string; status: string } }[] };
+  };
+  const { rows } = await pool.query(
+    'SELECT i.id, i.invoice_number, i.pro_number, c.name FROM invoices i JOIN carriers c ON c.id = i.carrier_id WHERE i.invoice_number IS NOT NULL AND i.pro_number IS NOT NULL LIMIT 1',
+  );
+  const [{ id, invoice_number: number, pro_number: pro, name }] = rows;
+  for (const term of [number, pro]) expect((await search(term)).edges.map(({ node }) => node.id)).toContain(id);
+  const { rows: carried } = await pool.query("SELECT count(*)::int AS n, count(*) FILTER (WHERE i.status = 'reconciled')::int AS reconciled FROM invoices i JOIN carriers c ON c.id = i.carrier_id WHERE c.name = $1", [name]);
+  // Trimmed and in capitals, the carrier's name finds every invoice it billed; numbers never contain carrier names.
+  expect((await search(` ${name.toUpperCase()} `)).totalCount).toBe(carried[0].n);
+  const reconciled = await search(name.toLowerCase(), 'RECONCILED');
+  expect([reconciled.totalCount, reconciled.edges.every(({ node }) => node.status === 'RECONCILED')]).toEqual([carried[0].reconciled, true]);
+  // Unescaped, % and _ would match every invoice.
+  for (const wildcard of ['%', '_']) expect((await search(wildcard)).totalCount).toBe(0);
+  expect((await gql(`{ invoices(search: "${'7'.repeat(101)}") { totalCount } }`)).errors?.[0]?.message).toBe('search is longer than 100 characters');
+});
+
+test('the summary counts what the tables hold', async () => {
+  const { data, errors } = await gql(
+    '{ invoiceSummary { statusCounts { status count } receivedLast7Days openFindings invoicesWithOpenFindings oldestOpenFindingAt openOverchargeCents matchedRateCard openDeadLetters } }',
+  );
+  expect(errors).toBeUndefined();
+  const all = await db.select().from(invoices).where(eq(invoices.tenantId, tenantId));
+  const findings = await db.select().from(discrepancies).where(eq(discrepancies.tenantId, tenantId));
+  const letters = await db.select().from(deadLetters).where(eq(deadLetters.tenantId, tenantId));
+  const open = findings.filter((finding) => finding.status === 'open');
+  const flagged = new Set(findings.map((finding) => finding.invoiceId));
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const summary = data!.invoiceSummary;
+  expect(open.length).toBeGreaterThan(0);
+  expect(summary.statusCounts).toEqual(invoiceStatus.enumValues.map((status) => ({ status: status.toUpperCase(), count: all.filter((row) => row.status === status).length })));
+  expect(summary).toEqual({
+    statusCounts: summary.statusCounts,
+    receivedLast7Days: all.filter((row) => row.createdAt.getTime() > weekAgo).length,
+    openFindings: open.length,
+    invoicesWithOpenFindings: new Set(open.map((finding) => finding.invoiceId)).size,
+    oldestOpenFindingAt: new Date(Math.min(...open.map((finding) => finding.createdAt.getTime()))).toISOString(),
+    openOverchargeCents: Number(open.reduce((cents, finding) => cents + finding.billedCents - finding.expectedCents, 0n)),
+    matchedRateCard: all.filter((row) => row.status === 'reconciled' && !flagged.has(row.id)).length,
+    openDeadLetters: letters.filter((letter) => letter.replayedAt === null).length,
+  });
 });
 
 test('a page of 25 discrepancies with invoice, line, shipment and rate card costs a fixed number of queries', async () => {

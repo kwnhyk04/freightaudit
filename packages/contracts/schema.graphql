@@ -23,9 +23,15 @@ type Query {
   health: String!
 
   """
-  Invoices, newest first.
+  Invoices, newest first: a page going forward (first, after) or back (last, before), filtered by status and by search,
+  which matches the invoice number, PRO number or carrier name, ignoring case.
   """
-  invoices(first: Int = 25, after: String, status: InvoiceStatus): InvoiceConnection!
+  invoices(first: Int = 25, after: String, last: Int, before: String, status: InvoiceStatus, search: String): InvoiceConnection!
+
+  """
+  Counts and totals for the invoice list and the sidebar, read when asked.
+  """
+  invoiceSummary: InvoiceSummary!
 
   """
   One invoice, or null when it does not exist.
@@ -61,6 +67,14 @@ type Mutation {
   Approves an invoice for payment.
   """
   approveInvoice(id: ID!): Invoice!
+
+  """
+  Decides every open discrepancy of a reconciled invoice in one transaction (dismissed for APPROVE_AS_BILLED, confirmed
+  otherwise), then approves the invoice unless the decision is DISPUTE. seen lists every discrepancy of the invoice with
+  the version the reviewer saw: any difference refuses with CONFLICT and changes nothing. A repeated requestId returns
+  the invoice and changes nothing.
+  """
+  decideInvoice(id: ID!, decision: InvoiceDecision!, seen: [SeenDiscrepancy!]!, requestId: ID!): Invoice!
 
   """
   Corrects the carrier or PRO number that kept a NEEDS_REVIEW invoice from matching a shipment, then runs
@@ -420,6 +434,35 @@ enum DiscrepancyType {
 }
 
 """
+A reviewer's decision on every open discrepancy of an invoice at once.
+"""
+enum InvoiceDecision {
+  """
+  Dismiss every open discrepancy, so the billed amounts stand, then approve the invoice.
+  """
+  APPROVE_AS_BILLED
+  """
+  Confirm every open discrepancy: the overcharges are disputed, and the invoice stays reconciled.
+  """
+  DISPUTE
+  """
+  Confirm every open discrepancy, then approve the invoice: what the rate card allows is paid.
+  """
+  APPROVE_AT_RATE_CARD
+}
+
+"""
+A discrepancy as the reviewer saw it.
+"""
+input SeenDiscrepancy {
+  id: ID!
+  """
+  Its version when the reviewer's page loaded.
+  """
+  version: String!
+}
+
+"""
 Review state of a discrepancy.
 """
 enum DiscrepancyStatus {
@@ -479,6 +522,10 @@ type Discrepancy implements Node {
   """
   note: String
   resolvedAt: DateTime
+  """
+  Changes whenever the discrepancy does; decideInvoice compares it with the version the reviewer saw.
+  """
+  version: String!
 }
 
 """
@@ -487,6 +534,60 @@ A page of invoices.
 type InvoiceConnection {
   edges: [InvoiceEdge!]!
   pageInfo: PageInfo!
+  """
+  Invoices matching the status and search, on all pages.
+  """
+  totalCount: Int!
+  """
+  Matching invoices before this page, so its first invoice is number offset + 1.
+  """
+  offset: Int!
+}
+
+"""
+Counts and totals across the tenant's invoices.
+"""
+type InvoiceSummary {
+  """
+  Invoices per status; every status is listed, those with none as 0.
+  """
+  statusCounts: [InvoiceStatusCount!]!
+  """
+  Invoices received in the last 7 days.
+  """
+  receivedLast7Days: Int!
+  """
+  Discrepancies waiting for a decision.
+  """
+  openFindings: Int!
+  """
+  Invoices with at least one open discrepancy.
+  """
+  invoicesWithOpenFindings: Int!
+  """
+  When the oldest open discrepancy was found; null when none is open.
+  """
+  oldestOpenFindingAt: DateTime
+  """
+  What open discrepancies bill above the contract.
+  """
+  openOverchargeCents: Cents!
+  """
+  Reconciled invoices with no discrepancy at all: every line matched the rate card, and they wait for approval.
+  """
+  matchedRateCard: Int!
+  """
+  Dead letters waiting for a replay.
+  """
+  openDeadLetters: Int!
+}
+
+"""
+How many invoices have one status.
+"""
+type InvoiceStatusCount {
+  status: InvoiceStatus!
+  count: Int!
 }
 
 """

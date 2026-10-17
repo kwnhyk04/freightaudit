@@ -126,6 +126,8 @@ export type Discrepancy = Node & {
   shipment?: Maybe<Shipment>;
   status: DiscrepancyStatus;
   type: DiscrepancyType;
+  /** Changes whenever the discrepancy does; decideInvoice compares it with the version the reviewer saw. */
+  version: Scalars['String']['output'];
 };
 
 /** A page of discrepancies. */
@@ -254,8 +256,21 @@ export type InvoiceDiscrepanciesArgs = {
 export type InvoiceConnection = {
   __typename?: 'InvoiceConnection';
   edges: Array<InvoiceEdge>;
+  /** Matching invoices before this page, so its first invoice is number offset + 1. */
+  offset: Scalars['Int']['output'];
   pageInfo: PageInfo;
+  /** Invoices matching the status and search, on all pages. */
+  totalCount: Scalars['Int']['output'];
 };
+
+/** A reviewer's decision on every open discrepancy of an invoice at once. */
+export type InvoiceDecision =
+  /** Dismiss every open discrepancy, so the billed amounts stand, then approve the invoice. */
+  | 'APPROVE_AS_BILLED'
+  /** Confirm every open discrepancy, then approve the invoice: what the rate card allows is paid. */
+  | 'APPROVE_AT_RATE_CARD'
+  /** Confirm every open discrepancy: the overcharges are disputed, and the invoice stays reconciled. */
+  | 'DISPUTE';
 
 /** An invoice in a connection. */
 export type InvoiceEdge = {
@@ -285,6 +300,34 @@ export type InvoiceStatus =
   /** A reviewer refused the invoice for payment. Final. */
   | 'REJECTED';
 
+/** How many invoices have one status. */
+export type InvoiceStatusCount = {
+  __typename?: 'InvoiceStatusCount';
+  count: Scalars['Int']['output'];
+  status: InvoiceStatus;
+};
+
+/** Counts and totals across the tenant's invoices. */
+export type InvoiceSummary = {
+  __typename?: 'InvoiceSummary';
+  /** Invoices with at least one open discrepancy. */
+  invoicesWithOpenFindings: Scalars['Int']['output'];
+  /** Reconciled invoices with no discrepancy at all: every line matched the rate card, and they wait for approval. */
+  matchedRateCard: Scalars['Int']['output'];
+  /** When the oldest open discrepancy was found; null when none is open. */
+  oldestOpenFindingAt?: Maybe<Scalars['DateTime']['output']>;
+  /** Dead letters waiting for a replay. */
+  openDeadLetters: Scalars['Int']['output'];
+  /** Discrepancies waiting for a decision. */
+  openFindings: Scalars['Int']['output'];
+  /** What open discrepancies bill above the contract. */
+  openOverchargeCents: Scalars['Cents']['output'];
+  /** Invoices received in the last 7 days. */
+  receivedLast7Days: Scalars['Int']['output'];
+  /** Invoices per status; every status is listed, those with none as 0. */
+  statusCounts: Array<InvoiceStatusCount>;
+};
+
 /** A charge line extracted from an invoice. */
 export type LineItem = {
   __typename?: 'LineItem';
@@ -307,6 +350,13 @@ export type Mutation = {
    * matching again. Called on an EXTRACTED invoice, it only queues matching again.
    */
   correctInvoice: Invoice;
+  /**
+   * Decides every open discrepancy of a reconciled invoice in one transaction (dismissed for APPROVE_AS_BILLED, confirmed
+   * otherwise), then approves the invoice unless the decision is DISPUTE. seen lists every discrepancy of the invoice with
+   * the version the reviewer saw: any difference refuses with CONFLICT and changes nothing. A repeated requestId returns
+   * the invoice and changes nothing.
+   */
+  decideInvoice: Invoice;
   /** Rejects a NEEDS_REVIEW invoice for payment; the reason is kept in its audit trail. Final. */
   rejectInvoice: Invoice;
   /** Runs a dead letter's job again from the step that failed. */
@@ -327,6 +377,15 @@ export type MutationCorrectInvoiceArgs = {
   carrierId?: InputMaybe<Scalars['ID']['input']>;
   id: Scalars['ID']['input'];
   proNumber?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+/** Reviewer actions. */
+export type MutationDecideInvoiceArgs = {
+  decision: InvoiceDecision;
+  id: Scalars['ID']['input'];
+  requestId: Scalars['ID']['input'];
+  seen: Array<SeenDiscrepancy>;
 };
 
 
@@ -378,7 +437,12 @@ export type Query = {
   health: Scalars['String']['output'];
   /** One invoice, or null when it does not exist. */
   invoice?: Maybe<Invoice>;
-  /** Invoices, newest first. */
+  /** Counts and totals for the invoice list and the sidebar, read when asked. */
+  invoiceSummary: InvoiceSummary;
+  /**
+   * Invoices, newest first: a page going forward (first, after) or back (last, before), filtered by status and by search,
+   * which matches the invoice number, PRO number or carrier name, ignoring case.
+   */
   invoices: InvoiceConnection;
 };
 
@@ -408,7 +472,10 @@ export type QueryInvoiceArgs = {
 /** Queries for the invoice review UI. */
 export type QueryInvoicesArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
+  before?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<InvoiceStatus>;
 };
 
@@ -423,6 +490,13 @@ export type RateCardVersion = {
   id: Scalars['ID']['output'];
   /** Increases with each new version for the carrier. */
   version: Scalars['Int']['output'];
+};
+
+/** A discrepancy as the reviewer saw it. */
+export type SeenDiscrepancy = {
+  id: Scalars['ID']['input'];
+  /** Its version when the reviewer's page loaded. */
+  version: Scalars['String']['input'];
 };
 
 /** A shipment record synced from the TMS. */
@@ -546,14 +620,18 @@ export type ResolversTypes = {
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   Invoice: ResolverTypeWrapper<Partial<Invoice>>;
   InvoiceConnection: ResolverTypeWrapper<Omit<InvoiceConnection, 'edges'> & { edges: Array<ResolversTypes['InvoiceEdge']> }>;
+  InvoiceDecision: InvoiceDecision;
   InvoiceEdge: ResolverTypeWrapper<Omit<InvoiceEdge, 'node'> & { node: ResolversTypes['Invoice'] }>;
   InvoiceStatus: InvoiceStatus;
+  InvoiceStatusCount: ResolverTypeWrapper<InvoiceStatusCount>;
+  InvoiceSummary: ResolverTypeWrapper<InvoiceSummary>;
   LineItem: ResolverTypeWrapper<LineItem>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Node: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Node']>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   RateCardVersion: ResolverTypeWrapper<RateCardVersion>;
+  SeenDiscrepancy: SeenDiscrepancy;
   Shipment: ResolverTypeWrapper<Shipment>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
 };
@@ -581,12 +659,15 @@ export type ResolversParentTypes = {
   Invoice: Partial<Invoice>;
   InvoiceConnection: Omit<InvoiceConnection, 'edges'> & { edges: Array<ResolversParentTypes['InvoiceEdge']> };
   InvoiceEdge: Omit<InvoiceEdge, 'node'> & { node: ResolversParentTypes['Invoice'] };
+  InvoiceStatusCount: InvoiceStatusCount;
+  InvoiceSummary: InvoiceSummary;
   LineItem: LineItem;
   Mutation: Record<PropertyKey, never>;
   Node: ResolversInterfaceTypes<ResolversParentTypes>['Node'];
   PageInfo: PageInfo;
   Query: Record<PropertyKey, never>;
   RateCardVersion: RateCardVersion;
+  SeenDiscrepancy: SeenDiscrepancy;
   Shipment: Shipment;
   String: Scalars['String']['output'];
 };
@@ -653,6 +734,7 @@ export type DiscrepancyResolvers<ContextType = any, ParentType extends Resolvers
   shipment?: Resolver<Maybe<ResolversTypes['Shipment']>, ParentType, ContextType>;
   status?: Resolver<ResolversTypes['DiscrepancyStatus'], ParentType, ContextType>;
   type?: Resolver<ResolversTypes['DiscrepancyType'], ParentType, ContextType>;
+  version?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -717,12 +799,30 @@ export type InvoiceResolvers<ContextType = any, ParentType extends ResolversPare
 
 export type InvoiceConnectionResolvers<ContextType = any, ParentType extends ResolversParentTypes['InvoiceConnection'] = ResolversParentTypes['InvoiceConnection']> = {
   edges?: Resolver<Array<ResolversTypes['InvoiceEdge']>, ParentType, ContextType>;
+  offset?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+  totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type InvoiceEdgeResolvers<ContextType = any, ParentType extends ResolversParentTypes['InvoiceEdge'] = ResolversParentTypes['InvoiceEdge']> = {
   cursor?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   node?: Resolver<ResolversTypes['Invoice'], ParentType, ContextType>;
+};
+
+export type InvoiceStatusCountResolvers<ContextType = any, ParentType extends ResolversParentTypes['InvoiceStatusCount'] = ResolversParentTypes['InvoiceStatusCount']> = {
+  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['InvoiceStatus'], ParentType, ContextType>;
+};
+
+export type InvoiceSummaryResolvers<ContextType = any, ParentType extends ResolversParentTypes['InvoiceSummary'] = ResolversParentTypes['InvoiceSummary']> = {
+  invoicesWithOpenFindings?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  matchedRateCard?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  oldestOpenFindingAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  openDeadLetters?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  openFindings?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  openOverchargeCents?: Resolver<ResolversTypes['Cents'], ParentType, ContextType>;
+  receivedLast7Days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  statusCounts?: Resolver<Array<ResolversTypes['InvoiceStatusCount']>, ParentType, ContextType>;
 };
 
 export type LineItemResolvers<ContextType = any, ParentType extends ResolversParentTypes['LineItem'] = ResolversParentTypes['LineItem']> = {
@@ -736,6 +836,7 @@ export type LineItemResolvers<ContextType = any, ParentType extends ResolversPar
 export type MutationResolvers<ContextType = any, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   approveInvoice?: Resolver<ResolversTypes['Invoice'], ParentType, ContextType, RequireFields<MutationApproveInvoiceArgs, 'id'>>;
   correctInvoice?: Resolver<ResolversTypes['Invoice'], ParentType, ContextType, RequireFields<MutationCorrectInvoiceArgs, 'id'>>;
+  decideInvoice?: Resolver<ResolversTypes['Invoice'], ParentType, ContextType, RequireFields<MutationDecideInvoiceArgs, 'decision' | 'id' | 'requestId' | 'seen'>>;
   rejectInvoice?: Resolver<ResolversTypes['Invoice'], ParentType, ContextType, RequireFields<MutationRejectInvoiceArgs, 'id' | 'reason'>>;
   replayDeadLetter?: Resolver<ResolversTypes['DeadLetter'], ParentType, ContextType, RequireFields<MutationReplayDeadLetterArgs, 'id'>>;
   resolveDiscrepancy?: Resolver<ResolversTypes['Discrepancy'], ParentType, ContextType, RequireFields<MutationResolveDiscrepancyArgs, 'decision' | 'id'>>;
@@ -758,6 +859,7 @@ export type QueryResolvers<ContextType = any, ParentType extends ResolversParent
   discrepancies?: Resolver<ResolversTypes['DiscrepancyConnection'], ParentType, ContextType, RequireFields<QueryDiscrepanciesArgs, 'first'>>;
   health?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   invoice?: Resolver<Maybe<ResolversTypes['Invoice']>, ParentType, ContextType, RequireFields<QueryInvoiceArgs, 'id'>>;
+  invoiceSummary?: Resolver<ResolversTypes['InvoiceSummary'], ParentType, ContextType>;
   invoices?: Resolver<ResolversTypes['InvoiceConnection'], ParentType, ContextType, RequireFields<QueryInvoicesArgs, 'first'>>;
 };
 
@@ -797,6 +899,8 @@ export type Resolvers<ContextType = any> = {
   Invoice?: InvoiceResolvers<ContextType>;
   InvoiceConnection?: InvoiceConnectionResolvers<ContextType>;
   InvoiceEdge?: InvoiceEdgeResolvers<ContextType>;
+  InvoiceStatusCount?: InvoiceStatusCountResolvers<ContextType>;
+  InvoiceSummary?: InvoiceSummaryResolvers<ContextType>;
   LineItem?: LineItemResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   Node?: NodeResolvers<ContextType>;
