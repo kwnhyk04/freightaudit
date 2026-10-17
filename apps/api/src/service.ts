@@ -153,7 +153,7 @@ export function createService(deps: ServiceDeps) {
         .where(and(eq(invoices.tenantId, tenantId), eq(invoices.id, id)));
       const bytes = row && (await storage.get(row.contentSha256));
       if (!bytes) throw fail(404, `no document stored for invoice ${id}`);
-      return reply.type('application/pdf').header('cache-control', 'private, max-age=31536000, immutable').send(Buffer.from(bytes));
+      return reply.type('application/pdf').header('cache-control', 'private, no-store').send(Buffer.from(bytes));
     },
 
     async listDiscrepancies(req: FastifyRequest) {

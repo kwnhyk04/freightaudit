@@ -14,12 +14,11 @@ import { randomUUID } from 'node:crypto';
 import { createLimiter } from '../lib/limiter.ts';
 import { verifyPassword } from '../lib/password.ts';
 import { ApiError, clientKey, currentSession, env, gql, isLive, log, markOffline, rest, REVIEWER } from '../lib/server.ts';
-import { createToken, safeNext, SESSION_COOKIE, SESSION_SECONDS } from '../lib/session.ts';
+import { createToken, safeNext, SESSION_COOKIE, SESSION_COOKIE_ATTRIBUTES, SESSION_SECONDS } from '../lib/session.ts';
 
 export type ActionState = { error?: string };
 
 const limiter = createLimiter();
-const cookie = { httpOnly: true, secure: true, sameSite: 'lax', path: '/' } as const;
 // The API's messages start lower case and stop without a period; the UI shows them as sentences.
 const sentence = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}${/[.!?]$/.test(text) ? '' : '.'}`;
 
@@ -36,14 +35,8 @@ export async function login(_: ActionState, form: FormData): Promise<ActionState
     return { error: 'Wrong password.' };
   }
   limiter.clear(client);
-  (await cookies()).set(SESSION_COOKIE, createToken(REVIEWER, env().SESSION_SECRET), { ...cookie, maxAge: SESSION_SECONDS });
+  (await cookies()).set(SESSION_COOKIE, createToken(REVIEWER, env().SESSION_SECRET), { ...SESSION_COOKIE_ATTRIBUTES, maxAge: SESSION_SECONDS });
   redirect(safeNext(form.get('next')));
-}
-
-export async function logout() {
-  // A __Host- cookie is only replaced by one with the same attributes, so it expires the same way it was set.
-  (await cookies()).set(SESSION_COOKIE, '', { ...cookie, maxAge: 0 });
-  redirect('/login');
 }
 
 // Every action needs the session and the live backend; sample data is read-only.

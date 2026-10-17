@@ -12,7 +12,8 @@ export function proxy(request: NextRequest) {
   return NextResponse.redirect(login);
 }
 
-// Public: the sign-in page, the read-only sample demo and its files, the probes, and Next's own assets.
+// Public: the sign-in page, sign-out (which checks the origin itself, so an expired session can still sign out), the
+// read-only sample demo and its files, the probes, and Next's own assets.
 export const config = {
-  matcher: ['/((?!login|demo|healthz|readyz|_next/|favicon\\.ico).*)'],
+  matcher: ['/((?!login|logout|demo|healthz|readyz|_next/|favicon\\.ico).*)'],
 };

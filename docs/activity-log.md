@@ -19,6 +19,57 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-18: Documents never cached; sign-out clears the browser cache (branch fix/document-no-store, not committed)
+
+- **Branch:**
+  - What happened: the user asked for the document cache fix as its own small pull request.
+  - Why: user decision, after `deploy/relay-allowlist` merged (PR #20, main `1493832`).
+  - What we did: `git switch -c fix/document-no-store` on a clean main.
+- **Headers:**
+  - What happened: the web's `/api/invoices/[id]/document` and the api's `/v1/invoices/{id}/document` now answer `cache-control: private, no-store`.
+  - Why: the year-long `immutable` header let a browser keep each viewed PDF after sign-out and show it while the backend was offline.
+  - What we did: changed `route.ts:19` and `apps/api/src/service.ts:156`. No test pinned the old value.
+- **Sign-out as a route handler:**
+  - What happened: sign-out had to answer `Clear-Site-Data: "cache"`, and it was a server action.
+  - Why: a server action cannot set response headers. Next 16.4's bundled `headers.md` calls `headers()` read-only, and `cookies()` writes only Set-Cookie.
+  - What we did:
+    1. Read Next's own check in `next/dist/server/app-render/action-handler.js` (lines 426-456): a request without an Origin passes; otherwise the Origin's host must equal the first `x-forwarded-host`, or Host.
+    2. Wrote that rule as `sameOrigin` in `lib/session.ts`, and moved the cookie attributes there as `SESSION_COOKIE_ATTRIBUTES`, now shared by sign-in and sign-out.
+    3. Added `app/logout/route.ts`. Its `POST` refuses another site with 403, expires the cookie, sets `Clear-Site-Data: "cache"` and answers 303 to `/login`.
+    4. Pointed the shell's form at it (`method="post" action="/logout"`), removed `logout()` from `actions.ts`, and excluded `logout` in `proxy.ts`'s matcher so an expired session can still sign out.
+    - Best because it is the smallest change that sends the header while keeping the action's protection and the `__Host-` cookie's attributes.
+- **Viewer refetched on zoom:**
+  - What happened: `DocumentViewer`'s effect depended on `[src, zoom]`, so every zoom click called `pdfjs.getDocument` and downloaded the whole PDF again.
+  - Why: until now the year-long cache answered those fetches. With `no-store`, each zoom would cross Vercel and Funnel to the PC: one function invocation, one api request against the key's 60 a minute, and the whole file (uploads up to 4 MiB; the golden set's median is 45 KB), at about 0.5 to 1.7 s from this PC.
+  - What we did: split the effect into a load per `src`, which destroys the loading task on unmount, and a redraw per zoom. `InvoiceDetail` keys the viewer by `src`. The e2e checks that zooming sends no request. A small, contained change, so it is made here rather than listed.
+- **Tests:**
+  - What happened:
+    - Unit: a `sameOrigin` test in `lib/auth.test.ts`, covering same host, no Origin, x-forwarded-host, another host, another port, `null`, a malformed Origin, a missing Host, and a forwarded host that differs.
+    - e2e, `main.spec.ts`: the viewer's own document response and the api's response carry `private, no-store`; a sign-out posted with `Origin: https://evil.example` gets 403 and the session stays; sign-out answers 303 with `Clear-Site-Data: "cache"` and leaves no `__Host-session`; zooming redraws without a request.
+  - Why: user request.
+  - What we did: wrote them beside the existing tests of the same code.
+- **First e2e run, 2 of 9 failed (agent mistakes in the new tests):**
+  - What happened: (1) the sign-out check found no `clear-site-data`; (2) the zoom check timed out waiting for the canvas to grow.
+  - Why:
+    - (1) Playwright's `response.headers()` leaves out headers it counts as security-related. This is confirmed by the fix: only the header source changed, and the 303 held.
+    - (2) `.doc-pages canvas { max-width: 100% }` (`globals.css:482`) caps the shown width, so `clientWidth` cannot grow.
+  - What we did: used `allHeaders()` for (1), and the canvas bitmap's `width` for (2). The second run passed 9 of 9.
+- **Zoom in shows nothing (found):**
+  - What happened: the same CSS rule means zoom in only sharpens a page; only zoom out is visible.
+  - Why: it predates this change.
+  - What we did: added it to docs/todo.md. There is no UI round 1 section there.
+- **AGENTS.md showed as modified:**
+  - What happened: `git status` listed AGENTS.md, which this change does not touch.
+  - Why: turbo rewrites its managed block when an agent runs it, here with LF line endings. `git diff -- AGENTS.md` is empty, so nothing would be committed.
+  - What we did: left it alone.
+- **GateGuard:**
+  - What happened: the hook blocked the first touch of each of the 11 files.
+  - Why: its fact-forcing gate.
+  - What we did: listed references, affected functions, data and the user's words, then retried each call.
+- Files: apps/api/src/service.ts, apps/web/{app/actions.ts, app/api/invoices/[id]/document/route.ts, app/logout/route.ts (new), components/client.tsx, components/shell.tsx, components/views.tsx, e2e/main.spec.ts, lib/auth.test.ts, lib/session.ts, proxy.ts}, docs/{activity-log,context,memory,todo}.md
+- Validation: lint 12/12, typecheck 21/21 (web lint and typecheck again after the spec fixes), `pnpm turbo run test --force` 18 tasks (web 7, api 7), `pnpm e2e` 9/9 in 28.0 s on the dev stack.
+- Outstanding: the pull request and merge, then the deploy steps (docs/todo.md, In Progress); clearing the phone's old copies. Nothing committed.
+
 ### 2026-10-18: Production domain checks; step 10 done (not committed)
 
 Times are UTC.
