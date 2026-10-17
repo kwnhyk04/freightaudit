@@ -608,9 +608,15 @@ importers:
 
   packages/db:
     dependencies:
+      '@faker-js/faker':
+        specifier: 'catalog:'
+        version: 10.6.0
       '@freightaudit/config':
         specifier: workspace:*
         version: link:../config
+      '@freightaudit/domain':
+        specifier: workspace:*
+        version: link:../domain
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.45.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(pg@8.23.1)
@@ -618,12 +624,6 @@ importers:
         specifier: 'catalog:'
         version: 8.23.1
     devDependencies:
-      '@faker-js/faker':
-        specifier: 'catalog:'
-        version: 10.6.0
-      '@freightaudit/domain':
-        specifier: workspace:*
-        version: link:../domain
       '@types/jest':
         specifier: 'catalog:'
         version: 30.0.0

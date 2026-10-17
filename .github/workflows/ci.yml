@@ -278,8 +278,13 @@ jobs:
       contents: read
     strategy:
       fail-fast: false
+      # squid is the public demo's egress proxy; its build fails on a squid older than the minimum it names.
       matrix:
-        app: [api, worker, web]
+        include:
+          - { app: api, dockerfile: apps/api/Dockerfile }
+          - { app: worker, dockerfile: apps/worker/Dockerfile }
+          - { app: web, dockerfile: apps/web/Dockerfile }
+          - { app: squid, dockerfile: infra/squid/Dockerfile }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -288,7 +293,7 @@ jobs:
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          file: apps/${{ matrix.app }}/Dockerfile
+          file: ${{ matrix.dockerfile }}
           tags: freightaudit-${{ matrix.app }}:ci
           load: true
           cache-from: type=gha,scope=${{ matrix.app }}

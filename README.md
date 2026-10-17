@@ -45,6 +45,22 @@ Golden set v1 (90 synthetic invoices, ground truth from the generator), measured
 
 Ingests carrier invoice PDFs, extracts line items with an LLM, and reconciles each charge against contracted rate cards and shipment records with deterministic code. Flags overcharges for human review.
 
+## Live demo
+
+The review UI runs on Vercel; its public URL goes here after the first deploy. Without signing in, `/demo` shows a read-only sample of golden-set invoices. Signed in, the pages are live while the backend on this PC is up; when it is off or asleep, they show the same sample under "Live backend offline, showing sample data". Setup, every setting and how to rotate it: `docs/deploy.md`.
+
+Honest limits:
+- The backend runs on a personal PC, reached through Tailscale Funnel. When the PC sleeps, the demo shows the sample.
+- The models are free tiers with a 100,000-token daily budget, shared quotas and per-minute limits. Once the budget is spent, an upload waits as Received until 00:00 UTC.
+- Uploads accept only the golden set's synthetic PDFs (the upload page offers three), and every eval uses synthetic data. Real carrier invoices may score differently.
+- One reviewer password; the sign-in limit counts per Vercel instance.
+
+Before an interview:
+1. Start Docker Desktop, then `pnpm demo:up` (it checks the public URL).
+2. `pnpm db:reset-demo` for clean data; the 11 sample invoices take a few minutes to read.
+3. Open the link 10 minutes early: sign in, open an invoice, check the document renders.
+4. Keep the backup video open in a tab, in case the network fails.
+
 ## Setup
 
 Requires Node 24 (LTS), pnpm 12 and Docker.
@@ -65,7 +81,7 @@ Models run only with `AI_ENABLED=true` in `.env` (default false: no key needed, 
 
 The api, worker and mock-tms validate their settings at startup and exit with a list of missing or invalid variables. The pre-commit hook blocks commits whose staged changes contain a secret; it runs a local `gitleaks` when installed, otherwise the pinned Docker image.
 
-Backend on this PC (production): `docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d --wait`. The override publishes no Postgres, Redis or MinIO ports, restarts services unless stopped, and sets memory limits.
+The public demo's backend runs on this PC as its own compose project, `freightaudit-prod`, started with `pnpm demo:up` from the settings in `.env.prod`; `docs/deploy.md` covers it (see Live demo).
 
 ## Usage
 
@@ -84,6 +100,7 @@ Backend on this PC (production): `docker compose --env-file .env -f infra/docker
 | `pnpm fixtures [--count=60] [--seed=42]` | Render synthetic invoice PDFs from 6 templates, plus scanned variants, each with ground-truth JSON, into `evals/fixtures/out`; the same seed gives byte-identical files on one machine. Each invoice bills a shipment the small seed leaves unbilled, so it reconciles against `pnpm db:seed --scale=small`; the ground truth gives each line's expected cents and every planted overcharge |
 | `pnpm e2e` | The Playwright suite against the whole stack on this project's ports (see Review UI); needs Docker |
 | `pnpm e2e:screenshots` | Every screen in light and dark at 1440x900, and three on a 390 px phone, into `docs/screenshots/ui/` |
+| `pnpm demo:init`, `demo:up`, `demo:down`, `db:backup`, `db:reset-demo` | The public demo's backend on this PC: create `.env.prod`, start or stop project `freightaudit-prod`, dump its database to `backups/`, or reset it to the seed plus the sample invoices (`docs/deploy.md`) |
 | `pnpm extract:resume` | Restart the extract queue after the worker paused it because a provider rejected its key or model (401, 403, 404; the worker logs `alert: "extract_paused"`). Fix the setting and restart the worker first |
 | `pnpm eval --suite extraction --subset ci\|dev\|test\|full\|compare [--fresh] [--set-floors]` | Runs golden set v1 (`evals/golden/v1`: 90 invoices, dev split 20, ci subset 20) through the real worker against the small seed in throwaway Postgres and Redis containers, with the pinned roles from `.env` (real model calls; needs Docker and the keys). Each case's result is cached in `evals/.cache`, so a run stopped by a spent quota (exit 2) resumes; `--fresh` ignores the cache. Writes `evals/reports/<date>[-<subset>].json` and `.md` with every target met or missed and the regression floors of `evals/thresholds.json` (exit 1 when one breaks); a full run rewrites the table above. `compare` runs `gemini-3.8-flash` beside the configured primary on `evals/comparison/v1`. Rebuild a set with `node evals/golden/build.ts --set golden\|comparison` only as a new version |
 
@@ -114,7 +131,7 @@ The web app (`apps/web`, Next.js) is where accounts-payable staff review invoice
 - **Threats and mitigations:** `docs/threat-notes.md`.
 
 ```bash
-pnpm --filter @freightaudit/web hash-password  # type the password, then Ctrl+D (Ctrl+Z, Enter on Windows); put the hash in DEMO_PASSWORD_HASH
+pnpm --filter @freightaudit/web hash-password --write-env  # asks twice without echoing; writes only DEMO_PASSWORD_HASH into .env
 pnpm dev                                        # the UI on http://127.0.0.1:3000
 ```
 
@@ -216,7 +233,7 @@ docker compose --env-file .env -f infra/docker-compose.yml run --rm k6 run -e SC
 GitHub Actions, with every action pinned to a commit SHA, every tool image to a digest, and per-job token permissions.
 
 - `ci.yml` (pull requests, and the checks of `release.yml`): lint and typecheck (plus actionlint and the promtool alert rule tests), unit tests (`pnpm test --force`, so a cached pass never counts), integration tests (Testcontainers and the Playwright Chromium), end-to-end tests (`pnpm e2e`, the Playwright report kept on failure), contracts (`contracts:check` and oasdiff against the base), migrations (all of them on a fresh database, and this change's on a seeded snapshot built from the base, which must end in the same schema), golden set checksums, the eval smoke (`pnpm eval --suite extraction --subset ci` on same-repository PRs, report posted as a PR comment; a broken floor fails, a quota stop only warns), a Docker build and Trivy scan per image, gitleaks and `pnpm audit`.
-- `release.yml` (push to main): the same checks, then `ghcr.io/<owner>/freightaudit-{api,worker,web}` tagged `sha-<short>` and `latest` with provenance, then migrate and deploy jobs that stay off until step 10.
+- `release.yml` (push to main): the same checks, then `ghcr.io/<owner>/freightaudit-{api,worker,web}` tagged `sha-<short>` and `latest` with provenance. Nothing deploys from CI: the PC pulls these images (`pnpm demo:up`), and Vercel builds the UI from main.
 - `nightly-eval.yml`: the full eval weekly (Mondays 03:23 UTC) or on demand, report as an artifact, an issue when a floor breaks; re-running that workflow run resumes from its cached cases.
 
 Repository secrets: `GEMINI_API_KEY` and `GROQ_API_KEY`; optionally `TURBO_TOKEN` with the variable `TURBO_TEAM` for Turborepo Remote Cache. Images build from the repository root: `docker build -f apps/api/Dockerfile .` (or `apps/worker`, `apps/web`).

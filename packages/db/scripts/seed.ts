@@ -290,10 +290,12 @@ export function buildSeed(scale: Scale, { flatRates = false }: { flatRates?: boo
   return { tenantId, carriers, cards, shipments, unbilled, invoices, extractions, lines, discrepancies, keys, deadLetters, truth };
 }
 
+const hasData = async (client: pg.Client) =>
+  (await client.query<{ seeded: boolean }>('SELECT EXISTS (SELECT 1 FROM tenants) AS seeded')).rows[0]?.seeded === true;
+
 // Writes buildSeed's data to an empty, migrated database in one transaction, and returns its counts and ground truth.
 export async function seed(client: pg.Client, scale: Scale, { flatRates = false, log = logJson }: { flatRates?: boolean; log?: Log } = {}) {
-  const { rows } = await client.query<{ seeded: boolean }>('SELECT EXISTS (SELECT 1 FROM tenants) AS seeded');
-  if (rows[0]?.seeded) throw new Error('Database already has data; seed needs an empty, migrated database.');
+  if (await hasData(client)) throw new Error('Database already has data; seed needs an empty, migrated database.');
   const started = Date.now();
   const data = buildSeed(scale, { flatRates });
   const { tenantId } = data;
@@ -372,13 +374,15 @@ export async function seed(client: pg.Client, scale: Scale, { flatRates = false,
 }
 
 if (import.meta.main) {
-  const { values } = parseArgs({ options: { scale: { type: 'string', default: 'small' } } });
+  // --if-empty (the demo's start-up step) leaves a seeded database as it is.
+  const { values } = parseArgs({ options: { scale: { type: 'string', default: 'small' }, 'if-empty': { type: 'boolean', default: false } } });
   if (values.scale !== 'small' && values.scale !== 'large') throw new Error('--scale must be small or large');
   const { DATABASE_URL } = loadEnv(['DATABASE_URL']);
   const client = new pg.Client({ connectionString: DATABASE_URL });
   await client.connect();
   try {
-    await seed(client, values.scale);
+    if (values['if-empty'] && (await hasData(client))) logJson('seed skipped: the database already has data');
+    else await seed(client, values.scale);
   } finally {
     await client.end();
   }

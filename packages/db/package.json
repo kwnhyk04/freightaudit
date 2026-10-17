@@ -17,13 +17,13 @@
     "backfill:rate-card-versions": "node --env-file-if-exists=../../.env scripts/backfill-rate-card-versions.ts"
   },
   "dependencies": {
+    "@faker-js/faker": "catalog:",
     "@freightaudit/config": "workspace:*",
+    "@freightaudit/domain": "workspace:*",
     "drizzle-orm": "catalog:",
     "pg": "catalog:"
   },
   "devDependencies": {
-    "@faker-js/faker": "catalog:",
-    "@freightaudit/domain": "workspace:*",
     "@types/jest": "catalog:",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",

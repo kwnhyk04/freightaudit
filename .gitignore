@@ -6,6 +6,8 @@ next-env.d.ts
 coverage/
 *.tsbuildinfo
 .env
+.env.prod
+backups/
 evals/fixtures/out/
 evals/.cache/
 apps/web/playwright-report/

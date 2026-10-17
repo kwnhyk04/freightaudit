@@ -49,6 +49,8 @@ export type WorkerOptions = {
 // TMS sync every 5 minutes. Every worker upserts the same scheduler id, so there is one schedule however many run.
 export const scheduleTmsSync = (queues: Queues, tenantId: string) =>
   queues.queue('tms-sync').upsertJobScheduler('tms-sync', { every: 5 * 60_000 }, { name: 'sync', data: { tenantId }, opts: jobOptions });
+// Without a TMS (the public demo) the schedule goes too, so turning the sync off sticks.
+export const unscheduleTmsSync = (queues: Queues) => queues.queue('tms-sync').removeJobScheduler('tms-sync');
 
 // Permanent errors fail the job at once; every other error is retried with backoff. A failed query's message lists
 // every bound value, extracted line items included, and BullMQ stores the message, so only the driver code is kept.

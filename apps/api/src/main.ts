@@ -1,11 +1,13 @@
-import { loadEnv } from '@freightaudit/config/env';
+import { configError, loadEnv } from '@freightaudit/config/env';
 import { createPool } from '@freightaudit/db';
 import { backlog, createQueues, createStorage } from '@freightaudit/pipeline';
 import { httpCheck, serverOptions, shutdownTelemetry, tcpCheck } from '@freightaudit/telemetry';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Redis } from 'ioredis';
+import { readFileSync } from 'node:fs';
 import { buildApp } from './app.ts';
 import { createService } from './service.ts';
+import { manifestDigests } from './uploads.ts';
 
 const env = loadEnv([
   'HOST',
@@ -23,7 +25,16 @@ const env = loadEnv([
   'EXTRACT_HIGH_WATER',
   'RATE_LIMIT_PER_MIN',
   'UPLOAD_RATE_LIMIT_PER_MIN',
+  'UPLOAD_ALLOWLIST',
 ]);
+// The public demo's manifest: only the PDFs it lists may be uploaded. A missing or empty one stops startup.
+function allowlist(path: string) {
+  try {
+    return manifestDigests(readFileSync(path, 'utf8'));
+  } catch (err) {
+    return configError(`UPLOAD_ALLOWLIST: ${(err as Error).message}`);
+  }
+}
 // One reconnect attempt per command, so a request fails fast while Redis is down instead of hanging.
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1 });
 // The logger exists by the time the pool has an idle connection to lose.
@@ -45,6 +56,7 @@ const app = buildApp(serverOptions(env.LOG_LEVEL), {
   prefix: env.REDIS_PREFIX,
   rateLimits: { general: env.RATE_LIMIT_PER_MIN, upload: env.UPLOAD_RATE_LIMIT_PER_MIN },
   backlog: { waiting: () => backlog(queues.queue('extract')), highWater: env.EXTRACT_HIGH_WATER },
+  uploadAllowlist: env.UPLOAD_ALLOWLIST ? allowlist(env.UPLOAD_ALLOWLIST) : undefined,
 });
 
 // SIGTERM: stop accepting connections, finish in-flight requests, then close the clients.

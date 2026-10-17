@@ -1,6 +1,7 @@
 # Build context of apps/*/Dockerfile, the repository root: what turbo prune needs, without local state or secrets.
 .git
 .env*
+backups
 **/node_modules
 **/dist
 **/.next

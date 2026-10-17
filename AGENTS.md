@@ -18,7 +18,7 @@ Instructions for any AI coding agent working in this project. Read this file fir
 - Deployment target: UI on Vercel, backend on the user's PC via Tailscale Funnel, using the same Docker images as local development plus a `docker-compose.prod.yml` override.
 - Three projects (freight-audit, filing-lens, triage-copilot) may run at the same time on this PC. Use only this project's ports (see Local ports in `docs/context.md`), bind them to 127.0.0.1, and keep them configurable through `.env`.
 - Docker is shared with the other projects: only start, stop or remove this project's compose services. Never run `docker system prune`, `docker volume prune`, `docker network prune`, or `docker compose down -v` without asking. Never stop or remove containers that belong to another compose project.
-- Set a fixed compose project name (`name: freightaudit` at the top of the compose file) so this project's containers, volumes and networks are grouped and named predictably.
+- Set a fixed compose project name (`name: freightaudit` at the top of the compose file) so this project's containers, volumes and networks are grouped and named predictably. The public demo's override, `infra/docker-compose.prod.yml`, uses `name: freightaudit-prod`, so demo data never mixes with dev data (user decision, 2026-10-17).
 - Monitoring services (OpenTelemetry Collector, Jaeger, Prometheus, Grafana) sit behind a compose profile named `observability`, so the default `docker compose up` starts only what the app needs.
 - If a port is already taken, report which one and stop; do not change another project's ports.
 
