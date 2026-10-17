@@ -19,6 +19,63 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-18: UI round 1, the plan and phase A, the api (branch ui-round-1, not committed)
+
+- **Plan:**
+  - What happened:
+    - The user asked for a plan first. The agent read AGENTS.md, context, memory, todo, the nine approved pictures and the web, contracts and api code, and a Plan agent reviewed the draft.
+    - Two rounds of questions settled the scope: summary, search and backward paging; a new atomic `decideInvoice` with five conditions; marks on digital PDFs only under a one-place rule; no auto-approval.
+    - They also settled pdf.js (an exact pin plus guard tests, since `isEvalSupported` is gone in 6.4.299), the ordinal and carrier-case rules for marks, and DISPUTE's audit rows (per finding only).
+    - The user asked for five changes before approving: the legend wording; phase B from main once PR A is live; a README sample with a real overcharge; the scaling notes in Known Limitations; and to stop and give the command if deleting `duplicate-invoice-g071.pdf` is refused.
+  - Why: two PRs, because Vercel deploys main on merge while the demo api changes only with `pnpm demo:up`.
+  - What we did:
+    1. Saved the plan as `C:\Users\kwonhyuk\.claude\plans\pasted-content-id-aa61-start-ui-melodic-scroll.md`.
+    2. Created branch `ui-round-1` from main `5fb695e`.
+    3. Wrote the "UI round 1" section in docs/todo.md first, moving the two Pending items into it.
+- **Domain:** `packages/domain/src/findings.ts` (`overchargeCents`, `reviewAmounts`, `lineExpectedCents`), with examples and fast-check properties.
+- **Contract:** additive changes in `schema.graphql`, then `pnpm --filter @freightaudit/contracts codegen`.
+  - What happened: codegen left `openapi.ts`, `graphql-client/gql.ts` and `graphql-client/graphql.ts` marked modified with no content change.
+  - Why: it writes LF where checkout had written CRLF (`core.autocrlf=true`).
+  - What we did: restored them with `git checkout --`; GateGuard asked for the facts first. That made the first `contracts:check` fail later (see memory's pitfall), and the files are LF again now.
+- **Api:**
+  - `keyset.ts` gains `before()` and page flags.
+  - `invoices` gains `last`, `before`, `search`, `totalCount` and `offset`.
+  - New: `invoiceSummary`, `Discrepancy.version` and `decideInvoice`.
+  - `resolveDiscrepancy` now locks the invoice first.
+  - Small event: before relying on it, a read-only query on the dev database confirmed that Postgres accepts a correlated `NOT EXISTS` inside `FILTER`.
+- **Tests:**
+  - What happened: the first run passed 16 of 18.
+  - Why: two decide tests counted the seed's upload keys too, which about 70 % of seeded invoices have.
+  - What we did:
+    1. `keysOf` now counts only `decide:%` keys; then 18 of 18 passed.
+    2. Two mutation checks, each failing its test as it should: the old lock order failed the deadlock test, and a removed version check failed the "changed" test.
+- **Agent mistake:**
+  - What happened: a `sed -i` ran by accident and removed the version check.
+  - Why: see memory, Lessons Learned.
+  - What we did: used it once as the version mutation above, restored the line with Edit, and the decide tests passed 9/9 again.
+- **Lint:**
+  - What happened: `pnpm lint` fails only on `strict-id-in-types` for `InvoiceSummary` and `InvoiceStatusCount`. An earlier run also caught four unused names in the test's `shape` helper, now rewritten.
+  - Why: the config-protection hook blocks agent edits to ESLint configs.
+  - What we did: handed the user the exact lines for `packages/contracts/eslint.config.js` (line 28, and the comment on line 19).
+- Files:
+  - docs/{todo,context,memory,activity-log}.md
+  - packages/domain/src/{findings.ts,findings.test.ts,index.ts}
+  - packages/contracts/schema.graphql, packages/contracts/src/generated/graphql-resolvers.ts
+  - apps/api/src/{keyset,loaders,graphql,review}.ts
+  - apps/api/src/{graphql,decide}.int.test.ts
+- Validation:
+  - Domain unit tests 36, coverage 100%.
+  - `pnpm typecheck` 21/21; `pnpm turbo run test --force` 18 tasks.
+  - `pnpm test:int` 115/115 in 23 suites.
+  - `pnpm contracts:check` passed on its second run; `OASDIFF_BASE_REF=main pnpm contracts:breaking` found no changes.
+  - `pnpm e2e` 9/9; `pnpm lint` 11 of 12 (contracts waits for the ESLint line).
+  - Skipped: the plan's GraphQL call against a running dev api, since the integration tests send the same queries through the real api app and Postgres.
+- Outstanding:
+  1. The user applies the ESLint lines and reruns `pnpm lint`.
+  2. The user commits phase A and opens PR A.
+  3. After merge, Release and `pnpm demo:up`, the agent checks the demo api's revision label (read-only).
+  4. Phase B.
+
 ### 2026-10-18: Vercel deploys main by branch rule, not by VERCEL_ENV (branch fix/vercel-production-builds, not committed)
 
 - **Branch:**

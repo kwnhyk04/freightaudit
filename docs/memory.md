@@ -230,6 +230,43 @@ From the approved design doc:
   - Why: not confirmed. The user found the Production environment tracking main, system variables exposed, and the Ignored Build Step "Overridden" by vercel.json with Automatic behind it. The canceled builds' logs cannot be opened.
   - What we did: replaced the command with a rule that does not read `VERCEL_ENV`. Vercel's Git configuration docs (updated 2026-08-25) say patterns are minimatch, unlisted branches deploy, and a branch matching several rules deploys if one is `true`. So main deploys and every other branch, slashes included, does not.
   - Reason: the fix should not depend on a variable whose value at that step could not be seen.
+- 2026-10-18: UI round 1 user decisions (plan `C:\Users\kwonhyuk\.claude\plans\pasted-content-id-aa61-start-ui-melodic-scroll.md`):
+  - API scope: a summary query, search and backward paging on invoices.
+  - A new atomic `decideInvoice` with five conditions: one transaction; the ids and versions of the findings the reviewer saw; retry-safe; the same per-finding audit rows plus the invoice decision; additive and tested. Per-finding controls stay.
+  - DISPUTE writes only the per-finding rows: the invoice stays reconciled, so it gets no row.
+  - Document marks on digital PDFs only:
+    - A value is marked only when found in exactly one place, after normalizing spaces, commas and currency signs.
+    - The carrier ignores case.
+    - An ordinal rule covers lines identical in both description and amount, and nothing else.
+  - pdf.js pinned to exactly 6.4.299, with guard tests.
+  - No auto-approval: the pictures' "approved without a reviewer" texts are reworded.
+- 2026-10-18: UI round 1 ships as two PRs, api first.
+  - Reason: Vercel deploys main on every merge, while the demo api changes only when the user runs `pnpm demo:up`. A web asking the old api for new fields would fail.
+  - So phase A changes no operation.
+  - Phase B starts from main after PR A is merged, released and running on the demo (user decision), not as a branch stacked on `ui-round-1`: with squash merges, rebasing phase A's commits can conflict.
+- 2026-10-18: How `decideInvoice` meets the conditions.
+  - What happened: the user asked for one atomic decision on every open finding, refused when the findings changed, and safe to retry.
+  - Why these choices:
+    - A finding's version is its `updated_at` to the microsecond. The 0001 trigger moves it on every update, so no new column is needed. The comparison covers every finding of the invoice, decided ones too.
+    - The retry key is `decide:<DECISION>:<requestId>` in `idempotency_keys`. That needs no migration, and the namespace keeps it apart from upload keys. With the decision in the key, the same id sent with another decision is a new request.
+    - The key is inserted last, so a failure leaves none and a retry runs in full.
+  - What we did:
+    - `apps/api/src/review.ts`: `decideInvoice`, plus `decide` and `approve` shared with the single decisions.
+    - `apps/api/src/decide.int.test.ts` covers it.
+- 2026-10-18: Every writer of an invoice's findings locks the invoice row first.
+  - What happened: the design review found the risk. `resolveDiscrepancy` locked a finding and its invoice in one joined `SELECT … FOR UPDATE`, finding first, while `decideInvoice` locks the invoice first. Run together they could deadlock (Postgres 40P01, which the client sees as "Unexpected error.").
+  - Why: the writers took their locks in different orders. The reconcile job already took the invoice first.
+  - What we did:
+    - `resolveDiscrepancy` reads the finding's invoice id without a lock (it never changes), locks the invoice, then reads and decides the finding.
+    - A test runs a single decision beside a bulk one 10 times. With the old order put back as a mutation it failed; with the fix it passes.
+- 2026-10-18: The summary's `matchedRateCard` (reconciled invoices with no finding at all) goes beyond the first description of the summary, which listed counts per status, open findings and their total, and open dead letters. Reason: the user accepted the reworded card "Matched the rate card: reconciled with no findings, ready to approve", and only this count can fill it. The picture's "typical time", a median, is left for the round 2 dashboard.
+- 2026-10-18: Money on the review screens comes from `packages/domain` (`reviewAmounts`, `lineExpectedCents`, `overchargeCents`). Reason: AGENTS.md keeps money math there, so one rule serves the api's summary and the web's rows, lines and buttons.
+- 2026-10-18: pdf.js 6.4.299 has no `isEvalSupported` option.
+  - What happened: the design review found it gone from the package's types and builds. Only `build/pdf.sandbox(.min).mjs`, the scripting sandbox, holds an `eval(`.
+  - Why: the user's condition named the option.
+  - What we did (user decision): phase B pins exactly 6.4.299 and adds two guard tests.
+    - One fails if `build/pdf.mjs`, `build/pdf.min.mjs` or `build/pdf.worker.min.mjs` holds `eval(` or `new Function(`.
+    - One fails if the app imports the sandbox or turns scripting on.
 
 ## Preferences and Instructions
 
@@ -375,6 +412,15 @@ From the approved design doc:
   - What we did: read `GET /repos/kwnhyk04/freightaudit/commits/<sha>/status` for the merge commit and the two before it, probed `/logout` with a GET (no side effect), and put the settings to check in docs/todo.md. To see what production runs, use the commit's GitHub status and a route that changed.
 - 2026-10-18: An image's `sha-<short>` tag in GHCR, not a green check list, shows that Release published a merge. The publish jobs run after every check passes and take a few minutes. The running container's image and its `org.opencontainers.image.revision` label show what runs (`docker inspect --format` with `.Image` and `.Config.Image` only, never the env).
 
+- 2026-10-18: `pnpm contracts:check` compares the generated files as raw text, and this checkout has `core.autocrlf=true`.
+  - What happened: three generated files had only line-ending changes after codegen, and the agent restored them with `git checkout --`. The next `contracts:check` failed; its codegen rewrote them with LF, and the second run passed.
+  - Why: checkout writes CRLF here, and codegen writes LF.
+  - What we did:
+    - Left the LF copies. Git shows them as modified with no content diff, so staging them adds nothing.
+    - A `.gitattributes` line `packages/contracts/src/generated/** text eol=lf` would end it. Not applied: not asked for.
+- 2026-10-18: The small seed gives about 70 % of invoices an upload `idempotency_keys` row (`seed.ts`). A test that counts an invoice's keys must filter by prefix (`decide:%`). Found when two decide tests saw 1 where they expected 0.
+- 2026-10-18: Postgres accepts a correlated `NOT EXISTS` inside an aggregate `FILTER`. Checked on the dev database before the summary relied on it.
+
 ## Rejected Approaches
 
 - 2026-10-16: For PR #13's eval smoke, latency floors as warnings in the 20-case smoke (option B) and sending a `seed` to the providers (option D) were rejected by the user.
@@ -387,6 +433,14 @@ From the approved design doc:
 - 2026-10-15: Given the scanned fixture's one page three times, Groq's `qwen/qwen3.8-27b` answered an empty invoice list (6 output tokens), while a genuine 3-page invoice read right. Repeated pages are rare in uploads, but the 6b golden set could include one.
 - 2026-10-18: Search for a log line directly before saying it is absent (agent mistake). What happened: the agent reported that Let's Encrypt did not appear in squid's log yet and that the certificate would come with the first request; the tunnel had been logged at 16:55:43 UTC, and the certificate came at startup. Why: the agent read a `sort | uniq -c` summary of the log in which that line did not show (why is not confirmed; possibly the shell's output condensing) and assumed the fetch waits for a request. What we did: listed every non-relay CONNECT with its time, found the tunnel, and corrected the report in the next message. A direct `Select-String acme` is the cheaper check.
 - 2026-10-18: State what a security choice adds, not only who runs it (agent mistake). What happened: the recommended relay option told the user the relays "are the same Tailscale servers controlplane already reaches". They are other servers of the same operator, and allowing them adds a path: a compromised tailscale container could send data to any Tailscale node through a relay. Why: the agent shortened "same operator" to "same servers" and left out that path. What we did: wrote the residual risk into docs/threat-notes.md and the decision above, and told the user. The choice stands, because fewer relay names would not close that path.
+
+- 2026-10-18: Never leave a command you don't want run inside a Bash call (agent mistake).
+  - What happened: the agent kept a `sed -i` in a command it meant to replace with an `echo` note. The shell ran it, and it removed the version comparison from `decideInvoice` in `apps/api/src/review.ts`.
+  - Why: the `sed` stayed in the command string ahead of the `echo`. AGENTS.md forbids shell edits anyway.
+  - What we did:
+    1. Found the change with grep and read the lines.
+    2. Ran the "changed" test once against it; it failed, as a mutation test should.
+    3. Restored the line with Edit, checked no marker was left, and reran the decide tests (9/9).
 
 ## Constraints
 

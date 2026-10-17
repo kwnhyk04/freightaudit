@@ -1,16 +1,17 @@
 import type { AuditAction, AuditEntry, InvoiceStatus, Resolvers } from '@freightaudit/contracts';
 import { typeDefs } from '@freightaudit/contracts';
-import { carriers, deadLetters, discrepancies, invoices } from '@freightaudit/db';
-import { matchCarrier } from '@freightaudit/domain';
+import { carriers, deadLetters, discrepancies, invoices, invoiceStatus } from '@freightaudit/db';
+import { matchCarrier, overchargeCents } from '@freightaudit/domain';
 import type { Queues } from '@freightaudit/pipeline';
-import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, count, countDistinct, desc, eq, ilike, isNotNull, isNull, min, or, sql, sum } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { FastifyBaseLogger, FastifyReply, FastifyRequest } from 'fastify';
 import { GraphQLError, GraphQLScalarType, Kind } from 'graphql';
 import { createSchema, createYoga } from 'graphql-yoga';
 import { actorOf } from './actor.ts';
-import { after, connection, cursorAt, pageSize, UUID } from './keyset.ts';
+import { after, before, connection, cursorAt, pageSize, UUID } from './keyset.ts';
 import { createLoaders, discrepancyColumns, graphqlInvoiceColumns, type Loaders } from './loaders.ts';
+import { fail } from './problem.ts';
 import * as review from './review.ts';
 
 export type GraphqlDeps = { db: NodePgDatabase; queues: Queues; tenantId: string };
@@ -71,6 +72,7 @@ type DiscrepancyRow = {
   evidence: string;
   note: string | null;
   resolvedAt: Date | null;
+  version: string;
 };
 const toDiscrepancy = (row: DiscrepancyRow) => ({
   id: row.id,
@@ -81,6 +83,7 @@ const toDiscrepancy = (row: DiscrepancyRow) => ({
   evidence: row.evidence,
   note: row.note,
   resolvedAt: iso(row.resolvedAt),
+  version: row.version,
 });
 type DeadLetterRow = typeof deadLetters.$inferSelect;
 const toDeadLetter = (row: DeadLetterRow) => ({
@@ -159,6 +162,16 @@ async function auditTrail(id: string, loaders: Loaders): Promise<AuditEntry[]> {
   return entries;
 }
 
+// The invoice list's search: invoice number, PRO number or carrier name, ignoring case, with LIKE's wildcards taken
+// literally. ponytail: a sequential scan of the tenant's invoices; a trigram index on the three columns past about 100k.
+function searchFor(raw: string | null | undefined) {
+  const term = raw?.trim();
+  if (!term) return undefined;
+  if (term.length > 100) throw fail(400, 'search is longer than 100 characters');
+  const pattern = `%${term.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+  return or(ilike(invoices.invoiceNumber, pattern), ilike(invoices.proNumber, pattern), ilike(carriers.name, pattern));
+}
+
 function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Context> {
   const deps = { db, queues, tenantId };
   const invoiceById = async (loaders: Loaders, id: string) => {
@@ -173,21 +186,79 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
     Query: {
       health: () => 'ok',
       async invoices(_, args) {
-        const first = pageSize(args.first);
+        if (args.after && args.before) throw fail(400, 'give after or before, not both');
+        // A page goes back with last or before; first defaults to 25, so it cannot say.
+        const last = args.last ?? undefined;
+        const back = last !== undefined || Boolean(args.before);
+        const size = last !== undefined ? pageSize(last, 'last') : pageSize(args.first);
+        const matching = and(
+          eq(invoices.tenantId, tenantId),
+          args.status ? eq(invoices.status, args.status.toLowerCase() as typeof invoices.$inferSelect.status) : undefined,
+          searchFor(args.search),
+        );
         const rows = await db
           .select(graphqlInvoiceColumns)
           .from(invoices)
           .leftJoin(carriers, eq(carriers.id, invoices.carrierId))
-          .where(
-            and(
-              eq(invoices.tenantId, tenantId),
-              args.status ? eq(invoices.status, args.status.toLowerCase() as typeof invoices.$inferSelect.status) : undefined,
-              after(invoices.createdAt, invoices.id, args.after),
-            ),
-          )
-          .orderBy(desc(invoices.createdAt), desc(invoices.id))
-          .limit(first + 1);
-        return connection(rows, first, toInvoice);
+          .where(and(matching, back ? before(invoices.createdAt, invoices.id, args.before) : after(invoices.createdAt, invoices.id, args.after)))
+          .orderBy(...(back ? [asc(invoices.createdAt), asc(invoices.id)] : [desc(invoices.createdAt), desc(invoices.id)]))
+          .limit(size + 1);
+        const page = back ? rows.slice(0, size).reverse() : rows.slice(0, size);
+        const head = page[0];
+        // ponytail: exact counts read every matching invoice of the tenant; estimates past about 100k of them.
+        const newer = head
+          ? sql<number>`count(*) FILTER (WHERE (${invoices.createdAt}, ${invoices.id}) > (${head.cursorAt}::timestamptz, ${head.id}::uuid))`
+          : sql<number>`0`;
+        const [counts] = await db
+          .select({ total: count(), newer: newer.mapWith(Number) })
+          .from(invoices)
+          .leftJoin(carriers, eq(carriers.id, invoices.carrierId))
+          .where(matching);
+        const totalCount = counts!.total;
+        // An empty page after a cursor sits past every match; any other empty page comes before them all.
+        const offset = head ? counts!.newer : args.after ? totalCount : 0;
+        const flags = back
+          ? { hasPreviousPage: rows.length > size, hasNextPage: offset + page.length < totalCount }
+          : { hasNextPage: rows.length > size, hasPreviousPage: offset > 0 };
+        return { ...connection(page, page.length, toInvoice, flags), totalCount, offset };
+      },
+      async invoiceSummary() {
+        const reconciledClean = sql`${invoices.status} = 'reconciled' AND NOT EXISTS (SELECT 1 FROM ${discrepancies} WHERE ${discrepancies.invoiceId} = ${invoices.id})`;
+        const [statuses, [open], [letters]] = await Promise.all([
+          db
+            .select({
+              status: invoices.status,
+              count: count(),
+              recent: sql<number>`count(*) FILTER (WHERE ${invoices.createdAt} > now() - interval '7 days')`.mapWith(Number),
+              clean: sql<number>`count(*) FILTER (WHERE ${reconciledClean})`.mapWith(Number),
+            })
+            .from(invoices)
+            .where(eq(invoices.tenantId, tenantId))
+            .groupBy(invoices.status),
+          db
+            .select({
+              count: count(),
+              invoices: countDistinct(discrepancies.invoiceId),
+              oldest: min(discrepancies.createdAt),
+              billed: sum(discrepancies.billedCents),
+              expected: sum(discrepancies.expectedCents),
+            })
+            .from(discrepancies)
+            .where(and(eq(discrepancies.tenantId, tenantId), eq(discrepancies.status, 'open'))),
+          db.select({ count: count() }).from(deadLetters).where(and(eq(deadLetters.tenantId, tenantId), isNull(deadLetters.replayedAt))),
+        ]);
+        const byStatus = new Map(statuses.map((row) => [row.status, row.count]));
+        const added = (field: 'recent' | 'clean') => statuses.reduce((total, row) => total + row[field], 0);
+        return {
+          statusCounts: invoiceStatus.enumValues.map((status) => ({ status: upper<InvoiceStatus>(status), count: byStatus.get(status) ?? 0 })),
+          receivedLast7Days: added('recent'),
+          openFindings: open!.count,
+          invoicesWithOpenFindings: open!.invoices,
+          oldestOpenFindingAt: iso(open!.oldest),
+          openOverchargeCents: overchargeCents({ billedCents: BigInt(open!.billed ?? 0), expectedCents: BigInt(open!.expected ?? 0) }),
+          matchedRateCard: added('clean'),
+          openDeadLetters: letters!.count,
+        };
       },
       invoice: (_, { id }, { loaders }) => invoiceById(loaders, id),
       async discrepancies(_, args) {
@@ -227,6 +298,10 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
       },
       async approveInvoice(_, { id }, { req, loaders }) {
         await review.approveInvoice(deps, actorOf(req), id);
+        return (await invoiceById(loaders, id))!;
+      },
+      async decideInvoice(_, { id, decision, seen, requestId }, { req, loaders }) {
+        await review.decideInvoice(deps, actorOf(req), id, decision, seen, requestId);
         return (await invoiceById(loaders, id))!;
       },
       async correctInvoice(_, { id, carrierId, proNumber }, { req, loaders }) {

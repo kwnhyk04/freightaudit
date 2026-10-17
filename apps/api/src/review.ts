@@ -1,9 +1,9 @@
-import { auditEvents, carriers, discrepancies, extractions, invoices } from '@freightaudit/db';
+import { auditEvents, carriers, discrepancies, extractions, idempotencyKeys, invoices } from '@freightaudit/db';
 import { type Queues, replayDeadLetter, send } from '@freightaudit/pipeline';
 import { and, count, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { GraphQLError } from 'graphql';
-import { UUID } from './keyset.ts';
+import { cursorAt, UUID } from './keyset.ts';
 
 export type ReviewDeps = { db: NodePgDatabase; queues: Queues; tenantId: string };
 type Tx = Parameters<Parameters<NodePgDatabase['transaction']>[0]>[0];
@@ -40,6 +40,13 @@ async function lockInvoice(tx: Tx, tenantId: string, id: string) {
   return invoice;
 }
 
+// The move to approved and its audit row; the reason says which decision approved it, when there was more than one.
+async function approve(tx: Tx, tenantId: string, actor: string, id: string, from: string, reason: string | null = null) {
+  await tx.update(invoices).set({ status: 'approved' }).where(eq(invoices.id, id));
+  const changes: Change[] = [{ field: 'status', from, to: 'approved' }];
+  await tx.insert(auditEvents).values({ tenantId, invoiceId: id, actor, action: 'approved', changes, reason });
+}
+
 export async function approveInvoice(deps: ReviewDeps, actor: string, id: string) {
   await asReviewer(deps, actor, async (tx) => {
     const invoice = await lockInvoice(tx, deps.tenantId, id);
@@ -52,31 +59,83 @@ export async function approveInvoice(deps: ReviewDeps, actor: string, id: string
       .where(and(eq(discrepancies.invoiceId, id), eq(discrepancies.status, 'open')));
     const open = row?.open ?? 0;
     if (open > 0) throw refuse('CONFLICT', `decide the ${open} open discrepanc${open === 1 ? 'y' : 'ies'} first`);
-    await tx.update(invoices).set({ status: 'approved' }).where(eq(invoices.id, id));
-    const changes: Change[] = [{ field: 'status', from: invoice.status, to: 'approved' }];
-    await tx.insert(auditEvents).values({ tenantId: deps.tenantId, invoiceId: id, actor, action: 'approved', changes });
+    await approve(tx, deps.tenantId, actor, id, invoice.status);
   });
 }
 
+type Decision = 'confirmed' | 'dismissed';
+// One finding's decision and its audit row, written alike for a single decision and a decision on the whole invoice.
+// The caller holds the invoice's lock.
+async function decide(tx: Tx, tenantId: string, actor: string, finding: { id: string; invoiceId: string; status: string }, decision: Decision, reason: string | null) {
+  await tx.update(discrepancies).set({ status: decision, note: reason, resolvedAt: sql`now()` }).where(eq(discrepancies.id, finding.id));
+  const action = decision === 'confirmed' ? 'discrepancy_confirmed' : 'discrepancy_dismissed';
+  const changes: Change[] = [{ field: 'status', from: finding.status, to: decision }];
+  await tx.insert(auditEvents).values({ tenantId, invoiceId: finding.invoiceId, discrepancyId: finding.id, actor, action, changes, reason });
+}
+
 // Confirm disputes the overcharge; dismiss lets the billed amount stand. A decision may change until approval.
-export async function resolveDiscrepancy(deps: ReviewDeps, actor: string, id: string, decision: 'confirmed' | 'dismissed', note?: string | null) {
+export async function resolveDiscrepancy(deps: ReviewDeps, actor: string, id: string, decision: Decision, note?: string | null) {
   const reason = text(note, 'note');
   await asReviewer(deps, actor, async (tx) => {
     if (!UUID.test(id)) throw refuse('NOT_FOUND', `discrepancy ${id} not found`);
-    const [row] = await tx
-      .select({ status: discrepancies.status, invoiceId: discrepancies.invoiceId, invoiceStatus: invoices.status })
+    // A finding never changes invoice, so its invoice is read first and locked before the finding is read: every writer
+    // of an invoice's findings takes the invoice's lock first, so two of them can never wait on each other.
+    const [found] = await tx
+      .select({ invoiceId: discrepancies.invoiceId })
       .from(discrepancies)
-      .innerJoin(invoices, eq(invoices.id, discrepancies.invoiceId))
-      .where(and(eq(discrepancies.tenantId, deps.tenantId), eq(discrepancies.id, id)))
-      .for('update');
-    if (!row) throw refuse('NOT_FOUND', `discrepancy ${id} not found`);
-    if (row.invoiceStatus !== 'reconciled') {
-      throw refuse('CONFLICT', `the invoice is ${row.invoiceStatus}; decisions change only while it is reconciled`);
+      .where(and(eq(discrepancies.tenantId, deps.tenantId), eq(discrepancies.id, id)));
+    if (!found) throw refuse('NOT_FOUND', `discrepancy ${id} not found`);
+    const invoice = await lockInvoice(tx, deps.tenantId, found.invoiceId);
+    if (invoice.status !== 'reconciled') throw refuse('CONFLICT', `the invoice is ${invoice.status}; decisions change only while it is reconciled`);
+    const [row] = await tx.select({ status: discrepancies.status }).from(discrepancies).where(eq(discrepancies.id, id));
+    await decide(tx, deps.tenantId, actor, { id, invoiceId: found.invoiceId, status: row!.status }, decision, reason);
+  });
+}
+
+export type InvoiceDecision = 'APPROVE_AS_BILLED' | 'DISPUTE' | 'APPROVE_AT_RATE_CARD';
+export const CHANGED = 'This invoice changed since you opened it. Reload it to see what changed.';
+const MAX_SEEN = 1_000;
+
+// Every open finding of a reconciled invoice decided at once, then the invoice approved unless the decision is a
+// dispute, in one transaction. It goes ahead only if the invoice's findings are exactly those the reviewer saw, at the
+// versions they saw; a repeated request finds its key and writes nothing.
+export async function decideInvoice(
+  deps: ReviewDeps,
+  actor: string,
+  id: string,
+  decision: InvoiceDecision,
+  seen: readonly { id: string; version: string }[],
+  requestId: string,
+) {
+  if (!UUID.test(requestId)) throw refuse('BAD_USER_INPUT', 'requestId must be a UUID');
+  if (seen.length > MAX_SEEN) throw refuse('BAD_USER_INPUT', `seen lists more than ${MAX_SEEN} discrepancies`);
+  // The decision is part of the key, so the same requestId sent with another decision is a new request.
+  const key = `decide:${decision}:${requestId.toLowerCase()}`;
+  await asReviewer(deps, actor, async (tx) => {
+    const invoice = await lockInvoice(tx, deps.tenantId, id);
+    const [used] = await tx
+      .select({ invoiceId: idempotencyKeys.invoiceId })
+      .from(idempotencyKeys)
+      .where(and(eq(idempotencyKeys.tenantId, deps.tenantId), eq(idempotencyKeys.key, key)));
+    if (used && used.invoiceId !== id) throw refuse('BAD_USER_INPUT', 'requestId was already used for another invoice');
+    if (used) return;
+    if (invoice.status !== 'reconciled') throw refuse('CONFLICT', `only a reconciled invoice can be decided; this one is ${invoice.status}`);
+    const findings = await tx
+      .select({ id: discrepancies.id, status: discrepancies.status, version: cursorAt(discrepancies.updatedAt) })
+      .from(discrepancies)
+      .where(and(eq(discrepancies.tenantId, deps.tenantId), eq(discrepancies.invoiceId, id)));
+    const saw = new Map(seen.map((finding) => [finding.id, finding.version]));
+    if (saw.size !== seen.length || saw.size !== findings.length || findings.some((finding) => saw.get(finding.id) !== finding.version)) {
+      throw refuse('CONFLICT', CHANGED);
     }
-    await tx.update(discrepancies).set({ status: decision, note: reason, resolvedAt: sql`now()` }).where(eq(discrepancies.id, id));
-    const action = decision === 'confirmed' ? 'discrepancy_confirmed' : 'discrepancy_dismissed';
-    const changes: Change[] = [{ field: 'status', from: row.status, to: decision }];
-    await tx.insert(auditEvents).values({ tenantId: deps.tenantId, invoiceId: row.invoiceId, discrepancyId: id, actor, action, changes, reason });
+    const open = findings.filter((finding) => finding.status === 'open');
+    if (open.length === 0) throw refuse('CONFLICT', 'no finding of this invoice is open');
+    for (const finding of open) {
+      await decide(tx, deps.tenantId, actor, { ...finding, invoiceId: id }, decision === 'APPROVE_AS_BILLED' ? 'dismissed' : 'confirmed', null);
+    }
+    if (decision !== 'DISPUTE') await approve(tx, deps.tenantId, actor, id, 'reconciled', decision === 'APPROVE_AS_BILLED' ? 'as billed' : 'at rate card');
+    // Last, so a failure anywhere above leaves no key and a retry runs in full.
+    await tx.insert(idempotencyKeys).values({ tenantId: deps.tenantId, key, invoiceId: id });
   });
 }
 

@@ -30,6 +30,8 @@ export const discrepancyColumns = {
   note: discrepancies.note,
   resolvedAt: discrepancies.resolvedAt,
   createdAt: discrepancies.createdAt,
+  // updated_at to the microsecond: every update moves it, so it tells whether a finding changed since it was read.
+  version: cursorAt(discrepancies.updatedAt).as('version'),
 };
 const shipmentColumns = {
   id: shipments.id,
