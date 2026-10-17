@@ -225,6 +225,11 @@ From the approved design doc:
   - What happened: its effect depended on `[src, zoom]`, so every zoom click downloaded the whole PDF again. The year-long cache had made that free.
   - Why: with `no-store`, each zoom would cross Vercel and Funnel to the PC. That costs one function invocation, one api request against the key's 60 a minute, and the whole file (uploads up to 4 MiB; the golden set's median is 45 KB), at about 0.5 to 1.7 s from this PC.
   - What we did: split the effect into a load per `src`, which destroys the loading task on unmount, and a redraw per zoom, with an e2e check that zooming sends no request.
+- 2026-10-18: Vercel deploys by branch name, through `git.deploymentEnabled` `{"**": false, "main": true}` in `apps/web/vercel.json`, not through an `ignoreCommand` (user decision).
+  - What happened: the old `[ "$VERCEL_ENV" != production ]` canceled #20's and #21's pushes to main.
+  - Why: not confirmed. The user found the Production environment tracking main, system variables exposed, and the Ignored Build Step "Overridden" by vercel.json with Automatic behind it. The canceled builds' logs cannot be opened.
+  - What we did: replaced the command with a rule that does not read `VERCEL_ENV`. Vercel's Git configuration docs (updated 2026-08-25) say patterns are minimatch, unlisted branches deploy, and a branch matching several rules deploys if one is `true`. So main deploys and every other branch, slashes included, does not.
+  - Reason: the fix should not depend on a variable whose value at that step could not be seen.
 
 ## Preferences and Instructions
 
@@ -364,6 +369,11 @@ From the approved design doc:
 - 2026-10-18: Offline, a live invoice's page has no sample twin. What happened: with the backend stopped, the phone's reload ended at "error 404". Why: `livePage` redirects to `/demo/invoices/<id>`, `demoInvoice` knows only the snapshot's 11 ids, and without a `not-found.tsx` Next shows its default 404 page outside the shell, with no banner. Which page the user reloaded is not confirmed, but the code allows no other 404 there. What we did: read the demo page and layout, found no `not-found.tsx`, and put the fix in docs/todo.md (an id the sample lacks goes to `/demo/invoices`; a `not-found.tsx` inside the shell; an offline e2e case). No code changed.
 - 2026-10-18: Squid's access log puts the byte count between the result and the method (`TCP_TUNNEL/200 5441 CONNECT host:443`). What happened: a count that matched `TCP_TUNNEL/200 CONNECT derp` found 0 relay tunnels where there were 168. Why: that pattern skips the byte field. What we did: matched `TCP_TUNNEL/200 \d+ CONNECT derp`, or split the line on whitespace (fields: time, elapsed ms, client, result, bytes, method, target).
 - 2026-10-18: `x-vercel-id` names the function region only when a function answered (`sin1::hkg1::<id>`); an answer from the proxy at the edge shows only the edge (`sin1::<id>`). What happened: the two 401s for a document showed `sin1::…`, while `/login` and `/healthz` showed `sin1::hkg1::…`. Why: `proxy.ts` refused the requests without a session at the edge, before any function. What we did: read the region from function responses.
+- 2026-10-18: A "Ready" production deployment in Vercel's list does not mean the merge deployed.
+  - What happened: after #21 merged, the user saw production Ready, but its GitHub status read "Canceled by Ignored Build Step", as #20's did. `GET /logout` on the production domain answered 307 (the old proxy), not the new route's 405.
+  - Why: not confirmed. `apps/web/vercel.json` cancels only when `VERCEL_ENV` is not `production`, so Vercel did not treat these pushes to main as production builds.
+  - What we did: read `GET /repos/kwnhyk04/freightaudit/commits/<sha>/status` for the merge commit and the two before it, probed `/logout` with a GET (no side effect), and put the settings to check in docs/todo.md. To see what production runs, use the commit's GitHub status and a route that changed.
+- 2026-10-18: An image's `sha-<short>` tag in GHCR, not a green check list, shows that Release published a merge. The publish jobs run after every check passes and take a few minutes. The running container's image and its `org.opencontainers.image.revision` label show what runs (`docker inspect --format` with `.Image` and `.Config.Image` only, never the env).
 
 ## Rejected Approaches
 
@@ -383,6 +393,11 @@ From the approved design doc:
 None yet.
 
 ## Unresolved Questions
+
+- 2026-10-18: Why Vercel cancels pushes to main with the Ignored Build Step.
+  - What happened: #20 (`1493832`) and #21 (`dc6703b`) were both "Canceled by Ignored Build Step", while production kept the 17:55 deployment.
+  - Why: not confirmed. `apps/web/vercel.json` cancels only when `VERCEL_ENV` is not `production`, and the user found that the Production environment tracks main and that system environment variables are exposed.
+  - What we did: the user redeployed the canceled `dc6703b` deployment with "Use project's Ignore Build Step" unticked, and `GET /logout` then answered 405. The canceled build's log, which prints the ignore command's result, is the next place to look.
 
 - 2026-10-18: Why the web on Vercel has not reached the api. What happened: after the user reported the Vercel setup and the phone check done, the api's log from 17:05:59 to 17:34:36 UTC held no request from the web. It had no `GET /readyz` (the web's liveness probe), no `/graphql` and no upload. It held only Docker healthchecks, the reset's own calls, browser loads of the Funnel root (401) and one curl, and no invoice, model call or reviewer action followed the sample. Why: not confirmed. The web probes only while `AI_ENABLED` is true and sends `new URL('/readyz', API_URL)` with a 2.5 s timeout (`apps/web/lib/server.ts`). So `AI_ENABLED` not true, a wrong `API_URL`, variables changed without a redeploy, or a probe failing before it reaches the PC would each keep the web on the sample under "Live backend offline". What we did: read the api's log by method, path and status and the web's probe code, kept step 10 open, and asked the user what the phone showed and which values Vercel holds.
 
