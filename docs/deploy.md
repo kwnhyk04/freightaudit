@@ -26,12 +26,13 @@ it with new fixes; reviewing such an update includes the package check in the ne
 serves only its client's fixed address on `outbound` (subnet 10.231.231.0/28: the worker .2, tailscale .3, any other
 container .8 to .15), so a compromised worker cannot borrow tailscale's way out:
 
-| Port | Client | Allowed hosts | Evidence (squid's access log, 2026-10-17) |
+| Port | Client | Allowed hosts | Evidence (squid's access log) |
 | --- | --- | --- | --- |
-| 3128 | worker | `generativelanguage.googleapis.com`, `api.groq.com` | A Gemini extraction tunnelled through it; Groq answered CONNECT |
-| 3129 | tailscale | `controlplane.tailscale.com`, `log.tailscale.com`, `acme-v02.api.letsencrypt.org` | Before login tailscaled asked for the first two only. Let's Encrypt and the relays come after login: confirm on the first real start (below) |
+| 3128 | worker | `generativelanguage.googleapis.com`, `api.groq.com` | 2026-10-17: a Gemini extraction tunnelled through it; Groq answered CONNECT. 2026-10-18: the public sample's Gemini and Groq calls |
+| 3129 | tailscale | `controlplane.tailscale.com`, `log.tailscale.com`, `acme-v02.api.letsencrypt.org`, and the relays by the pattern `^derp[0-9]+[a-z]*[.]tailscale[.]com$` | 2026-10-17, before login: the first two only. 2026-10-18, first start with a login: all three, and 87 relay names in 28 regions, denied until the pattern was added; no bare IP |
 
-With no UDP route out, tailscale's traffic, Funnel's included, goes through Tailscale's relays (DERP).
+With no UDP route out, tailscale's traffic, Funnel's included, goes through Tailscale's relays (DERP). tailscaled measures
+every region's relays over HTTPS through the proxy to choose its home relay, so port 3129 allows them all by one pattern.
 
 ## Real setup, after this branch merges
 
@@ -48,8 +49,10 @@ With no UDP route out, tailscale's traffic, Funnel's included, goes through Tail
    allowlist and the empty `MOCK_TMS_URL`, and no squid image existed).
 3. On the first `pnpm demo:up` with a login, read the proxy's denials and confirm the tailscale allowlist:
    `docker logs freightaudit-prod-egress-proxy-1 | Select-String TCP_DENIED`. If tailscaled asks to CONNECT to a bare
-   IP address, do not allow it; report it. A relay name that is denied (`derp*.tailscale.com`) goes into
-   `infra/squid.conf`, then `docker compose ... restart egress-proxy`.
+   IP address, do not allow it; report it. Done on 2026-10-18: only relay names were denied, never a bare IP, so
+   `infra/squid.conf` allows the relays by one pattern. After any edit of `infra/squid.conf`, run
+   `docker restart freightaudit-prod-egress-proxy-1`, which reads the mounted file again and needs no `.env.prod`; on
+   later starts the command above should list no new denial.
 
 ## One-time setup
 
@@ -104,6 +107,11 @@ Run every command in your own terminal, not through `!` in a Claude Code chat; n
    previews behind a Vercel login. Settings, Security: keep Git Fork Protection on. Firewall: one rate-limit rule on
    `POST /login`, about 10 a minute per IP.
 7. After the first deploy, check the runtime logs for "crypto.argon2 needs Node 24.7" (see Troubleshooting).
+8. Share only the domain listed as Production under Settings, Domains. Under Standard Protection the URLs Vercel
+   generates redirect to its login: on 2026-10-18 the deployment's own `freightaudit-<hash>-<scope>.vercel.app` and
+   `freightaudit-<scope>.vercel.app` both did. `freightaudit.vercel.app` belongs to another project.
+9. Signed in on that domain, open Invoices. The web's `GET /readyz` and `POST /graphql` must then appear in
+   `docker logs freightaudit-prod-api-1`; with neither, the web never reached the api (see Troubleshooting).
 
 ### GitHub
 
@@ -200,3 +208,7 @@ Free plans only. What could ever bill you:
   which reads the same hashes (docs/todo.md).
 - **The site shows "Live backend offline":** the PC is off or asleep, or `pnpm demo:down` ran; `pnpm demo:up` brings
   it back.
+- **"Live backend offline" while the PC is up:** look for the web's `GET /readyz` in `docker logs freightaudit-prod-api-1`.
+  The web asks only while its `AI_ENABLED` is `true`, at `new URL('/readyz', API_URL)`, and counts more than 2.5 s as
+  offline (`apps/web/lib/server.ts`). On Vercel, check `AI_ENABLED` and that `API_URL` is exactly the Funnel URL, then
+  redeploy: changed variables reach only new deployments.

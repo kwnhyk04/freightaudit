@@ -1,19 +1,314 @@
 # Activity Log
 
-Chronological record of significant development activity, newest first. Skip trivial changes. Do not auto-commit this file.
+Chronological record of development activity, newest first, with small events and mistakes included (AGENTS.md, Documentation Rules). Do not auto-commit this file. Entries before 2026-10-18 use the older format (Changes, Files, Validation, Outstanding) and stay as written.
 
 ## Entry Format
 
 ```
 ### YYYY-MM-DD: <task performed>
 
-- Changes: <important changes>
+- <One item per event, small ones included: a failed command, a skipped check, a tool or prompt that behaved
+  unexpectedly, a setting changed, a mistake.>
+  - What happened: <...>
+  - Why: <the cause, or "not confirmed" when it is a guess>
+  - What we did: <the exact steps in order (commands, buttons, where each setting lives)>, and why that was the best option
 - Files: <relevant files>
 - Validation: <tests or checks run and results>
 - Outstanding: <open issues, or "None">
 ```
 
 ## Entries
+
+### 2026-10-18: Production domain checks; step 10 done (not committed)
+
+Times are UTC.
+
+- **Production domain:**
+  - What happened: the user sent `https://freightaudit-bay.vercel.app/invoices`, which gives the production domain `freightaudit-bay.vercel.app`.
+  - Why: the two waiting checks needed it.
+  - What we did: ran them with it.
+- **Shared-cache check:**
+  - What happened: two requests without a session for `/api/invoices/01a14b05-1cee-75c3-89b7-72b9d2ea3a18/document` at 18:26:57 both got 401. They carried `cache-control: public, max-age=0, must-revalidate`, no `age`, no `x-vercel-cache` and `x-vercel-id: sin1::<id>`.
+  - Why: `proxy.ts` refuses `/api/` without a session cookie, and the edge-only id shows it answered before any function.
+  - What we did: `curl.exe -s -o NUL -D -`, printing only the status line and those headers. This was the user's method, in place of the private-window and DevTools steps. It shows that a request without a session cannot get a stored copy. That none is stored rests on the code: the `private` header and a route rendered per request.
+- **Region:**
+  - What happened: `/login` (200) and `/healthz` (200) carried `x-vercel-id: sin1::hkg1::…` and `x-vercel-cache: MISS`.
+  - Why: the functions run in `hkg1`. The 401s above came from the edge, which names no region.
+  - What we did: read the region from function responses, and noted the difference in docs/memory.md.
+- **Protection and `crypto.argon2`:**
+  - What happened: the production domain answered without Vercel's login, while the generated URLs had redirected to it. `/login` answered 200 from a function.
+  - Why: Standard Protection. The web's startup check exits without `crypto.argon2`, so a function that answers has it.
+  - What we did: closed the argon2 todo item on that evidence. The runtime log itself was not read.
+- **Live again:**
+  - What happened: the Funnel answered `/healthz` 200, and the api logged the web's `GET /readyz` and `POST /graphql` (200) at 18:26:30 and 18:26:31.
+  - Why: a signed-in page load after `pnpm demo:up`.
+  - What we did: marked step 10 done in docs/todo.md and docs/context.md, as the user asked once these held. Its two offline gaps stay Pending.
+- **Not tested:**
+  - What happened: the `POST /login` rate-limit rule was not checked.
+  - Why: tripping it would block the IP it is tested from.
+  - What we did: added an optional check to docs/todo.md.
+- Files: docs/{activity-log,context,memory,todo}.md
+- Validation: the responses above.
+- Outstanding:
+  - The document cache fix (its own pull request after `deploy/relay-allowlist` merges).
+  - The offline 404.
+  - The relay-probe measurement.
+  - The optional `POST /login` check.
+  - The address bar and banner answers, not reported.
+  - Nothing committed.
+
+### 2026-10-18: Back online after the offline test; two checks wait for the production domain (not committed)
+
+Times are UTC.
+
+- **Answers left as placeholders:**
+  - What happened: the user's pasted reply kept its three answers as template placeholders: the address bar, the pages with the banner, and the production domain.
+  - Why: not confirmed; probably pasted before being filled in.
+  - What we did: ran every check that needs no domain and asked for the domain again. The address bar and banner answers stay "not reported".
+- **Back online:**
+  - What happened: after the user's `pnpm demo:up` (finished 18:23), all seven containers were healthy and the Funnel answered `/healthz` 200 and `/v1/invoices` 401 without a key. The new squid container denied nothing, and tailscaled's relay probes succeeded.
+  - Why: as designed. The relay pattern held on a later start, which is the check docs/deploy.md asks for.
+  - What we did: `docker ps`, `curl.exe` on the Funnel, and `docker logs` of the api and squid.
+- **No web request yet:**
+  - What happened: since its start, the api had logged only `demo:up`'s own `GET /v1/invoices` (18:23:30) and the agent's (18:23:47), both 401.
+  - Why: the web asks the api only for a signed-in visitor, and nobody had loaded a page since the restart.
+  - What we did: kept step 10 open. The user's condition is one web request in the api log.
+- **Skipped, waiting for the domain:**
+  - What happened: two checks did not run: the two requests without a session for `/api/invoices/01a14b05-1cee-75c3-89b7-72b9d2ea3a18/document`, and the `hkg1` check from `x-vercel-id`.
+  - Why: no production domain.
+  - What we did: listed both under step 10 in docs/todo.md.
+- **Wrong count (mistake):**
+  - What happened: the agent's first squid summary reported 0 relay tunnels; there were 168.
+  - Why: its pattern expected `TCP_TUNNEL/200 CONNECT`, but squid writes the byte count between the two.
+  - What we did: listed the tunnels, matched `TCP_TUNNEL/200 \d+ CONNECT derp`, corrected it in the report, and added the format to docs/memory.md.
+- **Relay probes (observation):**
+  - What happened: squid logged 168 relay tunnels in the first 116 s after the start, one relay in each of 28 regions about every 26 s, 906,367 bytes in all. At that rate that is about 5,200 log lines and 27 MB an hour.
+  - Why: with UDP blocked, tailscaled's netcheck measures every region over HTTPS. Whether the rate stays that high is not confirmed.
+  - What we did: added a check to docs/todo.md.
+- **Cache fix scope (user decision):**
+  - What happened: the user decided that the document cache fix goes in its own small pull request after `deploy/relay-allowlist` merges, and that the api's `/v1/invoices/{id}/document` switches to `no-store` too.
+  - Why: user decision.
+  - What we did: updated the todo item and recorded the decision in docs/memory.md. No code changed.
+- **Refused edit (failed command):**
+  - What happened: an edit of docs/memory.md was refused with "No changes to make", because its old and new text were the same.
+  - Why: the agent sent a placeholder edit by mistake. The intended text was the decision entry, written right after.
+  - What we did: wrote the decision entry with a real edit.
+- Files: docs/{activity-log,memory,todo}.md
+- Validation: the container, Funnel and log readings above.
+- Outstanding:
+  - The production domain, then the two requests without a session and the `hkg1` check.
+  - One signed-in page load, then marking step 10 done.
+  - Nothing committed.
+
+### 2026-10-18: Offline reload of a live invoice ends at a 404 (not committed)
+
+- **Offline 404:**
+  - What happened: with the backend stopped (`docker ps -a` listed no `freightaudit-prod` container), the user reported that the phone "went back to error 404".
+  - Why:
+    - Read as the reloaded invoice page. `livePage` redirects an offline live page to its `/demo` twin, and `demoInvoice(id)` knows only the snapshot's 11 ids, so a live id gets `notFound()`.
+    - With no `not-found.tsx` in `apps/web/app`, Next shows its default 404 page outside the demo shell, without the banner.
+    - It also fits the previous entry: the PDF shown earlier came from the browser's copy, not from a page reload.
+    - Which page the user reloaded is not confirmed. If it was the document URL from the private-window check, a 404 there means a malformed id, since a stopped api gives 502.
+  - What we did: read `app/demo/[[...path]]/page.tsx` and `app/demo/layout.tsx`, searched for `not-found.tsx` (none), and checked the containers. We added the fix to docs/todo.md and changed no code. Best because the fix touches the sample's routing and an e2e spec, which deserve their own change.
+- Files: docs/{activity-log,context,memory,todo}.md
+- Validation: none beyond the reads above.
+- Outstanding: the checks listed in the previous entry, and whether the invoice list showed the sample under the banner.
+
+### 2026-10-18: Phone test against the live api, and a PDF shown while offline (not committed)
+
+Times are UTC.
+
+- **Watching the api log:**
+  - What happened: the user asked the agent to watch the api's requests during a phone test.
+  - Why: the previous check had found no request from the web at all.
+  - What we did:
+    - Wrote `watch-api.mjs` in the session scratchpad. It groups completed requests per 15 s and skips the Docker healthcheck.
+    - Ran it under Claude Code's Monitor on `docker logs -f --tail 0 freightaudit-prod-api-1`, in a loop that reattaches after a restart.
+    - GateGuard asked for facts before the file was created, as for every new file.
+- **Key refused (setting wrong):**
+  - What happened: at 17:52:56 the web's `GET /readyz` answered 200 but its `POST /graphql` 401.
+  - Why: Vercel's `API_KEY` matched none of `API_KEYS`; how is not confirmed. It may have been the session secret, also 64 hex characters, or a stray character.
+  - What we did: told the user during the test. The user copied the first key again with the clipboard command from docs/deploy.md, edited `API_KEY` (Production) under Settings, Environment Variables, and redeployed. From 17:55:53, `/graphql` answered 200.
+- **Live path confirmed:**
+  - What happened:
+    - From 17:55:53 the phone loaded live pages (`/readyz` and `/graphql`, 200) and two invoices' PDFs (`/v1/invoices/{id}/document`, 200).
+    - At 17:59:48 it uploaded `clean-digital-g001.pdf` (`POST /v1/invoices`, 202).
+    - The invoice reconciled at 17:59:50 on one valid Groq first pass (`openai/gpt-oss-120b`, 1,298 ms), with no finding.
+  - Why: the redeploy with the checked variables and the corrected key.
+  - What we did: read the invoice's row, extraction and `llm_calls` with `psql` in `freightaudit-prod-postgres-1`.
+- **Backend stopped; a PDF still shown (investigated read-only):**
+  - What happened: at about 18:00 the api container stopped for the user's offline test. Reloading an invoice's PDF view on the phone still showed the PDF.
+  - Why:
+    - Live PDFs come from the web's `/api/invoices/[id]/document`. It streams the api's copy behind the session check and answers `cache-control: private, max-age=31536000, immutable`, so the phone's browser keeps each viewed PDF for a year and may show it without asking the server.
+    - Which view it was is not confirmed. It could be a reload of the viewer's raw-PDF tab (the link beside the zoom buttons; Safari skips revalidation for `immutable`), a zoom that re-runs pdf.js's fetch, or the sample's static `/demo/<id>.pdf`.
+    - A full reload of a live invoice page cannot show it. Offline, the page redirects to `/demo/invoices/<id>`, which knows only the snapshot's 11 ids and answers 404 for live ones.
+  - What we did:
+    1. Read the route, `proxy.ts`, `lib/server.ts`, the invoice and demo pages, `components/client.tsx`, `next.config.ts` and `apps/api/src/service.ts`.
+    2. Found no shared storage:
+       - `private` keeps Vercel's CDN from storing the response.
+       - The route reads cookies, so it is rendered per request, and its fetch is uncached.
+       - `apps/web/public` has no service worker, and Funnel passes TCP through.
+       - The api's own copy carries the same header but goes only to servers.
+       - The proxy answers 401 to any `/api/` request without a session cookie.
+    3. Assessed the local copy. The year-long browser copy outlives sign-out, since `logout()` only clears the cookie, so on a shared device the next person could reopen a viewed PDF from history. The demo accepts only golden-set PDFs, so no real document is exposed.
+    4. Added the fix to docs/todo.md and changed no code. Best because the copy stays in the browser that viewed it, and the fix (a header, a sign-out header, a test) deserves its own change.
+  - Not done yet:
+    - One real response with the backend up: its `cache-control`, `x-vercel-cache`, `x-vercel-id` and `age`.
+    - An unauthenticated request for the same URL.
+    - A signed-in request from a fresh private window while the backend is down. A 502 would confirm that Vercel holds no copy.
+    - These need the production domain, which has not been shared, and the user's session.
+- **Wrong statement (mistake):**
+  - What happened: the agent told the user that no view links to the raw PDF. `DocumentViewer` in `components/client.tsx` has such a link (`<a href={src} target="_blank">` beside the zoom buttons).
+  - Why: the agent had searched `views.tsx` for links but not `client.tsx`, where the viewer lives.
+  - What we did: read the viewer, corrected it in the next report, and counted the raw-PDF tab among the likely views.
+- **Tools behaving unexpectedly:**
+  - What happened:
+    - Three Grep calls with brace globs that include directories (such as `{components/views.tsx,lib/demo.ts}`) returned no matches, although those files contain them.
+    - The GitHub API listed no deployments for the repository, so it gave no production domain.
+  - Why: not confirmed. It may be the tool's handling of braced globs with a directory part, and Vercel not creating GitHub deployments here.
+  - What we did: searched one path or file type at a time, and asked the user for the domain.
+- Files: docs/{activity-log,context,memory,todo}.md
+- Validation: the api and database readings above. No code changed and no tests ran.
+- Outstanding:
+  - The three checks under "Not done yet".
+  - The offline pages under the banner (not reported yet).
+  - Confirming `hkg1` from a response, the protection setting, the `POST /login` rule and the runtime log.
+  - Nothing committed.
+
+### 2026-10-18: Vercel setup and phone check reported; the web has not reached the api (not committed)
+
+Times are UTC, as in the entry below.
+
+- **Vercel project (user):**
+  - What happened: the user reported the Vercel steps done. Step 8 covered the account, the project from the repository and the Production variables. Step 9 covered the settings: region `hkg1`, protection, and the `POST /login` rate-limit rule.
+  - Why: docs/deploy.md, Vercel 1 to 6.
+  - What we did: nothing beyond the checks below; the agent has no Vercel access.
+- **Protected link (tool behaving as designed):**
+  - What happened: the first link shared, `freightaudit-<hash>-<scope>.vercel.app`, answered `/healthz`, `/login`, `/demo/invoices` and `/invoices` with 302 to `vercel.com/sso-api`, and so did `freightaudit-<scope>.vercel.app`. `freightaudit.vercel.app` served another project (Clerk and Supabase headers, 404).
+  - Why: Standard Protection puts the URLs Vercel generates behind its login and leaves only the production domain public. Whether `freightaudit-<scope>.vercel.app` is this project's production domain is not confirmed.
+  - What we did: probed each with `curl.exe -s -D -` for status, `Location` and `x-vercel-id`; asked for the domain marked Production under Settings, Domains, and for Standard Protection under Settings, Deployment Protection; added both to docs/deploy.md (Vercel 8).
+- **Skipped checks:**
+  - What happened: the agent did not verify the production domain, the `hkg1` region, the protection setting, the rate-limit rule or the runtime log line for `crypto.argon2`.
+  - Why: the production domain was not shared, and the user asked to finish the docs and stop. `x-vercel-id` shows the function region only on a public URL that runs a function, and the rule could be tested only by tripping it from the user's own IP.
+  - What we did: recorded them as unconfirmed in docs/todo.md.
+- **Phone check reported, live path not seen (open problem):**
+  - What happened: the user reported the phone check done, but this stack showed no trace of it:
+    - No invoice, model call or reviewer action followed the sample.
+    - The containers had run unstopped since the reset at 17:05:52, so neither a live upload nor the backend-stopped case happened here.
+    - The api's log from 17:05:59 to 17:34:36 held no request from the web. It had 60 Docker healthchecks (`GET /healthz`), the reset's `GET /v1/invoices` and sample batch, and the agent's curl. It also had browser loads of the Funnel root at 17:08, 17:11, 17:20 and 17:24 (`GET /` and `/favicon.ico`, 401), probably the phone's 401 check; scanners are not ruled out.
+  - Why: not confirmed. The web probes the api only while `AI_ENABLED` is true and sends `new URL('/readyz', API_URL)` with a 2.5 s timeout (`apps/web/lib/server.ts`). So `AI_ENABLED` not true, a wrong `API_URL`, variables changed without a redeploy, or a probe failing before it reaches the PC would each keep the web on the sample under "Live backend offline".
+  - What we did:
+    1. Queried the last six hours of invoices, `audit_events` and `llm_calls` with `psql` inside `freightaudit-prod-postgres-1`.
+    2. Read the containers' start times with `docker ps`.
+    3. Parsed `docker logs --since 2026-10-17T17:05:00Z freightaudit-prod-api-1` as JSON and grouped it by method, path and status.
+    4. Read the probe in `apps/web/lib/server.ts`.
+    5. Kept step 10 open in docs/todo.md and docs/context.md instead of marking it done, and asked the user what the phone showed and which values Vercel holds. Best because the done-when needs an upload processed end to end, and the logs show none.
+- **Rule requested again:**
+  - What happened: the user's message asked again to add the documentation rule to AGENTS.md.
+  - Why: not confirmed; probably the earlier request repeated.
+  - What we did: compared it with the rule added earlier today, which says the same and also names prompts, and added nothing, so AGENTS.md keeps one copy.
+- **Setup docs:**
+  - What happened: the setup docs were finished for this stage, before the user commits `infra/squid.conf` and the docs.
+  - Why: user request.
+  - What we did:
+    - docs/deploy.md: Vercel 8 (share only the production domain) and 9 (look for the web's `/readyz` and `/graphql` in the api's log), and a troubleshooting entry for "Live backend offline" while the PC is up.
+    - docs/context.md: the deployment status.
+    - docs/memory.md: the generated-URL pitfall and the open question.
+    - docs/todo.md: the Vercel steps as reported, the live path open.
+- Files: docs/{activity-log,context,deploy,memory,todo}.md
+- Validation: at 17:34 the Funnel answered `/healthz` with 200 and `/v1/invoices` without a key with 401. Squid had denied nothing since the 17:00:38 restart.
+- Outstanding:
+  - The web reaching the api.
+  - Then the phone check with a live upload, and with the backend stopped.
+  - The unconfirmed Vercel settings above.
+  - Nothing committed.
+
+### 2026-10-18: Real setup of the public demo, steps 1 to 7 (main at `ae68611`, not committed)
+
+Times are UTC; on this PC (UTC+8) the work ran past midnight into 2026-10-18. The user ran every command that touches a secret, and the agent never read `.env`, `.env.prod` or a key.
+
+- **Documentation rule (setting changed):**
+  - What happened: the user asked that activity-log entries, and memory entries about problems or decisions, include small events and state what happened, why, and what we did.
+  - Why: user request.
+  - What we did: added the rule to AGENTS.md, Documentation Rules; narrowed "Do not log trivial modifications" to typo and formatting fixes so the two rules agree; changed this file's header and entry format, and memory.md's entry format, to match. Older entries stay as written.
+- **Preflight:**
+  - What happened: release.yml had published the merge's images. `latest` and `sha-ae68611` share one digest for api (`sha256:66e8b1b91cb2…`), worker (`de304d095879…`), web (`cfa6ea1eca8c…`) and squid (`8359447599dd…`), and GHCR serves them without a login. No `freightaudit-prod` container or network existed, the three volumes were the dry run's, and `.env.prod` did not exist.
+  - Why: expected after the merge.
+  - What we did: `docker ps -a`, `docker volume ls` and `docker network ls` filtered on the project; `Test-Path .env.prod`; then GHCR's registry API for each image: an anonymous token from `https://ghcr.io/token?scope=repository:kwnhyk04/freightaudit-<image>:pull`, then `HEAD /v2/kwnhyk04/freightaudit-<image>/manifests/<tag>` for both tags.
+- **`gh` missing (failed command):**
+  - What happened: `gh run list --workflow release.yml` failed with "The term 'gh' is not recognized".
+  - Why: the GitHub CLI is not on PowerShell's PATH here; whether it is installed elsewhere is not confirmed.
+  - What we did: the registry check above instead. It is the stronger check: it proves the push and that `docker pull` works without credentials, which a green run does not.
+- **GateGuard hook (tool blocking by design):**
+  - What happened: the ecc GateGuard hook blocked the first PowerShell command and the first edit of each file (docs/todo.md, infra/squid.conf, and the six files of this update) until the agent listed facts: files referencing it, affected functions, data formats and the user's words. In one parallel batch of two edits to docs/todo.md, the second applied while the first was blocked.
+  - Why: the hook's fact-forcing gate fires on the first touch of a file or tool.
+  - What we did: listed the facts (with a `git grep -l` reference search), then retried the same call.
+- **Step 1, data volumes (tool refused):**
+  - What happened: Claude Code's auto mode refused the agent's `docker volume rm freightaudit-prod_postgres-data freightaudit-prod_minio-data`, without a reason.
+  - Why: not confirmed; its classifier treats deleting volumes as dangerous.
+  - What we did: no retry. The agent inspected the targets read-only: both were created at 14:27:55 on 2026-10-17 by compose project `freightaudit-prod`, and no container used them. The user ran the two commands from docs/deploy.md in their terminal, and `docker volume ls --filter name=freightaudit-prod` then listed only `freightaudit-prod-tailscale-state`. Best because the deletion is irreversible and the refusal handed the decision back to the user.
+- **PowerShell quoting (failed command):**
+  - What happened: `docker volume inspect --format '{{.Name}} ... {{index .Labels "com.docker.compose.project"}}'` failed three times with `template: :1: function "com" not defined`.
+  - Why: Windows PowerShell 5.1 strips the inner double quotes from a native program's argument.
+  - What we did: printed `{{json .Labels}}`, which needs no quotes. Later, SQL went to `psql` on stdin for the same reason.
+- **Step 2, Tailscale (user, browser):**
+  - What happened: the user created the account on the free Personal plan. On the DNS page MagicDNS stayed on and HTTPS Certificates were enabled. Under Access controls, the JSON editor's policy was replaced with the one in docs/deploy.md. The agent cannot see the console, so this rests on the user's word.
+  - Why: docs/deploy.md, One-time setup, Tailscale 1 to 3.
+  - What we did: moved the auth key (Tailscale 4) to just before `.env.prod` was filled, since it expires in a day and nothing needed it earlier.
+- **Step 3, Docker Desktop and `pnpm demo:init`:**
+  - What happened: the user ticked Settings, General, "Start Docker Desktop when you sign in to your computer", and ran `pnpm demo:init`. Memory needed no change.
+  - Why: Docker runs on WSL 2 (engine 29.8.2; `docker info`: 15.6 GiB, 16 CPUs). WSL sets that memory, so Docker Desktop shows no slider, and 15.6 GiB is well over deploy.md's 4 GB.
+  - What we did: read only the `AutoStart` value of `%APPDATA%\Docker\settings-store.json` (True), and checked that `.env.prod` exists and that `git check-ignore -v .env.prod` names `.gitignore:9`.
+- **Step 4, keys (user):**
+  - What happened: the user generated the auth key (Settings, Keys: reusable off, ephemeral off, expiry 1 day, tag `tag:freightaudit`) and set `GEMINI_API_KEY`, `GROQ_API_KEY` and `TS_AUTHKEY` in `.env.prod` with an editor.
+  - Why: docs/deploy.md, Tailscale 4 and This PC 2.
+  - What we did: skipped the agent's own check, since it would mean reading `.env.prod`. `pnpm demo:up` checked it instead: the node logged in under the name `freightaudit`, without a `-1` suffix.
+- **Step 5, demo password (user):**
+  - What happened: `pnpm --filter @freightaudit/web hash-password --write-env` wrote `DEMO_PASSWORD_HASH` into the root `.env`. Side effect: the dev web reads the same line, so the dev sign-in password is now the demo password.
+  - Why: docs/deploy.md, This PC 3.
+  - What we did: confirmed it by the file's modified time only (16:49:06, 18 s before the check).
+- **Step 6, first `pnpm demo:up` with a login: relays denied, then allowed by a pattern:**
+  - What happened: all seven containers became healthy and the node logged in. While the script waited for the public URL, squid had denied 4,100 CONNECTs in about 3 minutes (16:53:28 to 16:56:39), all from tailscale (10.231.231.3) to 87 relay names (`derp<region><node>.tailscale.com:443`) in 28 regions. None went to a bare IP or another host.
+  - Why: with no UDP route out, tailscaled measures each region's relays over HTTPS through the proxy to choose a home relay, and Funnel's traffic needs one. The relays were not allowed yet, as deploy.md expected.
+  - What we did:
+    1. Summarized `docker logs freightaudit-prod-egress-proxy-1` by client, result and target, and counted bare-IP targets (0) and hosts outside the expected set (0).
+    2. Asked the user to choose between one pattern, the 87 names, and a few nearby regions. The user chose the pattern. Best because Tailscale adds and renames relays, so a list would break Funnel quietly, and nearby regions alone would leave netcheck's denials flooding the log with no failover.
+    3. Added to `infra/squid.conf`: `acl tailscale_derp dstdom_regex -n ^derp[0-9]+[a-z]*[.]tailscale[.]com$` and `http_access allow from_tailscale tailscale_ip tailscale_derp`.
+    4. Ran `docker run --rm --read-only --tmpfs ... -v "H:\Projects\projects\freight-audit\infra\squid.conf:/etc/squid/squid.conf:ro" ghcr.io/kwnhyk04/freightaudit-squid:latest -k parse`: exit 0, no warning.
+    5. Ran `docker restart freightaudit-prod-egress-proxy-1` at 17:00:38. deploy.md's `docker compose ... restart egress-proxy` would need `--env-file .env.prod`, and a restart mounts the edited file again.
+    6. Checked that `docker exec freightaudit-prod-egress-proxy-1 grep -c tailscale_derp /etc/squid/squid.conf` gives 2. In the next 20 s squid logged 28 relay tunnels and tunnels to `controlplane` and `log.tailscale.com`, with no denial.
+  - Result: from this PC, Funnel's `/healthz` answered 200 and `/v1/invoices` without a key 401. The user did not report whether their `demo:up` printed `Live at` or timed out first.
+- **Imprecise option text (mistake):**
+  - What happened: the recommended option in step 6 told the user the relays "are the same Tailscale servers controlplane already reaches". They are other servers of the same operator, and allowing them adds a path: a compromised tailscale container could send data to any Tailscale node through a relay.
+  - Why: the agent shortened "same operator" to "same servers" and left out that path.
+  - What we did: wrote the residual risk into docs/threat-notes.md and docs/memory.md, and told the user. The choice stands, because fewer relay names would not close that path: any relay forwards to any node connected to it.
+- **Let's Encrypt at startup, and a wrong report (mistake):**
+  - What happened: the agent told the user that `log.tailscale.com` and Let's Encrypt did not appear in squid's log yet, and that the certificate would come with the first request through Funnel. In fact the `acme-v02.api.letsencrypt.org` tunnel had already run from about 16:53:35 to 16:55:43 (128 s, 16,994 bytes), before any relay was allowed. The certificate (issuer `YE1`, Let's Encrypt) came at startup: its not-before of 15:55:41 is Let's Encrypt's one-hour backdate, and it is valid until 2027-01-15.
+  - Why: the agent read a `sort | uniq -c` summary of the whole log in which that line did not show (why is not confirmed; possibly the shell's output condensing) and assumed the fetch waits for a request. The `log.tailscale.com` part was right: that tunnel was still open, and squid logs a tunnel only when it closes.
+  - What we did: read the certificate over TLS (`System.Net.Security.SslStream` in PowerShell), saw that its date preceded the relays, listed every non-relay CONNECT with its time, found the tunnel, and corrected the report in the next message. A direct `Select-String acme` would have caught it first.
+- **Funnel timing:**
+  - What happened: from this PC, `/healthz` took 1.7 s on a new TLS connection (TLS done at 1.23 s) and 0.46 to 0.48 s on a reused one. The node's home relay is `sin`.
+  - Why: every request crosses Funnel's ingress and the Singapore relay, since the node has no UDP path.
+  - What we did: ran `curl.exe` with five URLs on one connection and `-w` timings, and read the home relay from `tailscale status --json`, printing only `Self.Relay`.
+- **Step 7, `pnpm db:reset-demo` (user):**
+  - What happened: the 11 sample PDFs were accepted. Within about a minute 8 invoices reconciled with 7 findings (1, 1, 1, 3, 1), 3 went to needs review (2 `no_shipment_match`, the missing-PRO ones; 1 `unsupported_currency: CAD`), and none failed. There were 12 model calls and none failed: Gemini made 2 first passes (the scans), and Groq made 8 first passes plus one invalid first pass that its repair fixed (the CAD invoice). Squid logged 9 worker tunnels to Gemini and Groq on 3128 and no denial. The user confirmed `TS_AUTHKEY` is gone from `.env.prod`.
+  - Why: as designed. Two differences from the committed offline sample: g003 reconciles here, since its shipment keeps its miles, and reviewer actions are not replayed. The 19 dead letters are the seed's 19 failed invoices (2025-01-13 to 2026-09-18); none came from the sample.
+  - What we did: read statuses, steps, review reasons, finding counts and `llm_calls` with `psql` inside `freightaudit-prod-postgres-1` (local socket, no password; counts and codes only), and squid's lines since the restart.
+- **Waiting (tool refused):**
+  - What happened: the harness blocked a `Start-Sleep -Seconds 60` before the status query ("To wait for a condition, use Monitor with an until-loop"). An earlier 20 s sleep had passed.
+  - Why: Claude Code blocks long foreground sleeps; the threshold is not confirmed.
+  - What we did: a background Bash loop polled Postgres every 10 s, for at most 10 minutes, until no sample invoice was received, extracting, extracted or reconciling. It ended after about 20 s.
+- **Stale step-10 lines (setting changed):**
+  - What happened: context.md still described release.yml's migrate and deploy jobs, the dev-only credentials in the production override, PR #14's fixes as uncommitted, step 10 as unmerged, and three Dockerfiles under Dependabot. todo.md still listed five "before step 10" items that step 10 had settled.
+  - Why: those lines predate the step-10 decisions and the merge.
+  - What we did: checked each against the source. release.yml has no `migrate`, `deploy` or `DEPLOY_ENABLED`. `createPool` is in `packages/db/src/pool.ts`, and the `e2e` script builds pipeline, api, worker and web. The production override requires `POSTGRES_PASSWORD` and `MINIO_ROOT_PASSWORD` from `.env.prod` and gives the worker `stop_grace_period: 90s`. `.github/dependabot.yml` lists four Dockerfile directories and `/infra` for docker-compose. Then we corrected context.md, moved the settled todo items to Completed, and updated deploy.md and threat-notes.md for the relay pattern. The Funnel URL stays out of the docs, since the repository is public; it lives in Vercel's `API_URL`.
+- Files: AGENTS.md, infra/squid.conf, docs/{activity-log,memory,context,deploy,threat-notes,todo}.md
+- Validation: per event above. No test suite ran, since only squid.conf and docs changed: squid.conf passed `-k parse` and carried live traffic.
+- Outstanding:
+  - Vercel: account, project with root `apps/web`, Production variables, region `hkg1`, protection, the `POST /login` rate-limit rule, and the runtime-log check for `crypto.argon2`.
+  - Then the phone check.
+  - docs/threat-notes.md has its "Accepted risks" list inside the threats table, which splits the table (found, not fixed).
+  - Nothing committed.
 
 ### 2026-10-17: Own squid image for the egress proxy (branch step-10-deploy, not committed)
 

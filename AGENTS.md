@@ -112,7 +112,12 @@ For small, clearly authorized changes, proceed without unnecessary confirmation.
 
 - Document only confirmed information. Never invent history or decisions.
 - Do not rewrite all documentation after every interaction.
-- Do not log trivial modifications.
+- Do not log trivial modifications such as typo or formatting fixes; the small events in the next rule always count.
+- Every entry in `docs/activity-log.md`, and in `docs/memory.md` when it records a problem or a decision, includes small events too: a failed command, a skipped check, a tool or prompt that behaved unexpectedly, a setting changed. Each entry states three things:
+  1. What happened.
+  2. Why it happened (write "not confirmed" when it's a guess).
+  3. What we did: the exact steps in order (commands, buttons, where each setting lives) and why that was the best option.
+- Mistakes are logged the same way and never edited out later. Don't rewrite past entries.
 
 ## Git
 
