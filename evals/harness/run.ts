@@ -25,7 +25,7 @@ import { type CallRow, type CaseResult, type PredictedInvoice, type Read, replie
 import { report } from './report.ts';
 
 export type Roles = Record<'primary' | 'text' | 'fallback', LlmRole>;
-export type Subset = 'dev' | 'ci' | 'full' | 'compare';
+export type Subset = 'dev' | 'test' | 'ci' | 'full' | 'compare';
 export type Run = {
   label: string;
   roles: Roles;
@@ -255,7 +255,7 @@ export async function evaluate({
 }): Promise<Run> {
   const root = new URL(`../${set}/v1/`, import.meta.url);
   const manifest = JSON.parse(await readFile(new URL('manifest.json', root), 'utf8')) as Manifest;
-  const inSubset = (entry: Manifest['cases'][number]) => (subset === 'dev' ? entry.split === 'dev' : subset === 'ci' ? entry.ci : true);
+  const inSubset = (entry: Manifest['cases'][number]) => (subset === 'dev' || subset === 'test' ? entry.split === subset : subset === 'ci' ? entry.ci : true);
   const chosen = manifest.cases.filter((entry) => (only ? only.includes(entry.id) : inSubset(entry)));
   const cases = await Promise.all(chosen.map(async (entry) => JSON.parse(await readFile(new URL(`cases/${entry.id}.json`, root), 'utf8')) as GoldenCase));
   const key = sha256(JSON.stringify({ set, version: manifest.version, pins: pinsOf(roles), prompt: PROMPT_HASH })).slice(0, 12);
@@ -321,7 +321,7 @@ async function main() {
     },
   });
   if (values.suite !== 'extraction') throw new Error('--suite must be extraction');
-  if (!['dev', 'ci', 'full', 'compare'].includes(values.subset)) throw new Error('--subset must be dev, ci, full or compare');
+  if (!['dev', 'test', 'ci', 'full', 'compare'].includes(values.subset)) throw new Error('--subset must be dev, test, ci, full or compare');
   const subset = values.subset as Subset;
   const { roles, problems } = configuredRoles();
   const unpriced = Object.values(roles).flatMap(({ provider, model }) => (hasPrice(provider, model) ? [] : [`${provider}/${model} has no entry in packages/llm/prices.json`]));

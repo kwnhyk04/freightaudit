@@ -28,8 +28,10 @@ const env = loadEnv([
   ...LLM_SETTINGS,
 ]);
 // With AI off nothing is required: no model is built and extract jobs wait.
-const { roles, problems } = llmRoles(env);
-const unpriced = Object.values(roles).flatMap(({ provider, model }) => (hasPrice(provider, model) ? [] : [`${provider}/${model} has no entry in packages/llm/prices.json`]));
+const { roles, claude, problems } = llmRoles(env);
+const unpriced = [...Object.values(roles), ...(claude ? [claude] : [])].flatMap(({ provider, model }) =>
+  hasPrice(provider, model) ? [] : [`${provider}/${model} has no entry in packages/llm/prices.json`],
+);
 if (env.AI_ENABLED && problems.length + unpriced.length > 0) configError([...problems, ...unpriced].join('\n'));
 
 const app = Fastify(serverOptions(env.LOG_LEVEL));
@@ -38,14 +40,15 @@ const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
 const pool = createPool(env.DATABASE_URL, (msg, fields) => app.log.warn(fields, msg));
 const queues = createQueues(redis, env.REDIS_PREFIX);
 observeQueues(queues);
-const limits = createLimits(redis, { prefix: env.REDIS_PREFIX, enabled: env.AI_ENABLED, dailyTokenBudget: env.DAILY_AI_TOKEN_BUDGET, roles });
+const limits = createLimits(redis, { prefix: env.REDIS_PREFIX, enabled: env.AI_ENABLED, dailyTokenBudget: env.DAILY_AI_TOKEN_BUDGET, roles: { ...roles, claude } });
 const workers = startWorkers(
   {
     db: drizzle(pool),
     redis,
     queues,
     limits,
-    models: env.AI_ENABLED ? createModels(roles, limits) : undefined,
+    // With LLM_CLAUDE_MODEL set, Claude comes between each role's main model and the free fallback.
+    models: env.AI_ENABLED ? createModels(roles, limits, { claude, log: (fields, msg) => app.log.warn(fields, msg) }) : undefined,
     textMinChars: env.LLM_TEXT_MIN_CHARS,
     storage: createStorage({ endpoint: env.S3_ENDPOINT, accessKey: env.S3_ACCESS_KEY, secretKey: env.S3_SECRET_KEY, bucket: env.S3_BUCKET }),
     tmsUrl: env.MOCK_TMS_URL,

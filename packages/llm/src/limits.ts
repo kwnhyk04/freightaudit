@@ -42,12 +42,19 @@ export type Clock = { now(): number; sleep(ms: number): Promise<void> };
 
 // A role's model limits: requests and tokens per minute.
 export type RoleLimits = { rpm: number; tpm: number };
-export type LimitsOptions = { prefix: string; enabled: boolean; dailyTokenBudget: number; roles: Record<Role, RoleLimits>; clock?: Clock };
+// One bucket per role, and one for the Claude backup when it is configured.
+export type Bucket = Role | 'claude';
+export type LimitsOptions = { prefix: string; enabled: boolean; dailyTokenBudget: number; roles: Record<Role, RoleLimits> & { claude?: RoleLimits | undefined }; clock?: Clock };
 
 export function createLimits(redis: Redis, { prefix, enabled, dailyTokenBudget, roles, clock }: LimitsOptions) {
   const dayKey = (now: number) => `${prefix}:llm:day:${new Date(now).toISOString().slice(0, 10)}`;
-  const bucket = async (role: Role, tokens: number, force = false) => {
-    const { rpm, tpm } = roles[role];
+  const limitsOf = (role: Bucket) => {
+    const found = roles[role];
+    if (!found) throw new Error(`no limits for ${role}`);
+    return found;
+  };
+  const bucket = async (role: Bucket, tokens: number, force = false) => {
+    const { rpm, tpm } = limitsOf(role);
     return Number(await redis.eval(BUCKET, 1, `${prefix}:llm:bucket:${role}`, rpm, tpm, tokens, force ? 'force' : '', clock?.now() ?? ''));
   };
   const sleep = clock?.sleep ?? ((ms: number) => setTimeout(ms));
@@ -64,8 +71,8 @@ export function createLimits(redis: Redis, { prefix, enabled, dailyTokenBudget, 
     },
     // Waits until the role's bucket has a request and `tokens` (at most a minute's worth), takes them, and returns the
     // tokens taken and the ms it waited for them.
-    async take(role: Role, tokens: number) {
-      const want = Math.min(tokens, roles[role].tpm);
+    async take(role: Bucket, tokens: number) {
+      const want = Math.min(tokens, limitsOf(role).tpm);
       let waitedMs = 0;
       for (let wait = await bucket(role, want); wait > 0; wait = await bucket(role, want)) {
         await sleep(wait);
@@ -74,7 +81,7 @@ export function createLimits(redis: Redis, { prefix, enabled, dailyTokenBudget, 
       return { tokens: want, waitedMs };
     },
     // Counts a finished call against the UTC day and trues up the role's bucket from what was taken to real usage.
-    async record(role: Role, usage: Usage, taken: number, now = Date.now()) {
+    async record(role: Bucket, usage: Usage, taken: number, now = Date.now()) {
       const tokens = usage.inputTokens + usage.outputTokens;
       const key = dayKey(now);
       await redis.multi().hincrby(key, 'calls', 1).hincrby(key, 'tokens', tokens).expire(key, 2 * 86_400).exec();
@@ -91,7 +98,7 @@ const TOKENS_PER_PAGE = 5_200;
 // Every call, repairs included, waits for its role's bucket, reports that wait, and counts its real tokens against the
 // day.
 // ponytail: a failed call keeps its reservation; refund it if 429 storms starve the bucket.
-export const metered = (provider: Provider, limits: Limits, role: Role): Provider => ({
+export const metered = <P extends Provider>(provider: P, limits: Limits, role: Bucket): P => ({
   ...provider,
   async generate(input) {
     const { tokens: taken, waitedMs } = await limits.take(role, input.parts.length * TOKENS_PER_PAGE);

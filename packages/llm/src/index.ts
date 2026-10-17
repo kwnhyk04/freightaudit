@@ -1,7 +1,19 @@
 // Provider layer: error taxonomy, PDF pages, extraction with repair and fallback, Gemini and OpenAI-compatible clients,
 // shared AI limits and call prices. The model only extracts data; code checks every amount it returns.
-export { classify, httpError, parseRetryAfter, PermanentError, ProviderConfigError, RateLimitError, TransientError } from './errors.ts';
+export { CLAUDE_MAX_TOKENS, type ClaudeLog, createClaudeProvider } from './claude.ts';
 export {
+  ClaudeUnavailableError,
+  type ClaudeUnavailableReason,
+  classify,
+  httpError,
+  parseRetryAfter,
+  PermanentError,
+  ProviderConfigError,
+  RateLimitError,
+  TransientError,
+} from './errors.ts';
+export {
+  type Backup,
   type Call,
   EXTRACTION_JSON_SCHEMA,
   EXTRACTION_PROMPT,

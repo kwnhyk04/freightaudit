@@ -2,6 +2,13 @@
   "as_of": "2026-10-15",
   "note": "Paid list prices in USD per million tokens. A call to a model on the free tier costs 0; its paid price stays here for reference. Ollama runs locally and needs no entry.",
   "models": {
+    "anthropic/claude-haiku-5-5": {
+      "tier": "paid",
+      "input": "0.10",
+      "output": "0.50",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "note": "For prompts up to 100K tokens (0.50 / 2.50 above); an extraction prompt stays far below. Checked 2026-10-17."
+    },
     "gemini/gemini-3.5-flash-lite": {
       "tier": "free",
       "input": "0.30",
