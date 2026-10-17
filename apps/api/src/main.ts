@@ -1,9 +1,9 @@
 import { loadEnv } from '@freightaudit/config/env';
+import { createPool } from '@freightaudit/db';
 import { backlog, createQueues, createStorage } from '@freightaudit/pipeline';
 import { httpCheck, serverOptions, shutdownTelemetry, tcpCheck } from '@freightaudit/telemetry';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Redis } from 'ioredis';
-import pg from 'pg';
 import { buildApp } from './app.ts';
 import { createService } from './service.ts';
 
@@ -26,7 +26,8 @@ const env = loadEnv([
 ]);
 // One reconnect attempt per command, so a request fails fast while Redis is down instead of hanging.
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1 });
-const pool = new pg.Pool({ connectionString: env.DATABASE_URL });
+// The logger exists by the time the pool has an idle connection to lose.
+const pool = createPool(env.DATABASE_URL, (msg, fields) => app.log.warn(fields, msg));
 const queues = createQueues(redis, env.REDIS_PREFIX);
 const db = drizzle(pool);
 const storage = createStorage({ endpoint: env.S3_ENDPOINT, accessKey: env.S3_ACCESS_KEY, secretKey: env.S3_SECRET_KEY, bucket: env.S3_BUCKET });

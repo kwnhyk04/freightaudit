@@ -30,7 +30,10 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Completed
 
-- [x] Step 9 polish (user requests, 2026-10-17, not committed):
+- [x] PR #14's two failed CI jobs (2026-10-17, not committed):
+  - **end-to-end tests:** `pnpm e2e` built only the web and its dependencies, so on a clean runner `e2e/prepare.ts` met `ERR_MODULE_NOT_FOUND` for telemetry's `dist/` (reproduced by deleting the packages' `dist/` and running with `TURBO_FORCE=true`). `pnpm e2e` and `pnpm e2e:screenshots` now build pipeline, api, worker and web with their dependencies: 11 tasks from cold, 9/9.
+  - **integration tests:** `pool.end()` resolves before its connections close, and `DROP DATABASE ... WITH (FORCE)` in the test teardown terminated the closing ones; their pool re-emitted 57P01 with no listener, which crashed the next test. Test databases now drop only once their sessions are gone (5 s at most, else an error naming the database), the db:reset test stops its worker and ends its pool first, and the services build their pools with `createPool`, whose `'error'` handler logs the code only. The api process test terminates the server's connections and checks it keeps serving. `extract.int.test.ts` 5 runs in a row 13/13, `pnpm test:int` 3 runs 103/103, lint 12/12, typecheck 21/21, unit tests 81, `pnpm e2e` 9/9.
+- [x] Step 9 polish (user requests, 2026-10-17, commit `a8b8493`):
   - Credits print a real minus sign: `formatMoney` maps Intl's `minusSign` part to U+2212 (−$2,130.76); its property (USD, CAD, EUR) holds that only a negative amount carries a sign, U+2212 in front and never a hyphen, and that the digits read back. A hyphen mutant fails both the example and the property.
   - The README opens with the sample's detail (`demo-invoice-<light|dark>.png`) in place of the e2e fixture.
   - The sample adds golden g088 (scanned, missing PRO number), left in needs review by itself; the sample shows its correction fields disabled, without a submit button. The demo spec checks both fields are disabled; the screenshots add `demo-needs-review-<light|dark>.png`. `demo:export` now writes nothing until every invoice passed the golden check (a refused export used to delete the sample's PDFs first).
@@ -38,7 +41,7 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
   - Checks: `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (81 tests), `pnpm test:int` 102/102, `pnpm e2e` 9/9, `pnpm e2e:screenshots` 5/5 (29 files).
 - [x] 7. CI/CD (2026-10-17, confirmed by the user): repository github.com/kwnhyk04/freightaudit; ci.yml, release.yml and Dependabot run on GitHub, and PRs #12 and #13 are green. Checked locally first (2026-10-15): actionlint 1.7.12 passes on all workflows; the three images build, run as `node`, report healthy and have no fixable critical (Trivy 0.75.0); the Linux-only steps pass on a docker:dind engine.
 
-- [x] 9. Review UI and demo mode (plan approved 2026-10-16: `C:\Users\kwonhyuk\.claude\plans\pasted-content-id-3c2b-step-9-fizzy-meteor.md`), branch `step-9-review-ui` from main `564c993`, built 2026-10-16 (commit `d516c7d`), finished 2026-10-17 (not committed):
+- [x] 9. Review UI and demo mode (plan approved 2026-10-16: `C:\Users\kwonhyuk\.claude\plans\pasted-content-id-3c2b-step-9-fizzy-meteor.md`), branch `step-9-review-ui` from main `564c993`, built 2026-10-16 (commit `d516c7d`), finished 2026-10-17 (commit `a8b8493`, PR #14):
   - [x] Contracts: schema (REJECTED, deadLetters, carriers, correct/reject/replay mutations, extraction, auditTrail), operations, codegen (`documentMode: 'string'`), `@freightaudit/contracts/limits`, openapi 0.7.0 (rejected, PDF/PNG/JPEG at 4 MiB, the document endpoint), `oasdiff-ignore.txt`; the user applied the two graphql-eslint lines.
   - [x] Database: migration 0013 (`rejected`, append-only `audit_events`, status trigger, two new moves), seed (`carrier_match`, `review_reason`), `queryError`; docs/migrations.md entry.
   - [x] Pipeline `replayDeadLetter(..., actor)`; llm `imageToPdf`.

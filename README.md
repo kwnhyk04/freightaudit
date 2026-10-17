@@ -111,7 +111,7 @@ pnpm dev                                        # the UI on http://127.0.0.1:300
 4. `pnpm --filter @freightaudit/web demo:export --ids=<id>,<id>,...`. The export refuses any invoice whose file is not in the golden manifest, so a seeded or real invoice can never become public.
 5. Rebuild the web (`pnpm build`, or its image): the pages read the sample when the web is built.
 
-**End-to-end tests.** `pnpm e2e` builds the web, starts this project's Postgres, Redis and MinIO with compose, and seeds its own database (`freightaudit_e2e`). Playwright then runs the recorded-fixture models (`:4011`), the api, the worker, the web (`:3000`) and a second web whose api is down (`E2E_OFFLINE_PORT`, default `:3002`), all on 127.0.0.1. A taken port stops the run. The suite covers sign-in, upload to Reconciled (PDF and PNG), deciding findings and approving, the way out of needs review, the public and offline sample, and the sign-in lockout. CI runs it in the `e2e` job.
+**End-to-end tests.** `pnpm e2e` builds every package the run needs (pipeline, api, worker and web, with their dependencies), starts this project's Postgres, Redis and MinIO with compose, and seeds its own database (`freightaudit_e2e`). Playwright then runs the recorded-fixture models (`:4011`), the api, the worker, the web (`:3000`) and a second web whose api is down (`E2E_OFFLINE_PORT`, default `:3002`), all on 127.0.0.1. A taken port stops the run. The suite covers sign-in, upload to Reconciled (PDF and PNG), deciding findings and approving, the way out of needs review, the public and offline sample, and the sign-in lockout. CI runs it in the `e2e` job.
 
 ## Observability
 

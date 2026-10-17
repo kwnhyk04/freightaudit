@@ -15,6 +15,28 @@ Chronological record of significant development activity, newest first. Skip tri
 
 ## Entries
 
+### 2026-10-17: PR #14 CI fixes: the e2e build and the integration teardown race
+
+- Changes:
+  - **end-to-end tests job:**
+    - **Cause:** `pnpm e2e` ran `turbo run build --filter=@freightaudit/web...`, which builds the web and its dependencies (config, contracts, domain) only. `e2e/prepare.ts` runs `packages/pipeline/scripts/reset.ts`, whose imports reach telemetry, db and llm through their `dist/`, and the api and worker servers need those too. A clean runner had no `dist/`; this PC had them from earlier builds.
+    - **Reproduced:** with every package's `dist/` deleted, `TURBO_FORCE=true pnpm e2e` built 4 tasks and failed in prepare with CI's error: `Cannot find module '...packages\pipeline\node_modules\@freightaudit\telemetry\dist\index.js' imported from ...packages\pipeline\src\queues.ts`.
+    - **Fix:** `pnpm e2e` and `pnpm e2e:screenshots` now build `@freightaudit/pipeline...`, `api...`, `worker...` and `web...`, so the CI job, which runs `pnpm e2e`, needs no change. From the same clean state: 11 tasks, 0 cached, 9/9 passed.
+  - **integration tests job:**
+    - **Cause:** pg-pool's `end()` resolves before its connections have closed, and each closing idle client keeps its error listener. Every test helper ran `await pool.end()` and then `DROP DATABASE ... WITH (FORCE)`. When the drop caught a connection still closing, the server sent it 57P01, the pool re-emitted that as `'error'` with no listener, and the process threw during whichever test ran next: in CI, extract's 401 test.
+    - Nothing else terminates backends: no `pg_terminate_backend` in the code, the reset (`DROP SCHEMA`) terminates nothing, and the migrations test's drop follows `client.end()`, which does wait for the socket.
+    - **Reproduced** with a scratch script (`pool.end()`, then an immediate FORCE drop, 20 idle clients, two processes at once): 269 and 244 pool errors, all 57P01, in 80 runs each. Waiting for `pg_stat_activity` to empty first gave 0 in the same runs.
+    - **Fix, tests:** `createTestDatabase().drop()` waits until the database has no session left, then drops without FORCE. A pool left open makes it fail after 5 s, naming the database: short enough to beat pg's 10 s idle timeout, which would otherwise close a forgotten pool unseen. `waitFor` moved to `@freightaudit/db/testing` to serve both. The db:reset test now does what `pnpm db:reset` requires: `env.offline()` stops its worker and ends its pool, the reset runs on the test's own throwaway database, and new workers start on a new pool. The api process test now waits for the server to exit before dropping its database.
+    - **Fix, services:** `createPool` in `packages/db` builds the pool with an `'error'` handler that logs `idle database connection lost` with the error code only. The api, the worker and the eval harness use it.
+    - **Test:** the api process test tags the server's connections (`application_name`), terminates them, and checks a warn line with `code: 57P01` and no message or error object. The process is still running, and the next request answers 200. With the handler removed, the server crashed with "terminating connection due to administrator command" and the test failed.
+  - **README:** `pnpm e2e` builds every package the run needs.
+- Files: package.json, packages/db/src/{pool.ts,index.ts,testing.ts}, apps/api/src/{main.ts,main.int.test.ts}, apps/worker/src/{main.ts,testing.ts,extract.int.test.ts}, evals/harness/run.ts, README.md, docs/{context,memory,todo,activity-log}.md
+- Validation:
+  - `extract.int.test.ts` 5 runs in a row, 13/13 each, about 12 s; `main.int.test.ts` (api) 3 runs, 4/4.
+  - **drop():** with a pool still open, it refused after 5,050 ms naming the database. After `pool.end()` it dropped 50 ms later: the closing session was still there at the first check, the window the FORCE drop used to hit.
+  - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks with 81 tests, `pnpm test:int` 103/103 three runs in a row (21 to 24 s), `pnpm e2e` 9/9.
+- Outstanding: push and watch PR #14's CI. Not committed.
+
 ### 2026-10-17: Step 9 polish: minus sign, README screenshots, an invoice left in needs review, sign-in autocomplete; step 7 closed
 
 - Changes:

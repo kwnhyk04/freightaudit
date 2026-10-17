@@ -1,18 +1,18 @@
 // Shared by the worker integration tests: a throwaway database and Redis prefix, test PDFs, and a fake model server.
 import { carriers, invoices, tenants } from '@freightaudit/db';
-import { createTestDatabase, testEnv } from '@freightaudit/db/testing';
+import { createTestDatabase, testEnv, waitFor } from '@freightaudit/db/testing';
 import { createLimits, createModels } from '@freightaudit/llm';
 import { createMemoryStorage, createQueues, type Storage } from '@freightaudit/pipeline';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Redis } from 'ioredis';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { setTimeout } from 'node:timers/promises';
 import { PDFDocument } from 'pdf-lib';
 import pg from 'pg';
 import { type Deps, startWorkers, type WorkerOptions } from './workers.ts';
 
 // The fake model server answers in the providers' recorded shapes.
 export { type FakeCall, fakeModels, replyWith } from '@freightaudit/llm/testing';
+export { waitFor };
 
 export const sha256 = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 const quiet = { warn: () => {}, error: () => {} };
@@ -24,17 +24,6 @@ export async function makePdf(pages = 1, label: string = randomUUID()) {
   doc.setTitle(label);
   for (let i = 0; i < pages; i++) doc.addPage();
   return doc.save();
-}
-
-// Polls until `check` returns something truthy.
-export async function waitFor<T>(check: () => Promise<T>, timeoutMs = 20_000): Promise<Exclude<T, false | null | undefined | 0 | ''>> {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    const value = await check();
-    if (value) return value as Exclude<T, false | null | undefined | 0 | ''>;
-    if (Date.now() > deadline) throw new Error(`condition not met within ${timeoutMs} ms`);
-    await setTimeout(50);
-  }
 }
 
 // A valid model reply: one invoice per first page, lines adding up to the total.
@@ -75,8 +64,8 @@ type RunOptions = WorkerOptions & {
 // A migrated throwaway database with one tenant and carrier, and a Redis key prefix of its own.
 export async function createTestEnv(storage: Storage = createMemoryStorage()) {
   const database = await createTestDatabase();
-  const pool = new pg.Pool({ connectionString: database.url });
-  const db = drizzle(pool);
+  let pool = new pg.Pool({ connectionString: database.url });
+  let db = drizzle(pool);
   const tenantId = randomUUID();
   await db.insert(tenants).values({ id: tenantId, name: 'Test tenant' });
   await db.insert(carriers).values({ tenantId, name: 'Halcyon Ridge Freight' });
@@ -85,7 +74,9 @@ export async function createTestEnv(storage: Storage = createMemoryStorage()) {
   const queues = createQueues(redis, prefix);
   const stops: (() => Promise<void>)[] = [];
   return {
-    db,
+    get db() {
+      return db;
+    },
     redis,
     prefix,
     queues,
@@ -111,6 +102,15 @@ export async function createTestEnv(storage: Storage = createMemoryStorage()) {
       const [invoice] = await db.insert(invoices).values({ tenantId, filename: 'invoice.pdf', contentSha256 }).returning();
       await queues.queue('extract').add('extract', { tenantId, invoiceId: invoice!.id }, { jobId: contentSha256 });
       return invoice!;
+    },
+    // As pnpm db:reset requires: every worker stopped and the pool ended while `during` runs, so no pool or worker is on
+    // the database; then a new pool, for the workers started after it.
+    async offline(during: () => Promise<void>) {
+      for (const stop of stops.splice(0)) await stop();
+      await pool.end();
+      await during();
+      pool = new pg.Pool({ connectionString: database.url });
+      db = drizzle(pool);
     },
     async close() {
       for (const stop of stops) await stop();

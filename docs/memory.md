@@ -186,6 +186,7 @@ From the approved design doc:
 - 2026-10-16: Reviewer mutations set `app.actor` in their transaction and write their own `audit_events` row; the status trigger writes a row only when `app.actor` is unset. Reason: one row per action with its reason and field changes, while every pipeline move is still kept.
 - 2026-10-17: `formatMoney` prints a credit with a real minus sign, U+2212 (−$2,130.76), by mapping Intl's `minusSign` part; `formatUsd` keeps the hyphen (user request). Reason: a minus sign reads as minus where a hyphen reads as a dash. `formatUsd`'s text is stored as each finding's evidence and written by the seed, so changing it would change stored data.
 - 2026-10-17: The public sample keeps one invoice in needs review, left untouched (golden g088), and shows its correction fields disabled, without a submit button; the README's main screenshots are the sample's detail, not e2e fixture data (user requests).
+- 2026-10-17: Services build their pg pools with `createPool` (`packages/db`), whose `'error'` handler logs a dropped idle connection by its code only; test databases drop only once their sessions are gone, never with FORCE, and the db:reset test ends its pool before the reset (user requests, after PR #14's integration job crashed on an unhandled 57P01). Reason: a dropped idle connection must never crash a process, and tests must not kill connections they still own.
 
 ## Preferences and Instructions
 
@@ -302,6 +303,9 @@ From the approved design doc:
 - 2026-10-17: The Playwright MCP writes its page snapshots and console logs to `.playwright-mcp/` in the repository root, which git does not ignore. Delete the folder after a manual browser check.
 - 2026-10-17: Playwright's `getByLabel(text, { exact: true })` finds no `<select>` inside a wrapping `<label>`, since the label's text includes the option texts. Use `getByRole('combobox', { name })`.
 - 2026-10-17: fastify-openapi-glue 4.11.5 warns at startup about every media type in the spec that has no request parser, response-only types included (`application/pdf`, `application/problem+json`). Do not register parsers to quiet it: the api would then accept those request bodies instead of answering 415.
+- 2026-10-17: pg-pool 3.14's `end()` resolves once its client list is empty, before those clients' connections have closed, and a closing idle client keeps its error listener. A `DROP DATABASE ... WITH (FORCE)` right after it terminated the closing connections; the pool re-emitted the server's 57P01 as `'error'`, and with no listener the process threw. Reproduced with 20 idle clients in two processes at once: 269 and 244 errors in 80 runs each, against 0 when the drop waits for `pg_stat_activity` to empty first. CI's busier runners hit it, so PR #14's integration job failed in whichever test ran next.
+- 2026-10-17: pg's pool closes an idle connection after 10 s (`idleTimeoutMillis`), so a forgotten pool disconnects on its own. A leak check that waits longer than that passes silently; the test databases' drop waits 5 s.
+- 2026-10-17: A local `pnpm e2e` passed while CI's failed with `ERR_MODULE_NOT_FOUND` for telemetry's `dist/`: earlier builds had left every package's `dist/` in place, which hid a build filter covering only the web. To see what a clean runner sees, delete the packages' `dist/` and run with `TURBO_FORCE=true`.
 
 ## Rejected Approaches
 
