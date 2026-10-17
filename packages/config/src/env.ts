@@ -10,7 +10,7 @@ const httpUrl = z.url({ protocol: /^https?$/ });
 // Empty means the provider's default.
 const baseUrl = z.union([httpUrl, z.literal('')]).optional();
 
-export const LLM_PROVIDERS = ['gemini', 'groq', 'mistral', 'openrouter', 'nvidia', 'ollama'] as const;
+export const LLM_PROVIDERS = ['gemini', 'groq', 'mistral', 'openrouter', 'nvidia', 'ollama', 'anthropic'] as const;
 export type LlmProvider = (typeof LLM_PROVIDERS)[number];
 const llmProvider = z.enum(LLM_PROVIDERS);
 
@@ -68,12 +68,17 @@ export const settings = {
   LLM_FALLBACK_TPM: perMinute(8_000),
   // A page whose text layer has fewer non-space characters than this is read as an image, like a scan.
   LLM_TEXT_MIN_CHARS: integer(100),
+  // The paid Claude backup between each role's main model and the free fallback. Empty (the default) turns it off.
+  LLM_CLAUDE_MODEL: z.string().default(''),
+  LLM_CLAUDE_RPM: perMinute(50),
+  LLM_CLAUDE_TPM: perMinute(50_000),
   // One key per provider account; required while AI_ENABLED is true for each provider a role uses. Empty means not set.
   GEMINI_API_KEY: z.string().optional(),
   GROQ_API_KEY: z.string().optional(),
   MISTRAL_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
   NVIDIA_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
   MOCK_TMS_URL: httpUrl,
   // web (backend-for-frontend): the api's base URL and one of its API_KEYS. Both stay on the server.
   API_URL: httpUrl,
@@ -135,6 +140,10 @@ export const LLM_SETTINGS = [
   'MISTRAL_API_KEY',
   'OPENROUTER_API_KEY',
   'NVIDIA_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'LLM_CLAUDE_MODEL',
+  'LLM_CLAUDE_RPM',
+  'LLM_CLAUDE_TPM',
 ] as const satisfies (keyof Settings)[];
 
 const BASE_URLS: Record<LlmProvider, string> = {
@@ -144,9 +153,17 @@ const BASE_URLS: Record<LlmProvider, string> = {
   openrouter: 'https://openrouter.ai/api/v1',
   nvidia: 'https://integrate.api.nvidia.com/v1',
   ollama: 'http://localhost:11434/v1',
+  anthropic: 'https://api.anthropic.com',
 };
 // Ollama runs locally without a key.
-const KEYS = { gemini: 'GEMINI_API_KEY', groq: 'GROQ_API_KEY', mistral: 'MISTRAL_API_KEY', openrouter: 'OPENROUTER_API_KEY', nvidia: 'NVIDIA_API_KEY' } as const;
+const KEYS = {
+  gemini: 'GEMINI_API_KEY',
+  groq: 'GROQ_API_KEY',
+  mistral: 'MISTRAL_API_KEY',
+  openrouter: 'OPENROUTER_API_KEY',
+  nvidia: 'NVIDIA_API_KEY',
+  anthropic: 'ANTHROPIC_API_KEY',
+} as const;
 
 export type LlmRoleName = 'primary' | 'text' | 'fallback';
 export type LlmRole = { provider: LlmProvider; model: string; baseUrl: string; apiKey: string | undefined; rpm: number; tpm: number };
@@ -172,5 +189,10 @@ export function llmRoles(env: LlmEnv) {
     provider === 'ollama' || apiKey ? [] : [`LLM_${name.toUpperCase()}_PROVIDER is ${provider}, which needs ${KEYS[provider]}`],
   );
   if (roles.fallback.provider === roles.primary.provider) problems.push('LLM_FALLBACK_PROVIDER must differ from LLM_PRIMARY_PROVIDER');
-  return { roles, problems };
+  // The Claude backup, only while LLM_CLAUDE_MODEL names a model; evals never take it, since a run pins one model per role.
+  const claude: LlmRole | undefined = env.LLM_CLAUDE_MODEL
+    ? { provider: 'anthropic', model: env.LLM_CLAUDE_MODEL, baseUrl: BASE_URLS.anthropic, apiKey: env.ANTHROPIC_API_KEY || undefined, rpm: env.LLM_CLAUDE_RPM, tpm: env.LLM_CLAUDE_TPM }
+    : undefined;
+  if (claude && !claude.apiKey) problems.push('LLM_CLAUDE_MODEL is set, which needs ANTHROPIC_API_KEY');
+  return { roles, claude, problems };
 }

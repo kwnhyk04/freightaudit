@@ -39,6 +39,22 @@ export class ProviderConfigError extends PermanentError {
   override name = 'ProviderConfigError';
 }
 
+// Why Claude can take no more requests: a 402 billing_error, a 400 about the credit balance or a spend limit, or a 429
+// without retry-after, which is how a spent account answers.
+export type ClaudeUnavailableReason = 'billing_error' | 'credit_balance' | 'spend_limit' | 'rate_limit_without_retry_after';
+
+// Claude's account is out of credit. The extraction skips Claude for the rest of the process and goes on to the free
+// fallback; the message holds the reason only, never the provider's text.
+export class ClaudeUnavailableError extends PermanentError {
+  override name = 'ClaudeUnavailableError';
+  readonly reason: ClaudeUnavailableReason;
+
+  constructor(reason: ClaudeUnavailableReason, status: number) {
+    super(`anthropic unavailable: ${reason}`, { status });
+    this.reason = reason;
+  }
+}
+
 // Retry-After holds delta-seconds or an HTTP date.
 export function parseRetryAfter(value: string | null | undefined, now = Date.now()) {
   const text = value?.trim();

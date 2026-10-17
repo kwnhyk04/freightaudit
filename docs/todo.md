@@ -28,6 +28,13 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## In Progress
 
+- [ ] Claude Haiku 5.5 as a paid backup (user request, 2026-10-17, branch `claude-provider`, not committed):
+  - [x] Chain: each role's free main model, then `LLM_CLAUDE_MODEL` (empty, the default, keeps the free-only chain), then the free fallback; `.env.example` documents it.
+  - [x] Credits gone (402 billing_error, a 400 about the credit balance or a spend limit, a 429 without retry-after): Claude skipped for the rest of the process, logged once by reason; a 429 with retry-after waits and retries as before. One unit test per case.
+  - [x] Thinking off; `max_tokens` 65,536, the output ceiling Gemini 3.5 Flash-Lite and gpt-oss-120b run at. Haiku 5.5 takes images (Models API), so it backs scans too.
+  - [x] CI and the weekly eval stay free: `evals/harness/no-claude-in-ci.test.ts` fails if a workflow, an action or turbo's env could select Claude.
+  - [x] Pinned Haiku run on the golden test split (2026-10-17, user's go): a live check first (g002 digital and g066 scanned, both valid first passes on `claude-haiku-5-5`), then 70 cases with `--subset test` (`evals/reports/2026-10-17-test-haiku.md`). 0 of 70 reached the free qwen fallback, 73 calls, 0 failed, $0.026. No floors written. The README compares it with the official free run, scored on the same 70 cases. `max_tokens` 65,536 sits within Haiku 5.5's own 128,000 (Models API).
+
 ## Completed
 
 - [x] PR #14's two failed CI jobs (2026-10-17, not committed):

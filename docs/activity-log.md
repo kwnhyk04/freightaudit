@@ -15,6 +15,40 @@ Chronological record of significant development activity, newest first. Skip tri
 
 ## Entries
 
+### 2026-10-17: Claude Haiku 5.5 as a paid backup (branch claude-provider)
+
+- Changes:
+  - **Chain:** `LLM_CLAUDE_MODEL` (empty by default, so the chain stays free-only) puts Claude between each role's main model and the free fallback.
+    - **Invalid output:** a still-invalid repair gets one pass on Claude, then one on the free fallback.
+    - **Rate limit:** a rate-limited first pass goes to Claude (first pass and repair), else to the free fallback as before.
+    - **Recording:** Claude's calls are recorded under the fallback role, told apart by provider `anthropic`, so no migration was needed.
+  - **Provider** (`packages/llm/src/claude.ts`, `@anthropic-ai/sdk` 0.132): structured output to the extraction schema; thinking disabled; `max_tokens` 65,536; no temperature, since Haiku 5.5 refuses a non-default one; SDK retries off; scans as base64 JPEG.
+    - **Facts checked against the providers:** the Models API reports Haiku 5.5 with `image_input`, `structured_outputs` and `thinking.types.disabled`. Gemini 3.5 Flash-Lite and gpt-oss-120b report 65,536 output tokens, and qwen3.8-27b 16,384.
+  - **Credits gone:** a 402 billing_error, a 400 invalid_request_error about the credit balance or a spend limit, or a 429 without retry-after raises `ClaudeUnavailableError`.
+    - The provider stays skipped for the rest of the process and logs `claude_unavailable` once, with the reason and status only.
+    - A 429 with retry-after is a `RateLimitError`, as with any provider.
+  - **Config:** `anthropic` is a provider any role may name (for a pinned eval run). New settings `ANTHROPIC_API_KEY`, `LLM_CLAUDE_MODEL`, `LLM_CLAUDE_RPM` (50) and `LLM_CLAUDE_TPM` (50,000), with their own limits bucket. The worker refuses to start when the model is set without the key, or has no price. `prices.json` lists `anthropic/claude-haiku-5-5` (paid, 0.10 / 0.50 USD per million).
+  - **CI:** evals never attach the backup. `no-claude-in-ci.test.ts` reads every workflow and action, turbo's env lists and the defaults.
+- Files: packages/llm/{package.json,prices.json,src/claude.ts,src/claude.test.ts,src/errors.ts,src/extract.ts,src/limits.ts,src/models.ts,src/index.ts}, packages/config/src/env.ts, apps/worker/src/main.ts, evals/harness/no-claude-in-ci.test.ts, .env.example, pnpm-lock.yaml, docs/{context,memory,todo,activity-log}.md
+- Validation:
+  - `claude.test.ts`, 9 tests on a fake fetch: the request (thinking off, 65,536, no temperature, schema, JPEG); the order main, repair, Claude, free fallback; the four unavailable cases, each logging once with no key or message, and the next invoice skipping Claude; a 429 with retry-after giving a `RateLimitError` with Claude kept; a rate-limited first pass to Claude, and with Claude spent to the free fallback; and the free-only chain without the setting.
+  - **Guard test:** it failed with `ANTHROPIC_API_KEY` added to the eval task's turbo passthrough, and passed once that was reverted.
+  - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks with 93 tests, `pnpm test:int` 103/103.
+- Comparison run (same day, after the user's go on an estimate of about $0.05):
+  - **Limit:** the Models API gives Haiku 5.5 a 128,000-token output limit, so `max_tokens` stays 65,536.
+  - **Live check:** g002 (digital) was valid on the first pass, 1,540 / 213 tokens in 3.6 s, every field matching except the carrier string, which g002's ledger layout prints in capitals and matching normalizes. g066 (scanned) was valid on the first pass, 2,971 / 193 tokens in 1.9 s, every field matching.
+  - **Harness:** gains `--subset test` (the 70 test-split cases).
+  - **Run:** outside turbo, so the shell's pins reach it: primary and text on `anthropic/claude-haiku-5-5` at 25 requests and 25,000 tokens a minute each, fallback Groq qwen, no rate-limit fallback, no backup. 70 of 70 cases, 73 calls, 0 failed, 38 rate-limit waits from those caps, $0.026 paid. Report `evals/reports/2026-10-17-test-haiku.{md,json}` (renamed from `-test`); no floors.
+  - **Results on the same 70 cases**, the free run first (from its per-case scores, with the harness's `measure`):
+    - Header accuracy: 0.994 / 1.000 (digital / scanned) for the free run, 1.000 / 1.000 for Haiku.
+    - Line F1: 1.000 / 0.982 against 1.000 / 0.917; Haiku's scanned interval runs 0.757 to 1.000.
+    - Overcharge precision: 0.933 against 0.875. False flag rate: 0.009 against 0.018.
+    - Outcome accuracy: 0.972 against 1.000.
+    - Latency p50 / p95: 2,400 / 4,698 ms against 1,880 / 2,720 ms.
+    - Neither reached the qwen fallback.
+  - **README:** a comparison table after the generated eval table, which full runs rewrite.
+- Outstanding: none for the backup. Not committed.
+
 ### 2026-10-17: PR #14 CI fixes: the e2e build and the integration teardown race
 
 - Changes:
