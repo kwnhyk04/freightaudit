@@ -14,7 +14,7 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.132.1",
+    "@anthropic-ai/sdk": "^0.133.0",
     "@freightaudit/contracts": "workspace:*",
     "@freightaudit/db": "workspace:*",
     "@freightaudit/domain": "workspace:*",
