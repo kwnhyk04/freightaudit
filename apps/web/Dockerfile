@@ -20,6 +20,8 @@ FROM base
 ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000
 COPY --from=build /app/apps/web/.next/standalone .
 COPY --from=build /app/apps/web/.next/static apps/web/.next/static
+# The public sample (demo snapshot and its PDFs), served as static files.
+COPY --from=build /app/apps/web/public apps/web/public
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

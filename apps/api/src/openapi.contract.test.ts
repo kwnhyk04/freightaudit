@@ -1,6 +1,5 @@
 import { createApiClient, openapiPath } from '@freightaudit/contracts';
 import { deadLetters, discrepancies, invoices } from '@freightaudit/db';
-import { createMemoryStorage } from '@freightaudit/pipeline';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { randomUUID } from 'node:crypto';
@@ -61,7 +60,7 @@ beforeAll(async () => {
   env = await createTestEnv();
   // Limits high enough that this file never meets them; limits.int.test.ts covers them.
   const rateLimits = { general: 10_000, upload: 10_000 };
-  app = buildApp({}, { apiKeys: [apiKey], checks, storage: createMemoryStorage(), service: env.service, rateLimits });
+  app = buildApp({}, { apiKeys: [apiKey], checks, storage: env.storage, service: env.service, rateLimits });
   baseUrl = await listen(app);
   client = createApiClient({ baseUrl, headers: { 'X-API-Key': apiKey } });
 });
@@ -185,6 +184,19 @@ test('GET /v1/invoices pages newest first with an opaque keyset cursor and valid
 
   const forged = await client.GET('/v1/invoices', { params: { query: { cursor: 'not-a-cursor' } } });
   expect(forged.response.status).toBe(400);
+});
+
+test('GET /v1/invoices/{id}/document returns the stored PDF or a 404 Problem', async () => {
+  const created = await upload('key-document', await pdf('document'));
+  const path = '/v1/invoices/{id}/document';
+  const found = await fetch(`${baseUrl}/v1/invoices/${created.data?.id}/document`, { headers: { 'X-API-Key': apiKey } });
+  const bytes = Buffer.from(await found.arrayBuffer());
+  expectMatchesSpec(path, 'get', found, bytes.toString('latin1'));
+  expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+
+  const missing = await fetch(`${baseUrl}/v1/invoices/${crypto.randomUUID()}/document`, { headers: { 'X-API-Key': apiKey } });
+  expectMatchesSpec(path, 'get', missing, await missing.json());
+  expect(missing.status).toBe(404);
 });
 
 test('GET /v1/invoices/{id} returns the invoice or a 404 Problem', async () => {

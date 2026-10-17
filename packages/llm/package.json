@@ -14,6 +14,7 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
+    "@freightaudit/contracts": "workspace:*",
     "@freightaudit/db": "workspace:*",
     "@freightaudit/domain": "workspace:*",
     "@google/genai": "^2.29.1",

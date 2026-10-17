@@ -1,4 +1,4 @@
-import { deadLetters, invoices } from '@freightaudit/db';
+import { auditEvents, deadLetters, invoices } from '@freightaudit/db';
 import type { Job } from 'bullmq';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -50,7 +50,8 @@ export async function sweepFailedJobs(deps: Deps, queue: QueueName) {
 
 // Requeues a dead letter: the job goes back first, then the row and invoice change. A worker that meets the invoice
 // still failed retries until that commits, and a replay that stops halfway leaves the dead letter open to try again.
-export async function replayDeadLetter({ db, queues }: Deps, tenantId: string, id: string) {
+// With an actor, the replay is one audit row that names them (the status trigger skips moves made under app.actor).
+export async function replayDeadLetter({ db, queues }: Deps, tenantId: string, id: string, actor?: string) {
   if (!UUID.test(id)) return undefined;
   const open = and(eq(deadLetters.id, id), eq(deadLetters.tenantId, tenantId), isNull(deadLetters.replayedAt));
   const [row] = await db.select().from(deadLetters).where(open);
@@ -65,12 +66,17 @@ export async function replayDeadLetter({ db, queues }: Deps, tenantId: string, i
   await queues.queue(queueName).remove(row.jobId);
   await send(queueName, row.jobId, (trace) => queues.queue(queueName).add(name, { ...data, ...trace }, { jobId: row.jobId }));
   await db.transaction(async (tx) => {
+    if (actor) await tx.execute(sql`SELECT set_config('app.actor', ${actor}, true)`);
     await tx.update(deadLetters).set({ replayedAt: sql`now()` }).where(eq(deadLetters.id, row.id));
+    const invoiceId = typeof data.invoiceId === 'string' ? data.invoiceId : null;
+    let reset: { field: string; from: string; to: string }[] = [];
     // Only a queue's own step restarts the lifecycle; other jobs, such as a split's collect, move the status themselves.
-    if (isInvoiceStep(queueName) && name === DEFAULT_JOB_NAME[queueName] && typeof data.invoiceId === 'string') {
-      const failed = and(eq(invoices.id, data.invoiceId), eq(invoices.status, 'failed'));
-      await tx.update(invoices).set({ status: REPLAYED[queueName] }).where(failed);
+    if (isInvoiceStep(queueName) && name === DEFAULT_JOB_NAME[queueName] && invoiceId) {
+      const failed = and(eq(invoices.id, invoiceId), eq(invoices.status, 'failed'));
+      const moved = await tx.update(invoices).set({ status: REPLAYED[queueName] }).where(failed).returning({ id: invoices.id });
+      if (moved.length > 0) reset = [{ field: 'status', from: 'failed', to: REPLAYED[queueName] }];
     }
+    if (actor) await tx.insert(auditEvents).values({ tenantId, invoiceId, deadLetterId: row.id, actor, action: 'replayed', changes: reset });
   });
   await queues.dlq(queueName).remove(row.jobId);
   return { id: row.id, jobId: row.jobId };

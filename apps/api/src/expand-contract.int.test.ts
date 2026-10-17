@@ -44,7 +44,7 @@ test('rate card versions by expand, backfill and contract: every line gets its v
     // The 0001 schema with the small seed: flat rates per carrier, and invoice lines that name no version.
     const seeded = await seed(client, 'small', { flatRates: true, log: quiet });
     const tenantId: string = (await client.query('SELECT id FROM tenants')).rows[0].id;
-    const service = createService({ db: drizzle(pool), queues, tenantId });
+    const service = createService({ db: drizzle(pool), queues, tenantId, storage: createMemoryStorage() });
     const api = buildApp({}, { apiKeys: [apiKey], storage: createMemoryStorage(), service, rateLimits: { general: 1_000, upload: 1_000 } });
     app = api;
 

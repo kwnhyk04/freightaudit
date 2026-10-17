@@ -1,0 +1,6 @@
+mutation ReplayDeadLetter($id: ID!) {
+  replayDeadLetter(id: $id) {
+    id
+    replayedAt
+  }
+}

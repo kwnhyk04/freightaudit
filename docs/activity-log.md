@@ -15,6 +15,89 @@ Chronological record of significant development activity, newest first. Skip tri
 
 ## Entries
 
+### 2026-10-17: PR #14 CI fixes: the e2e build and the integration teardown race
+
+- Changes:
+  - **end-to-end tests job:**
+    - **Cause:** `pnpm e2e` ran `turbo run build --filter=@freightaudit/web...`, which builds the web and its dependencies (config, contracts, domain) only. `e2e/prepare.ts` runs `packages/pipeline/scripts/reset.ts`, whose imports reach telemetry, db and llm through their `dist/`, and the api and worker servers need those too. A clean runner had no `dist/`; this PC had them from earlier builds.
+    - **Reproduced:** with every package's `dist/` deleted, `TURBO_FORCE=true pnpm e2e` built 4 tasks and failed in prepare with CI's error: `Cannot find module '...packages\pipeline\node_modules\@freightaudit\telemetry\dist\index.js' imported from ...packages\pipeline\src\queues.ts`.
+    - **Fix:** `pnpm e2e` and `pnpm e2e:screenshots` now build `@freightaudit/pipeline...`, `api...`, `worker...` and `web...`, so the CI job, which runs `pnpm e2e`, needs no change. From the same clean state: 11 tasks, 0 cached, 9/9 passed.
+  - **integration tests job:**
+    - **Cause:** pg-pool's `end()` resolves before its connections have closed, and each closing idle client keeps its error listener. Every test helper ran `await pool.end()` and then `DROP DATABASE ... WITH (FORCE)`. When the drop caught a connection still closing, the server sent it 57P01, the pool re-emitted that as `'error'` with no listener, and the process threw during whichever test ran next: in CI, extract's 401 test.
+    - Nothing else terminates backends: no `pg_terminate_backend` in the code, the reset (`DROP SCHEMA`) terminates nothing, and the migrations test's drop follows `client.end()`, which does wait for the socket.
+    - **Reproduced** with a scratch script (`pool.end()`, then an immediate FORCE drop, 20 idle clients, two processes at once): 269 and 244 pool errors, all 57P01, in 80 runs each. Waiting for `pg_stat_activity` to empty first gave 0 in the same runs.
+    - **Fix, tests:** `createTestDatabase().drop()` waits until the database has no session left, then drops without FORCE. A pool left open makes it fail after 5 s, naming the database: short enough to beat pg's 10 s idle timeout, which would otherwise close a forgotten pool unseen. `waitFor` moved to `@freightaudit/db/testing` to serve both. The db:reset test now does what `pnpm db:reset` requires: `env.offline()` stops its worker and ends its pool, the reset runs on the test's own throwaway database, and new workers start on a new pool. The api process test now waits for the server to exit before dropping its database.
+    - **Fix, services:** `createPool` in `packages/db` builds the pool with an `'error'` handler that logs `idle database connection lost` with the error code only. The api, the worker and the eval harness use it.
+    - **Test:** the api process test tags the server's connections (`application_name`), terminates them, and checks a warn line with `code: 57P01` and no message or error object. The process is still running, and the next request answers 200. With the handler removed, the server crashed with "terminating connection due to administrator command" and the test failed.
+  - **README:** `pnpm e2e` builds every package the run needs.
+- Files: package.json, packages/db/src/{pool.ts,index.ts,testing.ts}, apps/api/src/{main.ts,main.int.test.ts}, apps/worker/src/{main.ts,testing.ts,extract.int.test.ts}, evals/harness/run.ts, README.md, docs/{context,memory,todo,activity-log}.md
+- Validation:
+  - `extract.int.test.ts` 5 runs in a row, 13/13 each, about 12 s; `main.int.test.ts` (api) 3 runs, 4/4.
+  - **drop():** with a pool still open, it refused after 5,050 ms naming the database. After `pool.end()` it dropped 50 ms later: the closing session was still there at the first check, the window the FORCE drop used to hit.
+  - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks with 81 tests, `pnpm test:int` 103/103 three runs in a row (21 to 24 s), `pnpm e2e` 9/9.
+- Outstanding: push and watch PR #14's CI. Not committed.
+
+### 2026-10-17: Step 9 polish: minus sign, README screenshots, an invoice left in needs review, sign-in autocomplete; step 7 closed
+
+- Changes:
+  - **Minus sign:** `formatMoney` maps Intl's `minusSign` part to U+2212, so a credit reads −$2,130.76. `formatUsd`, which writes the evidence text stored with each finding, keeps its hyphen. The test's property runs over USD, CAD and EUR: only a negative amount carries a sign, U+2212 in front and never a hyphen, and the digits read back to the cents.
+  - **README:** the Review UI opens with the sample's detail in light and dark, a scanned golden invoice with its rate mismatch, in place of the e2e fixture's "LOADTEST-DIGITAL" shipment.
+  - **Sample:**
+    - It adds golden g088 (scanned remit layout without a PRO number). Uploaded with AI on, Gemini `gemini-3.5-flash-lite` read it on the first pass in 2,348 ms; the carrier matched exactly, and with no PRO number the invoice went to needs review (`no_shipment_match`) by itself. Nothing else touched it.
+    - The sample's needs-review panel now shows the carrier and PRO number fields, disabled, with "In the live app a reviewer corrects the carrier or PRO number here, then re-runs matching." and no submit button. Disabled fields get their own colors (`globals.css`), since the author color outranks the browser's disabled gray.
+    - `demo:export` used to delete the sample's PDFs before it checked any id, so an export refused by the golden check left the committed sample without them. It now writes nothing until every invoice passed and every query answered.
+    - The re-export holds 11 invoices, 7 findings, 1 dead letter and 11 PDFs.
+  - **Sign-in:** a hidden username field (`type="text"`, `autocomplete="username"`, value `reviewer`, read-only, unnamed) sits beside the `current-password` field, so password managers save and fill the password. The posted form is unchanged: `next` and `password` only.
+  - **Api startup warnings:** fastify-openapi-glue 4.11.5, the latest release, checks every media type in the spec for a request parser, responses included. `application/pdf` and `application/problem+json` appear only in responses. A parser for either would make the api accept request bodies it now refuses with 415, so the warnings stay; docs/todo.md holds the item.
+  - **Step 7:** done, confirmed by the user: the repository github.com/kwnhyk04/freightaudit runs ci.yml, release.yml and Dependabot, and PRs #12 and #13 are green.
+- Files: packages/domain/src/{money.ts,money.test.ts}, apps/web/{components/views.tsx,components/client.tsx,app/globals.css,scripts/export-demo.ts,e2e/demo.spec.ts,e2e/screenshots.spec.ts}, apps/web/public/demo/* (4 JSON, 11 PDF), docs/screenshots/ui/* (2 new), README.md, docs/{context,memory,todo,activity-log}.md
+- Validation:
+  - **Minus sign:** the domain suite passes 31 tests at 100 % coverage. A hyphen mutant fails the example; run alone against it, the property fails and shrinks to -1 cents in USD.
+  - **Export:** every sample PDF's sha256 is its golden file's, and the only actors are `reviewer` and the pipeline. An export of the 11 ids plus a seeded invoice stopped with "is not a golden-set invoice; the demo is public" and left the sample's 15 files byte-identical; the export of the 11 ids rewrote them identically.
+  - **Sign-in:** on the built web, `/login` logs nothing to the console, neither Chrome's username hint nor a favicon 404. `FormData` of the form holds Next's action fields, `next` and `password`.
+  - **Checks:** `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks with 81 tests, `pnpm test:int` 102/102 in 22 suites. `pnpm e2e` 9/9: sign-in and lockout pass with the new field, and the demo spec finds the sample's needs-review invoice with both fields disabled and no "Re-run matching". `pnpm e2e:screenshots` 5/5, 29 files. gitleaks 8.30.1 finds nothing in the sample, the export script, the components or `money.ts`.
+  - **Screenshots:** the sample list shows g088 in needs review and the credit memo at −$2,130.76. The needs-review detail shows the read-only fields in both themes.
+- Outstanding: the two openapi-glue warnings (docs/todo.md). Not committed.
+
+### 2026-10-17: Step 9 finished: sample snapshot on real models, done-when check, e2e and screenshots
+
+- Changes:
+  - **Sample snapshot** (`apps/web/public/demo`), after the Gemini reset:
+    - Setup: `pnpm db:reset`, then the dev stack with `AI_ENABLED=true` and the real keys: api, worker, mock-tms, and the web on its production build, telemetry off.
+    - Uploads: g002 in the UI; g054, g055, g056, g069, g066, g081, g087, g089 and g003 through `POST /v1/invoices`. g003 went last, after its shipment's miles were cleared in the dev database.
+    - Reviewer actions in the UI: g054's finding disputed with a note; g055's uncontracted charge approved, then g055 approved; g087's PRO number corrected to its shipment's and matching re-run; g089 rejected with a reason.
+    - `demo:export` wrote 10 invoices, 7 findings (5 open, 1 disputed, 1 approved), 1 dead letter and 10 PDFs. Each PDF's sha256 is its golden file's, and the only actors are `reviewer` and the pipeline.
+  - **Model calls:** 11, none failed.
+    - 10 on Groq `openai/gpt-oss-120b`: first passes of 1.2 to 2.5 s, plus g089's repair after an invalid first pass.
+    - 1 on Gemini `gemini-3.5-flash-lite`: g066's scan, valid first pass in 3,069 ms.
+    - Nine uploads at once queued on the text role's bucket (8,000 tokens a minute, 5,200 estimated a page), so their calls waited up to 101 s.
+  - **Readings against the ground truth:** every one matched. Findings by type and cents; g087 and g089 at needs_review (`no_shipment_match`, `unsupported_currency: CAD`); g003 failed with "shipment has no miles".
+  - **Favicon:** browsers asked for a `/favicon.ico` that does not exist, a 404 in the console on every page. The root layout now declares a data-URI icon (`apps/web/app/layout.tsx`); the web image's login page makes no such request.
+  - **Screenshots:** the spec also shoots the public sample's detail (`demo-invoice-<light|dark>.png`), as the plan listed. It uses the sample's first invoice with an open finding, g066's scan.
+  - **README:** regenerating the sample ends with a web build, since the pages import the snapshot when the web is built.
+- Files: apps/web/public/demo/* (4 JSON, 10 PDF), apps/web/app/layout.tsx, apps/web/e2e/screenshots.spec.ts, docs/screenshots/ui/* (2 new, 8 updated), README.md, docs/{context,memory,todo,activity-log}.md
+- Validation:
+  - **Done when, real models:** sign-in; g002 uploaded in the UI reached Reconciled, its trail showing every move; a finding disputed, a charge approved and that invoice approved; g087 out of needs_review to Reconciled, its trail naming the reviewer and the PRO change; g089 rejected. With the api stopped, `/invoices` went to `/demo/invoices` under "Live backend offline, showing sample data", with no upload. Signed out, the login page's link opened "Sample data, read-only"; the detail showed g066's PDF from `/demo/`, no form and no action button, and the browser made no request to the api.
+  - **Checks:** `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks with 81 tests, `pnpm test:int` 102/102 in 22 suites, `pnpm contracts:check` current, and `OASDIFF_BASE_REF=main pnpm contracts:breaking` clean with the ignore file. `pnpm e2e` 9/9; its demo spec now walks the 10 sample rows and a rendered sample PDF. `pnpm e2e:screenshots` 5/5. gitleaks 8.30.1 finds nothing in the sample or the layout. The web image (308 MB) serves `/healthz`, `/demo/invoices` with all 10 invoices and the sample PDFs without a session, redirects `/invoices` to `/login` and answers 401 on the document route.
+  - **Screenshot review:** the sample list and detail read as the live pages do in both themes: banner, status colors with words, the scan beside its flagged line, the finding with its evidence, and the trail. The other files differ from 2026-10-16 only in upload times.
+- Outstanding: noticed, not changed: a credit memo's total prints a hyphen-minus (`-$2,130.76`), and Chrome's verbose log notes that the sign-in form has no username field. The sample has no invoice left in needs_review, since the plan corrected g087 and rejected g089. Not committed.
+
+### 2026-10-16: Step 9: review UI, GraphQL resolvers, sign-in, public sample data
+
+- Changes:
+  - **Contracts:** GraphQL gains the final status REJECTED, `deadLetters`, `carriers`, `correctInvoice`, `rejectInvoice`, `replayDeadLetter`, and on Invoice the PRO number, review reason, open finding count, extraction (carrier as read and its match rule), audit trail and open dead letter. The client preset emits string documents for a fetch-only BFF. `@freightaudit/contracts/limits` holds one set of upload checks for browser, web and api: 4 MiB, type by magic bytes, image size from the header, 20 pages. OpenAPI 0.7.0: `rejected`, PNG and JPEG uploads, `GET /v1/invoices/{id}/document`; `oasdiff-ignore.txt` accepts the reviewed breaking lines.
+  - **Database:** 0013 adds `rejected`, the append-only `audit_events` table, a status trigger that records pipeline moves unless a reviewer action set `app.actor`, and the moves needs_review to extracted and to rejected.
+  - **Api:** resolvers for every query and mutation with keyset connections and per-request DataLoaders, the `Cents` scalar, masked errors with codes, reviewer mutations in one transaction each with their audit row (actor from `X-Actor` or the key digest), correct then re-queue reconcile, the document endpoint, and PNG/JPEG wrapped into a one-page PDF at intake.
+  - **Web:** backend for frontend with a server-only key; argon2id sign-in with a signed `__Host-` cookie and a 5-per-15-minutes limit; invoices, an invoice with the PDF beside its lines, findings with evidence, the needs_review way out and the audit trail, the review queue, dead letters, upload with client checks; a public read-only `/demo` that signed-in users also see while the backend is offline; `demo:export` limited to golden-manifest invoices; design per the brief (IBM Plex, one ink-blue accent, status colors with words, tabular money right-aligned, dark mode, phone layout).
+  - **Screenshot review (three rounds):**
+    - Round 1 (invoice detail): fixed the h1 size, a plural, a redundant "Read as" line, a cut-off placeholder and "Open PDF" shown without a document.
+    - Round 2 (all screens): years were missing on dates from earlier years, so a sorted column read out of order. The invoice page overflowed a 390 px phone, since a `1fr` grid track kept the table's min-content width. Sign-out was hidden on phones. "Contract" became "Expected", as the brief says. Unpriced invoices showed "As billed" for every line. A failed invoice listed six "None" rows and "Carrier not read" against "Not matched". The failure callout used the warning color. The queue's decision wrapped onto two lines. "Re-run matching" was 4 px shorter than its inputs. The upload page showed the browser's file button at full width. The sample's empty state asked visitors to upload. Raw queue names showed on the dead-letter page.
+    - Round 3: the finding type got its own line under the line's description. The trail shows status labels and "Carrier read as …, matched … as printed". Findings got dividers. The phone list shows status, invoice with its carrier, and total. The spec waits for fonts and the PDF, uploads the fixture so a stored document is on screen, and fails a phone page that scrolls sideways.
+  - **README:** Part 1 of the load test showed spare capacity, not backpressure (step 4's tests prove that path); a Review UI section, setup keys, `pnpm e2e`, the sample data and its export. `docs/threat-notes.md` is new.
+- Files: packages/contracts/{schema.graphql,operations/*,codegen.ts,openapi.yaml,oasdiff-ignore.txt,scripts/breaking.ts,src/limits.ts,src/generated/*}, packages/db/{migrations/0013_audit_and_rejection.sql,src/schema.ts,src/index.ts,scripts/seed.ts,src/migrations.int.test.ts}, packages/pipeline/src/dead-letters.ts, packages/llm/src/pdf.ts, packages/domain/src/money.ts, apps/api/src/{app,graphql,keyset,loaders,review,actor,service,uploads,main,testing}.ts with tests, apps/worker/src/workers.ts, apps/web/** (app, components, lib, e2e, scripts, proxy.ts, instrumentation.ts, playwright.config.ts), .github/workflows/ci.yml, .env.example, README.md, loadtest/k6.js, docs/{context,memory,migrations,todo,activity-log,threat-notes}.md, docs/screenshots/ui/*.png (25)
+- Validation: `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (api 3 with the Cents test, web 4), `pnpm test:int` 102/102 in 22 suites, `pnpm contracts:check` current, `OASDIFF_BASE_REF=main pnpm contracts:breaking` clean with the ignore file, `pnpm e2e` 9/9, `pnpm e2e:screenshots` 5/5, actionlint. The web image (306 MB) serves `/healthz` and `/demo/invoices` without a session, redirects `/invoices` to `/login` and answers 401 on the document route.
+- Outstanding: the sample export and the manual real-model check wait for the Gemini quota reset (2026-10-17 07:00 UTC); then rerun `pnpm e2e` and the demo screenshots. Nothing committed (user instruction).
+
 ### 2026-10-16: PR #13 eval smoke: failed calls made diagnosable
 
 - Changes:

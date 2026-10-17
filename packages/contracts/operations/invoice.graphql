@@ -3,12 +3,17 @@ query Invoice($id: ID!) {
     id
     status
     failureReason
+    reviewReason
     filename
+    contentHash
     carrier
     number
+    proNumber
     issuedOn
     currency
     totalCents
+    createdAt
+    openDiscrepancyCount
     lineItems {
       id
       lineNumber
@@ -16,9 +21,25 @@ query Invoice($id: ID!) {
       chargeCode
       amountCents
     }
+    extraction {
+      id
+      model
+      step
+      carrierRead
+      carrierMatch
+      problems
+      extractedAt
+      lines {
+        lineNumber
+        description
+        chargeCode
+        amountCents
+      }
+    }
     shipment {
       id
       reference
+      carrier
       origin
       destination
       shippedOn
@@ -27,6 +48,7 @@ query Invoice($id: ID!) {
       id
       version
       effectiveFrom
+      effectiveTo
     }
     discrepancies(first: 100) {
       edges {
@@ -38,8 +60,10 @@ query Invoice($id: ID!) {
           billedCents
           evidence
           note
+          resolvedAt
           lineItem {
             id
+            lineNumber
           }
         }
       }
@@ -48,5 +72,27 @@ query Invoice($id: ID!) {
         endCursor
       }
     }
+    auditTrail {
+      id
+      at
+      actor
+      action
+      detail
+      changes {
+        field
+        from
+        to
+      }
+    }
+    deadLetter {
+      id
+      queue
+      error
+      createdAt
+    }
+  }
+  carriers {
+    id
+    name
   }
 }

@@ -3,7 +3,7 @@
 // is off, so a 429 waits and retries; each case's result is cached, so a quota stop resumes later instead of starting
 // over. Usage: pnpm eval --suite extraction --subset ci|dev|full|compare [--fresh] [--set-floors] [--concurrency 4]
 import { LLM_SETTINGS, llmRoles, type LlmRole, settings } from '@freightaudit/config/env';
-import { deadLetters, discrepancies, extractions, invoiceLines, invoices, llmCalls, tenants } from '@freightaudit/db';
+import { createPool, deadLetters, discrepancies, extractions, invoiceLines, invoices, llmCalls, tenants } from '@freightaudit/db';
 import { migrate } from '@freightaudit/db/migrate';
 import { seed } from '@freightaudit/db/scripts/seed';
 import { createLimits, createModels, EXTRACTION_JSON_SCHEMA, EXTRACTION_PROMPT, hasPrice, paidCost } from '@freightaudit/llm';
@@ -86,7 +86,7 @@ export async function startEnvironment(roles: Roles, urls: { databaseUrl?: strin
   } finally {
     await client.end();
   }
-  const pool = new pg.Pool({ connectionString: databaseUrl });
+  const pool = createPool(databaseUrl, (msg, fields) => console.log(JSON.stringify({ msg, ...fields })));
   const db = drizzle(pool);
   const redis = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const prefix = `eval-${process.pid}`;

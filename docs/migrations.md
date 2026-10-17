@@ -151,6 +151,15 @@ Migrate: the worker writes both from this release. Contract: none needed.
 
 Migrate: the worker writes them from this release. Contract: none needed.
 
+## 0013 audit events and rejection (expand)
+
+- `invoice_status` gains `rejected` (`ADD VALUE ... AFTER 'approved'`, in the file's transaction as 0005 did; nothing in the file casts the new value, so nothing uses it before the commit).
+- `audit_events`: who did what to which invoice and when. `actor` is null for the pipeline, the reviewer's name, or `api-key:<id>` for a direct API call; `action` is `status` or a review action; `changes` is `[{field, from, to}]`; `reason` is a rejection reason or a decision note. A BEFORE UPDATE OR DELETE trigger refuses every change: rows are append-only.
+- An AFTER UPDATE OF status trigger records every status move the pipeline makes. A review action sets `app.actor` with `set_config(..., true)` for its transaction and writes its own row, so the trigger skips it. Inserts fire nothing, so seeded invoices start without audit rows and seeds stay reproducible.
+- `check_invoice_transition` allows two more moves: needs_review to extracted (a reviewer corrected the carrier or PRO number, and matching runs again) and needs_review to rejected.
+
+Migrate: apply 0013 before the api and worker of this release; the old code never writes `rejected` or `audit_events`. Contract: none needed.
+
 ## Tests (`pnpm test:int`)
 
 Each test runs in a throwaway database on the Postgres container that `pnpm test:int` starts for the run.

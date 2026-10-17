@@ -45,8 +45,8 @@ export interface paths {
         get: operations["listInvoices"];
         put?: never;
         /**
-         * Upload one invoice PDF.
-         * @description Files are deduplicated by the SHA-256 of their bytes. A retry with the same Idempotency-Key and file returns the original invoice id.
+         * Upload one invoice as a PDF, PNG or JPEG.
+         * @description A PNG or JPEG is stored as a one-page PDF. Files are deduplicated by the SHA-256 of the stored PDF. A retry with the same Idempotency-Key and file returns the original invoice id.
          */
         post: operations["createInvoice"];
         delete?: never;
@@ -72,6 +72,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/invoices/{id}/document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the stored PDF of one invoice.
+         * @description A PNG or JPEG upload comes back as the one-page PDF it was stored as.
+         */
+        get: operations["getInvoiceDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/invoice-batches": {
         parameters: {
             query?: never;
@@ -82,7 +102,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Upload up to 500 invoice PDFs.
+         * Upload up to 500 invoices, each a PDF, PNG or JPEG.
          * @description Every file gets its own result, in request order. A bad file is reported as rejected and never fails the whole batch.
          */
         post: operations["createInvoiceBatch"];
@@ -143,10 +163,10 @@ export interface components {
             };
         };
         /**
-         * @description Processing status of an invoice. It moves through received, extracting, extracted and reconciling to reconciled, where each finding waits as an open discrepancy, and ends at approved once every discrepancy has a decision. needs_review means the extraction could not be trusted, such as a carrier or PRO number that matches no shipment. failed means a step used up its retries; replaying its dead letter restarts that step.
+         * @description Processing status of an invoice. It moves through received, extracting, extracted and reconciling to reconciled, where each finding waits as an open discrepancy, and ends at approved once every discrepancy has a decision. needs_review means the extraction could not be trusted, such as a carrier or PRO number that matches no shipment; a reviewer then corrects them and matching runs again, approves the invoice, or rejects it. rejected is final. failed means a step used up its retries; replaying its dead letter restarts that step.
          * @enum {string}
          */
-        InvoiceStatus: "received" | "extracting" | "extracted" | "reconciling" | "reconciled" | "needs_review" | "approved" | "failed";
+        InvoiceStatus: "received" | "extracting" | "extracted" | "reconciling" | "reconciled" | "needs_review" | "approved" | "rejected" | "failed";
         InvoiceRef: {
             /** Format: uuid */
             id: string;
@@ -298,7 +318,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description The file is larger than 10 MiB or has more than 20 pages, or the request has more than 500 files. In a batch, such files are rejected one by one instead. */
+        /** @description The file is larger than 4 MB (4,194,304 bytes), also once an image is stored as a PDF; a PDF has more than 20 pages; an image is larger than 10,000 pixels a side or 25 megapixels; or the request has more than 500 files. In a batch, such files are rejected one by one instead. */
         PayloadTooLarge: {
             headers: {
                 [name: string]: unknown;
@@ -307,7 +327,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description The uploaded file is not a PDF. */
+        /** @description The uploaded file is not a readable PDF, PNG or JPEG. */
         UnsupportedMediaType: {
             headers: {
                 [name: string]: unknown;
@@ -463,7 +483,7 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": {
-                    /** @description Invoice PDF, at most 10 MiB and 20 pages. */
+                    /** @description Invoice file, at most 4 MB (4,194,304 bytes): a PDF of at most 20 pages, or a PNG or JPEG of at most 10,000 pixels a side and 25 megapixels. */
                     file: Blob;
                 };
             };
@@ -515,6 +535,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Invoice"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getInvoiceDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": Blob;
                 };
             };
             400: components["responses"]["BadRequest"];

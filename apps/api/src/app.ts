@@ -1,17 +1,18 @@
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
-import { openapiPath, typeDefs, type Resolvers } from '@freightaudit/contracts';
+import { openapiPath } from '@freightaudit/contracts';
+import { MAX_UPLOAD_BYTES } from '@freightaudit/contracts/limits';
+import { queryError } from '@freightaudit/db';
 import type { Storage } from '@freightaudit/pipeline';
 import { type Check, intakeRejected, readiness } from '@freightaudit/telemetry';
 import Fastify, { type FastifyError, type FastifyReply, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import openapiGlue from 'fastify-openapi-glue';
-import { createSchema, createYoga } from 'graphql-yoga';
 import type { Redis } from 'ioredis';
 import { createHash, timingSafeEqual } from 'node:crypto';
+import './actor.ts';
+import { createGraphql, type GraphqlDeps } from './graphql.ts';
 import { fail, problem } from './problem.ts';
-import { createOnFile, MAX_FILE_BYTES } from './uploads.ts';
-
-const resolvers: Resolvers = { Query: { health: () => 'ok' } };
+import { createOnFile } from './uploads.ts';
 
 // Probes need no key; openapi.yaml marks the same routes with security: [].
 const publicRoutes = new Set(['/healthz', '/readyz']);
@@ -35,17 +36,20 @@ type Deps = {
   rateLimits?: { general: number; upload: number };
   // Uploads get 503 while more extract jobs than highWater are waiting.
   backlog?: { waiting: () => Promise<number>; highWater: number };
+  // The database and queues GraphQL reads and writes; without them only health resolves.
+  graphql?: GraphqlDeps;
 };
 
 export function buildApp(
   opts: FastifyServerOptions,
-  { apiKeys, storage, checks = {}, service = {}, redis, prefix = 'freightaudit', rateLimits = { general: 60, upload: 10 }, backlog }: Deps,
+  { apiKeys, storage, checks = {}, service = {}, redis, prefix = 'freightaudit', rateLimits = { general: 60, upload: 10 }, backlog, graphql }: Deps,
 ) {
   // A client must send the whole request within 30 s.
   const app = Fastify({ requestTimeout: 30_000, ...opts });
   const keyDigests = apiKeys.map(sha256);
-  // The digest of the key each request used: limits count per key, and the key itself never reaches Redis.
-  const keyIds = new WeakMap<FastifyRequest, string>();
+  // The digest of the key each request used: limits count per key, audit rows name direct callers by it, and the key
+  // itself never reaches Redis or the database.
+  app.decorateRequest('apiKeyId', '');
 
   // Runs before body parsing, so an upload without a valid key is rejected before its bytes are read.
   // Equal-length digests let timingSafeEqual compare keys in constant time.
@@ -54,7 +58,7 @@ export function buildApp(
     const key = req.headers['x-api-key'];
     const digest = typeof key === 'string' ? sha256(key) : undefined;
     if (digest && keyDigests.some((known) => timingSafeEqual(known, digest))) {
-      keyIds.set(req, digest.toString('hex'));
+      req.apiKeyId = digest.toString('hex');
       return;
     }
     throw fail(401, 'X-API-Key header is missing or invalid');
@@ -73,7 +77,8 @@ export function buildApp(
   // Every error, including schema validation failures, is an RFC 9457 Problem Details body.
   app.setErrorHandler((error: FastifyError, req, reply) => {
     const status = error.statusCode !== undefined && error.statusCode >= 400 ? error.statusCode : 500;
-    if (status >= 500 && status !== 503) req.log.error(error);
+    // A failed query's message lists its bound values, so only its SQLSTATE is logged.
+    if (status >= 500 && status !== 503) req.log.error({ err: queryError(error) ?? error });
     return reply
       .code(status)
       .type('application/problem+json')
@@ -91,7 +96,7 @@ export function buildApp(
     timeWindow: 60_000,
     enableDraftSpec: true,
     allowList: (req) => publicRoutes.has(req.routeOptions.url ?? ''),
-    keyGenerator: (req) => `${keyIds.get(req)}:${isUpload(req) ? 'upload' : 'general'}`,
+    keyGenerator: (req) => `${req.apiKeyId}:${isUpload(req) ? 'upload' : 'general'}`,
     max: (_req, key) => (key.endsWith(':upload') ? rateLimits.upload : rateLimits.general),
   });
 
@@ -100,7 +105,7 @@ export function buildApp(
   app.register(multipart, {
     attachFieldsToBody: 'keyValues',
     onFile: createOnFile(storage),
-    limits: { files: 500, fileSize: MAX_FILE_BYTES },
+    limits: { files: 500, fileSize: MAX_UPLOAD_BYTES },
     throwFileSizeLimit: false,
   });
   // Routes, request validation and response serialization all come from openapi.yaml.
@@ -116,12 +121,13 @@ export function buildApp(
     },
   });
 
-  const yoga = createYoga({ schema: createSchema({ typeDefs, resolvers }) });
+  const yoga = createGraphql(app.log, graphql);
   app.register(async (scope) => {
     scope.route({
       url: yoga.graphqlEndpoint,
       method: ['GET', 'POST', 'OPTIONS'],
-      handler: (req, reply) => yoga.handleNodeRequestAndResponse(req, reply),
+      // The third argument is the server context resolvers read the request from (the actor, the key digest).
+      handler: (req, reply) => yoga.handleNodeRequestAndResponse(req, reply, { req, reply }),
     });
   });
   return app;

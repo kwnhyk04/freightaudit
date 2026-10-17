@@ -3,7 +3,42 @@
 type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 /** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
-import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
+import type { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
+/** Kind of entry in an invoice's audit trail. */
+export type AuditAction =
+  /** A reviewer approved the invoice for payment. */
+  | 'APPROVED'
+  /** A reviewer corrected the carrier or PRO number and matching ran again. */
+  | 'CORRECTED'
+  /** A reviewer confirmed a discrepancy: the overcharge is disputed. */
+  | 'DISCREPANCY_CONFIRMED'
+  /** A reviewer dismissed a discrepancy: the billed amount stands. */
+  | 'DISCREPANCY_DISMISSED'
+  /** The file was uploaded. */
+  | 'RECEIVED'
+  /** A reviewer rejected the invoice. */
+  | 'REJECTED'
+  /** A dead letter's job was run again. */
+  | 'REPLAYED'
+  /** The pipeline moved the invoice to another status. */
+  | 'STATUS_CHANGED';
+
+/** How a carrier name read from a document matched a known carrier. */
+export type CarrierMatch =
+  /** The reading holds the known name as whole words, as beside a title line. */
+  | 'CONTAINED'
+  /** Printed exactly as the known name. */
+  | 'EXACT'
+  /** Equal after normalizing case, spacing and Unicode forms. */
+  | 'NORMALIZED';
+
+/** Review state of a dead letter. */
+export type DeadLetterStatus =
+  /** Waiting for a replay. */
+  | 'OPEN'
+  /** Its job was run again. */
+  | 'REPLAYED';
+
 /** Reviewer decision on a discrepancy. */
 export type DiscrepancyDecision =
   /** The overcharge is real. */
@@ -35,14 +70,16 @@ export type InvoiceStatus =
   | 'EXTRACTING'
   /** A step used up its retries; replaying its dead letter restarts that step. */
   | 'FAILED'
-  /** The extraction could not be trusted, such as a carrier or PRO number that matches no shipment; a person must check the document. */
+  /** The extraction could not be trusted, such as a carrier or PRO number that matches no shipment; a person must check the document, then correct it, approve it or reject it. */
   | 'NEEDS_REVIEW'
   /** Stored; waiting for extraction. */
   | 'RECEIVED'
   /** Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision. */
   | 'RECONCILED'
   /** Matching against the shipment and rate card is running. */
-  | 'RECONCILING';
+  | 'RECONCILING'
+  /** A reviewer refused the invoice for payment. Final. */
+  | 'REJECTED';
 
 export type ApproveInvoiceMutationVariables = Exact<{
   id: string | number;
@@ -51,6 +88,24 @@ export type ApproveInvoiceMutationVariables = Exact<{
 
 export type ApproveInvoiceMutation = { approveInvoice: { id: string, status: InvoiceStatus } };
 
+export type CorrectInvoiceMutationVariables = Exact<{
+  id: string | number;
+  carrierId?: string | number | null | undefined;
+  proNumber?: string | null | undefined;
+}>;
+
+
+export type CorrectInvoiceMutation = { correctInvoice: { id: string, status: InvoiceStatus } };
+
+export type DeadLettersQueryVariables = Exact<{
+  first?: number | null | undefined;
+  after?: string | null | undefined;
+  status?: DeadLetterStatus | null | undefined;
+}>;
+
+
+export type DeadLettersQuery = { deadLetters: { edges: Array<{ cursor: string, node: { id: string, queue: string, jobId: string, error: string, attempts: number, createdAt: string, replayedAt: string | null, invoice: { id: string, number: string | null, filename: string, carrier: string | null, status: InvoiceStatus } | null } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
 export type DiscrepanciesQueryVariables = Exact<{
   first?: number | null | undefined;
   after?: string | null | undefined;
@@ -58,14 +113,14 @@ export type DiscrepanciesQueryVariables = Exact<{
 }>;
 
 
-export type DiscrepanciesQuery = { discrepancies: { edges: Array<{ cursor: string, node: { id: string, type: DiscrepancyType, status: DiscrepancyStatus, expectedCents: number, billedCents: number, invoice: { id: string, number: string | null, carrier: string | null } } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+export type DiscrepanciesQuery = { discrepancies: { edges: Array<{ cursor: string, node: { id: string, type: DiscrepancyType, status: DiscrepancyStatus, expectedCents: number, billedCents: number, evidence: string, note: string | null, resolvedAt: string | null, lineItem: { id: string, lineNumber: number, description: string, chargeCode: string | null } | null, invoice: { id: string, number: string | null, filename: string, carrier: string | null, currency: string | null, status: InvoiceStatus } } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
 
 export type InvoiceQueryVariables = Exact<{
   id: string | number;
 }>;
 
 
-export type InvoiceQuery = { invoice: { id: string, status: InvoiceStatus, failureReason: string | null, filename: string, carrier: string | null, number: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, lineItems: Array<{ id: string, lineNumber: number, description: string, chargeCode: string | null, amountCents: number }>, shipment: { id: string, reference: string, origin: string, destination: string, shippedOn: string } | null, rateCardVersion: { id: string, version: number, effectiveFrom: string } | null, discrepancies: { edges: Array<{ node: { id: string, type: DiscrepancyType, status: DiscrepancyStatus, expectedCents: number, billedCents: number, evidence: string, note: string | null, lineItem: { id: string } | null } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } } | null };
+export type InvoiceQuery = { invoice: { id: string, status: InvoiceStatus, failureReason: string | null, reviewReason: string | null, filename: string, contentHash: string, carrier: string | null, number: string | null, proNumber: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number, lineItems: Array<{ id: string, lineNumber: number, description: string, chargeCode: string | null, amountCents: number }>, extraction: { id: string, model: string, step: string | null, carrierRead: string | null, carrierMatch: CarrierMatch | null, problems: Array<string>, extractedAt: string, lines: Array<{ lineNumber: number, description: string, chargeCode: string | null, amountCents: number }> } | null, shipment: { id: string, reference: string, carrier: string, origin: string, destination: string, shippedOn: string } | null, rateCardVersion: { id: string, version: number, effectiveFrom: string | null, effectiveTo: string | null } | null, discrepancies: { edges: Array<{ node: { id: string, type: DiscrepancyType, status: DiscrepancyStatus, expectedCents: number, billedCents: number, evidence: string, note: string | null, resolvedAt: string | null, lineItem: { id: string, lineNumber: number } | null } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }, auditTrail: Array<{ id: string, at: string, actor: string | null, action: AuditAction, detail: string | null, changes: Array<{ field: string, from: string | null, to: string | null }> }>, deadLetter: { id: string, queue: string, error: string, createdAt: string } | null } | null, carriers: Array<{ id: string, name: string }> };
 
 export type InvoicesQueryVariables = Exact<{
   first?: number | null | undefined;
@@ -74,7 +129,22 @@ export type InvoicesQueryVariables = Exact<{
 }>;
 
 
-export type InvoicesQuery = { invoices: { edges: Array<{ cursor: string, node: { id: string, status: InvoiceStatus, filename: string, carrier: string | null, number: string | null, issuedOn: string | null, totalCents: number | null, createdAt: string } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+export type InvoicesQuery = { invoices: { edges: Array<{ cursor: string, node: { id: string, status: InvoiceStatus, filename: string, carrier: string | null, number: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type RejectInvoiceMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type RejectInvoiceMutation = { rejectInvoice: { id: string, status: InvoiceStatus } };
+
+export type ReplayDeadLetterMutationVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type ReplayDeadLetterMutation = { replayDeadLetter: { id: string, replayedAt: string | null } };
 
 export type ResolveDiscrepancyMutationVariables = Exact<{
   id: string | number;
@@ -85,9 +155,255 @@ export type ResolveDiscrepancyMutationVariables = Exact<{
 
 export type ResolveDiscrepancyMutation = { resolveDiscrepancy: { id: string, status: DiscrepancyStatus, note: string | null, resolvedAt: string | null } };
 
+export class TypedDocumentString<TResult, TVariables>
+  extends String
+  implements DocumentTypeDecoration<TResult, TVariables>
+{
+  __apiType?: NonNullable<DocumentTypeDecoration<TResult, TVariables>['__apiType']>;
+  private value: string;
+  public __meta__?: Record<string, any> | undefined;
 
-export const ApproveInvoiceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ApproveInvoice"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"approveInvoice"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}}]} as unknown as DocumentNode<ApproveInvoiceMutation, ApproveInvoiceMutationVariables>;
-export const DiscrepanciesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Discrepancies"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"first"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"after"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"DiscrepancyStatus"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"discrepancies"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"first"},"value":{"kind":"Variable","name":{"kind":"Name","value":"first"}}},{"kind":"Argument","name":{"kind":"Name","value":"after"},"value":{"kind":"Variable","name":{"kind":"Name","value":"after"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"edges"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cursor"}},{"kind":"Field","name":{"kind":"Name","value":"node"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"expectedCents"}},{"kind":"Field","name":{"kind":"Name","value":"billedCents"}},{"kind":"Field","name":{"kind":"Name","value":"invoice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"number"}},{"kind":"Field","name":{"kind":"Name","value":"carrier"}}]}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"pageInfo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"hasNextPage"}},{"kind":"Field","name":{"kind":"Name","value":"endCursor"}}]}}]}}]}}]} as unknown as DocumentNode<DiscrepanciesQuery, DiscrepanciesQueryVariables>;
-export const InvoiceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Invoice"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"invoice"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"failureReason"}},{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"carrier"}},{"kind":"Field","name":{"kind":"Name","value":"number"}},{"kind":"Field","name":{"kind":"Name","value":"issuedOn"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"totalCents"}},{"kind":"Field","name":{"kind":"Name","value":"lineItems"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"lineNumber"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"chargeCode"}},{"kind":"Field","name":{"kind":"Name","value":"amountCents"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shipment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"reference"}},{"kind":"Field","name":{"kind":"Name","value":"origin"}},{"kind":"Field","name":{"kind":"Name","value":"destination"}},{"kind":"Field","name":{"kind":"Name","value":"shippedOn"}}]}},{"kind":"Field","name":{"kind":"Name","value":"rateCardVersion"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"effectiveFrom"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discrepancies"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"first"},"value":{"kind":"IntValue","value":"100"}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"edges"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"node"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"expectedCents"}},{"kind":"Field","name":{"kind":"Name","value":"billedCents"}},{"kind":"Field","name":{"kind":"Name","value":"evidence"}},{"kind":"Field","name":{"kind":"Name","value":"note"}},{"kind":"Field","name":{"kind":"Name","value":"lineItem"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"pageInfo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"hasNextPage"}},{"kind":"Field","name":{"kind":"Name","value":"endCursor"}}]}}]}}]}}]}}]} as unknown as DocumentNode<InvoiceQuery, InvoiceQueryVariables>;
-export const InvoicesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Invoices"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"first"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"after"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"InvoiceStatus"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"invoices"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"first"},"value":{"kind":"Variable","name":{"kind":"Name","value":"first"}}},{"kind":"Argument","name":{"kind":"Name","value":"after"},"value":{"kind":"Variable","name":{"kind":"Name","value":"after"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"edges"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cursor"}},{"kind":"Field","name":{"kind":"Name","value":"node"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"filename"}},{"kind":"Field","name":{"kind":"Name","value":"carrier"}},{"kind":"Field","name":{"kind":"Name","value":"number"}},{"kind":"Field","name":{"kind":"Name","value":"issuedOn"}},{"kind":"Field","name":{"kind":"Name","value":"totalCents"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"pageInfo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"hasNextPage"}},{"kind":"Field","name":{"kind":"Name","value":"endCursor"}}]}}]}}]}}]} as unknown as DocumentNode<InvoicesQuery, InvoicesQueryVariables>;
-export const ResolveDiscrepancyDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResolveDiscrepancy"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"decision"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DiscrepancyDecision"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"note"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resolveDiscrepancy"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"decision"},"value":{"kind":"Variable","name":{"kind":"Name","value":"decision"}}},{"kind":"Argument","name":{"kind":"Name","value":"note"},"value":{"kind":"Variable","name":{"kind":"Name","value":"note"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"note"}},{"kind":"Field","name":{"kind":"Name","value":"resolvedAt"}}]}}]}}]} as unknown as DocumentNode<ResolveDiscrepancyMutation, ResolveDiscrepancyMutationVariables>;
+  constructor(value: string, __meta__?: Record<string, any> | undefined) {
+    super(value);
+    this.value = value;
+    this.__meta__ = __meta__;
+  }
+
+  override toString(): string & DocumentTypeDecoration<TResult, TVariables> {
+    return this.value;
+  }
+}
+
+export const ApproveInvoiceDocument = new TypedDocumentString(`
+    mutation ApproveInvoice($id: ID!) {
+  approveInvoice(id: $id) {
+    id
+    status
+  }
+}
+    `) as unknown as TypedDocumentString<ApproveInvoiceMutation, ApproveInvoiceMutationVariables>;
+export const CorrectInvoiceDocument = new TypedDocumentString(`
+    mutation CorrectInvoice($id: ID!, $carrierId: ID, $proNumber: String) {
+  correctInvoice(id: $id, carrierId: $carrierId, proNumber: $proNumber) {
+    id
+    status
+  }
+}
+    `) as unknown as TypedDocumentString<CorrectInvoiceMutation, CorrectInvoiceMutationVariables>;
+export const DeadLettersDocument = new TypedDocumentString(`
+    query DeadLetters($first: Int, $after: String, $status: DeadLetterStatus) {
+  deadLetters(first: $first, after: $after, status: $status) {
+    edges {
+      cursor
+      node {
+        id
+        queue
+        jobId
+        error
+        attempts
+        createdAt
+        replayedAt
+        invoice {
+          id
+          number
+          filename
+          carrier
+          status
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<DeadLettersQuery, DeadLettersQueryVariables>;
+export const DiscrepanciesDocument = new TypedDocumentString(`
+    query Discrepancies($first: Int, $after: String, $status: DiscrepancyStatus) {
+  discrepancies(first: $first, after: $after, status: $status) {
+    edges {
+      cursor
+      node {
+        id
+        type
+        status
+        expectedCents
+        billedCents
+        evidence
+        note
+        resolvedAt
+        lineItem {
+          id
+          lineNumber
+          description
+          chargeCode
+        }
+        invoice {
+          id
+          number
+          filename
+          carrier
+          currency
+          status
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<DiscrepanciesQuery, DiscrepanciesQueryVariables>;
+export const InvoiceDocument = new TypedDocumentString(`
+    query Invoice($id: ID!) {
+  invoice(id: $id) {
+    id
+    status
+    failureReason
+    reviewReason
+    filename
+    contentHash
+    carrier
+    number
+    proNumber
+    issuedOn
+    currency
+    totalCents
+    createdAt
+    openDiscrepancyCount
+    lineItems {
+      id
+      lineNumber
+      description
+      chargeCode
+      amountCents
+    }
+    extraction {
+      id
+      model
+      step
+      carrierRead
+      carrierMatch
+      problems
+      extractedAt
+      lines {
+        lineNumber
+        description
+        chargeCode
+        amountCents
+      }
+    }
+    shipment {
+      id
+      reference
+      carrier
+      origin
+      destination
+      shippedOn
+    }
+    rateCardVersion {
+      id
+      version
+      effectiveFrom
+      effectiveTo
+    }
+    discrepancies(first: 100) {
+      edges {
+        node {
+          id
+          type
+          status
+          expectedCents
+          billedCents
+          evidence
+          note
+          resolvedAt
+          lineItem {
+            id
+            lineNumber
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+    auditTrail {
+      id
+      at
+      actor
+      action
+      detail
+      changes {
+        field
+        from
+        to
+      }
+    }
+    deadLetter {
+      id
+      queue
+      error
+      createdAt
+    }
+  }
+  carriers {
+    id
+    name
+  }
+}
+    `) as unknown as TypedDocumentString<InvoiceQuery, InvoiceQueryVariables>;
+export const InvoicesDocument = new TypedDocumentString(`
+    query Invoices($first: Int, $after: String, $status: InvoiceStatus) {
+  invoices(first: $first, after: $after, status: $status) {
+    edges {
+      cursor
+      node {
+        id
+        status
+        filename
+        carrier
+        number
+        issuedOn
+        currency
+        totalCents
+        createdAt
+        openDiscrepancyCount
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<InvoicesQuery, InvoicesQueryVariables>;
+export const RejectInvoiceDocument = new TypedDocumentString(`
+    mutation RejectInvoice($id: ID!, $reason: String!) {
+  rejectInvoice(id: $id, reason: $reason) {
+    id
+    status
+  }
+}
+    `) as unknown as TypedDocumentString<RejectInvoiceMutation, RejectInvoiceMutationVariables>;
+export const ReplayDeadLetterDocument = new TypedDocumentString(`
+    mutation ReplayDeadLetter($id: ID!) {
+  replayDeadLetter(id: $id) {
+    id
+    replayedAt
+  }
+}
+    `) as unknown as TypedDocumentString<ReplayDeadLetterMutation, ReplayDeadLetterMutationVariables>;
+export const ResolveDiscrepancyDocument = new TypedDocumentString(`
+    mutation ResolveDiscrepancy($id: ID!, $decision: DiscrepancyDecision!, $note: String) {
+  resolveDiscrepancy(id: $id, decision: $decision, note: $note) {
+    id
+    status
+    note
+    resolvedAt
+  }
+}
+    `) as unknown as TypedDocumentString<ResolveDiscrepancyMutation, ResolveDiscrepancyMutationVariables>;

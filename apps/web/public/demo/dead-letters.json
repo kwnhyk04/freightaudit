@@ -1,0 +1,29 @@
+{
+  "deadLetters": {
+    "edges": [
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjI0OjI2LjgzNTAwNloiLCIwMWExNDhiZi02YjUzLTdmNjItYjgxMC1lZmQ4ZDNlMzQ2MGIiXQ",
+        "node": {
+          "id": "01a148bf-6b53-7f62-b810-efd8d3e3460b",
+          "queue": "reconcile",
+          "jobId": "edd75bfd2f134c1b1bcde6b59b28eafc835d105b772e8289fb0641498727e1b1",
+          "error": "shipment has no miles",
+          "attempts": 1,
+          "createdAt": "2026-10-17T07:24:26.835Z",
+          "replayedAt": null,
+          "invoice": {
+            "id": "01a148bf-037b-762d-b90d-f561da8d3996",
+            "number": "53704390",
+            "filename": "g003.pdf",
+            "carrier": "Quarry Lane Transport",
+            "status": "FAILED"
+          }
+        }
+      }
+    ],
+    "pageInfo": {
+      "hasNextPage": false,
+      "endCursor": null
+    }
+  }
+}

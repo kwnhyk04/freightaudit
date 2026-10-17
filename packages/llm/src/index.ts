@@ -22,5 +22,5 @@ export { createLimits, type Limits, metered, type RoleLimits } from './limits.ts
 export { createModels, type ModelConfig } from './models.ts';
 export { createOpenAiProvider } from './openai.ts';
 export { readPages } from './pages.ts';
-export { MAX_PAGES, readPdf, splitPdf } from './pdf.ts';
+export { imageToPdf, MAX_PAGES, readPdf, splitPdf } from './pdf.ts';
 export { callCost, hasPrice, paidCost } from './prices.ts';

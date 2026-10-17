@@ -1,10 +1,9 @@
 import type { MultipartFile } from '@fastify/multipart';
-import { MAX_PAGES, PermanentError, readPdf } from '@freightaudit/llm';
+import { checkUpload, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from '@freightaudit/contracts/limits';
+import { imageToPdf, MAX_PAGES, PermanentError, readPdf } from '@freightaudit/llm';
 import type { Storage } from '@freightaudit/pipeline';
 import type { FastifyRequest } from 'fastify';
 import { createHash } from 'node:crypto';
-
-export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 // Why a file was refused; handlers answer it as a 413 or 415 Problem.
 export type Rejection = { status: 413 | 415; detail: string };
@@ -12,28 +11,38 @@ export type Upload = { fieldname: string; filename: string; sha256: string; reje
 
 const uploads = new WeakMap<FastifyRequest, Upload[]>();
 
-async function check(bytes: Buffer, truncated: boolean): Promise<Rejection | undefined> {
-  if (truncated) return { status: 413, detail: 'file is larger than 10 MiB' };
-  if (bytes.subarray(0, 5).toString('latin1') !== '%PDF-') return { status: 415, detail: 'file must be a PDF' };
-  let pages: number;
+// The PDF to store for a file: the file itself, or a one-page PDF around a PNG or JPEG. The web upload form runs the
+// same checkUpload first, so both refuse the same files.
+async function toPdf(bytes: Buffer, truncated: boolean): Promise<Uint8Array | Rejection> {
+  const checked = checkUpload(bytes, truncated ? MAX_UPLOAD_BYTES + 1 : bytes.length);
+  if (!checked.ok) return { status: checked.status, detail: checked.detail };
   try {
-    pages = (await readPdf(bytes)).getPageCount();
+    const pdf = checked.type === 'pdf' ? bytes : await imageToPdf(bytes, checked.type);
+    // The web serves documents through a function whose response Vercel caps at 4.5 MB, so the stored PDF must fit.
+    if (pdf.byteLength > MAX_UPLOAD_BYTES) {
+      return { status: 413, detail: `file is larger than ${MAX_UPLOAD_LABEL} once stored as a PDF; send it as JPG or PDF` };
+    }
+    const pages = (await readPdf(pdf)).getPageCount();
+    if (pages > MAX_PAGES) return { status: 413, detail: `file has ${pages} pages; the limit is ${MAX_PAGES}` };
+    return pdf;
   } catch (err) {
-    if (err instanceof PermanentError) return { status: 415, detail: 'file is not a readable PDF' };
+    if (err instanceof PermanentError) return { status: 415, detail: checked.type === 'pdf' ? 'file is not a readable PDF' : err.message };
     throw err;
   }
-  if (pages > MAX_PAGES) return { status: 413, detail: `file has ${pages} pages; the limit is ${MAX_PAGES}` };
 }
 
-// Reads one file part (multipart stops it at MAX_FILE_BYTES), checks it and stores an accepted PDF under its content
+// Reads one file part (multipart stops it at MAX_UPLOAD_BYTES), checks it and stores the accepted PDF under its content
 // hash. Only metadata stays in memory, so a 500-file batch holds at most one file at a time.
 export const createOnFile = (storage: Storage) =>
   async function onFile(this: FastifyRequest, part: MultipartFile) {
     const chunks: Buffer[] = [];
     for await (const chunk of part.file) chunks.push(chunk);
-    const bytes = Buffer.concat(chunks);
+    const sent = Buffer.concat(chunks);
+    const stored = await toPdf(sent, part.file.truncated);
+    const rejection = stored instanceof Uint8Array ? undefined : stored;
+    // The stored PDF's digest identifies the invoice, so an image and its PDF wrapper are one upload.
+    const bytes = stored instanceof Uint8Array ? stored : sent;
     const sha256 = createHash('sha256').update(bytes).digest('hex');
-    const rejection = await check(bytes, part.file.truncated);
     if (!rejection) await storage.put(sha256, bytes);
     uploads.set(this, [...(uploads.get(this) ?? []), { fieldname: part.fieldname, filename: part.filename, sha256, rejection }]);
     // Schema validation sees the digest string in place of the file bytes.

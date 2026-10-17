@@ -170,10 +170,12 @@ test('a PDF uploaded before pnpm db:reset is extracted again after it', async ()
   const { env } = await setup(valid);
   env.runWorkers({ modelsUrl: fake!.url });
   const before = await env.upload(await makePdf());
-  // Both jobs finished, so the reset meets no running job; both job ids (the PDF's hash) stay taken until it.
+  // Both jobs finished; both job ids (the PDF's hash) stay taken until the reset.
   await waitFor(async () => (await env.queues.queue('reconcile').getJobState(before.contentSha256)) === 'completed');
 
-  await resetDev({ databaseUrl: env.databaseUrl, redisUrl: testEnv('REDIS_URL'), prefix: env.prefix, log: () => {} });
+  // On this test's own database, with its worker stopped and its pool ended first, as pnpm db:reset requires.
+  await env.offline(() => resetDev({ databaseUrl: env.databaseUrl, redisUrl: testEnv('REDIS_URL'), prefix: env.prefix, log: () => {} }));
+  env.runWorkers({ modelsUrl: fake!.url });
   // The same bytes again, as the api would add them, for the tenant the reset seeded.
   const [tenant] = await env.db.select({ id: tenants.id }).from(tenants);
   const [after] = await env.db.insert(invoices).values({ tenantId: tenant!.id, filename: 'invoice.pdf', contentSha256: before.contentSha256 }).returning();

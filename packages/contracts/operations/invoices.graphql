@@ -9,8 +9,10 @@ query Invoices($first: Int, $after: String, $status: InvoiceStatus) {
         carrier
         number
         issuedOn
+        currency
         totalCents
         createdAt
+        openDiscrepancyCount
       }
     }
     pageInfo {

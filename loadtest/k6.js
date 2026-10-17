@@ -1,7 +1,8 @@
 // The k6 load test in two parts (README, Load test), run through compose against the api on the host:
 //   docker compose --env-file .env -f infra/docker-compose.yml run --rm k6 run -e SCENARIO=system /loadtest/k6.js
 // SCENARIO=system: 2 minutes at the normal rate, then 10 at 3x, with the recorded-fixture model provider; then a drain
-//   that waits for every accepted invoice to reach a final status. Throughput and backpressure evidence.
+//   that waits for every accepted invoice to reach a final status. Throughput evidence: the backlog never reaches its
+//   high-water mark, so backpressure is proven by apps/api/src/limits.int.test.ts instead.
 // SCENARIO=e2e: end-to-end latency at low load with real free-tier models: 20 single-page golden v1 invoices, one every
 //   15 s, below the free tiers' ceiling, so the run measures latency rather than throttling.
 // The results go to /loadtest/<scenario>-results.json, which evals/harness/report.ts puts in the README table.

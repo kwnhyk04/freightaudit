@@ -1,9 +1,9 @@
 import { loadEnv } from '@freightaudit/config/env';
+import { createPool } from '@freightaudit/db';
 import { backlog, createQueues, createStorage } from '@freightaudit/pipeline';
 import { httpCheck, serverOptions, shutdownTelemetry, tcpCheck } from '@freightaudit/telemetry';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Redis } from 'ioredis';
-import pg from 'pg';
 import { buildApp } from './app.ts';
 import { createService } from './service.ts';
 
@@ -26,8 +26,11 @@ const env = loadEnv([
 ]);
 // One reconnect attempt per command, so a request fails fast while Redis is down instead of hanging.
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1 });
-const pool = new pg.Pool({ connectionString: env.DATABASE_URL });
+// The logger exists by the time the pool has an idle connection to lose.
+const pool = createPool(env.DATABASE_URL, (msg, fields) => app.log.warn(fields, msg));
 const queues = createQueues(redis, env.REDIS_PREFIX);
+const db = drizzle(pool);
+const storage = createStorage({ endpoint: env.S3_ENDPOINT, accessKey: env.S3_ACCESS_KEY, secretKey: env.S3_SECRET_KEY, bucket: env.S3_BUCKET });
 const app = buildApp(serverOptions(env.LOG_LEVEL), {
   apiKeys: env.API_KEYS,
   checks: {
@@ -35,8 +38,9 @@ const app = buildApp(serverOptions(env.LOG_LEVEL), {
     redis: tcpCheck(env.REDIS_URL, 6379),
     minio: httpCheck(new URL('/minio/health/live', env.S3_ENDPOINT).href),
   },
-  service: createService({ db: drizzle(pool), queues, tenantId: env.TENANT_ID }),
-  storage: createStorage({ endpoint: env.S3_ENDPOINT, accessKey: env.S3_ACCESS_KEY, secretKey: env.S3_SECRET_KEY, bucket: env.S3_BUCKET }),
+  service: createService({ db, queues, tenantId: env.TENANT_ID, storage }),
+  graphql: { db, queues, tenantId: env.TENANT_ID },
+  storage,
   redis,
   prefix: env.REDIS_PREFIX,
   rateLimits: { general: env.RATE_LIMIT_PER_MIN, upload: env.UPLOAD_RATE_LIMIT_PER_MIN },

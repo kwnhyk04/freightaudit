@@ -131,7 +131,7 @@ From the approved design doc:
 - 2026-10-16: All instruments live in `packages/telemetry/src/metrics.ts`. The resource carries `service.instance.id = <hostname>-<pid>`, and the collector scrape keeps the exporter's `job`/`instance` labels (`honor_labels`). Reason: one place matches the dashboard and the rules; two workers would otherwise overwrite each other's counters.
 - 2026-10-16: Alert rules are a Prometheus rule file (`infra/prometheus-alerts.yml`) with a promtool test that CI's lint job runs, not Grafana-managed rules; Grafana lists them read-only. Reason: shorter, and testable.
 - 2026-10-16: The k6 load test has two parts that measure different things (user decision).
-  - **Part 1** (`SCENARIO=system`) is system throughput and backpressure at 3x the 2,000/h normal rate (the design's throughput target), on 2 workers x concurrency 8. Model latency and quotas are replaced by the recorded-fixture provider: real recorded replies after a fixed 2,300 ms.
+  - **Part 1** (`SCENARIO=system`) is system throughput at 3x the 2,000/h normal rate (the design's throughput target), on 2 workers x concurrency 8. Model latency and quotas are replaced by the recorded-fixture provider: real recorded replies after a fixed 2,300 ms. Its run never got busy (about 4 active extract jobs against a high-water mark of 5,000, 0 refused), so it shows spare capacity, not "busy, try later" backpressure; step 4's tests in `apps/api/src/limits.int.test.ts` prove that path (corrected 2026-10-16 in step 9, user request).
   - **Part 2** (`SCENARIO=e2e`) is the end-to-end latency one invoice sees from the real free-tier models at low load: 20 single-page golden cases, one every 15 s. It is paced below the free-tier ceiling of about 394/h, which Groq's 8K tokens a minute sets; at the design rate it would measure throttling again. It reports n, p50, p90 and max, since p95 is not meaningful at n = 20.
   - Neither part measures real models at the design rate; that needs paid tiers.
 - 2026-10-16: The per-key rate limits became settings: `RATE_LIMIT_PER_MIN` (60) and `UPLOAD_RATE_LIMIT_PER_MIN` (10). The load test's env files raise them for its api. Reason: one k6 client sends the load, and part 2 polls every 500 ms; the limiter still runs on every request.
@@ -167,6 +167,26 @@ From the approved design doc:
   - Reason: the job log could not show a cause. The harness discarded the worker's warnings and printed no call error, so "no 429 in the log" said nothing.
   - A Groq 429 names its limit (TPM, TPD, RPM or RPD), and nothing else of its message.
   - Stalls: the quota stop also watches a split case's part jobs. A case past its 30-minute deadline stops with its calls and last failure instead of throwing. With a 429 as that failure it is a quota stop (exit 2, report written); any other stall fails the run after its failed calls are logged. Before, a deadline ended the run with no report, which hid g084's 429s in the first local run.
+- 2026-10-16: Step 9 user decisions:
+  - Rejecting is a new final status, `rejected`; oasdiff's ERR for the new enum value is accepted in `packages/contracts/oasdiff-ignore.txt` until main has it.
+  - A reviewer corrects only the carrier and PRO number, then matching re-runs.
+  - The Playwright suite runs in CI as its own `e2e` job.
+  - `carriers` is a plain bounded list, the same exception as `lineItems`.
+  - The sign-in limiter stays in memory, per instance on Vercel (a known limitation; a hosted Redis such as Upstash is the upgrade).
+  - The sample snapshot is a public, read-only demo under `/demo`, linked from the login page, and the same pages a signed-in user sees while the backend is offline. Only golden-set invoices may be exported to it.
+  - Vercel's Node version is checked for `crypto.argon2`, with `@node-rs/argon2` as the planned fallback (docs/todo.md, step 10).
+- 2026-10-16: Step 9 defaults (stated in the report; the user can overrule):
+  - The 4 MB limit is 4 MiB, one constant for browser, web and api (`@freightaudit/contracts/limits`). Reason: uploads pass through a server action and documents return through a route handler, both under Vercel's 4.5 MB function body cap.
+  - PNG and JPEG are wrapped at intake into a one-page PDF (pdf-lib, metadata off, so the same image always gives the same bytes and hash). Reason: the worker, the preview and the page cap stay PDF-only. Images over 10,000 px a side or 25 megapixels are refused.
+  - Sign-in counts 5 failed attempts per 15 minutes per client, and a success clears the count. The client is the first `x-forwarded-for` entry on Vercel (`VERCEL=1`), and one shared bucket elsewhere, since the server binds 127.0.0.1.
+  - The password hash is argon2id from `node:crypto` (Node 24.7 or later), stored as a standard PHC string, so `@node-rs/argon2` could verify it unchanged; a known-answer unit test holds the format.
+  - Actors: the UI's one user is `reviewer`; direct api callers are `api-key:<first 8 hex of the key digest>`; the pipeline is null.
+  - Public routes: `/login`, `/demo` with `public/demo/`, and the probes. Dark mode follows the system setting, with no toggle.
+- 2026-10-16: The BFF posts the generated typed documents with plain `fetch` (`documentMode: 'string'` in the client preset), with no GraphQL client library. Reason: server-side calls need no cache or hooks, and the documents keep their types.
+- 2026-10-16: Reviewer mutations set `app.actor` in their transaction and write their own `audit_events` row; the status trigger writes a row only when `app.actor` is unset. Reason: one row per action with its reason and field changes, while every pipeline move is still kept.
+- 2026-10-17: `formatMoney` prints a credit with a real minus sign, U+2212 (−$2,130.76), by mapping Intl's `minusSign` part; `formatUsd` keeps the hyphen (user request). Reason: a minus sign reads as minus where a hyphen reads as a dash. `formatUsd`'s text is stored as each finding's evidence and written by the seed, so changing it would change stored data.
+- 2026-10-17: The public sample keeps one invoice in needs review, left untouched (golden g088), and shows its correction fields disabled, without a submit button; the README's main screenshots are the sample's detail, not e2e fixture data (user requests).
+- 2026-10-17: Services build their pg pools with `createPool` (`packages/db`), whose `'error'` handler logs a dropped idle connection by its code only; test databases drop only once their sessions are gone, never with FORCE, and the db:reset test ends its pool before the reset (user requests, after PR #14's integration job crashed on an unhandled 57P01). Reason: a dropped idle connection must never crash a process, and tests must not kill connections they still own.
 
 ## Preferences and Instructions
 
@@ -270,6 +290,22 @@ From the approved design doc:
   - **Unknown** until the breakdown runs in CI: the class of the 6 Gemini failures.
   - Shared quotas: other compose projects' services (filinglens api, embed and ingest) were running on this PC. If they use these provider accounts, they share the per-minute and daily quotas, which no one process's bucket sees.
 - 2026-10-16: Groq's daily token cap (TPD) on `openai/gpt-oss-120b` ran out after about 20 eval runs that day, local and CI together. A ci run uses about 20,000 Groq tokens. With the cap spent, a small request still passed (888 of 1,000 daily requests left), while a part-sized one got 429 naming TPD with a retry of minutes. The local ci run then logged 4 Groq 429s and stalled on g084.
+- 2026-10-16: pdf-lib misreads a Node `Buffer` that is a view into Node's shared pool (non-zero `byteOffset`), as small reads return. `imageToPdf` copies the bytes into a plain `Uint8Array` first.
+- 2026-10-16: Next.js renders a route announcer with `role="alert"`, so Playwright's `getByRole('alert')` matches it besides the form's error; the specs find errors by `.form-error`.
+- 2026-10-16: In Playwright, `browser.newContext()` inside a project with `use.storageState` inherits the signed-in state. A signed-out context needs `storageState: { cookies: [], origins: [] }`.
+- 2026-10-16: `playwright.config.ts` must not import a spec file; Playwright refuses to load such a config. Shared values (the password, the e2e settings) live in `e2e/env.ts`.
+- 2026-10-16: `next build` type-checks every file its tsconfig includes, the Playwright specs too, so a spec's type error fails the web build.
+- 2026-10-16: Next's `instrumentation.ts` is bundled for the edge runtime as well; Node APIs (`node:fs`, `node:util`, `node:crypto`) go in a dynamic import inside `if (process.env.NEXT_RUNTIME === 'nodejs')`.
+- 2026-10-16: A grid track of `1fr` cannot shrink below its content's min-content width, so a wide table pushed the invoice page past a 390 px phone. Single-column tracks use `minmax(0, 1fr)`; the screenshot spec fails a phone page that scrolls sideways.
+- 2026-10-16: Screenshots taken at `networkidle` sometimes showed next/font's fallback (Arial with adjusted metrics) instead of IBM Plex; the spec waits for `document.fonts.ready`, and for the PDF canvas on document pages.
+- 2026-10-16: React 19 form actions build `new FormData(form, submitter)`, so the pressed button's `name`/`value` arrives with the form. One decision form carries both "Approve charge" and "Dispute" as `intent` buttons.
+- 2026-10-17: `apps/web/lib/demo.ts` imports `public/demo/*.json` at build time, so after `demo:export` a running `next start`, and any image built before it, still serve the old sample. Rebuild the web, then restart it.
+- 2026-10-17: The Playwright MCP writes its page snapshots and console logs to `.playwright-mcp/` in the repository root, which git does not ignore. Delete the folder after a manual browser check.
+- 2026-10-17: Playwright's `getByLabel(text, { exact: true })` finds no `<select>` inside a wrapping `<label>`, since the label's text includes the option texts. Use `getByRole('combobox', { name })`.
+- 2026-10-17: fastify-openapi-glue 4.11.5 warns at startup about every media type in the spec that has no request parser, response-only types included (`application/pdf`, `application/problem+json`). Do not register parsers to quiet it: the api would then accept those request bodies instead of answering 415.
+- 2026-10-17: pg-pool 3.14's `end()` resolves once its client list is empty, before those clients' connections have closed, and a closing idle client keeps its error listener. A `DROP DATABASE ... WITH (FORCE)` right after it terminated the closing connections; the pool re-emitted the server's 57P01 as `'error'`, and with no listener the process threw. Reproduced with 20 idle clients in two processes at once: 269 and 244 errors in 80 runs each, against 0 when the drop waits for `pg_stat_activity` to empty first. CI's busier runners hit it, so PR #14's integration job failed in whichever test ran next.
+- 2026-10-17: pg's pool closes an idle connection after 10 s (`idleTimeoutMillis`), so a forgotten pool disconnects on its own. A leak check that waits longer than that passes silently; the test databases' drop waits 5 s.
+- 2026-10-17: A local `pnpm e2e` passed while CI's failed with `ERR_MODULE_NOT_FOUND` for telemetry's `dist/`: earlier builds had left every package's `dist/` in place, which hid a build filter covering only the web. To see what a clean runner sees, delete the packages' `dist/` and run with `TURBO_FORCE=true`.
 
 ## Rejected Approaches
 

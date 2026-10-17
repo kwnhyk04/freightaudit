@@ -12,6 +12,8 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "test:int": "turbo run build --filter=./packages/* --output-logs=errors-only && node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --selectProjects integration contract",
+    "e2e": "turbo run build --filter=@freightaudit/pipeline... --filter=@freightaudit/api... --filter=@freightaudit/worker... --filter=@freightaudit/web... --output-logs=errors-only && pnpm --filter @freightaudit/web e2e",
+    "e2e:screenshots": "turbo run build --filter=@freightaudit/pipeline... --filter=@freightaudit/api... --filter=@freightaudit/worker... --filter=@freightaudit/web... --output-logs=errors-only && pnpm --filter @freightaudit/web e2e:screenshots",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "db:migrate": "turbo run db:migrate --",

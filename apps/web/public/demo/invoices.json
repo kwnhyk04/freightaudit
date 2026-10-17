@@ -1,0 +1,175 @@
+{
+  "invoices": {
+    "pageInfo": {
+      "hasNextPage": false,
+      "endCursor": null
+    },
+    "edges": [
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjUzOjU0LjAxOTMzOVoiLCIwMWExNDhkYS02MjYzLTc5MGYtYjA2Mi04Nzc4ZjMyMTdiYTIiXQ",
+        "node": {
+          "id": "01a148da-6263-790f-b062-8778f3217ba2",
+          "status": "NEEDS_REVIEW",
+          "filename": "g088.pdf",
+          "carrier": "Quarry Lane Transport",
+          "number": "18716612",
+          "issuedOn": "2025-08-04",
+          "currency": "USD",
+          "totalCents": 488845,
+          "createdAt": "2026-10-17T07:53:54.019Z",
+          "openDiscrepancyCount": 0
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjI0OjAwLjI1MTMwOVoiLCIwMWExNDhiZi0wMzdiLTc2MmQtYjkwZC1mNTYxZGE4ZDM5OTYiXQ",
+        "node": {
+          "id": "01a148bf-037b-762d-b90d-f561da8d3996",
+          "status": "FAILED",
+          "filename": "g003.pdf",
+          "carrier": "Quarry Lane Transport",
+          "number": "53704390",
+          "issuedOn": "2026-05-20",
+          "currency": "USD",
+          "totalCents": 280447,
+          "createdAt": "2026-10-17T07:24:00.251Z",
+          "openDiscrepancyCount": 0
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjI0OjAwLjA1OTkzNFoiLCIwMWExNDhiZi0wMmJjLTcwMWQtOGQxNS0yMWE4OGViYjQ2YjEiXQ",
+        "node": {
+          "id": "01a148bf-02bc-701d-8d15-21a88ebb46b1",
+          "status": "REJECTED",
+          "filename": "g089.pdf",
+          "carrier": "Halcyon Ridge Freight",
+          "number": "32985599",
+          "issuedOn": "2026-03-21",
+          "currency": "CAD",
+          "totalCents": 529150,
+          "createdAt": "2026-10-17T07:24:00.059Z",
+          "openDiscrepancyCount": 0
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjIzOjU5Ljg2OTQxMFoiLCIwMWExNDhiZi0wMWZkLTc3YzEtOWFkYy1kODk4ZDY1NmI2ZmEiXQ",
+        "node": {
+          "id": "01a148bf-01fd-77c1-9adc-d898d656b6fa",
+          "status": "RECONCILED",
+          "filename": "g087.pdf",
+          "carrier": "Nimbus Road Lines",
+          "number": "71628335",
+          "issuedOn": "2025-04-03",
+          "currency": "USD",
+          "totalCents": 384152,
+          "createdAt": "2026-10-17T07:23:59.869Z",
+          "openDiscrepancyCount": 0
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjIzOjU5LjY1NDI2OFoiLCIwMWExNDhiZi0wMTI2LTc1YjItODk4MS1mYmU4MDc2YmJjYzMiXQ",
+        "node": {
+          "id": "01a148bf-0126-75b2-8981-fbe8076bbcc3",
+          "status": "RECONCILED",
+          "filename": "g081.pdf",
+          "carrier": "Copperline Haulage",
+          "number": "CM803152",
+          "issuedOn": "2025-09-05",
+          "currency": "USD",
+          "totalCents": -213076,
+          "createdAt": "2026-10-17T07:23:59.654Z",
+          "openDiscrepancyCount": 0
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjIzOjU5LjQ2NzU5N1oiLCIwMWExNDhiZi0wMDZiLTdhZWMtYTc1Ni0yZjgzZmU2ZDYwZDYiXQ",
+        "node": {
+          "id": "01a148bf-006b-7aec-a756-2f83fe6d60d6",
+          "status": "RECONCILED",
+          "filename": "g066.pdf",
+          "carrier": "Bramblewood Express",
+          "number": "76644482",
+          "issuedOn": "2026-09-03",
+          "currency": "USD",
+          "totalCents": 712409,
+          "createdAt": "2026-10-17T07:23:59.467Z",
+          "openDiscrepancyCount": 1
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjIzOjU5LjI2NTA2NVoiLCIwMWExNDhiZS1mZmExLTcyODAtYjcyZi05ODIyZDc5OWZhZGMiXQ",
+        "node": {
+          "id": "01a148be-ffa1-7280-b72f-9822d799fadc",
+          "status": "RECONCILED",
+          "filename": "g069.pdf",
+          "carrier": "Tern & Tide Carriers",
+          "number": "96079756",
+          "issuedOn": "2025-09-18",
+          "currency": "USD",
+          "totalCents": 731456,
+          "createdAt": "2026-10-17T07:23:59.265Z",
+          "openDiscrepancyCount": 3
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjIzOjU5LjA3NDI2MFoiLCIwMWExNDhiZS1mZWUyLTc1NTEtOWVmZC1mNjFhNTYyM2E0MGEiXQ",
+        "node": {
+          "id": "01a148be-fee2-7551-9efd-f61a5623a40a",
+          "status": "RECONCILED",
+          "filename": "g056.pdf",
+          "carrier": "Quarry Lane Transport",
+          "number": "46879006",
+          "issuedOn": "2025-03-19",
+          "currency": "USD",
+          "totalCents": 674684,
+          "createdAt": "2026-10-17T07:23:59.074Z",
+          "openDiscrepancyCount": 1
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjIzOjU4Ljg4ODYyM1oiLCIwMWExNDhiZS1mZTI4LTdiNTUtODg4ZS05N2QyOWI3Mzg0NmEiXQ",
+        "node": {
+          "id": "01a148be-fe28-7b55-888e-97d29b73846a",
+          "status": "APPROVED",
+          "filename": "g055.pdf",
+          "carrier": "Bramblewood Express",
+          "number": "14835569",
+          "issuedOn": "2025-08-19",
+          "currency": "USD",
+          "totalCents": 71498,
+          "createdAt": "2026-10-17T07:23:58.888Z",
+          "openDiscrepancyCount": 0
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjIzOjU4LjY5MzYzM1oiLCIwMWExNDhiZS1mZDY1LTdjYTEtODUwYS01ODI0NGEwY2ZkZTAiXQ",
+        "node": {
+          "id": "01a148be-fd65-7ca1-850a-58244a0cfde0",
+          "status": "RECONCILED",
+          "filename": "g054.pdf",
+          "carrier": "Bramblewood Express",
+          "number": "47222915",
+          "issuedOn": "2025-12-15",
+          "currency": "USD",
+          "totalCents": 565930,
+          "createdAt": "2026-10-17T07:23:58.693Z",
+          "openDiscrepancyCount": 0
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjIyOjQ5LjEyMTMwNFoiLCIwMWExNDhiZC1lZGExLTdhNWYtYTc4Mi04ZWU2YWVlYzFiYmUiXQ",
+        "node": {
+          "id": "01a148bd-eda1-7a5f-a782-8ee6aeec1bbe",
+          "status": "RECONCILED",
+          "filename": "g002.pdf",
+          "carrier": "Bramblewood Express",
+          "number": "00926851",
+          "issuedOn": "2025-02-13",
+          "currency": "USD",
+          "totalCents": 227861,
+          "createdAt": "2026-10-17T07:22:49.121Z",
+          "openDiscrepancyCount": 0
+        }
+      }
+    ]
+  }
+}

@@ -1,11 +1,11 @@
 import { configError, LLM_SETTINGS, llmRoles, loadEnv } from '@freightaudit/config/env';
+import { createPool } from '@freightaudit/db';
 import { createLimits, createModels, hasPrice } from '@freightaudit/llm';
 import { createQueues, createStorage, observeQueues } from '@freightaudit/pipeline';
 import { readiness, serverOptions, shutdownTelemetry, tcpCheck } from '@freightaudit/telemetry';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import Fastify from 'fastify';
 import { Redis } from 'ioredis';
-import pg from 'pg';
 import { scheduleTmsSync, startWorkers } from './workers.ts';
 
 const env = loadEnv([
@@ -35,7 +35,7 @@ if (env.AI_ENABLED && problems.length + unpriced.length > 0) configError([...pro
 const app = Fastify(serverOptions(env.LOG_LEVEL));
 // Workers block on Redis, so BullMQ needs a connection that never gives up on a command by itself.
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
-const pool = new pg.Pool({ connectionString: env.DATABASE_URL });
+const pool = createPool(env.DATABASE_URL, (msg, fields) => app.log.warn(fields, msg));
 const queues = createQueues(redis, env.REDIS_PREFIX);
 observeQueues(queues);
 const limits = createLimits(redis, { prefix: env.REDIS_PREFIX, enabled: env.AI_ENABLED, dailyTokenBudget: env.DAILY_AI_TOKEN_BUDGET, roles });

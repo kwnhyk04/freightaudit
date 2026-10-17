@@ -4,7 +4,8 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
-    "./graphql": "./dist/generated/graphql-client/index.js"
+    "./graphql": "./dist/generated/graphql-client/graphql.js",
+    "./limits": "./dist/limits.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -13,7 +14,8 @@
     "contracts:check": "node scripts/check-generated.ts",
     "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
     "@graphql-typed-document-node/core": "^3.2.0",
@@ -27,8 +29,10 @@
     "@graphql-codegen/typescript": "^6.1.2",
     "@graphql-codegen/typescript-resolvers": "^6.1.1",
     "@graphql-eslint/eslint-plugin": "^4.4.1",
+    "@types/jest": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",
+    "jest": "catalog:",
     "openapi-typescript": "^7.13.0",
     "typescript": "catalog:"
   }

@@ -1,0 +1,656 @@
+/* FreightAudit: a calm, dense tool for accounts-payable review. Neutral surfaces, one ink-blue accent, and color only
+   for state, always beside its word. Contrast of every text token is checked against its surface (docs/memory.md). */
+:root {
+  color-scheme: light;
+  --canvas: #f6f7f9;
+  --surface: #ffffff;
+  --sunken: #f1f3f5;
+  --rule: #e3e6ea;
+  --rule-strong: #cfd4da;
+  --text: #16191d;
+  --text-2: #5b636e;
+  --text-3: #6b737d;
+  --accent: #2b4c7e;
+  --accent-hover: #213c65;
+  --accent-tint: #e8eef7;
+  --on-accent: #ffffff;
+  --ok: #1e6b3a;
+  --ok-tint: #e7f4ec;
+  --warn: #8a4b00;
+  --warn-tint: #fdf1dc;
+  --bad: #b42318;
+  --bad-tint: #fcebea;
+  --neutral-tint: #eef0f3;
+  --focus: 0 0 0 3px rgb(43 76 126 / 35%);
+  --radius: 6px;
+  --sans: var(--font-plex-sans), system-ui, sans-serif;
+  --mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --canvas: #121417;
+    --surface: #191c20;
+    --sunken: #15181b;
+    --rule: #2a2f36;
+    --rule-strong: #3a414a;
+    --text: #e6e8eb;
+    --text-2: #a3abb5;
+    --text-3: #8b939d;
+    --accent: #8fb0e6;
+    --accent-hover: #a9c3ee;
+    --accent-tint: #1e2a3d;
+    --on-accent: #0f1726;
+    --ok: #7bd39b;
+    --ok-tint: #13281c;
+    --warn: #f2b866;
+    --warn-tint: #2e2210;
+    --bad: #f59a8e;
+    --bad-tint: #331614;
+    --neutral-tint: #22272d;
+    --focus: 0 0 0 3px rgb(143 176 230 / 40%);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--text);
+  font: 400 14px/20px var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+  border-radius: 4px;
+}
+h1 {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  margin: 0;
+}
+h2 {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+p {
+  margin: 0;
+}
+.num {
+  font-variant-numeric: tabular-nums lining-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.id {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+}
+h1.id {
+  font-size: 18px;
+  letter-spacing: 0;
+}
+.muted {
+  color: var(--text-2);
+}
+.faint {
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.show-narrow {
+  display: none;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Shell: a quiet sidebar, the work on a wide canvas. */
+.shell {
+  display: grid;
+  grid-template-columns: 216px 1fr;
+  min-height: 100dvh;
+}
+.sidebar {
+  border-right: 1px solid var(--rule);
+  background: var(--surface);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+}
+.wordmark {
+  font-weight: 600;
+  font-size: 15px;
+  padding: 4px 8px 16px;
+  color: var(--text);
+}
+.wordmark span {
+  color: var(--text-3);
+  font-weight: 400;
+}
+.nav a {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  color: var(--text-2);
+}
+.nav a:hover {
+  background: var(--sunken);
+  color: var(--text);
+  text-decoration: none;
+}
+.nav a[aria-current='page'] {
+  background: var(--accent-tint);
+  color: var(--text);
+  font-weight: 500;
+}
+.sidebar-foot {
+  margin-top: auto;
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding: 8px;
+  border-top: 1px solid var(--rule);
+}
+.main {
+  min-width: 0;
+  padding: 20px 28px 48px;
+}
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+  min-height: 32px;
+}
+.banner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--warn-tint);
+  color: var(--warn);
+  border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+/* Controls. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--rule-strong);
+  background: var(--surface);
+  color: var(--text);
+  font: 500 13px/1 var(--sans);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.button:hover {
+  background: var(--sunken);
+  text-decoration: none;
+}
+.button:active {
+  transform: translateY(0.5px);
+}
+.button[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.button.primary:hover {
+  background: var(--accent-hover);
+}
+.button.danger {
+  color: var(--bad);
+}
+.button.small {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+input,
+select,
+textarea {
+  font: 400 14px/20px var(--sans);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  min-height: 32px;
+}
+/* The author color above outranks the browser's own disabled gray, so read-only fields say so here. */
+input:disabled,
+select:disabled {
+  background: var(--sunken);
+  color: var(--text-2);
+  cursor: not-allowed;
+}
+label {
+  display: grid;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+.form-error {
+  color: var(--bad);
+  font-size: 13px;
+}
+input[type='file'] {
+  padding: 3px;
+  max-width: 100%;
+}
+input[type='file']::file-selector-button {
+  height: 24px;
+  margin-right: 10px;
+  padding: 0 10px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  background: var(--sunken);
+  color: var(--text);
+  font: 500 12.5px/1 var(--sans);
+  cursor: pointer;
+}
+.decide input {
+  width: 180px;
+}
+/* In the queue a decision stays on one line; the evidence column gives way. */
+td .decide {
+  flex-wrap: nowrap;
+}
+td .decide input {
+  width: 150px;
+}
+
+/* Status: a tinted pill with its word and a dot, never color alone. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--neutral-tint);
+  color: var(--text-2);
+}
+.badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.badge.ok {
+  background: var(--ok-tint);
+  color: var(--ok);
+}
+.badge.warn {
+  background: var(--warn-tint);
+  color: var(--warn);
+}
+.badge.bad {
+  background: var(--bad-tint);
+  color: var(--bad);
+}
+.badge.busy::before {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .badge.busy::before {
+    animation: none;
+  }
+}
+
+/* Tabs as links: the filter lives in the URL. */
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 12px;
+  overflow-x: auto;
+}
+.tabs a {
+  padding: 8px 10px;
+  color: var(--text-2);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.tabs a:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+.tabs a[aria-current='page'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+
+/* Tables are the product: compact rows, a sticky header, numbers right-aligned. */
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  overflow: auto;
+  max-width: 100%;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+th {
+  position: sticky;
+  top: 0;
+  background: var(--sunken);
+  color: var(--text-2);
+  font-weight: 500;
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+tbody tr.link-row:hover {
+  background: var(--sunken);
+}
+tr.flagged td {
+  background: var(--bad-tint);
+}
+tr.flagged td:first-child {
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Empty and error states say what will appear and what to do next. */
+.empty {
+  padding: 40px 24px;
+  text-align: center;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  color: var(--text-2);
+}
+.empty strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.skeleton {
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--sunken), var(--rule), var(--sunken));
+  background-size: 200% 100%;
+}
+
+/* The review screen: the document beside what was read from it. */
+.review {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.doc {
+  position: sticky;
+  top: 16px;
+  background: var(--sunken);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  max-height: calc(100dvh - 32px);
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+.doc-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface);
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.doc-pages {
+  overflow: auto;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+.doc-pages canvas {
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+  max-width: 100%;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.panel.attention {
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--rule));
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+.panel.attention.bad {
+  border-color: color-mix(in srgb, var(--bad) 45%, var(--rule));
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+.findings article {
+  display: grid;
+  gap: 6px;
+}
+.findings article + article {
+  border-top: 1px solid var(--rule);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+}
+.facts dt {
+  color: var(--text-2);
+}
+.facts dd {
+  margin: 0;
+  min-width: 0;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.trail {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.trail li {
+  display: grid;
+  grid-template-columns: 156px 1fr;
+  gap: 12px;
+  font-size: 13px;
+}
+.trail time {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+dialog {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 20px;
+  width: min(440px, calc(100vw - 32px));
+  box-shadow: 0 12px 32px rgb(0 0 0 / 22%);
+}
+dialog::backdrop {
+  background: rgb(10 12 15 / 40%);
+}
+.drop {
+  max-width: 560px;
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 24px;
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+.drop.over {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.login {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.login form {
+  width: min(340px, 100%);
+  display: grid;
+  gap: 14px;
+}
+
+@media (max-width: 1023px) {
+  .review {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .doc {
+    position: static;
+    max-height: 70dvh;
+  }
+}
+@media (max-width: 720px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .wordmark {
+    padding: 4px 8px;
+  }
+  /* Phone: the wordmark and sign-out share the first line, the sections scroll on the second. */
+  .nav {
+    display: flex;
+    overflow-x: auto;
+    order: 2;
+    flex-basis: 100%;
+  }
+  .sidebar-foot {
+    margin: 0 0 0 auto;
+    padding: 0;
+    border-top: 0;
+    display: flex;
+    align-items: center;
+  }
+  .main {
+    padding: 16px;
+  }
+  .trail li {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  /* Phone: tables drop secondary columns and tighten, so the amounts stay in view. */
+  .hide-narrow {
+    display: none;
+  }
+  .show-narrow {
+    display: block;
+  }
+  th,
+  td {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .decide input {
+    flex: 1 1 100%;
+  }
+  td .decide input {
+    flex: none;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

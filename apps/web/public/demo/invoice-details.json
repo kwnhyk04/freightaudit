@@ -1,0 +1,2197 @@
+{
+  "01a148bd-eda1-7a5f-a782-8ee6aeec1bbe": {
+    "carriers": [
+      {
+        "id": "8c786010-a58e-436c-8314-2ecadc2e8ce5",
+        "name": "Bramblewood Express"
+      },
+      {
+        "id": "d5482c1f-c30d-4bbc-b151-d95145bae71b",
+        "name": "Copperline Haulage"
+      },
+      {
+        "id": "21ffc41a-7170-4e4a-9488-2fcfe9e13056",
+        "name": "Halcyon Ridge Freight"
+      },
+      {
+        "id": "d8831eea-55be-4eca-912e-901a028ba3b3",
+        "name": "Nimbus Road Lines"
+      },
+      {
+        "id": "3ac3b5aa-81d5-4209-aa08-3a2b6e251ee4",
+        "name": "Quarry Lane Transport"
+      },
+      {
+        "id": "36dd0863-15f5-48b5-bff4-74409804e327",
+        "name": "Tern & Tide Carriers"
+      }
+    ],
+    "invoice": {
+      "id": "01a148bd-eda1-7a5f-a782-8ee6aeec1bbe",
+      "status": "RECONCILED",
+      "failureReason": null,
+      "filename": "g002.pdf",
+      "contentHash": "dfcfa08afacf320371a6e781e4867fdc73d9779f7393828f0b91e1dd97dca1c8",
+      "carrier": "Bramblewood Express",
+      "number": "00926851",
+      "proNumber": "1003809039",
+      "issuedOn": "2025-02-13",
+      "currency": "USD",
+      "totalCents": 227861,
+      "createdAt": "2026-10-17T07:22:49.121Z",
+      "reviewReason": null,
+      "deadLetter": null,
+      "openDiscrepancyCount": 0,
+      "extraction": {
+        "id": "01a148bd-f3e0-7973-9602-3eaa6739d54c",
+        "model": "groq/openai/gpt-oss-120b",
+        "step": "first_pass",
+        "carrierRead": "BRAMBLEWOOD EXPRESS",
+        "carrierMatch": "NORMALIZED",
+        "problems": [],
+        "extractedAt": "2026-10-17T07:22:50.716Z",
+        "lines": [
+          {
+            "lineNumber": 1,
+            "description": "LINEHAUL",
+            "chargeCode": "LINEHAUL",
+            "amountCents": 192580
+          },
+          {
+            "lineNumber": 2,
+            "description": "FUEL SURCHARGE",
+            "chargeCode": "FUEL",
+            "amountCents": 35281
+          }
+        ]
+      },
+      "lineItems": [
+        {
+          "id": "01a148bd-f402-7364-a642-9d438af32c84",
+          "lineNumber": 1,
+          "description": "LINEHAUL",
+          "chargeCode": "LINEHAUL",
+          "amountCents": 192580
+        },
+        {
+          "id": "01a148bd-f402-74f1-aa33-b772dec00848",
+          "lineNumber": 2,
+          "description": "FUEL SURCHARGE",
+          "chargeCode": "FUEL",
+          "amountCents": 35281
+        }
+      ],
+      "auditTrail": [
+        {
+          "id": "received-01a148bd-eda1-7a5f-a782-8ee6aeec1bbe",
+          "at": "2026-10-17T07:22:49.121Z",
+          "actor": null,
+          "action": "RECEIVED",
+          "detail": "g002.pdf",
+          "changes": []
+        },
+        {
+          "id": "01a148bd-edca-7805-9fc1-9690a156eedc",
+          "at": "2026-10-17T07:22:49.154Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "received",
+              "to": "extracting"
+            }
+          ]
+        },
+        {
+          "id": "01a148bd-f3e2-759d-a708-304e38126698",
+          "at": "2026-10-17T07:22:50.716Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "normalized",
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracting",
+              "to": "extracted"
+            },
+            {
+              "field": "carrier",
+              "from": "BRAMBLEWOOD EXPRESS",
+              "to": "Bramblewood Express"
+            }
+          ]
+        },
+        {
+          "id": "01a148bd-f3ed-720d-b154-62cf36caf178",
+          "at": "2026-10-17T07:22:50.732Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracted",
+              "to": "reconciling"
+            }
+          ]
+        },
+        {
+          "id": "01a148bd-f404-7740-a492-21400cfb16c9",
+          "at": "2026-10-17T07:22:50.735Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciling",
+              "to": "reconciled"
+            }
+          ]
+        }
+      ],
+      "discrepancies": {
+        "edges": [],
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        }
+      },
+      "rateCardVersion": {
+        "id": "ebc42ccf-65c5-4ed6-acc1-e8d5e60e15ff",
+        "version": 1,
+        "effectiveFrom": "2025-01-01",
+        "effectiveTo": "2026-01-01"
+      },
+      "shipment": {
+        "id": "afdfdd98-6d20-4f0f-9b5b-d3cc30331b6e",
+        "reference": "SHP-000482",
+        "carrier": "Bramblewood Express",
+        "origin": "Hintzhaven, KS",
+        "destination": "South Keeganstead, WA",
+        "shippedOn": "2025-02-10"
+      }
+    }
+  },
+  "01a148be-fd65-7ca1-850a-58244a0cfde0": {
+    "carriers": [
+      {
+        "id": "8c786010-a58e-436c-8314-2ecadc2e8ce5",
+        "name": "Bramblewood Express"
+      },
+      {
+        "id": "d5482c1f-c30d-4bbc-b151-d95145bae71b",
+        "name": "Copperline Haulage"
+      },
+      {
+        "id": "21ffc41a-7170-4e4a-9488-2fcfe9e13056",
+        "name": "Halcyon Ridge Freight"
+      },
+      {
+        "id": "d8831eea-55be-4eca-912e-901a028ba3b3",
+        "name": "Nimbus Road Lines"
+      },
+      {
+        "id": "3ac3b5aa-81d5-4209-aa08-3a2b6e251ee4",
+        "name": "Quarry Lane Transport"
+      },
+      {
+        "id": "36dd0863-15f5-48b5-bff4-74409804e327",
+        "name": "Tern & Tide Carriers"
+      }
+    ],
+    "invoice": {
+      "id": "01a148be-fd65-7ca1-850a-58244a0cfde0",
+      "status": "RECONCILED",
+      "failureReason": null,
+      "filename": "g054.pdf",
+      "contentHash": "710468015d4890d977f3329207f1759486a669f70c2e042f726a2fc003786ee1",
+      "carrier": "Bramblewood Express",
+      "number": "47222915",
+      "proNumber": "1035287064",
+      "issuedOn": "2025-12-15",
+      "currency": "USD",
+      "totalCents": 565930,
+      "createdAt": "2026-10-17T07:23:58.693Z",
+      "reviewReason": null,
+      "deadLetter": null,
+      "extraction": {
+        "id": "01a148bf-0271-74d3-8b45-bbe534a3b1cd",
+        "model": "groq/openai/gpt-oss-120b",
+        "step": "first_pass",
+        "carrierRead": "Bramblewood Express",
+        "carrierMatch": "EXACT",
+        "problems": [],
+        "extractedAt": "2026-10-17T07:23:59.982Z",
+        "lines": [
+          {
+            "lineNumber": 1,
+            "description": "Linehaul",
+            "chargeCode": "LINEHAUL",
+            "amountCents": 469580
+          },
+          {
+            "lineNumber": 2,
+            "description": "Fuel surcharge",
+            "chargeCode": "FUEL",
+            "amountCents": 96350
+          }
+        ]
+      },
+      "lineItems": [
+        {
+          "id": "01a148bf-028e-7ca5-8ea5-134c1af33fad",
+          "lineNumber": 1,
+          "description": "Linehaul",
+          "chargeCode": "LINEHAUL",
+          "amountCents": 469580
+        },
+        {
+          "id": "01a148bf-028e-7e78-99e3-dfaf556421fb",
+          "lineNumber": 2,
+          "description": "Fuel surcharge",
+          "chargeCode": "FUEL",
+          "amountCents": 96350
+        }
+      ],
+      "auditTrail": [
+        {
+          "id": "received-01a148be-fd65-7ca1-850a-58244a0cfde0",
+          "at": "2026-10-17T07:23:58.693Z",
+          "actor": null,
+          "action": "RECEIVED",
+          "detail": "g054.pdf",
+          "changes": []
+        },
+        {
+          "id": "01a148be-fd82-705d-9a03-ee6993eaa9b5",
+          "at": "2026-10-17T07:23:58.716Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "received",
+              "to": "extracting"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-0273-7203-a0f3-89f246a4b6a6",
+          "at": "2026-10-17T07:23:59.982Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "exact",
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracting",
+              "to": "extracted"
+            },
+            {
+              "field": "carrier",
+              "from": "Bramblewood Express",
+              "to": "Bramblewood Express"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-027b-7cfc-bd66-dab1ee714623",
+          "at": "2026-10-17T07:23:59.995Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracted",
+              "to": "reconciling"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-0293-70df-a53b-bb276c79381b",
+          "at": "2026-10-17T07:23:59.998Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciling",
+              "to": "reconciled"
+            }
+          ]
+        },
+        {
+          "id": "01a148c1-530e-7fbe-9b22-a6121d156a64",
+          "at": "2026-10-17T07:26:31.688Z",
+          "actor": "reviewer",
+          "action": "DISCREPANCY_CONFIRMED",
+          "detail": "Fuel billed above the contracted rate; disputed with the carrier.",
+          "changes": [
+            {
+              "field": "status",
+              "from": "open",
+              "to": "confirmed"
+            }
+          ]
+        }
+      ],
+      "openDiscrepancyCount": 0,
+      "shipment": {
+        "id": "4627df32-261d-4463-a307-d326e56e7937",
+        "reference": "SHP-004457",
+        "carrier": "Bramblewood Express",
+        "origin": "Newark, VA",
+        "destination": "North Reagan, NJ",
+        "shippedOn": "2025-12-13"
+      },
+      "rateCardVersion": {
+        "id": "ebc42ccf-65c5-4ed6-acc1-e8d5e60e15ff",
+        "version": 1,
+        "effectiveFrom": "2025-01-01",
+        "effectiveTo": "2026-01-01"
+      },
+      "discrepancies": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": "WyIyMDI2LTEwLTE3VDA3OjIzOjU5Ljk5ODQyNFoiLCIwMWExNDhiZi0wMjkwLTdiZTUtYTA1OS1kYTNkNGZiMTQyYmEiXQ"
+        },
+        "edges": [
+          {
+            "node": {
+              "id": "01a148bf-0290-7be5-a059-da3d4fb142ba",
+              "type": "RATE_MISMATCH",
+              "status": "CONFIRMED",
+              "expectedCents": 86027,
+              "billedCents": 96350,
+              "evidence": "Rate card version 1 sets FUEL at $860.27; billed $963.50.",
+              "note": "Fuel billed above the contracted rate; disputed with the carrier.",
+              "resolvedAt": "2026-10-17T07:26:31.688Z",
+              "lineItem": {
+                "id": "01a148bf-028e-7e78-99e3-dfaf556421fb",
+                "lineNumber": 2
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "01a148be-fe28-7b55-888e-97d29b73846a": {
+    "carriers": [
+      {
+        "id": "8c786010-a58e-436c-8314-2ecadc2e8ce5",
+        "name": "Bramblewood Express"
+      },
+      {
+        "id": "d5482c1f-c30d-4bbc-b151-d95145bae71b",
+        "name": "Copperline Haulage"
+      },
+      {
+        "id": "21ffc41a-7170-4e4a-9488-2fcfe9e13056",
+        "name": "Halcyon Ridge Freight"
+      },
+      {
+        "id": "d8831eea-55be-4eca-912e-901a028ba3b3",
+        "name": "Nimbus Road Lines"
+      },
+      {
+        "id": "3ac3b5aa-81d5-4209-aa08-3a2b6e251ee4",
+        "name": "Quarry Lane Transport"
+      },
+      {
+        "id": "36dd0863-15f5-48b5-bff4-74409804e327",
+        "name": "Tern & Tide Carriers"
+      }
+    ],
+    "invoice": {
+      "id": "01a148be-fe28-7b55-888e-97d29b73846a",
+      "status": "APPROVED",
+      "failureReason": null,
+      "filename": "g055.pdf",
+      "contentHash": "f2a8dcbf39cf6d7468275cc0546d4ce881e69ddbd0f1cfb31f914e0b01da7b21",
+      "carrier": "Bramblewood Express",
+      "number": "14835569",
+      "proNumber": "1013240568",
+      "issuedOn": "2025-08-19",
+      "currency": "USD",
+      "totalCents": 71498,
+      "createdAt": "2026-10-17T07:23:58.888Z",
+      "reviewReason": null,
+      "deadLetter": null,
+      "extraction": {
+        "id": "01a148bf-4ad2-7d60-9e37-2abe652dc0e5",
+        "model": "groq/openai/gpt-oss-120b",
+        "step": "first_pass",
+        "carrierRead": "Bramblewood Express",
+        "carrierMatch": "EXACT",
+        "problems": [],
+        "extractedAt": "2026-10-17T07:24:18.512Z",
+        "lines": [
+          {
+            "lineNumber": 1,
+            "description": "Linehaul",
+            "chargeCode": "LINEHAUL",
+            "amountCents": 31898
+          },
+          {
+            "lineNumber": 2,
+            "description": "Fuel surcharge",
+            "chargeCode": "FUEL",
+            "amountCents": 5844
+          },
+          {
+            "lineNumber": 3,
+            "description": "Detention",
+            "chargeCode": "DETENTION",
+            "amountCents": 8090
+          },
+          {
+            "lineNumber": 4,
+            "description": "Liftgate service",
+            "chargeCode": "LIFTGATE",
+            "amountCents": 12726
+          },
+          {
+            "lineNumber": 5,
+            "description": "Inside delivery",
+            "chargeCode": "INSIDE_DELIVERY",
+            "amountCents": 12940
+          }
+        ]
+      },
+      "lineItems": [
+        {
+          "id": "01a148bf-4aee-766c-98d2-49bde281e54b",
+          "lineNumber": 1,
+          "description": "Linehaul",
+          "chargeCode": "LINEHAUL",
+          "amountCents": 31898
+        },
+        {
+          "id": "01a148bf-4aee-7812-a463-cc3693e6f819",
+          "lineNumber": 2,
+          "description": "Fuel surcharge",
+          "chargeCode": "FUEL",
+          "amountCents": 5844
+        },
+        {
+          "id": "01a148bf-4aee-7836-9e23-f4184e4f3a59",
+          "lineNumber": 3,
+          "description": "Detention",
+          "chargeCode": "DETENTION",
+          "amountCents": 8090
+        },
+        {
+          "id": "01a148bf-4aee-784d-b982-94a3b2e5b82e",
+          "lineNumber": 4,
+          "description": "Liftgate service",
+          "chargeCode": "LIFTGATE",
+          "amountCents": 12726
+        },
+        {
+          "id": "01a148bf-4aee-7861-a9ae-ec6f4ca6ab18",
+          "lineNumber": 5,
+          "description": "Inside delivery",
+          "chargeCode": "INSIDE_DELIVERY",
+          "amountCents": 12940
+        }
+      ],
+      "auditTrail": [
+        {
+          "id": "received-01a148be-fe28-7b55-888e-97d29b73846a",
+          "at": "2026-10-17T07:23:58.888Z",
+          "actor": null,
+          "action": "RECEIVED",
+          "detail": "g055.pdf",
+          "changes": []
+        },
+        {
+          "id": "01a148be-fe31-7473-b6e7-14732c0cd9d3",
+          "at": "2026-10-17T07:23:58.896Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "received",
+              "to": "extracting"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-4ad7-7c9a-b356-3debcddf8e60",
+          "at": "2026-10-17T07:24:18.512Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "exact",
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracting",
+              "to": "extracted"
+            },
+            {
+              "field": "carrier",
+              "from": "Bramblewood Express",
+              "to": "Bramblewood Express"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-4adf-73ee-8511-ea79745a4f6d",
+          "at": "2026-10-17T07:24:18.526Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracted",
+              "to": "reconciling"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-4af2-76b7-80d9-d40e46340b10",
+          "at": "2026-10-17T07:24:18.529Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciling",
+              "to": "reconciled"
+            }
+          ]
+        },
+        {
+          "id": "01a148c1-be87-7435-b22a-00154cbb5897",
+          "at": "2026-10-17T07:26:59.202Z",
+          "actor": "reviewer",
+          "action": "DISCREPANCY_DISMISSED",
+          "detail": "Inside delivery was requested by the consignee; accepted.",
+          "changes": [
+            {
+              "field": "status",
+              "from": "open",
+              "to": "dismissed"
+            }
+          ]
+        },
+        {
+          "id": "01a148c2-0558-723c-a72b-0a37b84b1e1b",
+          "at": "2026-10-17T07:27:17.324Z",
+          "actor": "reviewer",
+          "action": "APPROVED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciled",
+              "to": "approved"
+            }
+          ]
+        }
+      ],
+      "openDiscrepancyCount": 0,
+      "rateCardVersion": {
+        "id": "ebc42ccf-65c5-4ed6-acc1-e8d5e60e15ff",
+        "version": 1,
+        "effectiveFrom": "2025-01-01",
+        "effectiveTo": "2026-01-01"
+      },
+      "shipment": {
+        "id": "493c7ef6-2846-4677-9a04-2bdbf17e5c8f",
+        "reference": "SHP-001673",
+        "carrier": "Bramblewood Express",
+        "origin": "East Lambertfort, MI",
+        "destination": "Visalia, OH",
+        "shippedOn": "2025-08-11"
+      },
+      "discrepancies": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": "WyIyMDI2LTEwLTE3VDA3OjI0OjE4LjUyOTk5OVoiLCIwMWExNDhiZi00YWYwLTc4NjctOWViMC1iZGI2MGMzZWNiMGYiXQ"
+        },
+        "edges": [
+          {
+            "node": {
+              "id": "01a148bf-4af0-7867-9eb0-bdb60c3ecb0f",
+              "type": "UNCONTRACTED_CHARGE",
+              "status": "DISMISSED",
+              "expectedCents": 0,
+              "billedCents": 12940,
+              "evidence": "INSIDE_DELIVERY is not on rate card version 1.",
+              "note": "Inside delivery was requested by the consignee; accepted.",
+              "resolvedAt": "2026-10-17T07:26:59.202Z",
+              "lineItem": {
+                "id": "01a148bf-4aee-7861-a9ae-ec6f4ca6ab18",
+                "lineNumber": 5
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "01a148be-fee2-7551-9efd-f61a5623a40a": {
+    "carriers": [
+      {
+        "id": "8c786010-a58e-436c-8314-2ecadc2e8ce5",
+        "name": "Bramblewood Express"
+      },
+      {
+        "id": "d5482c1f-c30d-4bbc-b151-d95145bae71b",
+        "name": "Copperline Haulage"
+      },
+      {
+        "id": "21ffc41a-7170-4e4a-9488-2fcfe9e13056",
+        "name": "Halcyon Ridge Freight"
+      },
+      {
+        "id": "d8831eea-55be-4eca-912e-901a028ba3b3",
+        "name": "Nimbus Road Lines"
+      },
+      {
+        "id": "3ac3b5aa-81d5-4209-aa08-3a2b6e251ee4",
+        "name": "Quarry Lane Transport"
+      },
+      {
+        "id": "36dd0863-15f5-48b5-bff4-74409804e327",
+        "name": "Tern & Tide Carriers"
+      }
+    ],
+    "invoice": {
+      "id": "01a148be-fee2-7551-9efd-f61a5623a40a",
+      "status": "RECONCILED",
+      "failureReason": null,
+      "filename": "g056.pdf",
+      "contentHash": "6d4f3f3382b86a487207aae0e5af9c57bcd6a46e119052e7709695341c663efa",
+      "carrier": "Quarry Lane Transport",
+      "number": "46879006",
+      "proNumber": "1001639233",
+      "issuedOn": "2025-03-19",
+      "currency": "USD",
+      "totalCents": 674684,
+      "createdAt": "2026-10-17T07:23:59.074Z",
+      "reviewReason": null,
+      "deadLetter": null,
+      "lineItems": [
+        {
+          "id": "01a148bf-be3e-7c84-8439-1d7a40bc1c9a",
+          "lineNumber": 1,
+          "description": "LINEHAUL",
+          "chargeCode": "LINEHAUL",
+          "amountCents": 488500
+        },
+        {
+          "id": "01a148bf-be3e-7dfc-b8da-9f4f42b2338a",
+          "lineNumber": 2,
+          "description": "FUEL SURCHARGE",
+          "chargeCode": "FUEL",
+          "amountCents": 147087
+        },
+        {
+          "id": "01a148bf-be3e-7e20-9903-88999f649bdf",
+          "lineNumber": 3,
+          "description": "DELIVERY APPOINTMENT",
+          "chargeCode": "APPOINTMENT",
+          "amountCents": 5989
+        },
+        {
+          "id": "01a148bf-be3e-7e37-8833-f5d07c45d7c0",
+          "lineNumber": 4,
+          "description": "INSIDE DELIVERY",
+          "chargeCode": "INSIDE_DELIVERY",
+          "amountCents": 15554
+        },
+        {
+          "id": "01a148bf-be3e-7e4b-a8d1-a039a617e110",
+          "lineNumber": 5,
+          "description": "DETENTION",
+          "chargeCode": "DETENTION",
+          "amountCents": 11565
+        },
+        {
+          "id": "01a148bf-be3e-7e66-95e3-9bce73c8de20",
+          "lineNumber": 6,
+          "description": "DELIVERY APPOINTMENT",
+          "chargeCode": "APPOINTMENT",
+          "amountCents": 5989
+        }
+      ],
+      "extraction": {
+        "id": "01a148bf-be23-7230-9bd6-67b4b15d0b7b",
+        "model": "groq/openai/gpt-oss-120b",
+        "step": "first_pass",
+        "carrierRead": "QUARRY LANE TRANSPORT",
+        "carrierMatch": "NORMALIZED",
+        "problems": [],
+        "extractedAt": "2026-10-17T07:24:48.032Z",
+        "lines": [
+          {
+            "lineNumber": 1,
+            "description": "LINEHAUL",
+            "chargeCode": "LINEHAUL",
+            "amountCents": 488500
+          },
+          {
+            "lineNumber": 2,
+            "description": "FUEL SURCHARGE",
+            "chargeCode": "FUEL",
+            "amountCents": 147087
+          },
+          {
+            "lineNumber": 3,
+            "description": "DELIVERY APPOINTMENT",
+            "chargeCode": "APPOINTMENT",
+            "amountCents": 5989
+          },
+          {
+            "lineNumber": 4,
+            "description": "INSIDE DELIVERY",
+            "chargeCode": "INSIDE_DELIVERY",
+            "amountCents": 15554
+          },
+          {
+            "lineNumber": 5,
+            "description": "DETENTION",
+            "chargeCode": "DETENTION",
+            "amountCents": 11565
+          },
+          {
+            "lineNumber": 6,
+            "description": "DELIVERY APPOINTMENT",
+            "chargeCode": "APPOINTMENT",
+            "amountCents": 5989
+          }
+        ]
+      },
+      "auditTrail": [
+        {
+          "id": "received-01a148be-fee2-7551-9efd-f61a5623a40a",
+          "at": "2026-10-17T07:23:59.074Z",
+          "actor": null,
+          "action": "RECEIVED",
+          "detail": "g056.pdf",
+          "changes": []
+        },
+        {
+          "id": "01a148be-fee9-7785-ba8b-82e063205f8b",
+          "at": "2026-10-17T07:23:59.081Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "received",
+              "to": "extracting"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-be28-767f-987b-f8dd7b264c72",
+          "at": "2026-10-17T07:24:48.032Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "normalized",
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracting",
+              "to": "extracted"
+            },
+            {
+              "field": "carrier",
+              "from": "QUARRY LANE TRANSPORT",
+              "to": "Quarry Lane Transport"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-be30-7333-9fb9-f83dbf516f9a",
+          "at": "2026-10-17T07:24:48.047Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracted",
+              "to": "reconciling"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-be42-77f9-915d-c94475c5468d",
+          "at": "2026-10-17T07:24:48.050Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciling",
+              "to": "reconciled"
+            }
+          ]
+        }
+      ],
+      "openDiscrepancyCount": 1,
+      "shipment": {
+        "id": "857a798b-b8ad-466c-a91e-0bcf09651971",
+        "reference": "SHP-000208",
+        "carrier": "Quarry Lane Transport",
+        "origin": "Wildermanhaven, IA",
+        "destination": "South Leolafort, MT",
+        "shippedOn": "2025-03-17"
+      },
+      "rateCardVersion": {
+        "id": "fd372f93-a951-4a8c-a8d8-8e620c9b3205",
+        "version": 1,
+        "effectiveFrom": "2025-01-01",
+        "effectiveTo": "2026-01-01"
+      },
+      "discrepancies": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": "WyIyMDI2LTEwLTE3VDA3OjI0OjQ4LjA1MDY4NloiLCIwMWExNDhiZi1iZTQwLTdjNmEtYjEzZC0zY2JiMjY3YjliNzQiXQ"
+        },
+        "edges": [
+          {
+            "node": {
+              "id": "01a148bf-be40-7c6a-b13d-3cbb267b9b74",
+              "type": "DUPLICATE_CHARGE",
+              "status": "OPEN",
+              "expectedCents": 0,
+              "billedCents": 5989,
+              "evidence": "APPOINTMENT is billed twice.",
+              "note": null,
+              "resolvedAt": null,
+              "lineItem": {
+                "id": "01a148bf-be3e-7e66-95e3-9bce73c8de20",
+                "lineNumber": 6
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "01a148be-ffa1-7280-b72f-9822d799fadc": {
+    "carriers": [
+      {
+        "id": "8c786010-a58e-436c-8314-2ecadc2e8ce5",
+        "name": "Bramblewood Express"
+      },
+      {
+        "id": "d5482c1f-c30d-4bbc-b151-d95145bae71b",
+        "name": "Copperline Haulage"
+      },
+      {
+        "id": "21ffc41a-7170-4e4a-9488-2fcfe9e13056",
+        "name": "Halcyon Ridge Freight"
+      },
+      {
+        "id": "d8831eea-55be-4eca-912e-901a028ba3b3",
+        "name": "Nimbus Road Lines"
+      },
+      {
+        "id": "3ac3b5aa-81d5-4209-aa08-3a2b6e251ee4",
+        "name": "Quarry Lane Transport"
+      },
+      {
+        "id": "36dd0863-15f5-48b5-bff4-74409804e327",
+        "name": "Tern & Tide Carriers"
+      }
+    ],
+    "invoice": {
+      "id": "01a148be-ffa1-7280-b72f-9822d799fadc",
+      "status": "RECONCILED",
+      "failureReason": null,
+      "filename": "g069.pdf",
+      "contentHash": "3e46cf69463ec8f717513d994a69b0f158873400340c07f158d609bcfd4427b8",
+      "carrier": "Tern & Tide Carriers",
+      "number": "96079756",
+      "proNumber": "1010041292",
+      "issuedOn": "2025-09-18",
+      "currency": "USD",
+      "totalCents": 731456,
+      "createdAt": "2026-10-17T07:23:59.265Z",
+      "reviewReason": null,
+      "deadLetter": null,
+      "openDiscrepancyCount": 3,
+      "extraction": {
+        "id": "01a148c0-0520-78bc-9047-fab54fec2062",
+        "model": "groq/openai/gpt-oss-120b",
+        "step": "first_pass",
+        "carrierRead": "Tern & Tide Carriers",
+        "carrierMatch": "EXACT",
+        "problems": [],
+        "extractedAt": "2026-10-17T07:25:06.206Z",
+        "lines": [
+          {
+            "lineNumber": 1,
+            "description": "Linehaul",
+            "chargeCode": "LINEHAUL",
+            "amountCents": 552206
+          },
+          {
+            "lineNumber": 2,
+            "description": "Fuel surcharge",
+            "chargeCode": "FUEL",
+            "amountCents": 169472
+          },
+          {
+            "lineNumber": 3,
+            "description": "Residential delivery",
+            "chargeCode": "RESIDENTIAL",
+            "amountCents": 9778
+          }
+        ]
+      },
+      "rateCardVersion": {
+        "id": "11ab9f54-d3f0-4f0e-b8f1-8f8ab7a9e04f",
+        "version": 1,
+        "effectiveFrom": "2025-01-01",
+        "effectiveTo": "2026-01-01"
+      },
+      "auditTrail": [
+        {
+          "id": "received-01a148be-ffa1-7280-b72f-9822d799fadc",
+          "at": "2026-10-17T07:23:59.265Z",
+          "actor": null,
+          "action": "RECEIVED",
+          "detail": "g069.pdf",
+          "changes": []
+        },
+        {
+          "id": "01a148be-ffa9-7fee-8ee9-07a4efdb493c",
+          "at": "2026-10-17T07:23:59.273Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "received",
+              "to": "extracting"
+            }
+          ]
+        },
+        {
+          "id": "01a148c0-0526-719b-b756-81593149202f",
+          "at": "2026-10-17T07:25:06.206Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "exact",
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracting",
+              "to": "extracted"
+            },
+            {
+              "field": "carrier",
+              "from": "Tern & Tide Carriers",
+              "to": "Tern & Tide Carriers"
+            }
+          ]
+        },
+        {
+          "id": "01a148c0-052f-7487-99f4-9f812bb24c2e",
+          "at": "2026-10-17T07:25:06.222Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracted",
+              "to": "reconciling"
+            }
+          ]
+        },
+        {
+          "id": "01a148c0-0541-771c-8823-6235da19a149",
+          "at": "2026-10-17T07:25:06.225Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciling",
+              "to": "reconciled"
+            }
+          ]
+        }
+      ],
+      "lineItems": [
+        {
+          "id": "01a148c0-053d-795b-98a6-23670488ec29",
+          "lineNumber": 1,
+          "description": "Linehaul",
+          "chargeCode": "LINEHAUL",
+          "amountCents": 552206
+        },
+        {
+          "id": "01a148c0-053d-7a8b-9b02-75fca4857984",
+          "lineNumber": 2,
+          "description": "Fuel surcharge",
+          "chargeCode": "FUEL",
+          "amountCents": 169472
+        },
+        {
+          "id": "01a148c0-053d-7ca9-bd3d-55d3d4c9bddd",
+          "lineNumber": 3,
+          "description": "Residential delivery",
+          "chargeCode": "RESIDENTIAL",
+          "amountCents": 9778
+        }
+      ],
+      "shipment": {
+        "id": "3636df92-6953-4373-a3dc-0580a6645dce",
+        "reference": "SHP-001269",
+        "carrier": "Tern & Tide Carriers",
+        "origin": "Lake Hermann, DE",
+        "destination": "Norman, UT",
+        "shippedOn": "2025-08-10"
+      },
+      "discrepancies": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": "WyIyMDI2LTEwLTE3VDA3OjI1OjA2LjIyNTgyMFoiLCIwMWExNDhjMC0wNTNmLTc2MjctYTg3Ni0yNTBkMzYzZDI5MjEiXQ"
+        },
+        "edges": [
+          {
+            "node": {
+              "id": "01a148c0-053f-7aa6-9359-455f0f50d1ab",
+              "type": "DUPLICATE_CHARGE",
+              "status": "OPEN",
+              "expectedCents": 0,
+              "billedCents": 9778,
+              "evidence": "RESIDENTIAL is billed twice.",
+              "note": null,
+              "resolvedAt": null,
+              "lineItem": {
+                "id": "01a148c0-053d-7ca9-bd3d-55d3d4c9bddd",
+                "lineNumber": 3
+              }
+            }
+          },
+          {
+            "node": {
+              "id": "01a148c0-053f-7a78-a295-acb151529aa2",
+              "type": "DUPLICATE_CHARGE",
+              "status": "OPEN",
+              "expectedCents": 0,
+              "billedCents": 169472,
+              "evidence": "FUEL is billed twice.",
+              "note": null,
+              "resolvedAt": null,
+              "lineItem": {
+                "id": "01a148c0-053d-7a8b-9b02-75fca4857984",
+                "lineNumber": 2
+              }
+            }
+          },
+          {
+            "node": {
+              "id": "01a148c0-053f-7627-a876-250d363d2921",
+              "type": "DUPLICATE_CHARGE",
+              "status": "OPEN",
+              "expectedCents": 0,
+              "billedCents": 552206,
+              "evidence": "LINEHAUL is billed twice.",
+              "note": null,
+              "resolvedAt": null,
+              "lineItem": {
+                "id": "01a148c0-053d-795b-98a6-23670488ec29",
+                "lineNumber": 1
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "01a148bf-006b-7aec-a756-2f83fe6d60d6": {
+    "carriers": [
+      {
+        "id": "8c786010-a58e-436c-8314-2ecadc2e8ce5",
+        "name": "Bramblewood Express"
+      },
+      {
+        "id": "d5482c1f-c30d-4bbc-b151-d95145bae71b",
+        "name": "Copperline Haulage"
+      },
+      {
+        "id": "21ffc41a-7170-4e4a-9488-2fcfe9e13056",
+        "name": "Halcyon Ridge Freight"
+      },
+      {
+        "id": "d8831eea-55be-4eca-912e-901a028ba3b3",
+        "name": "Nimbus Road Lines"
+      },
+      {
+        "id": "3ac3b5aa-81d5-4209-aa08-3a2b6e251ee4",
+        "name": "Quarry Lane Transport"
+      },
+      {
+        "id": "36dd0863-15f5-48b5-bff4-74409804e327",
+        "name": "Tern & Tide Carriers"
+      }
+    ],
+    "invoice": {
+      "id": "01a148bf-006b-7aec-a756-2f83fe6d60d6",
+      "status": "RECONCILED",
+      "failureReason": null,
+      "filename": "g066.pdf",
+      "contentHash": "610998efaf63a2dc0a8615e3abb11b3e2f3b3feeb4beb0abdab1fa5553f7f68f",
+      "carrier": "Bramblewood Express",
+      "number": "76644482",
+      "proNumber": "1003262628",
+      "issuedOn": "2026-09-03",
+      "currency": "USD",
+      "totalCents": 712409,
+      "createdAt": "2026-10-17T07:23:59.467Z",
+      "reviewReason": null,
+      "deadLetter": null,
+      "openDiscrepancyCount": 1,
+      "lineItems": [
+        {
+          "id": "01a148bf-0d93-7d71-bcc2-0789c1d5dd4f",
+          "lineNumber": 1,
+          "description": "Linehaul",
+          "chargeCode": "LINEHAUL",
+          "amountCents": 614514
+        },
+        {
+          "id": "01a148bf-0d93-7e15-b3f4-028e721c3cf8",
+          "lineNumber": 2,
+          "description": "Fuel surcharge",
+          "chargeCode": "FUEL",
+          "amountCents": 97895
+        }
+      ],
+      "extraction": {
+        "id": "01a148bf-0d7c-79bc-bcbc-6f22071be6f3",
+        "model": "gemini/gemini-3.5-flash-lite",
+        "step": "first_pass",
+        "carrierRead": "Bramblewood Express",
+        "carrierMatch": "EXACT",
+        "problems": [],
+        "extractedAt": "2026-10-17T07:24:02.810Z",
+        "lines": [
+          {
+            "lineNumber": 1,
+            "description": "Linehaul",
+            "chargeCode": "LINEHAUL",
+            "amountCents": 614514
+          },
+          {
+            "lineNumber": 2,
+            "description": "Fuel surcharge",
+            "chargeCode": "FUEL",
+            "amountCents": 97895
+          }
+        ]
+      },
+      "auditTrail": [
+        {
+          "id": "received-01a148bf-006b-7aec-a756-2f83fe6d60d6",
+          "at": "2026-10-17T07:23:59.467Z",
+          "actor": null,
+          "action": "RECEIVED",
+          "detail": "g066.pdf",
+          "changes": []
+        },
+        {
+          "id": "01a148bf-0073-7e2f-9bf0-0103bbb57ab8",
+          "at": "2026-10-17T07:23:59.475Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "received",
+              "to": "extracting"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-0d7e-70ed-b707-f3da2184e7ea",
+          "at": "2026-10-17T07:24:02.810Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "exact",
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracting",
+              "to": "extracted"
+            },
+            {
+              "field": "carrier",
+              "from": "Bramblewood Express",
+              "to": "Bramblewood Express"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-0d85-7a28-9428-f68cab9db243",
+          "at": "2026-10-17T07:24:02.821Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracted",
+              "to": "reconciling"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-0d96-77d6-af37-3d6db8eda2e2",
+          "at": "2026-10-17T07:24:02.828Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciling",
+              "to": "reconciled"
+            }
+          ]
+        }
+      ],
+      "discrepancies": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": "WyIyMDI2LTEwLTE3VDA3OjI0OjAyLjgyODE2MloiLCIwMWExNDhiZi0wZDk1LTczZmEtODRhNy04MmFmMTgwZTllMDAiXQ"
+        },
+        "edges": [
+          {
+            "node": {
+              "id": "01a148bf-0d95-73fa-84a7-82af180e9e00",
+              "type": "RATE_MISMATCH",
+              "status": "OPEN",
+              "expectedCents": 534360,
+              "billedCents": 614514,
+              "evidence": "Rate card version 2 sets LINEHAUL at $5,343.60; billed $6,145.14.",
+              "note": null,
+              "resolvedAt": null,
+              "lineItem": {
+                "id": "01a148bf-0d93-7d71-bcc2-0789c1d5dd4f",
+                "lineNumber": 1
+              }
+            }
+          }
+        ]
+      },
+      "shipment": {
+        "id": "7333b009-aa5c-481c-bf06-72d4ca933035",
+        "reference": "SHP-000413",
+        "carrier": "Bramblewood Express",
+        "origin": "Wolfburgh, UT",
+        "destination": "Kassulkeburgh, AR",
+        "shippedOn": "2026-08-28"
+      },
+      "rateCardVersion": {
+        "id": "a745accc-1708-47e5-b12c-911b1db11f55",
+        "version": 2,
+        "effectiveFrom": "2026-01-01",
+        "effectiveTo": null
+      }
+    }
+  },
+  "01a148bf-0126-75b2-8981-fbe8076bbcc3": {
+    "carriers": [
+      {
+        "id": "8c786010-a58e-436c-8314-2ecadc2e8ce5",
+        "name": "Bramblewood Express"
+      },
+      {
+        "id": "d5482c1f-c30d-4bbc-b151-d95145bae71b",
+        "name": "Copperline Haulage"
+      },
+      {
+        "id": "21ffc41a-7170-4e4a-9488-2fcfe9e13056",
+        "name": "Halcyon Ridge Freight"
+      },
+      {
+        "id": "d8831eea-55be-4eca-912e-901a028ba3b3",
+        "name": "Nimbus Road Lines"
+      },
+      {
+        "id": "3ac3b5aa-81d5-4209-aa08-3a2b6e251ee4",
+        "name": "Quarry Lane Transport"
+      },
+      {
+        "id": "36dd0863-15f5-48b5-bff4-74409804e327",
+        "name": "Tern & Tide Carriers"
+      }
+    ],
+    "invoice": {
+      "id": "01a148bf-0126-75b2-8981-fbe8076bbcc3",
+      "status": "RECONCILED",
+      "failureReason": null,
+      "filename": "g081.pdf",
+      "contentHash": "1160a5304d6a8cf86203bb5183da8d65ed6d826c1d2e9c222784bb8dc7f96c3a",
+      "carrier": "Copperline Haulage",
+      "number": "CM803152",
+      "proNumber": "1003452684",
+      "issuedOn": "2025-09-05",
+      "currency": "USD",
+      "totalCents": -213076,
+      "createdAt": "2026-10-17T07:23:59.654Z",
+      "reviewReason": null,
+      "deadLetter": null,
+      "extraction": {
+        "id": "01a148c0-4acd-79b9-a293-ba38871d6cd7",
+        "model": "groq/openai/gpt-oss-120b",
+        "step": "first_pass",
+        "carrierRead": "Copperline Haulage",
+        "carrierMatch": "EXACT",
+        "problems": [],
+        "extractedAt": "2026-10-17T07:25:24.043Z",
+        "lines": [
+          {
+            "lineNumber": 1,
+            "description": "Linehaul credit",
+            "chargeCode": "LINEHAUL",
+            "amountCents": -213076
+          }
+        ]
+      },
+      "openDiscrepancyCount": 0,
+      "shipment": {
+        "id": "fb8fe8e6-33a8-4aa0-8083-a894adfd83af",
+        "reference": "SHP-000437",
+        "carrier": "Copperline Haulage",
+        "origin": "Lake Serenastad, KY",
+        "destination": "West Kristin, RI",
+        "shippedOn": "2025-08-12"
+      },
+      "rateCardVersion": {
+        "id": "5c4710fd-b622-448b-aa4f-b89635c0100d",
+        "version": 1,
+        "effectiveFrom": "2025-01-01",
+        "effectiveTo": "2026-01-01"
+      },
+      "lineItems": [
+        {
+          "id": "01a148c0-4aec-77f1-8ba5-482387d6870c",
+          "lineNumber": 1,
+          "description": "Linehaul credit",
+          "chargeCode": "LINEHAUL",
+          "amountCents": -213076
+        }
+      ],
+      "auditTrail": [
+        {
+          "id": "received-01a148bf-0126-75b2-8981-fbe8076bbcc3",
+          "at": "2026-10-17T07:23:59.654Z",
+          "actor": null,
+          "action": "RECEIVED",
+          "detail": "g081.pdf",
+          "changes": []
+        },
+        {
+          "id": "01a148bf-0160-7abf-a4be-77ba02c41221",
+          "at": "2026-10-17T07:23:59.711Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "received",
+              "to": "extracting"
+            }
+          ]
+        },
+        {
+          "id": "01a148c0-4ad2-7ff9-9953-3d208d9ea609",
+          "at": "2026-10-17T07:25:24.043Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "exact",
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracting",
+              "to": "extracted"
+            },
+            {
+              "field": "carrier",
+              "from": "Copperline Haulage",
+              "to": "Copperline Haulage"
+            }
+          ]
+        },
+        {
+          "id": "01a148c0-4adc-74fe-b335-9ba37195fcef",
+          "at": "2026-10-17T07:25:24.059Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracted",
+              "to": "reconciling"
+            }
+          ]
+        },
+        {
+          "id": "01a148c0-4aee-7070-9dcd-5c58ddb11e23",
+          "at": "2026-10-17T07:25:24.062Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciling",
+              "to": "reconciled"
+            }
+          ]
+        }
+      ],
+      "discrepancies": {
+        "edges": [],
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        }
+      }
+    }
+  },
+  "01a148bf-01fd-77c1-9adc-d898d656b6fa": {
+    "carriers": [
+      {
+        "id": "8c786010-a58e-436c-8314-2ecadc2e8ce5",
+        "name": "Bramblewood Express"
+      },
+      {
+        "id": "d5482c1f-c30d-4bbc-b151-d95145bae71b",
+        "name": "Copperline Haulage"
+      },
+      {
+        "id": "21ffc41a-7170-4e4a-9488-2fcfe9e13056",
+        "name": "Halcyon Ridge Freight"
+      },
+      {
+        "id": "d8831eea-55be-4eca-912e-901a028ba3b3",
+        "name": "Nimbus Road Lines"
+      },
+      {
+        "id": "3ac3b5aa-81d5-4209-aa08-3a2b6e251ee4",
+        "name": "Quarry Lane Transport"
+      },
+      {
+        "id": "36dd0863-15f5-48b5-bff4-74409804e327",
+        "name": "Tern & Tide Carriers"
+      }
+    ],
+    "invoice": {
+      "id": "01a148bf-01fd-77c1-9adc-d898d656b6fa",
+      "status": "RECONCILED",
+      "failureReason": null,
+      "filename": "g087.pdf",
+      "contentHash": "3a5c22b31589e99c000f16ab271afa0d34714d7b2c5e0d31490dee8baccc7c57",
+      "carrier": "Nimbus Road Lines",
+      "number": "71628335",
+      "proNumber": "1036189830",
+      "issuedOn": "2025-04-03",
+      "currency": "USD",
+      "totalCents": 384152,
+      "createdAt": "2026-10-17T07:23:59.869Z",
+      "reviewReason": null,
+      "deadLetter": null,
+      "extraction": {
+        "id": "01a148c0-91b3-7e31-b278-646443fd8e94",
+        "model": "groq/openai/gpt-oss-120b",
+        "step": "first_pass",
+        "carrierRead": "Nimbus Road Lines",
+        "carrierMatch": "EXACT",
+        "problems": [],
+        "extractedAt": "2026-10-17T07:25:42.193Z",
+        "lines": [
+          {
+            "lineNumber": 1,
+            "description": "Linehaul",
+            "chargeCode": "LINEHAUL",
+            "amountCents": 308680
+          },
+          {
+            "lineNumber": 2,
+            "description": "Fuel surcharge",
+            "chargeCode": "FUEL",
+            "amountCents": 75472
+          }
+        ]
+      },
+      "lineItems": [
+        {
+          "id": "01a148c2-6788-7efd-8d19-667bc9ca3779",
+          "lineNumber": 1,
+          "description": "Linehaul",
+          "chargeCode": "LINEHAUL",
+          "amountCents": 308680
+        },
+        {
+          "id": "01a148c2-6789-70ba-8293-988234e42694",
+          "lineNumber": 2,
+          "description": "Fuel surcharge",
+          "chargeCode": "FUEL",
+          "amountCents": 75472
+        }
+      ],
+      "auditTrail": [
+        {
+          "id": "received-01a148bf-01fd-77c1-9adc-d898d656b6fa",
+          "at": "2026-10-17T07:23:59.869Z",
+          "actor": null,
+          "action": "RECEIVED",
+          "detail": "g087.pdf",
+          "changes": []
+        },
+        {
+          "id": "01a148bf-0205-70bf-8987-d71376f3f903",
+          "at": "2026-10-17T07:23:59.876Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "received",
+              "to": "extracting"
+            }
+          ]
+        },
+        {
+          "id": "01a148c0-91bb-7923-901c-2dba86745c59",
+          "at": "2026-10-17T07:25:42.193Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "exact",
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracting",
+              "to": "extracted"
+            },
+            {
+              "field": "carrier",
+              "from": "Nimbus Road Lines",
+              "to": "Nimbus Road Lines"
+            }
+          ]
+        },
+        {
+          "id": "01a148c0-91c9-793e-a1ee-f5ccd7dd9d62",
+          "at": "2026-10-17T07:25:42.217Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracted",
+              "to": "reconciling"
+            }
+          ]
+        },
+        {
+          "id": "01a148c0-91d3-73a4-919c-38f73e60e4ef",
+          "at": "2026-10-17T07:25:42.221Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "no_shipment_match",
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciling",
+              "to": "needs_review"
+            }
+          ]
+        },
+        {
+          "id": "01a148c2-6755-7140-aa4c-d1eabda190ab",
+          "at": "2026-10-17T07:27:42.411Z",
+          "actor": "reviewer",
+          "action": "CORRECTED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "proNumber",
+              "from": null,
+              "to": "1036189830"
+            },
+            {
+              "field": "status",
+              "from": "needs_review",
+              "to": "extracted"
+            }
+          ]
+        },
+        {
+          "id": "01a148c2-6776-763b-ae56-02f9db4b43ab",
+          "at": "2026-10-17T07:27:42.448Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracted",
+              "to": "reconciling"
+            }
+          ]
+        },
+        {
+          "id": "01a148c2-678a-7c91-a1b1-dd8b0c13d2ed",
+          "at": "2026-10-17T07:27:42.458Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciling",
+              "to": "reconciled"
+            }
+          ]
+        }
+      ],
+      "shipment": {
+        "id": "55e5f10d-30ea-4b10-9464-82dbdcda0afd",
+        "reference": "SHP-004571",
+        "carrier": "Nimbus Road Lines",
+        "origin": "Eagan, VA",
+        "destination": "East Verdie, WV",
+        "shippedOn": "2025-03-29"
+      },
+      "openDiscrepancyCount": 0,
+      "discrepancies": {
+        "edges": [],
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        }
+      },
+      "rateCardVersion": {
+        "id": "ca1de04c-b235-4795-97b0-4be881783460",
+        "version": 1,
+        "effectiveFrom": "2025-01-01",
+        "effectiveTo": "2026-01-01"
+      }
+    }
+  },
+  "01a148bf-02bc-701d-8d15-21a88ebb46b1": {
+    "carriers": [
+      {
+        "id": "8c786010-a58e-436c-8314-2ecadc2e8ce5",
+        "name": "Bramblewood Express"
+      },
+      {
+        "id": "d5482c1f-c30d-4bbc-b151-d95145bae71b",
+        "name": "Copperline Haulage"
+      },
+      {
+        "id": "21ffc41a-7170-4e4a-9488-2fcfe9e13056",
+        "name": "Halcyon Ridge Freight"
+      },
+      {
+        "id": "d8831eea-55be-4eca-912e-901a028ba3b3",
+        "name": "Nimbus Road Lines"
+      },
+      {
+        "id": "3ac3b5aa-81d5-4209-aa08-3a2b6e251ee4",
+        "name": "Quarry Lane Transport"
+      },
+      {
+        "id": "36dd0863-15f5-48b5-bff4-74409804e327",
+        "name": "Tern & Tide Carriers"
+      }
+    ],
+    "invoice": {
+      "id": "01a148bf-02bc-701d-8d15-21a88ebb46b1",
+      "status": "REJECTED",
+      "failureReason": null,
+      "filename": "g089.pdf",
+      "contentHash": "1152f3ec8f018a0b053ccabc0b49f98c25829ed2552ad729be7122b5ef3ccddf",
+      "carrier": "Halcyon Ridge Freight",
+      "number": "32985599",
+      "proNumber": "1036862945",
+      "issuedOn": "2026-03-21",
+      "currency": "CAD",
+      "totalCents": 529150,
+      "createdAt": "2026-10-17T07:24:00.059Z",
+      "reviewReason": null,
+      "deadLetter": null,
+      "openDiscrepancyCount": 0,
+      "lineItems": [],
+      "shipment": null,
+      "rateCardVersion": null,
+      "extraction": {
+        "id": "01a148bf-16c5-73f5-b040-6725d40ff570",
+        "model": "groq/openai/gpt-oss-120b",
+        "step": "repair",
+        "carrierRead": "Halcyon Ridge Freight",
+        "carrierMatch": "EXACT",
+        "problems": [],
+        "extractedAt": "2026-10-17T07:24:05.187Z",
+        "lines": [
+          {
+            "lineNumber": 1,
+            "description": "Linehaul",
+            "chargeCode": "LINEHAUL",
+            "amountCents": 418642
+          },
+          {
+            "lineNumber": 2,
+            "description": "Fuel surcharge",
+            "chargeCode": "FUEL",
+            "amountCents": 89631
+          },
+          {
+            "lineNumber": 3,
+            "description": "Limited access delivery",
+            "chargeCode": "LIMITED_ACCESS",
+            "amountCents": 20877
+          }
+        ]
+      },
+      "auditTrail": [
+        {
+          "id": "received-01a148bf-02bc-701d-8d15-21a88ebb46b1",
+          "at": "2026-10-17T07:24:00.059Z",
+          "actor": null,
+          "action": "RECEIVED",
+          "detail": "g089.pdf",
+          "changes": []
+        },
+        {
+          "id": "01a148bf-02c2-7f87-88b0-aae8364bf0fc",
+          "at": "2026-10-17T07:24:00.066Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "received",
+              "to": "extracting"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-16c6-7910-8c71-d44ab19baa41",
+          "at": "2026-10-17T07:24:05.187Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "exact",
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracting",
+              "to": "extracted"
+            },
+            {
+              "field": "carrier",
+              "from": "Halcyon Ridge Freight",
+              "to": "Halcyon Ridge Freight"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-16cd-7adc-aeb4-c45e18932dfe",
+          "at": "2026-10-17T07:24:05.197Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracted",
+              "to": "reconciling"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-16d3-7b72-b87b-ce235b8a5b1f",
+          "at": "2026-10-17T07:24:05.200Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "unsupported_currency: CAD",
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciling",
+              "to": "needs_review"
+            }
+          ]
+        },
+        {
+          "id": "01a148c2-cc13-79b7-b100-ffa92c7f9a74",
+          "at": "2026-10-17T07:28:08.202Z",
+          "actor": "reviewer",
+          "action": "REJECTED",
+          "detail": "Billed in CAD against a USD contract; asked the carrier to reissue in USD.",
+          "changes": [
+            {
+              "field": "status",
+              "from": "needs_review",
+              "to": "rejected"
+            }
+          ]
+        }
+      ],
+      "discrepancies": {
+        "edges": [],
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        }
+      }
+    }
+  },
+  "01a148bf-037b-762d-b90d-f561da8d3996": {
+    "carriers": [
+      {
+        "id": "8c786010-a58e-436c-8314-2ecadc2e8ce5",
+        "name": "Bramblewood Express"
+      },
+      {
+        "id": "d5482c1f-c30d-4bbc-b151-d95145bae71b",
+        "name": "Copperline Haulage"
+      },
+      {
+        "id": "21ffc41a-7170-4e4a-9488-2fcfe9e13056",
+        "name": "Halcyon Ridge Freight"
+      },
+      {
+        "id": "d8831eea-55be-4eca-912e-901a028ba3b3",
+        "name": "Nimbus Road Lines"
+      },
+      {
+        "id": "3ac3b5aa-81d5-4209-aa08-3a2b6e251ee4",
+        "name": "Quarry Lane Transport"
+      },
+      {
+        "id": "36dd0863-15f5-48b5-bff4-74409804e327",
+        "name": "Tern & Tide Carriers"
+      }
+    ],
+    "invoice": {
+      "id": "01a148bf-037b-762d-b90d-f561da8d3996",
+      "status": "FAILED",
+      "failureReason": "shipment has no miles",
+      "filename": "g003.pdf",
+      "contentHash": "edd75bfd2f134c1b1bcde6b59b28eafc835d105b772e8289fb0641498727e1b1",
+      "carrier": "Quarry Lane Transport",
+      "number": "53704390",
+      "proNumber": "1028872674",
+      "issuedOn": "2026-05-20",
+      "currency": "USD",
+      "totalCents": 280447,
+      "createdAt": "2026-10-17T07:24:00.251Z",
+      "reviewReason": null,
+      "lineItems": [],
+      "extraction": {
+        "id": "01a148bf-6b41-7de8-90c9-712545c50aa8",
+        "model": "groq/openai/gpt-oss-120b",
+        "step": "first_pass",
+        "carrierRead": "Quarry Lane Transport",
+        "carrierMatch": "EXACT",
+        "problems": [],
+        "extractedAt": "2026-10-17T07:24:26.816Z",
+        "lines": [
+          {
+            "lineNumber": 1,
+            "description": "Linehaul",
+            "chargeCode": "LINEHAUL",
+            "amountCents": 202773
+          },
+          {
+            "lineNumber": 2,
+            "description": "Fuel surcharge",
+            "chargeCode": "FUEL",
+            "amountCents": 61055
+          },
+          {
+            "lineNumber": 3,
+            "description": "Inside delivery",
+            "chargeCode": "INSIDE_DELIVERY",
+            "amountCents": 16619
+          }
+        ]
+      },
+      "discrepancies": {
+        "edges": [],
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        }
+      },
+      "shipment": null,
+      "auditTrail": [
+        {
+          "id": "received-01a148bf-037b-762d-b90d-f561da8d3996",
+          "at": "2026-10-17T07:24:00.251Z",
+          "actor": null,
+          "action": "RECEIVED",
+          "detail": "g003.pdf",
+          "changes": []
+        },
+        {
+          "id": "01a148bf-0382-77e1-ae92-3aff7ead4824",
+          "at": "2026-10-17T07:24:00.258Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "received",
+              "to": "extracting"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-6b43-7405-94a7-0cb0e1991219",
+          "at": "2026-10-17T07:24:26.816Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "exact",
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracting",
+              "to": "extracted"
+            },
+            {
+              "field": "carrier",
+              "from": "Quarry Lane Transport",
+              "to": "Quarry Lane Transport"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-6b4a-7e08-b08c-4502eba405ea",
+          "at": "2026-10-17T07:24:26.826Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracted",
+              "to": "reconciling"
+            }
+          ]
+        },
+        {
+          "id": "01a148bf-6b55-792b-805b-c16e5d628fc8",
+          "at": "2026-10-17T07:24:26.835Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "shipment has no miles",
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciling",
+              "to": "failed"
+            }
+          ]
+        }
+      ],
+      "deadLetter": {
+        "id": "01a148bf-6b53-7f62-b810-efd8d3e3460b",
+        "queue": "reconcile",
+        "error": "shipment has no miles",
+        "createdAt": "2026-10-17T07:24:26.835Z"
+      },
+      "openDiscrepancyCount": 0,
+      "rateCardVersion": null
+    }
+  },
+  "01a148da-6263-790f-b062-8778f3217ba2": {
+    "carriers": [
+      {
+        "id": "8c786010-a58e-436c-8314-2ecadc2e8ce5",
+        "name": "Bramblewood Express"
+      },
+      {
+        "id": "d5482c1f-c30d-4bbc-b151-d95145bae71b",
+        "name": "Copperline Haulage"
+      },
+      {
+        "id": "21ffc41a-7170-4e4a-9488-2fcfe9e13056",
+        "name": "Halcyon Ridge Freight"
+      },
+      {
+        "id": "d8831eea-55be-4eca-912e-901a028ba3b3",
+        "name": "Nimbus Road Lines"
+      },
+      {
+        "id": "3ac3b5aa-81d5-4209-aa08-3a2b6e251ee4",
+        "name": "Quarry Lane Transport"
+      },
+      {
+        "id": "36dd0863-15f5-48b5-bff4-74409804e327",
+        "name": "Tern & Tide Carriers"
+      }
+    ],
+    "invoice": {
+      "id": "01a148da-6263-790f-b062-8778f3217ba2",
+      "status": "NEEDS_REVIEW",
+      "failureReason": null,
+      "filename": "g088.pdf",
+      "contentHash": "28fec01d0bcd48e7d8f9bb996320878975261e5f37a237e82f0f4c3e93716830",
+      "carrier": "Quarry Lane Transport",
+      "number": "18716612",
+      "proNumber": null,
+      "issuedOn": "2025-08-04",
+      "currency": "USD",
+      "totalCents": 488845,
+      "createdAt": "2026-10-17T07:53:54.019Z",
+      "deadLetter": null,
+      "openDiscrepancyCount": 0,
+      "reviewReason": "no_shipment_match",
+      "extraction": {
+        "id": "01a148da-6cdb-7715-b2a2-09c190cea6e9",
+        "model": "gemini/gemini-3.5-flash-lite",
+        "step": "first_pass",
+        "carrierRead": "Quarry Lane Transport",
+        "carrierMatch": "EXACT",
+        "problems": [],
+        "extractedAt": "2026-10-17T07:53:56.694Z",
+        "lines": [
+          {
+            "lineNumber": 1,
+            "description": "Linehaul",
+            "chargeCode": "LINEHAUL",
+            "amountCents": 355300
+          },
+          {
+            "lineNumber": 2,
+            "description": "Fuel surcharge",
+            "chargeCode": "FUEL",
+            "amountCents": 106981
+          },
+          {
+            "lineNumber": 3,
+            "description": "Detention",
+            "chargeCode": "DETENTION",
+            "amountCents": 11565
+          },
+          {
+            "lineNumber": 4,
+            "description": "Limited access delivery",
+            "chargeCode": "LIMITED_ACCESS",
+            "amountCents": 14999
+          }
+        ]
+      },
+      "lineItems": [],
+      "shipment": null,
+      "discrepancies": {
+        "edges": [],
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        }
+      },
+      "rateCardVersion": null,
+      "auditTrail": [
+        {
+          "id": "received-01a148da-6263-790f-b062-8778f3217ba2",
+          "at": "2026-10-17T07:53:54.019Z",
+          "actor": null,
+          "action": "RECEIVED",
+          "detail": "g088.pdf",
+          "changes": []
+        },
+        {
+          "id": "01a148da-627d-7b86-8144-f561cb099cab",
+          "at": "2026-10-17T07:53:54.038Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "received",
+              "to": "extracting"
+            }
+          ]
+        },
+        {
+          "id": "01a148da-6cde-7a53-bb3b-673090679d3f",
+          "at": "2026-10-17T07:53:56.694Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "exact",
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracting",
+              "to": "extracted"
+            },
+            {
+              "field": "carrier",
+              "from": "Quarry Lane Transport",
+              "to": "Quarry Lane Transport"
+            }
+          ]
+        },
+        {
+          "id": "01a148da-6ce9-7458-90c5-63edb940497c",
+          "at": "2026-10-17T07:53:56.712Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": null,
+          "changes": [
+            {
+              "field": "status",
+              "from": "extracted",
+              "to": "reconciling"
+            }
+          ]
+        },
+        {
+          "id": "01a148da-6cf1-73ed-b8e1-c60d0bfa6e5f",
+          "at": "2026-10-17T07:53:56.715Z",
+          "actor": null,
+          "action": "STATUS_CHANGED",
+          "detail": "no_shipment_match",
+          "changes": [
+            {
+              "field": "status",
+              "from": "reconciling",
+              "to": "needs_review"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

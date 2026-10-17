@@ -8,10 +8,22 @@ query Discrepancies($first: Int, $after: String, $status: DiscrepancyStatus) {
         status
         expectedCents
         billedCents
+        evidence
+        note
+        resolvedAt
+        lineItem {
+          id
+          lineNumber
+          description
+          chargeCode
+        }
         invoice {
           id
           number
+          filename
           carrier
+          currency
+          status
         }
       }
     }
