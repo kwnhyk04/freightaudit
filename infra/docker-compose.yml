@@ -87,7 +87,7 @@ services:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
 
   toxiproxy:
-    image: ghcr.io/shopify/toxiproxy:2.12.0
+    image: ghcr.io/shopify/toxiproxy:2.13.0
     command: ["-host=0.0.0.0", "-config=/config/toxiproxy.json"]
     volumes: ["./toxiproxy.json:/config/toxiproxy.json:ro"]
     extra_hosts: ["host.docker.internal:host-gateway"]
