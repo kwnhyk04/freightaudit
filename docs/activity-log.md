@@ -15,6 +15,51 @@ Chronological record of significant development activity, newest first. Skip tri
 
 ## Entries
 
+### 2026-10-17: Step 9 polish: minus sign, README screenshots, an invoice left in needs review, sign-in autocomplete; step 7 closed
+
+- Changes:
+  - **Minus sign:** `formatMoney` maps Intl's `minusSign` part to U+2212, so a credit reads −$2,130.76. `formatUsd`, which writes the evidence text stored with each finding, keeps its hyphen. The test's property runs over USD, CAD and EUR: only a negative amount carries a sign, U+2212 in front and never a hyphen, and the digits read back to the cents.
+  - **README:** the Review UI opens with the sample's detail in light and dark, a scanned golden invoice with its rate mismatch, in place of the e2e fixture's "LOADTEST-DIGITAL" shipment.
+  - **Sample:**
+    - It adds golden g088 (scanned remit layout without a PRO number). Uploaded with AI on, Gemini `gemini-3.5-flash-lite` read it on the first pass in 2,348 ms; the carrier matched exactly, and with no PRO number the invoice went to needs review (`no_shipment_match`) by itself. Nothing else touched it.
+    - The sample's needs-review panel now shows the carrier and PRO number fields, disabled, with "In the live app a reviewer corrects the carrier or PRO number here, then re-runs matching." and no submit button. Disabled fields get their own colors (`globals.css`), since the author color outranks the browser's disabled gray.
+    - `demo:export` used to delete the sample's PDFs before it checked any id, so an export refused by the golden check left the committed sample without them. It now writes nothing until every invoice passed and every query answered.
+    - The re-export holds 11 invoices, 7 findings, 1 dead letter and 11 PDFs.
+  - **Sign-in:** a hidden username field (`type="text"`, `autocomplete="username"`, value `reviewer`, read-only, unnamed) sits beside the `current-password` field, so password managers save and fill the password. The posted form is unchanged: `next` and `password` only.
+  - **Api startup warnings:** fastify-openapi-glue 4.11.5, the latest release, checks every media type in the spec for a request parser, responses included. `application/pdf` and `application/problem+json` appear only in responses. A parser for either would make the api accept request bodies it now refuses with 415, so the warnings stay; docs/todo.md holds the item.
+  - **Step 7:** done, confirmed by the user: the repository github.com/kwnhyk04/freightaudit runs ci.yml, release.yml and Dependabot, and PRs #12 and #13 are green.
+- Files: packages/domain/src/{money.ts,money.test.ts}, apps/web/{components/views.tsx,components/client.tsx,app/globals.css,scripts/export-demo.ts,e2e/demo.spec.ts,e2e/screenshots.spec.ts}, apps/web/public/demo/* (4 JSON, 11 PDF), docs/screenshots/ui/* (2 new), README.md, docs/{context,memory,todo,activity-log}.md
+- Validation:
+  - **Minus sign:** the domain suite passes 31 tests at 100 % coverage. A hyphen mutant fails the example; run alone against it, the property fails and shrinks to -1 cents in USD.
+  - **Export:** every sample PDF's sha256 is its golden file's, and the only actors are `reviewer` and the pipeline. An export of the 11 ids plus a seeded invoice stopped with "is not a golden-set invoice; the demo is public" and left the sample's 15 files byte-identical; the export of the 11 ids rewrote them identically.
+  - **Sign-in:** on the built web, `/login` logs nothing to the console, neither Chrome's username hint nor a favicon 404. `FormData` of the form holds Next's action fields, `next` and `password`.
+  - **Checks:** `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks with 81 tests, `pnpm test:int` 102/102 in 22 suites. `pnpm e2e` 9/9: sign-in and lockout pass with the new field, and the demo spec finds the sample's needs-review invoice with both fields disabled and no "Re-run matching". `pnpm e2e:screenshots` 5/5, 29 files. gitleaks 8.30.1 finds nothing in the sample, the export script, the components or `money.ts`.
+  - **Screenshots:** the sample list shows g088 in needs review and the credit memo at −$2,130.76. The needs-review detail shows the read-only fields in both themes.
+- Outstanding: the two openapi-glue warnings (docs/todo.md). Not committed.
+
+### 2026-10-17: Step 9 finished: sample snapshot on real models, done-when check, e2e and screenshots
+
+- Changes:
+  - **Sample snapshot** (`apps/web/public/demo`), after the Gemini reset:
+    - Setup: `pnpm db:reset`, then the dev stack with `AI_ENABLED=true` and the real keys: api, worker, mock-tms, and the web on its production build, telemetry off.
+    - Uploads: g002 in the UI; g054, g055, g056, g069, g066, g081, g087, g089 and g003 through `POST /v1/invoices`. g003 went last, after its shipment's miles were cleared in the dev database.
+    - Reviewer actions in the UI: g054's finding disputed with a note; g055's uncontracted charge approved, then g055 approved; g087's PRO number corrected to its shipment's and matching re-run; g089 rejected with a reason.
+    - `demo:export` wrote 10 invoices, 7 findings (5 open, 1 disputed, 1 approved), 1 dead letter and 10 PDFs. Each PDF's sha256 is its golden file's, and the only actors are `reviewer` and the pipeline.
+  - **Model calls:** 11, none failed.
+    - 10 on Groq `openai/gpt-oss-120b`: first passes of 1.2 to 2.5 s, plus g089's repair after an invalid first pass.
+    - 1 on Gemini `gemini-3.5-flash-lite`: g066's scan, valid first pass in 3,069 ms.
+    - Nine uploads at once queued on the text role's bucket (8,000 tokens a minute, 5,200 estimated a page), so their calls waited up to 101 s.
+  - **Readings against the ground truth:** every one matched. Findings by type and cents; g087 and g089 at needs_review (`no_shipment_match`, `unsupported_currency: CAD`); g003 failed with "shipment has no miles".
+  - **Favicon:** browsers asked for a `/favicon.ico` that does not exist, a 404 in the console on every page. The root layout now declares a data-URI icon (`apps/web/app/layout.tsx`); the web image's login page makes no such request.
+  - **Screenshots:** the spec also shoots the public sample's detail (`demo-invoice-<light|dark>.png`), as the plan listed. It uses the sample's first invoice with an open finding, g066's scan.
+  - **README:** regenerating the sample ends with a web build, since the pages import the snapshot when the web is built.
+- Files: apps/web/public/demo/* (4 JSON, 10 PDF), apps/web/app/layout.tsx, apps/web/e2e/screenshots.spec.ts, docs/screenshots/ui/* (2 new, 8 updated), README.md, docs/{context,memory,todo,activity-log}.md
+- Validation:
+  - **Done when, real models:** sign-in; g002 uploaded in the UI reached Reconciled, its trail showing every move; a finding disputed, a charge approved and that invoice approved; g087 out of needs_review to Reconciled, its trail naming the reviewer and the PRO change; g089 rejected. With the api stopped, `/invoices` went to `/demo/invoices` under "Live backend offline, showing sample data", with no upload. Signed out, the login page's link opened "Sample data, read-only"; the detail showed g066's PDF from `/demo/`, no form and no action button, and the browser made no request to the api.
+  - **Checks:** `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks with 81 tests, `pnpm test:int` 102/102 in 22 suites, `pnpm contracts:check` current, and `OASDIFF_BASE_REF=main pnpm contracts:breaking` clean with the ignore file. `pnpm e2e` 9/9; its demo spec now walks the 10 sample rows and a rendered sample PDF. `pnpm e2e:screenshots` 5/5. gitleaks 8.30.1 finds nothing in the sample or the layout. The web image (308 MB) serves `/healthz`, `/demo/invoices` with all 10 invoices and the sample PDFs without a session, redirects `/invoices` to `/login` and answers 401 on the document route.
+  - **Screenshot review:** the sample list and detail read as the live pages do in both themes: banner, status colors with words, the scan beside its flagged line, the finding with its evidence, and the trail. The other files differ from 2026-10-16 only in upload times.
+- Outstanding: noticed, not changed: a credit memo's total prints a hyphen-minus (`-$2,130.76`), and Chrome's verbose log notes that the sign-in form has no username field. The sample has no invoice left in needs_review, since the plan corrected g087 and rejected g089. Not committed.
+
 ### 2026-10-16: Step 9: review UI, GraphQL resolvers, sign-in, public sample data
 
 - Changes:

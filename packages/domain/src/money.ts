@@ -30,17 +30,21 @@ export function microUsd(dollars: string) {
 export const tokenCost = (inputTokens: bigint, outputTokens: bigint, inputPerMillion: bigint, outputPerMillion: bigint) =>
   divRound(inputTokens * inputPerMillion + outputTokens * outputPerMillion, 1_000_000n);
 
-// Cents as US dollars for people to read, such as -$1,234.50.
 // Integer cents in their currency for display. The exact decimal string goes to Intl.NumberFormat, so no float ever
-// holds the amount; a missing or malformed currency code shows as USD.
+// holds the amount; a missing or malformed currency code shows as USD. A credit carries a real minus sign (U+2212), as
+// in −$2,130.76, which reads as minus where a hyphen reads as a dash.
 export function formatMoney(cents: bigint | number, currency: string | null = 'USD') {
   const value = BigInt(cents);
   const size = value < 0n ? -value : value;
   const decimal = `${value < 0n ? '-' : ''}${size / 100n}.${(size % 100n).toString().padStart(2, '0')}` as Intl.StringNumericLiteral;
   const code = currency && /^[A-Z]{3}$/.test(currency) ? currency : 'USD';
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).format(decimal);
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: code })
+    .formatToParts(decimal)
+    .map((part) => (part.type === 'minusSign' ? '\u2212' : part.value))
+    .join('');
 }
 
+// Cents as US dollars for evidence text, such as -$1,234.50.
 export function formatUsd(cents: bigint) {
   const size = cents < 0n ? -cents : cents;
   const dollars = (size / 100n).toString().replace(/\B(?=([0-9]{3})+$)/g, ',');

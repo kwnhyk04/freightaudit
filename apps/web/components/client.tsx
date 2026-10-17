@@ -28,6 +28,8 @@ export function LoginForm({ next }: { next?: string }) {
         <p className="muted">Sign in to review carrier invoices.</p>
       </div>
       <input type="hidden" name="next" value={next ?? ''} />
+      {/* The one reviewer's name, so password managers save and fill the password; unnamed, so nothing more is sent. */}
+      <input type="text" autoComplete="username" value="reviewer" readOnly hidden />
       <label>
         Password
         <input type="password" name="password" autoComplete="current-password" required autoFocus />

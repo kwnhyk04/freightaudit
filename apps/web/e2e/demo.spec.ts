@@ -2,7 +2,9 @@ import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { PASSWORD } from './env.ts';
 
-const sample = JSON.parse(readFileSync(new URL('../public/demo/invoices.json', import.meta.url), 'utf8')) as { invoices: { edges: unknown[] } };
+const sample = JSON.parse(readFileSync(new URL('../public/demo/invoices.json', import.meta.url), 'utf8')) as {
+  invoices: { edges: { node: { id: string; status: string } }[] };
+};
 const offline = `http://127.0.0.1:${process.env.E2E_OFFLINE_PORT ?? 3002}`;
 
 test('signed out, the sample is public and read-only, and live pages still need a session', async ({ page }) => {
@@ -21,6 +23,16 @@ test('signed out, the sample is public and read-only, and live pages still need 
   }
   for (const name of ['Approve charge', 'Dispute', 'Replay', 'Re-run matching', 'Approve for payment', 'Upload invoice']) {
     await expect(page.getByRole('button', { name })).toHaveCount(0);
+  }
+  if (sample.invoices.edges.length > 0) {
+    // One sample invoice stays in needs review, so visitors see its correction panel, read-only.
+    const review = sample.invoices.edges.find(({ node }) => node.status === 'NEEDS_REVIEW');
+    expect(review, 'the sample holds an invoice in needs review').toBeDefined();
+    await page.goto(`/demo/invoices/${review!.node.id}`);
+    await expect(page.getByRole('region', { name: 'Needs review' })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Carrier' })).toBeDisabled();
+    await expect(page.getByRole('textbox', { name: 'PRO number' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Re-run matching' })).toHaveCount(0);
   }
   await page.goto('/demo/discrepancies');
   await expect(page.getByRole('heading', { name: 'Review queue' })).toBeVisible();

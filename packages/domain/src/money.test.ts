@@ -48,14 +48,15 @@ test('percentOf takes basis points of an amount to the nearest cent', () => {
 
 test('formatMoney shows cents exactly in their currency, with no float on the way', () => {
   expect(formatMoney(123_456n)).toBe('$1,234.56');
-  expect(formatMoney(-213_076, 'USD')).toBe('-$2,130.76');
+  expect(formatMoney(-213_076, 'USD')).toBe('\u2212$2,130.76');
   expect(formatMoney(5n, 'CAD')).toBe('CA$0.05');
   expect(formatMoney(100n, 'eur')).toBe('$1.00');
-  // Amounts past the float's exact range still read back digit for digit.
+  // Amounts past the float's exact range still read back digit for digit, and only a credit carries a sign: the real
+  // minus sign (U+2212) in front, never a hyphen.
   fc.assert(
-    fc.property(cents, (n) => {
-      const digits = formatMoney(n).replace(/[$,]/g, '');
-      return BigInt(digits.replace('.', '')) === n;
+    fc.property(cents, fc.constantFrom('USD', 'CAD', 'EUR'), (n, currency) => {
+      const text = formatMoney(n, currency);
+      return text.startsWith('\u2212') === n < 0n && !text.includes('-') && BigInt(text.replace(/\D/g, '')) === abs(n);
     }),
   );
 });

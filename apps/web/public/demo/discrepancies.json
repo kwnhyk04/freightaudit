@@ -1,1 +1,199 @@
-{ "discrepancies": { "edges": [], "pageInfo": { "hasNextPage": false, "endCursor": null } } }
+{
+  "discrepancies": {
+    "edges": [
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjI1OjA2LjIyNTgyMFoiLCIwMWExNDhjMC0wNTNmLTdhYTYtOTM1OS00NTVmMGY1MGQxYWIiXQ",
+        "node": {
+          "id": "01a148c0-053f-7aa6-9359-455f0f50d1ab",
+          "type": "DUPLICATE_CHARGE",
+          "status": "OPEN",
+          "expectedCents": 0,
+          "billedCents": 9778,
+          "evidence": "RESIDENTIAL is billed twice.",
+          "note": null,
+          "resolvedAt": null,
+          "lineItem": {
+            "id": "01a148c0-053d-7ca9-bd3d-55d3d4c9bddd",
+            "lineNumber": 3,
+            "description": "Residential delivery",
+            "chargeCode": "RESIDENTIAL"
+          },
+          "invoice": {
+            "id": "01a148be-ffa1-7280-b72f-9822d799fadc",
+            "number": "96079756",
+            "filename": "g069.pdf",
+            "carrier": "Tern & Tide Carriers",
+            "currency": "USD",
+            "status": "RECONCILED"
+          }
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjI1OjA2LjIyNTgyMFoiLCIwMWExNDhjMC0wNTNmLTdhNzgtYTI5NS1hY2IxNTE1MjlhYTIiXQ",
+        "node": {
+          "id": "01a148c0-053f-7a78-a295-acb151529aa2",
+          "type": "DUPLICATE_CHARGE",
+          "status": "OPEN",
+          "expectedCents": 0,
+          "billedCents": 169472,
+          "evidence": "FUEL is billed twice.",
+          "note": null,
+          "resolvedAt": null,
+          "lineItem": {
+            "id": "01a148c0-053d-7a8b-9b02-75fca4857984",
+            "lineNumber": 2,
+            "description": "Fuel surcharge",
+            "chargeCode": "FUEL"
+          },
+          "invoice": {
+            "id": "01a148be-ffa1-7280-b72f-9822d799fadc",
+            "number": "96079756",
+            "filename": "g069.pdf",
+            "carrier": "Tern & Tide Carriers",
+            "currency": "USD",
+            "status": "RECONCILED"
+          }
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjI1OjA2LjIyNTgyMFoiLCIwMWExNDhjMC0wNTNmLTc2MjctYTg3Ni0yNTBkMzYzZDI5MjEiXQ",
+        "node": {
+          "id": "01a148c0-053f-7627-a876-250d363d2921",
+          "type": "DUPLICATE_CHARGE",
+          "status": "OPEN",
+          "expectedCents": 0,
+          "billedCents": 552206,
+          "evidence": "LINEHAUL is billed twice.",
+          "note": null,
+          "resolvedAt": null,
+          "lineItem": {
+            "id": "01a148c0-053d-795b-98a6-23670488ec29",
+            "lineNumber": 1,
+            "description": "Linehaul",
+            "chargeCode": "LINEHAUL"
+          },
+          "invoice": {
+            "id": "01a148be-ffa1-7280-b72f-9822d799fadc",
+            "number": "96079756",
+            "filename": "g069.pdf",
+            "carrier": "Tern & Tide Carriers",
+            "currency": "USD",
+            "status": "RECONCILED"
+          }
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjI0OjQ4LjA1MDY4NloiLCIwMWExNDhiZi1iZTQwLTdjNmEtYjEzZC0zY2JiMjY3YjliNzQiXQ",
+        "node": {
+          "id": "01a148bf-be40-7c6a-b13d-3cbb267b9b74",
+          "type": "DUPLICATE_CHARGE",
+          "status": "OPEN",
+          "expectedCents": 0,
+          "billedCents": 5989,
+          "evidence": "APPOINTMENT is billed twice.",
+          "note": null,
+          "resolvedAt": null,
+          "lineItem": {
+            "id": "01a148bf-be3e-7e66-95e3-9bce73c8de20",
+            "lineNumber": 6,
+            "description": "DELIVERY APPOINTMENT",
+            "chargeCode": "APPOINTMENT"
+          },
+          "invoice": {
+            "id": "01a148be-fee2-7551-9efd-f61a5623a40a",
+            "number": "46879006",
+            "filename": "g056.pdf",
+            "carrier": "Quarry Lane Transport",
+            "currency": "USD",
+            "status": "RECONCILED"
+          }
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjI0OjAyLjgyODE2MloiLCIwMWExNDhiZi0wZDk1LTczZmEtODRhNy04MmFmMTgwZTllMDAiXQ",
+        "node": {
+          "id": "01a148bf-0d95-73fa-84a7-82af180e9e00",
+          "type": "RATE_MISMATCH",
+          "status": "OPEN",
+          "expectedCents": 534360,
+          "billedCents": 614514,
+          "evidence": "Rate card version 2 sets LINEHAUL at $5,343.60; billed $6,145.14.",
+          "note": null,
+          "resolvedAt": null,
+          "lineItem": {
+            "id": "01a148bf-0d93-7d71-bcc2-0789c1d5dd4f",
+            "lineNumber": 1,
+            "description": "Linehaul",
+            "chargeCode": "LINEHAUL"
+          },
+          "invoice": {
+            "id": "01a148bf-006b-7aec-a756-2f83fe6d60d6",
+            "number": "76644482",
+            "filename": "g066.pdf",
+            "carrier": "Bramblewood Express",
+            "currency": "USD",
+            "status": "RECONCILED"
+          }
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjIzOjU5Ljk5ODQyNFoiLCIwMWExNDhiZi0wMjkwLTdiZTUtYTA1OS1kYTNkNGZiMTQyYmEiXQ",
+        "node": {
+          "id": "01a148bf-0290-7be5-a059-da3d4fb142ba",
+          "type": "RATE_MISMATCH",
+          "status": "CONFIRMED",
+          "expectedCents": 86027,
+          "billedCents": 96350,
+          "evidence": "Rate card version 1 sets FUEL at $860.27; billed $963.50.",
+          "note": "Fuel billed above the contracted rate; disputed with the carrier.",
+          "resolvedAt": "2026-10-17T07:26:31.688Z",
+          "lineItem": {
+            "id": "01a148bf-028e-7e78-99e3-dfaf556421fb",
+            "lineNumber": 2,
+            "description": "Fuel surcharge",
+            "chargeCode": "FUEL"
+          },
+          "invoice": {
+            "id": "01a148be-fd65-7ca1-850a-58244a0cfde0",
+            "number": "47222915",
+            "filename": "g054.pdf",
+            "carrier": "Bramblewood Express",
+            "currency": "USD",
+            "status": "RECONCILED"
+          }
+        }
+      },
+      {
+        "cursor": "WyIyMDI2LTEwLTE3VDA3OjI0OjE4LjUyOTk5OVoiLCIwMWExNDhiZi00YWYwLTc4NjctOWViMC1iZGI2MGMzZWNiMGYiXQ",
+        "node": {
+          "id": "01a148bf-4af0-7867-9eb0-bdb60c3ecb0f",
+          "type": "UNCONTRACTED_CHARGE",
+          "status": "DISMISSED",
+          "expectedCents": 0,
+          "billedCents": 12940,
+          "evidence": "INSIDE_DELIVERY is not on rate card version 1.",
+          "note": "Inside delivery was requested by the consignee; accepted.",
+          "resolvedAt": "2026-10-17T07:26:59.202Z",
+          "lineItem": {
+            "id": "01a148bf-4aee-7861-a9ae-ec6f4ca6ab18",
+            "lineNumber": 5,
+            "description": "Inside delivery",
+            "chargeCode": "INSIDE_DELIVERY"
+          },
+          "invoice": {
+            "id": "01a148be-fe28-7b55-888e-97d29b73846a",
+            "number": "14835569",
+            "filename": "g055.pdf",
+            "carrier": "Bramblewood Express",
+            "currency": "USD",
+            "status": "APPROVED"
+          }
+        }
+      }
+    ],
+    "pageInfo": {
+      "hasNextPage": false,
+      "endCursor": null
+    }
+  }
+}

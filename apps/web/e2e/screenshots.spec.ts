@@ -29,7 +29,7 @@ async function ids() {
 async function settle(page: Page, name: string) {
   await page.waitForLoadState('networkidle');
   await page.evaluate(() => document.fonts.ready);
-  if (name === 'invoice-document') await page.getByRole('img', { name: 'Page 1 of 1' }).waitFor();
+  if (['invoice-document', 'demo-invoice', 'demo-needs-review'].includes(name)) await page.getByRole('img', { name: 'Page 1 of 1' }).waitFor();
 }
 
 test.describe.configure({ mode: 'serial' });
@@ -64,10 +64,19 @@ for (const scheme of ['light', 'dark'] as const) {
       await settle(page, name);
       await shoot(page, `${name}-${scheme}.png`);
     }
+    // The sample's first invoice with an open finding, so the public detail shows one beside its document, and its
+    // invoice in needs review with the read-only correction panel.
+    const sample = JSON.parse(readFileSync(new URL('../public/demo/invoices.json', import.meta.url), 'utf8')) as {
+      invoices: { edges: { node: { id: string; status: string; openDiscrepancyCount: number } }[] };
+    };
+    const demo = sample.invoices.edges.find(({ node }) => node.openDiscrepancyCount > 0)!.node.id;
+    const demoReview = sample.invoices.edges.find(({ node }) => node.status === 'NEEDS_REVIEW')!.node.id;
     const visitor = await browser.newPage({ colorScheme: scheme, viewport: { width: 1440, height: 900 }, storageState: { cookies: [], origins: [] } });
     for (const [name, path] of [
       ['login', '/login'],
       ['demo-invoices', '/demo/invoices'],
+      ['demo-invoice', `/demo/invoices/${demo}`],
+      ['demo-needs-review', `/demo/invoices/${demoReview}`],
     ] as const) {
       await visitor.goto(path);
       await settle(visitor, name);

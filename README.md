@@ -85,8 +85,8 @@ Infra (bound to 127.0.0.1; host ports set in `.env`): Postgres `:5432`, Redis `:
 
 The web app (`apps/web`, Next.js) is where accounts-payable staff review invoices.
 
-![An invoice beside its lines, with three findings, light](docs/screenshots/ui/invoice-document-light.png)
-![The same invoice in dark mode](docs/screenshots/ui/invoice-document-dark.png)
+![A sample invoice: the scanned bill beside its lines, with a rate mismatch on the linehaul, light](docs/screenshots/ui/demo-invoice-light.png)
+![The same sample invoice in dark mode](docs/screenshots/ui/demo-invoice-dark.png)
 
 - **Pages:**
   - Invoices: filtered by status, 25 a page by keyset cursor.
@@ -106,9 +106,10 @@ pnpm dev                                        # the UI on http://127.0.0.1:300
 
 **Sample data.** `/demo` shows a frozen sample with no sign-in: a few golden-set invoices, synthetic and read-only, served from `apps/web/public/demo/` without calling the api. The login page links to it. A signed-in user sees the same sample, under "Live backend offline, showing sample data", while the api's `/readyz` fails or `AI_ENABLED=false`. To regenerate it (about 10 real model calls):
 1. `pnpm db:reset`, then start the api, worker and mock-tms with `AI_ENABLED=true`.
-2. Upload golden v1 g054, g055, g056, g069, g002, g066, g081, g087 and g089. Clear the miles of g003's shipment in the dev database, then upload g003 too, so its reconcile fails into a dead letter.
+2. Upload golden v1 g054, g055, g056, g069, g002, g066, g081, g087 and g089. Clear the miles of g003's shipment in the dev database, then upload g003 too, so its reconcile fails into a dead letter. Upload g088 last and leave it: without a PRO number it stays in needs review.
 3. Dispute one finding, approve one charge, approve an invoice, correct g087's PRO number, reject g089 with a reason.
 4. `pnpm --filter @freightaudit/web demo:export --ids=<id>,<id>,...`. The export refuses any invoice whose file is not in the golden manifest, so a seeded or real invoice can never become public.
+5. Rebuild the web (`pnpm build`, or its image): the pages read the sample when the web is built.
 
 **End-to-end tests.** `pnpm e2e` builds the web, starts this project's Postgres, Redis and MinIO with compose, and seeds its own database (`freightaudit_e2e`). Playwright then runs the recorded-fixture models (`:4011`), the api, the worker, the web (`:3000`) and a second web whose api is down (`E2E_OFFLINE_PORT`, default `:3002`), all on 127.0.0.1. A taken port stops the run. The suite covers sign-in, upload to Reconciled (PDF and PNG), deciding findings and approving, the way out of needs review, the public and offline sample, and the sign-in lockout. CI runs it in the `e2e` job.
 

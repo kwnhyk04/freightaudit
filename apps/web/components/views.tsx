@@ -122,7 +122,27 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc }: Where & { d
   const findings = invoice.discrepancies.edges.map(({ node }) => node);
   const flagged = new Map(findings.filter((finding) => finding.lineItem).map((finding) => [finding.lineItem!.lineNumber, finding]));
   const lines = invoice.lineItems.length > 0 ? invoice.lineItems : (extraction?.lines ?? []);
-  const canCorrect = !readOnly && invoice.status === 'NEEDS_REVIEW' && invoice.reviewReason === 'no_shipment_match';
+  const correctable = invoice.status === 'NEEDS_REVIEW' && invoice.reviewReason === 'no_shipment_match';
+  // The sample shows the same fields, disabled and without a submit button.
+  const correction = (
+    <>
+      <label>
+        Carrier
+        <select name="carrierId" defaultValue={data.carriers.find((carrier) => carrier.name === invoice.carrier)?.id ?? ''} disabled={readOnly}>
+          <option value="">Keep as read</option>
+          {data.carriers.map((carrier) => (
+            <option key={carrier.id} value={carrier.id}>
+              {carrier.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        PRO number
+        <input name="proNumber" defaultValue={invoice.proNumber ?? ''} className="id" maxLength={64} disabled={readOnly} />
+      </label>
+    </>
+  );
   // Before extraction, or when it failed, the file is all there is: the facts shrink to it.
   const unread = !extraction && !invoice.number;
   // Only a priced invoice has expected amounts; before that, every line is as billed by definition.
@@ -158,25 +178,20 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc }: Where & { d
                   ))}
                 </ul>
               )}
-              {canCorrect && (
+              {correctable && (
                 <div style={{ marginTop: 12 }}>
-                  <ActionForm hidden={{ intent: 'correct', id: invoice.id }} submit="Re-run matching" tone="primary">
-                    <label>
-                      Carrier
-                      <select name="carrierId" defaultValue={data.carriers.find((carrier) => carrier.name === invoice.carrier)?.id ?? ''}>
-                        <option value="">Keep as read</option>
-                        {data.carriers.map((carrier) => (
-                          <option key={carrier.id} value={carrier.id}>
-                            {carrier.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      PRO number
-                      <input name="proNumber" defaultValue={invoice.proNumber ?? ''} className="id" maxLength={64} />
-                    </label>
-                  </ActionForm>
+                  {readOnly ? (
+                    <>
+                      <div className="row">{correction}</div>
+                      <p className="faint" style={{ marginTop: 8 }}>
+                        In the live app a reviewer corrects the carrier or PRO number here, then re-runs matching.
+                      </p>
+                    </>
+                  ) : (
+                    <ActionForm hidden={{ intent: 'correct', id: invoice.id }} submit="Re-run matching" tone="primary">
+                      {correction}
+                    </ActionForm>
+                  )}
                 </div>
               )}
             </section>

@@ -184,6 +184,8 @@ From the approved design doc:
   - Public routes: `/login`, `/demo` with `public/demo/`, and the probes. Dark mode follows the system setting, with no toggle.
 - 2026-10-16: The BFF posts the generated typed documents with plain `fetch` (`documentMode: 'string'` in the client preset), with no GraphQL client library. Reason: server-side calls need no cache or hooks, and the documents keep their types.
 - 2026-10-16: Reviewer mutations set `app.actor` in their transaction and write their own `audit_events` row; the status trigger writes a row only when `app.actor` is unset. Reason: one row per action with its reason and field changes, while every pipeline move is still kept.
+- 2026-10-17: `formatMoney` prints a credit with a real minus sign, U+2212 (−$2,130.76), by mapping Intl's `minusSign` part; `formatUsd` keeps the hyphen (user request). Reason: a minus sign reads as minus where a hyphen reads as a dash. `formatUsd`'s text is stored as each finding's evidence and written by the seed, so changing it would change stored data.
+- 2026-10-17: The public sample keeps one invoice in needs review, left untouched (golden g088), and shows its correction fields disabled, without a submit button; the README's main screenshots are the sample's detail, not e2e fixture data (user requests).
 
 ## Preferences and Instructions
 
@@ -296,6 +298,10 @@ From the approved design doc:
 - 2026-10-16: A grid track of `1fr` cannot shrink below its content's min-content width, so a wide table pushed the invoice page past a 390 px phone. Single-column tracks use `minmax(0, 1fr)`; the screenshot spec fails a phone page that scrolls sideways.
 - 2026-10-16: Screenshots taken at `networkidle` sometimes showed next/font's fallback (Arial with adjusted metrics) instead of IBM Plex; the spec waits for `document.fonts.ready`, and for the PDF canvas on document pages.
 - 2026-10-16: React 19 form actions build `new FormData(form, submitter)`, so the pressed button's `name`/`value` arrives with the form. One decision form carries both "Approve charge" and "Dispute" as `intent` buttons.
+- 2026-10-17: `apps/web/lib/demo.ts` imports `public/demo/*.json` at build time, so after `demo:export` a running `next start`, and any image built before it, still serve the old sample. Rebuild the web, then restart it.
+- 2026-10-17: The Playwright MCP writes its page snapshots and console logs to `.playwright-mcp/` in the repository root, which git does not ignore. Delete the folder after a manual browser check.
+- 2026-10-17: Playwright's `getByLabel(text, { exact: true })` finds no `<select>` inside a wrapping `<label>`, since the label's text includes the option texts. Use `getByRole('combobox', { name })`.
+- 2026-10-17: fastify-openapi-glue 4.11.5 warns at startup about every media type in the spec that has no request parser, response-only types included (`application/pdf`, `application/problem+json`). Do not register parsers to quiet it: the api would then accept those request bodies instead of answering 415.
 
 ## Rejected Approaches
 

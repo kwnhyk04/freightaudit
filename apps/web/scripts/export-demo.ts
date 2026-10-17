@@ -28,15 +28,15 @@ const manifest = JSON.parse(readFileSync(golden, 'utf8')) as { cases: { sha256?:
 const hashes = new Set(JSON.stringify(manifest).match(/[0-9a-f]{64}/g) ?? []);
 
 const out = new URL('../public/demo/', import.meta.url);
-for (const name of readdirSync(out)) if (name.endsWith('.pdf')) rmSync(new URL(name, out));
 const details: Record<string, unknown> = {};
+const pdfs = new Map<string, Buffer>();
 for (const id of ids) {
   const detail = await gql(InvoiceDocument, { id });
   if (!detail.invoice) throw new Error(`invoice ${id} not found`);
   if (!hashes.has(detail.invoice.contentHash)) throw new Error(`invoice ${id} is not a golden-set invoice; the demo is public`);
   details[id] = detail;
   const pdf = await fetch(new URL(`/v1/invoices/${id}/document`, API_URL), { headers: { 'x-api-key': API_KEY } });
-  if (pdf.ok) writeFileSync(new URL(`${id}.pdf`, out), Buffer.from(await pdf.arrayBuffer()));
+  if (pdf.ok) pdfs.set(id, Buffer.from(await pdf.arrayBuffer()));
 }
 
 // List pages hold exactly the exported invoices and their rows.
@@ -55,6 +55,10 @@ for (const status of ['OPEN', 'REPLAYED'] as const) {
   deadLetters.deadLetters.edges.push(...page.deadLetters.edges.filter(({ node }) => node.invoice && keep.has(node.invoice.id)));
 }
 
+// Nothing is written until every invoice passed the check and every query answered, so a refused export leaves the
+// committed sample as it was.
+for (const name of readdirSync(out)) if (name.endsWith('.pdf')) rmSync(new URL(name, out));
+for (const [id, bytes] of pdfs) writeFileSync(new URL(`${id}.pdf`, out), bytes);
 const write = (name: string, data: unknown) => writeFileSync(new URL(name, out), `${JSON.stringify(data, null, 2)}\n`);
 write('invoices.json', invoices);
 write('invoice-details.json', details);

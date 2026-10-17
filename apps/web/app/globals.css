@@ -260,6 +260,13 @@ textarea {
   padding: 5px 10px;
   min-height: 32px;
 }
+/* The author color above outranks the browser's own disabled gray, so read-only fields say so here. */
+input:disabled,
+select:disabled {
+  background: var(--sunken);
+  color: var(--text-2);
+  cursor: not-allowed;
+}
 label {
   display: grid;
   gap: 4px;
