@@ -8,9 +8,14 @@ export const Badge = ({ tone, children }: { tone: Tone; children: ReactNode }) =
 
 export const StatusBadge = ({ status }: { status: InvoiceStatus }) => <Badge tone={STATUS[status].tone}>{STATUS[status].label}</Badge>;
 
-// Amounts arrive as integer cents and are only formatted here; the UI never adds or subtracts them.
-export const Money = ({ cents, currency }: { cents: number | null | undefined; currency?: string | null }) =>
+// Amounts arrive as integer cents, or as bigint from the domain's review helpers, and are only formatted here; the UI
+// never adds or subtracts them.
+export const Money = ({ cents, currency }: { cents: bigint | number | null | undefined; currency?: string | null }) =>
   cents === null || cents === undefined ? <span className="faint">None</span> : <span className="num">{formatMoney(cents, currency ?? 'USD')}</span>;
+
+// What a charge or an invoice bills above the rate card: a plus sign and the bad color, or a faint zero.
+export const Difference = ({ cents, currency }: { cents: bigint; currency?: string | null }) =>
+  cents > 0n ? <span className="num text-bad">+{formatMoney(cents, currency ?? 'USD')}</span> : <span className="num faint">{formatMoney(cents, currency ?? 'USD')}</span>;
 
 const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 const moment = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' } as const;
@@ -27,15 +32,34 @@ export const Day = ({ value }: { value: string | null | undefined }) =>
 export const Moment = ({ value }: { value: string | null | undefined }) =>
   value ? <time className="num" dateTime={value} title={value}>{formatMoment(new Date(value))} UTC</time> : <span className="faint">None</span>;
 
-export function Tabs({ items, current }: { items: { href: string; label: string; key: string }[]; current: string }) {
+// Filters as links, so the filter lives in the URL; a count is followed by its unit for screen readers.
+export function Tabs({ items, current, label, unit }: { items: { href: string; label: string; key: string; count?: number }[]; current: string; label: string; unit?: string }) {
   return (
-    <nav className="tabs" aria-label="Filter">
+    <nav className="tabs" aria-label={label}>
       {items.map((item) => (
         <Link key={item.key} href={item.href} aria-current={item.key === current ? 'page' : undefined}>
           {item.label}
+          {item.count !== undefined && (
+            <>
+              {' '}
+              <span className="count">{item.count}</span>
+              {unit && <span className="visually-hidden"> {unit}</span>}
+            </>
+          )}
         </Link>
       ))}
     </nav>
+  );
+}
+
+// The body of every not-found page: what happened and the way back.
+export function NotFound({ text, href, back }: { text: string; href: string; back: string }) {
+  return (
+    <section className="panel not-found">
+      <h1>Page not found</h1>
+      <p className="muted">{text}</p>
+      <Link href={href}>{back}</Link>
+    </section>
   );
 }
 
@@ -48,22 +72,27 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
   );
 }
 
-// Keyset pages only go forward; the browser's back button returns to the page before.
-export function Pager({ next, first }: { next: string | null; first: string | null }) {
-  if (!next && !first) return null;
+// Pages as links. One that leads nowhere stays in place without a link, marked disabled, so the other never moves.
+export function Pager({ showing, previous, next, labels = ['Previous', 'Next'] }: { showing?: string; previous: string | null; next: string | null; labels?: [string, string] }) {
+  if (!showing && !previous && !next) return null;
+  const page = (href: string | null, text: string) =>
+    href ? (
+      <Link className="button" href={href}>
+        {text}
+      </Link>
+    ) : (
+      <a className="button" aria-disabled="true">
+        {text}
+      </a>
+    );
   return (
-    <div className="pager">
-      {first && (
-        <Link className="button" href={first}>
-          First page
-        </Link>
-      )}
-      {next && (
-        <Link className="button" href={next}>
-          Next 25
-        </Link>
-      )}
-    </div>
+    <nav className="pager" aria-label="Pages">
+      {showing && <span className="muted">{showing}</span>}
+      <span className="row">
+        {page(previous, labels[0])}
+        {page(next, labels[1])}
+      </span>
+    </nav>
   );
 }
 

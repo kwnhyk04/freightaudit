@@ -24,24 +24,33 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 ## In Progress
 
 - [ ] UI round 1 (plan approved 2026-10-18: `C:\Users\kwonhyuk\.claude\plans\pasted-content-id-aa61-start-ui-melodic-scroll.md`): the invoice list, invoice detail and upload screens as the approved pictures in `_design-reference/freightaudit/approved` (light, dark, phone), one-tap samples, and the two items moved here from Pending (offline 404, zoom). Two PRs, api first: Vercel deploys the web on every merge to main, while the demo api changes only with `pnpm demo:up`.
-  - [ ] Phase A, api (branch `ui-round-1` from main `5fb695e`). It changes no operation, so the web deployed from its merge asks only for what the old api serves.
+  - [x] Phase A, api (branch `ui-round-1` from main `5fb695e`, merged as `e61f28c`, #23). It changes no operation, so the web deployed from its merge asks only for what the old api serves.
     - [x] Domain: `overchargeCents`, `reviewAmounts` and `lineExpectedCents` with fast-check properties; coverage stays at 100% (36 tests).
-    - [ ] Contract: `invoiceSummary`; `invoices(last, before, search)` with `totalCount` and `offset`; `decideInvoice` with `InvoiceDecision`, `SeenDiscrepancy` and `Discrepancy.version`; codegen. Done except the user's two lines in the protected `packages/contracts/eslint.config.js`: at line 28, `types: ['PageInfo', 'ExtractedLine', 'FieldChange', 'InvoiceSummary', 'InvoiceStatusCount'],`; at line 19, the comment `// Keyset pagination goes forward (first, after) or back (last, before).`
+    - [x] Contract: `invoiceSummary`; `invoices(last, before, search)` with `totalCount` and `offset`; `decideInvoice` with `InvoiceDecision`, `SeenDiscrepancy` and `Discrepancy.version`; codegen. The user applied the two lines in the protected `packages/contracts/eslint.config.js` (line 28's `strict-id-in-types` exceptions, line 19's comment); both are in `e61f28c`.
     - [x] Api: backward keyset paging and counts, search, the summary, `decideInvoice` (one transaction, the versions the reviewer saw, `decide:` keys in `idempotency_keys`), and `resolveDiscrepancy` locking the invoice first.
     - [x] Tests: `graphql.int.test.ts` (summary, search, paging both ways); `decide.int.test.ts` (each decision, rollback part-way, "changed", retry, two at once, lock order). The old lock order and a removed version check each failed their test.
-    - [ ] Checks (2026-10-18): typecheck 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 115/115, `pnpm contracts:check`, `pnpm contracts:breaking` (no changes) and `pnpm e2e` 9/9 pass. Lint is 11 of 12: contracts waits for the ESLint lines above.
+    - [x] Checks (2026-10-18), run locally: typecheck 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 115/115, `pnpm contracts:check`, `pnpm contracts:breaking` (no changes), `pnpm e2e` 9/9. Lint was 11 of 12 locally, before the ESLint lines. The Release run for `e61f28c`, which reruns every ci.yml check, lint included, passed.
     - [x] Docs: context, memory, activity log.
-    - [ ] The user commits and merges PR A, Release publishes, the user runs `pnpm demo:up`, and the demo api's revision label is the merge commit.
-  - [ ] Phase B, web (branch `ui-round-1-web` from main once PR A is live on the demo):
-    - [ ] Shell: counts, skip link, stacked phone nav; the summary cached 10 s; the poller slows to 60 s after 2 minutes.
-    - [ ] List: stat cards, tab counts, search, status reason lines, Billed, Expected and Difference, "Showing a to b of N" with Previous and Next.
-    - [ ] Detail: bulk decisions through `decideInvoice`, findings, charges against the rate card, invoice details, the audit trail in plain words.
-    - [ ] Document marks on digital PDFs (one place only; the ordinal rule for identical lines; carrier ignores case); pdf.js pinned to exactly 6.4.299, with the eval and sandbox guard tests.
-    - [ ] Upload: dropzone, recent uploads, one-tap samples (g001, g067, and g062 in place of g071) through the same checks as a file; the sample PDFs traced into the upload function.
-    - [ ] Offline 404 (found 2026-10-18): `livePage` sends a live invoice to `/demo/invoices/<id>`, the sample knows only its 11 ids, and Next's default 404 shows with no banner. Fix: an id the sample lacks goes to `/demo/invoices`; not-found pages inside the live and demo shells.
-    - [ ] Zoom (found 2026-10-18): `.doc-pages canvas { max-width: 100% }` caps the drawn page at the panel's width, so zoom in only sharpens. Fix: the canvas keeps its drawn width in a page wrapper, and the panel scrolls.
-    - [ ] Tests: marks over the golden PDFs, pdf.js guards, e2e (upload, samples, bulk decision, "changed", search, paging, zoom, offline, not-found), `pnpm e2e:screenshots` round-1 shots beside the approved pictures.
-    - [ ] Docs and README screenshots (sample g056). PR B merges only after the demo api runs phase A.
+    - [x] Live (read-only checks, 2026-10-18):
+      - [x] Release run `39074359381` for `e61f28c` succeeded (22:16:03 to 22:19:05 UTC).
+      - [x] GHCR has `sha-e61f28c` for api, worker, web and squid, each the same digest as `latest` (api `sha256:ba37ce5f…`, worker `sha256:cb788d0c…`).
+      - [x] After the user's `pnpm demo:up`, the demo api and worker run revision `e61f28cb…`, started 22:20 UTC, healthy. The api's image digest equals GHCR's `sha-e61f28c`.
+      - [x] Production `/login` answers 200 from a function (`x-vercel-id: sin1::hkg1::…`).
+      - [x] The api logs `POST /graphql` 200 when the production invoice list loads. The user loaded it twice: `GET /readyz` 200 then `POST /graphql` 200 at 22:26:26–27 and again at 22:26:38 UTC. Before that, the only request since the restart was demo:up's own `GET /v1/invoices` 401.
+  - [ ] Phase B, web: branch `ui-round-1-web` from main `e61f28c` (created 2026-10-18 after phase A ran on the demo; not committed).
+    - [x] Shell: counts, skip link, stacked phone nav; the summary cached 10 s; the poller slows to 60 s after 2 minutes.
+    - [x] List: stat cards, tab counts, search, status reason lines, Billed, Expected and Difference, "Showing a to b of N" with Previous and Next.
+    - [x] Detail: bulk decisions through `decideInvoice`, findings, charges against the rate card, invoice details, the audit trail in plain words.
+    - [x] Document marks on digital PDFs (one place only; the ordinal rule for identical lines; carrier ignores case); pdf.js pinned to exactly 6.4.299, with the eval and sandbox guard tests.
+    - [x] Upload: dropzone, recent uploads, one-tap samples (g001, g067, and g062 in place of g071) through the same checks as a file; the sample PDFs traced into the upload function (`.next/server/app/(app)/upload/page.js.nft.json` lists all three).
+    - [x] Offline 404 (found 2026-10-18): an id the sample lacks goes to `/demo/invoices`; not-found pages inside the live and demo shells, and a root one.
+    - [x] Zoom (found 2026-10-18): each page keeps its drawn width in its own frame, and the panel scrolls both ways.
+    - [x] Tests: marks over the golden PDFs (73, three mutations caught), pdf.js guards (5, two mutations caught), labels and sample maths, e2e (upload, samples, bulk decision, "changed", search, paging, zoom, offline, not-found, marks), `pnpm e2e:screenshots` round-1 shots in `docs/screenshots/ui/round-1/` beside the approved pictures.
+    - [x] Docs and README screenshots (sample g056): context, memory, activity log, threat notes, README.
+    - [x] Checks (2026-10-18), run locally: `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm contracts:check`, `pnpm e2e` 18/18, `pnpm e2e:screenshots` 8/8, the `/upload` trace lists the three sample PDFs. A fresh review found no Critical or Important defect; two minors re-graded Important were fixed test first (activity log).
+    - [ ] Optional, the review's five deferred minors (activity log, 2026-10-18 phase B): a second PDF fetch when a page is left during pdf.js's load; a drop during an upload is lost; `uploadSample` reads before the session check; a repeated `q` or `status` parameter throws; a finding's amount precedes its heading.
+    - [ ] The user commits and opens PR B (the demo api already runs phase A, `e61f28c`).
+    - [ ] After merge, on the production domain (the user): the list's cards and counts; one sample tap and a repeat; a bulk decision on a demo invoice; offline, the twin page, the sample list for an unknown id and the not-found page; zoom on a phone.
 
 - [ ] Vercel builds main without the Ignored Build Step (branch `fix/vercel-production-builds` from main `dc6703b`; not committed; carries the doc updates made since #21).
   - [x] `apps/web/vercel.json`: `ignoreCommand` removed. `git.deploymentEnabled` is `{"**": false, "main": true}`, checked against Vercel's Git configuration docs: minimatch patterns, and a branch matching several rules deploys if one is `true`.

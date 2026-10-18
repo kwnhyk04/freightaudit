@@ -1,7 +1,7 @@
 import 'server-only';
 import { loadEnv } from '@freightaudit/config/env';
 import type { paths } from '@freightaudit/contracts';
-import type { TypedDocumentString } from '@freightaudit/contracts/graphql';
+import { InvoiceSummaryDocument, type InvoiceSummaryQuery, type TypedDocumentString } from '@freightaudit/contracts/graphql';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import * as crypto from 'node:crypto';
@@ -113,3 +113,17 @@ export async function gql<Result, Variables>(document: TypedDocumentString<Resul
 
 // The typed REST client for uploads and documents.
 export const rest = () => createClient<paths>({ baseUrl: env().API_URL, headers: { 'x-api-key': env().API_KEY } });
+
+let counted: { at: number; summary: Promise<InvoiceSummaryQuery['invoiceSummary']> } | undefined;
+// The list's cards and the sidebar's counts: one call per request, kept 10 s, since every page asks for them and the api
+// allows 60 requests a minute for all web traffic. Each action forgets it. ponytail: per instance, so another Vercel
+// instance can show counts up to 10 s old.
+export const summary = cache(() => {
+  if (!counted || Date.now() - counted.at >= 10_000) {
+    const next = { at: Date.now(), summary: gql(InvoiceSummaryDocument, {}).then(({ invoiceSummary }) => invoiceSummary) };
+    next.summary.catch(() => counted === next && (counted = undefined));
+    counted = next;
+  }
+  return counted.summary;
+});
+export const forgetSummary = () => void (counted = undefined);

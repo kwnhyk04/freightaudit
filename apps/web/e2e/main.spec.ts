@@ -15,6 +15,13 @@ async function db<Row>(sql: string) {
   }
 }
 const badge = (page: Page, text: string) => page.locator('.badge', { hasText: text }).first();
+const digital = readFileSync(new URL('../../../packages/llm/fixtures/digital.pdf', import.meta.url));
+// Reconciled invoices whose findings are all open, so the bulk decisions show; first and last by id, one per test.
+const allOpen = (order: 'ASC' | 'DESC') =>
+  db<{ id: string; open: number }>(
+    `SELECT i.id, count(*)::int AS open FROM invoices i JOIN discrepancies d ON d.invoice_id = i.id WHERE i.status = 'reconciled'
+     GROUP BY i.id HAVING bool_and(d.status = 'open') ORDER BY i.id ${order} LIMIT 1`,
+  );
 
 test.describe('login', () => {
   test('pages need a session; the cookie is httpOnly, Secure and SameSite=Lax; the browser never calls the API; sign-out drops the cookie and the cache and refuses another site', async ({ browser }) => {
@@ -53,49 +60,70 @@ test.describe('login', () => {
 });
 
 test.describe('upload', () => {
-  test('refuses before sending what the api refuses, and a fixture PDF moves from received to reconciled', async ({ page, request }) => {
+  test('refuses before sending what the api refuses; a chosen PDF uploads by itself, stays on the page and its row reaches done', async ({ page, request }) => {
     await page.goto('/upload');
     const file = page.getByLabel('Invoice file');
+    // The input waits for the page to hydrate, since only then is a chosen file checked and sent.
+    await expect(file).toBeEnabled();
     await file.setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
-    await expect(page.locator('.form-error')).toHaveText("notes.txt isn't a PDF, PNG or JPG.");
+    const refused = (name: RegExp) => page.getByRole('row', { name }).getByRole('cell');
+    await expect(refused(/notes[.]txt/)).toHaveText(['notes.txt', 'Not accepted', "It isn't a PDF, PNG or JPG."]);
     const big = Buffer.alloc(4 * 1024 * 1024 + 1);
     big.write('%PDF-1.7');
     await file.setInputFiles({ name: 'big.pdf', mimeType: 'application/pdf', buffer: big });
-    await expect(page.locator('.form-error')).toHaveText('big.pdf is 4.0 MB; the limit is 4 MB.');
-    const digital = readFileSync(new URL('../../../packages/llm/fixtures/digital.pdf', import.meta.url));
+    await expect(refused(/big[.]pdf/)).toHaveText(['big.pdf', 'Not accepted', 'The file is 4.0 MB; the limit is 4 MB.']);
     await file.setInputFiles({ name: 'digital.pdf', mimeType: 'application/pdf', buffer: digital });
-    const viewed = page.waitForResponse((response) => /\/api\/invoices\/[0-9a-f-]{36}\/document$/.test(response.url()));
-    await page.getByRole('button', { name: 'Upload invoice' }).click();
-    await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
+    await expect(page.getByRole('status').filter({ hasText: 'digital.pdf uploaded.' })).toHaveCount(1);
+    await expect(page).toHaveURL(/\/upload$/);
+    // A file refused after an upload is announced in place of the upload's result.
+    await expect(file).toBeEnabled();
+    await file.setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
+    await expect(page.getByRole('status')).toHaveText("notes.txt not accepted: It isn't a PDF, PNG or JPG.");
+    const row = page.getByRole('row', { name: /digital[.]pdf/ });
+    await expect(row).toContainText(/Done in [0-9.]+ s/, { timeout: 45_000 });
     // Neither the web nor the api lets anyone keep a copy of the document.
+    const viewed = page.waitForResponse((response) => /\/api\/invoices\/[0-9a-f-]{36}\/document$/.test(response.url()));
+    await row.getByRole('link', { name: 'digital.pdf' }).click();
+    await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
     expect((await viewed).headers()['cache-control']).toBe('private, no-store');
     const stored = await request.get(`http://127.0.0.1:${env.API_PORT}/v1/invoices/${page.url().split('/').at(-1)}/document`, {
       headers: { 'x-api-key': env.API_KEY! },
     });
     expect([stored.status(), stored.headers()['cache-control']]).toEqual([200, 'private, no-store']);
-    await expect(badge(page, 'Reconciled')).toBeVisible({ timeout: 45_000 });
+    await expect(badge(page, 'Reconciled')).toBeVisible();
     await expect(page.getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
-    // Zoom redraws the document the viewer holds; a refetch would cross Vercel and Funnel to the PC each time.
-    const fetched: string[] = [];
-    page.on('request', (sent) => {
-      if (sent.url().includes('/document')) fetched.push(sent.url());
-    });
-    // The drawn bitmap's width, since CSS caps the shown width at the panel's (max-width: 100%).
-    const width = () => page.getByRole('img', { name: 'Page 1 of 1' }).evaluate((canvas) => (canvas as HTMLCanvasElement).width);
-    const before = await width();
-    await page.getByRole('button', { name: 'Zoom in' }).click();
-    await expect.poll(width).toBeGreaterThan(before);
-    expect(fetched).toEqual([]);
   });
 
   test('a PNG is accepted and kept as a one-page PDF', async ({ page }) => {
     await page.setContent('<p style="font: 32px serif; padding: 40px">Invoice 4242 from a phone</p>');
     const png = await page.screenshot();
     await page.goto('/upload');
-    await page.getByLabel('Invoice file').setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: png });
-    await page.getByRole('button', { name: 'Upload invoice' }).click();
+    const file = page.getByLabel('Invoice file');
+    await expect(file).toBeEnabled();
+    await file.setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: png });
+    await page.getByRole('row', { name: /photo[.]png/ }).getByRole('link', { name: 'photo.png' }).click();
     await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
     await expect(page.getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
+  });
+
+  test('a sample uploads in one tap; a second tap adds no invoice, extraction or key', async ({ page }) => {
+    await page.goto('/upload');
+    const sample = page.getByRole('button', { name: 'Clean digital invoice' });
+    const tap = async () => {
+      const done = page.waitForResponse((response) => response.request().method() === 'POST' && new URL(response.url()).pathname === '/upload');
+      await sample.click();
+      await done;
+    };
+    await tap();
+    await expect(page.getByRole('row', { name: /clean-digital-g001[.]pdf/ })).toContainText(/Done in/, { timeout: 45_000 });
+    await tap();
+    await expect(sample).toBeEnabled();
+    const rows = await db<{ extractions: number; keys: number }>(
+      `SELECT (SELECT count(*) FROM extractions e WHERE e.invoice_id = i.id)::int AS extractions,
+              (SELECT count(*) FROM idempotency_keys k WHERE k.invoice_id = i.id AND k.key LIKE 'sample-%')::int AS keys
+       FROM invoices i WHERE i.filename = 'clean-digital-g001.pdf'`,
+    );
+    expect(rows).toEqual([{ extractions: 1, keys: 1 }]);
   });
 });
 
@@ -106,15 +134,118 @@ test.describe('review', () => {
     );
     await page.goto(`/invoices/${row!.id}`);
     await page.getByLabel('Note', { exact: true }).first().fill('Contract rate applies');
-    await page.getByRole('button', { name: 'Dispute' }).first().click();
+    await page.getByRole('button', { name: 'Dispute', exact: true }).first().click();
     await expect(page.getByText('Note: Contract rate applies')).toBeVisible();
-    while ((await page.getByRole('button', { name: 'Approve charge' }).count()) > 0) {
-      const left = await page.getByRole('button', { name: 'Approve charge' }).count();
-      await page.getByRole('button', { name: 'Approve charge' }).first().click();
-      await expect(page.getByRole('button', { name: 'Approve charge' })).toHaveCount(left - 1);
+    const approve = page.getByRole('button', { name: 'Approve charge', exact: true });
+    while ((await approve.count()) > 0) {
+      const left = await approve.count();
+      await approve.first().click();
+      await expect(approve).toHaveCount(left - 1);
     }
     await page.getByRole('button', { name: 'Approve for payment' }).click();
     await expect(badge(page, 'Approved')).toBeVisible();
+  });
+
+  test('approve at rate card decides every open finding in one step, with a trail row for each, and approves the invoice', async ({ page }) => {
+    const [row] = await allOpen('ASC');
+    await page.goto(`/invoices/${row!.id}`);
+    page.once('dialog', (dialog) => void dialog.accept());
+    await page.getByRole('button', { name: /^Approve at rate card, / }).click();
+    await expect(badge(page, 'Approved')).toBeVisible();
+    const trail = page.getByRole('region', { name: 'Audit trail' });
+    await expect(trail.getByText('Overcharge disputed')).toHaveCount(row!.open);
+    await expect(trail.getByText('At rate card')).toBeVisible();
+  });
+
+  test('a bulk decision on findings that changed since the page loaded is refused, with a way to reload', async ({ page, context }) => {
+    const [row] = await allOpen('DESC');
+    await page.goto(`/invoices/${row!.id}`);
+    const other = await context.newPage();
+    await other.goto(`/invoices/${row!.id}`);
+    const approve = other.getByRole('button', { name: 'Approve charge', exact: true });
+    await approve.first().click();
+    await expect(approve).toHaveCount(row!.open - 1);
+    await other.close();
+    page.once('dialog', (dialog) => void dialog.accept());
+    await page.getByRole('button', { name: /^Dispute / }).click();
+    const alert = page.locator('.form-error');
+    await expect(alert).toContainText('This invoice changed since you opened it. Reload it to see what changed.');
+    await alert.getByRole('link', { name: 'Reload' }).click();
+    await expect(page.getByRole('button', { name: /^Dispute / })).toHaveCount(0);
+  });
+});
+
+test.describe('list', () => {
+  test('a search finds an invoice by its PRO number, and the pages step forward and back', async ({ page }) => {
+    const [invoice] = await db<{ id: string; pro_number: string }>('SELECT id, pro_number FROM invoices WHERE pro_number IS NOT NULL ORDER BY id LIMIT 1');
+    await page.goto('/invoices');
+    await page.getByRole('searchbox', { name: 'Search invoices' }).fill(invoice!.pro_number);
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`[?]q=${invoice!.pro_number}$`));
+    await expect(page.locator(`a[href="/invoices/${invoice!.id}"]`)).toBeVisible();
+    const found = await page.locator('tbody tr').count();
+    await expect(page.getByRole('navigation', { name: 'Pages' })).toContainText(`Showing 1 to ${found} of ${found}`);
+    await page.goto('/invoices');
+    const pages = page.getByRole('navigation', { name: 'Pages' });
+    await expect(pages).toContainText(/Showing 1 to 25 of \d+/);
+    await pages.getByRole('link', { name: 'Next' }).click();
+    await expect(pages).toContainText(/Showing 26 to 50 of \d+/);
+    // Within a page of the start, Previous is the plain first page.
+    await pages.getByRole('link', { name: 'Previous' }).click();
+    await expect(pages).toContainText(/Showing 1 to 25 of \d+/);
+    await expect(page).toHaveURL(/\/invoices$/);
+  });
+
+  test('an invoice id the api does not hold shows the not-found page inside the app', async ({ page }) => {
+    await page.goto('/invoices/00000000-0000-4000-8000-000000000000');
+    await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+  });
+});
+
+test.describe('document', () => {
+  test('zoom widens the page past the panel, which scrolls from its left edge, without fetching the document again', async ({ page }) => {
+    const [invoice] = await db<{ id: string }>("SELECT id FROM invoices WHERE filename = 'digital.pdf' LIMIT 1");
+    await page.goto(`/invoices/${invoice!.id}`);
+    const pages = page.getByRole('region', { name: 'Document pages' });
+    await expect(pages).toHaveAttribute('aria-busy', 'false');
+    const fetched: string[] = [];
+    page.on('request', (sent) => {
+      if (sent.url().includes('/document')) fetched.push(sent.url());
+    });
+    for (let step = 0; step < 4; step++) await page.getByRole('button', { name: 'Zoom in' }).click();
+    await expect(page.locator('.doc-bar')).toContainText('200%');
+    await expect(pages).toHaveAttribute('aria-busy', 'false');
+    expect(await pages.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeGreaterThan(0);
+    // The drawn page starts inside the panel, so scrolling reaches its left edge.
+    const [canvas, panel] = await Promise.all([page.getByRole('img', { name: 'Page 1 of 1' }).boundingBox(), pages.boundingBox()]);
+    expect(canvas!.x).toBeGreaterThanOrEqual(panel!.x);
+    expect(fetched).toEqual([]);
+  });
+
+  test('a page that fails to draw at one zoom draws again at another, and the page keeps working', async ({ page }) => {
+    // A draw that throws, as one past a device's canvas limit does (an iPad at 300%): measuring a mark's text fails while
+    // the flag is set.
+    type Flagged = { failDraw?: boolean };
+    await page.addInitScript(() => {
+      const measureText = CanvasRenderingContext2D.prototype.measureText;
+      CanvasRenderingContext2D.prototype.measureText = function (this: CanvasRenderingContext2D, text: string) {
+        if ((window as unknown as Flagged).failDraw) throw new Error('draw failed');
+        return measureText.call(this, text);
+      };
+    });
+    const [invoice] = await db<{ id: string }>("SELECT id FROM invoices WHERE filename = 'digital.pdf' LIMIT 1");
+    await page.goto(`/invoices/${invoice!.id}`);
+    const pages = page.getByRole('region', { name: 'Document pages' });
+    await expect(pages).toHaveAttribute('aria-busy', 'false');
+    await page.evaluate(() => void ((window as unknown as Flagged).failDraw = true));
+    await page.getByRole('button', { name: 'Zoom in' }).click();
+    await expect(page.getByText('The document could not be shown.')).toBeVisible();
+    await page.evaluate(() => void ((window as unknown as Flagged).failDraw = false));
+    await page.getByRole('button', { name: 'Zoom out' }).click();
+    await expect(pages).toHaveAttribute('aria-busy', 'false');
+    await expect(page.getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
+    await expect(page.getByText('This page could not load.')).toHaveCount(0);
   });
 });
 

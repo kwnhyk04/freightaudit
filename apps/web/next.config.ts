@@ -5,6 +5,8 @@ const config: NextConfig = {
   output: 'standalone',
   // Uploads reach the api through a server action: a 4 MiB file plus multipart overhead, under Vercel's 4.5 MB cap.
   experimental: { serverActions: { bodySizeLimit: '4.5mb' } },
+  // The one-tap samples are read from disk by the upload page's action; a Vercel function gets no public/ otherwise.
+  outputFileTracingIncludes: { '/upload': ['./public/samples/*.pdf'] },
   async headers() {
     const security = [
       { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },

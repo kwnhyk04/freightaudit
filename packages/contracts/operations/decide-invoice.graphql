@@ -1,0 +1,6 @@
+mutation DecideInvoice($id: ID!, $decision: InvoiceDecision!, $seen: [SeenDiscrepancy!]!, $requestId: ID!) {
+  decideInvoice(id: $id, decision: $decision, seen: $seen, requestId: $requestId) {
+    id
+    status
+  }
+}

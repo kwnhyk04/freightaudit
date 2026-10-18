@@ -6,7 +6,7 @@ export default function Loading() {
       <div className="page-head">
         <div className="skeleton" style={{ width: 160, height: 18 }} />
       </div>
-      <SkeletonRows columns={7} />
+      <SkeletonRows columns={9} />
     </>
   );
 }
