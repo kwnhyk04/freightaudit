@@ -1,0 +1,35 @@
+query RecentUploads {
+  invoices(first: 5) {
+    edges {
+      node {
+        id
+        status
+        filename
+        currency
+        totalCents
+        createdAt
+        reviewReason
+        failureReason
+        discrepancies(first: 100) {
+          edges {
+            node {
+              id
+              status
+              expectedCents
+              billedCents
+            }
+          }
+        }
+        auditTrail {
+          id
+          at
+          action
+          changes {
+            field
+            to
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,19 +1,27 @@
 'use client';
+import type { InvoiceDecision } from '@freightaudit/contracts/graphql';
 import { checkUpload, MAX_PDF_PAGES, MAX_UPLOAD_LABEL, type UploadCheck } from '@freightaudit/contracts/limits';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
 import { type ReactNode, useActionState, useEffect, useRef, useState } from 'react';
-import { type ActionState, login, review, upload } from '../app/actions.ts';
+import { type ActionState, login, review, upload, uploadSample } from '../app/actions.ts';
+import { STEPS, type UploadState } from '../lib/labels.ts';
 
-// The sidebar's links, marking the section the reader is in.
-export function NavLinks({ links }: { links: { href: string; label: string }[] }) {
+// The sidebar's links, marking the section the reader is in, with a count where one waits; screen readers hear the
+// count as words.
+export function NavLinks({ links }: { links: { href: string; label: string; count?: number; unit?: string; tone?: 'warn' }[] }) {
   const path = usePathname();
   return (
     <nav className="nav" aria-label="Main">
       {links.map((link) => (
-        <Link key={link.href} href={link.href} aria-current={path.startsWith(link.href) ? 'page' : undefined}>
+        <Link
+          key={link.href}
+          href={link.href}
+          aria-current={path.startsWith(link.href) ? 'page' : undefined}
+          aria-label={link.count ? `${link.label}, ${link.count} ${link.unit}${link.count === 1 ? '' : 's'}` : undefined}
+        >
           {link.label}
+          {link.count !== undefined && link.count > 0 && <span className={`count${link.tone ? ` ${link.tone}` : ''}`}>{link.count}</span>}
         </Link>
       ))}
     </nav>
@@ -48,14 +56,21 @@ export function LoginForm({ next }: { next?: string }) {
   );
 }
 
-// Refreshes the page while the pipeline still moves the invoice, and stops once it settles. The live region tells
+// Refreshes the page while the pipeline still moves an invoice, and stops once it settles: every 5 s, then every 60 s
+// after 2 minutes, since an upload waiting for the next day's model budget waits until 00:00 UTC. The live region tells
 // screen readers each new status.
 export function StatusPoller({ active, label }: { active: boolean; label: string }) {
   const router = useRouter();
   useEffect(() => {
     if (!active) return;
-    const timer = setInterval(() => document.visibilityState === 'visible' && router.refresh(), 5_000);
-    return () => clearInterval(timer);
+    const started = Date.now();
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      if (document.visibilityState === 'visible') router.refresh();
+      timer = setTimeout(tick, Date.now() - started < 120_000 ? 5_000 : 60_000);
+    };
+    timer = setTimeout(tick, 5_000);
+    return () => clearTimeout(timer);
   }, [active, router]);
   return (
     <p className="visually-hidden" aria-live="polite">
@@ -64,145 +79,169 @@ export function StatusPoller({ active, label }: { active: boolean; label: string
   );
 }
 
-// The document, drawn with pdf.js page by page at the panel's width. Headless browsers and phones show it the same way,
-// which a browser's own PDF viewer does not. It is fetched once per mount and zoom only redraws it: the document route
-// answers no-store, so each fetch would cross Vercel and Funnel to the PC again.
-export function DocumentViewer({ src }: { src: string }) {
-  const pages = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(1);
-  const [doc, setDoc] = useState<PDFDocumentProxy>();
-  const [state, setState] = useState<{ count?: number; error?: string }>({});
-  useEffect(() => {
-    let cancelled = false;
-    let task: PDFDocumentLoadingTask | undefined;
-    (async () => {
-      try {
-        // The worker module runs on this thread, so no worker file has to be served.
-        // @ts-expect-error -- the worker module ships no types; importing it only registers it.
-        await import('pdfjs-dist/build/pdf.worker.min.mjs');
-        const pdfjs = await import('pdfjs-dist');
-        task = pdfjs.getDocument({ url: src });
-        const loaded = await task.promise;
-        if (!cancelled) setDoc(loaded);
-      } catch (err) {
-        const missing = (err as { status?: number }).status === 404;
-        if (!cancelled) setState({ error: missing ? 'No document is stored for this invoice.' : 'The document could not be shown.' });
-      }
-    })();
-    return () => {
-      cancelled = true;
-      void task?.destroy();
-    };
-  }, [src]);
-  useEffect(() => {
-    const host = pages.current;
-    if (!doc || !host) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        host.replaceChildren();
-        const width = Math.max(host.clientWidth - 32, 240);
-        for (let number = 1; number <= doc.numPages && !cancelled; number++) {
-          const page = await doc.getPage(number);
-          if (cancelled) return;
-          const scale = (width / page.getViewport({ scale: 1 }).width) * zoom;
-          const viewport = page.getViewport({ scale: scale * window.devicePixelRatio });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          canvas.style.width = `${viewport.width / window.devicePixelRatio}px`;
-          canvas.setAttribute('role', 'img');
-          canvas.setAttribute('aria-label', `Page ${number} of ${doc.numPages}`);
-          host.append(canvas);
-          await page.render({ canvas, viewport }).promise;
-        }
-        if (!cancelled) setState({ count: doc.numPages });
-      } catch {
-        if (!cancelled) setState({ error: 'The document could not be shown.' });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [doc, zoom]);
+const describe = (file: File, check: Exclude<UploadCheck, { ok: true }>) => {
+  if (check.detail.startsWith('file is larger')) return `The file is ${(file.size / 1024 / 1024).toFixed(1)} MB; the limit is ${MAX_UPLOAD_LABEL}.`;
+  if (check.detail.startsWith('file must be')) return "It isn't a PDF, PNG or JPG.";
+  return `${check.detail.charAt(0).toUpperCase()}${check.detail.slice(1)}.`;
+};
+
+export type RecentRow = UploadState & { id: string; filename: string };
+
+// The dropzone and the recent uploads below it. A chosen or dropped file is checked as the api would check it and then
+// uploads by itself; a refused one joins the list as "Not accepted" until the page reloads, since it never reaches the
+// server. The live region says what is happening; focus stays where it was.
+export function UploadArea({ rows }: { rows: RecentRow[] }) {
+  const [state, action, pending] = useActionState<ActionState, FormData>(upload, {});
+  const [refused, setRefused] = useState<{ name: string; reason: string }[]>([]);
+  // The latest file refused in the browser, announced in place of any earlier upload's result.
+  const [notice, setNotice] = useState<string>();
+  const [sending, setSending] = useState<string>();
+  const [over, setOver] = useState(false);
+  // Choosing a file does nothing until React can check it, so the input waits for the page to hydrate.
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  const form = useRef<HTMLFormElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  async function take(file: File | undefined) {
+    if (!file) return;
+    const result = checkUpload(new Uint8Array(await file.slice(0, 1024 * 1024).arrayBuffer()), file.size);
+    if (!result.ok) {
+      const reason = describe(file, result);
+      setRefused((list) => [{ name: file.name, reason }, ...list]);
+      setNotice(`${file.name} not accepted: ${reason}`);
+      setSending(undefined);
+      if (input.current) input.current.value = '';
+      return;
+    }
+    setNotice(undefined);
+    setSending(file.name);
+    form.current?.requestSubmit();
+  }
+  const status = pending ? `Uploading ${sending}` : (notice ?? state.error ?? state.done ?? '');
   return (
-    <section className="doc" aria-label="Invoice document">
-      <div className="doc-bar">
-        <span>{state.count ? `${state.count} page${state.count === 1 ? '' : 's'}` : state.error ? 'Document' : 'Loading document'}</span>
-        <span className="row">
-          <button type="button" className="button small" aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}>
-            −
-          </button>
-          <span className="num" style={{ minWidth: 40 }}>
-            {Math.round(zoom * 100)}%
-          </span>
-          <button type="button" className="button small" aria-label="Zoom in" onClick={() => setZoom((z) => Math.min(3, z + 0.25))}>
-            +
-          </button>
-          {!state.error && (
-            <a className="button small" href={src} target="_blank" rel="noreferrer">
-              Open PDF
-            </a>
-          )}
-        </span>
-      </div>
-      <div className="doc-pages" ref={pages}>
-        {state.error && <p className="empty">{state.error}</p>}
-      </div>
-    </section>
+    <div className="upload-main">
+      <form
+        ref={form}
+        action={action}
+        className={`drop${over ? ' over' : ''}`}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setOver(true);
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(event) => {
+          event.preventDefault();
+          setOver(false);
+          const file = event.dataTransfer.files[0];
+          if (input.current && file) {
+            input.current.files = event.dataTransfer.files;
+            void take(file);
+          }
+        }}
+      >
+        <svg className="drop-icon" aria-hidden="true" viewBox="0 0 24 24" width="24" height="24">
+          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5 M12 17v-6 M9.5 13.5 12 11l2.5 2.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <p>
+          <strong>Drop an invoice here, or </strong>
+          <label htmlFor="invoice-file" className="link">
+            choose a file
+          </label>
+        </p>
+        <input
+          ref={input}
+          id="invoice-file"
+          className="visually-hidden"
+          type="file"
+          name="file"
+          aria-label="Invoice file"
+          aria-describedby="upload-hint"
+          accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+          disabled={!ready || pending}
+          onChange={(event) => void take(event.target.files?.[0])}
+        />
+        <p id="upload-hint" className="faint">
+          PDF, PNG or JPG, up to {MAX_UPLOAD_LABEL}, one invoice per file. A PDF may have up to {MAX_PDF_PAGES} pages. It uploads as soon as you choose it.
+        </p>
+        {/* The list below shows uploads and refused files; only a refusal from the server shows here too. */}
+        <p className={state.error && !pending && !notice ? 'form-error' : 'visually-hidden'} role="status" aria-live="polite">
+          {status}
+        </p>
+      </form>
+      <section className="panel recent" aria-labelledby="recent-title">
+        <h2 id="recent-title">Recent uploads</h2>
+        {rows.length === 0 && refused.length === 0 ? (
+          <p className="faint">Nothing uploaded yet. Choose a file, or try a sample.</p>
+        ) : (
+          <div className="table-wrap" role="region" aria-labelledby="recent-title" tabIndex={0}>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">File</th>
+                  <th scope="col">Progress</th>
+                  <th scope="col" className="num">
+                    Result
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {refused.map((file, index) => (
+                  <tr key={`refused-${index}`}>
+                    <td className="id">{file.name}</td>
+                    <td className="text-bad">Not accepted</td>
+                    <td className="num muted wrap">{file.reason}</td>
+                  </tr>
+                ))}
+                {rows.map((row) => (
+                  <tr key={row.id}>
+                    <td>
+                      <Link href={`/invoices/${row.id}`} className="id">
+                        {row.filename}
+                      </Link>
+                    </td>
+                    <td>
+                      {row.step === undefined ? (
+                        <span className="text-ok">{row.done}</span>
+                      ) : (
+                        <ol className="steps" aria-label="Progress">
+                          {STEPS.map((step, index) => (
+                            <li key={step} className={index < row.step! ? 'done' : index === row.step ? 'now' : undefined} aria-current={index === row.step ? 'step' : undefined}>
+                              {step}
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </td>
+                    <td className={`num wrap text-${row.tone}`}>{row.result}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 
-const describe = (file: File, check: Exclude<UploadCheck, { ok: true }>) => {
-  if (check.detail.startsWith('file is larger')) return `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MB; the limit is ${MAX_UPLOAD_LABEL}.`;
-  if (check.detail.startsWith('file must be')) return `${file.name} isn't a PDF, PNG or JPG.`;
-  return `${file.name}: ${check.detail}.`;
-};
-
-// The same checks the api runs, before a byte leaves the browser.
-export function UploadForm() {
-  const [state, action, pending] = useActionState<ActionState, FormData>(upload, {});
-  const [problem, setProblem] = useState<string>();
-  const [over, setOver] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
-  async function check(file: File | undefined) {
-    if (!file) return setProblem(undefined);
-    const result = checkUpload(new Uint8Array(await file.slice(0, 1024 * 1024).arrayBuffer()), file.size);
-    setProblem(result.ok ? undefined : describe(file, result));
-  }
+// One sample, one tap: the server reads the file by its key and uploads it through the same checks as a chosen file.
+export function SampleButton({ sample, label, note }: { sample: string; label: string; note: string }) {
+  const [state, action, pending] = useActionState<ActionState, FormData>(uploadSample, {});
+  const id = `sample-${sample}`;
   return (
-    <form
-      action={action}
-      className={`drop${over ? ' over' : ''}`}
-      onDragOver={(event) => {
-        event.preventDefault();
-        setOver(true);
-      }}
-      onDragLeave={() => setOver(false)}
-      onDrop={(event) => {
-        event.preventDefault();
-        setOver(false);
-        if (input.current && event.dataTransfer.files.length > 0) {
-          input.current.files = event.dataTransfer.files;
-          void check(event.dataTransfer.files[0]);
-        }
-      }}
-    >
-      <label>
-        Invoice file
-        <input ref={input} type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" required onChange={(event) => void check(event.target.files?.[0])} />
-      </label>
-      <p className="faint">
-        PDF, PNG or JPG, up to {MAX_UPLOAD_LABEL}. Drop a file here or choose one. A PDF may have up to {MAX_PDF_PAGES} pages; the server counts them.
+    <form action={action} className="sample">
+      <input type="hidden" name="sample" value={sample} />
+      <button className="link" aria-describedby={`${id}-note`} disabled={pending}>
+        {pending ? 'Uploading…' : label}
+      </button>
+      <p id={`${id}-note`} className="faint">
+        {note}
       </p>
-      {(problem ?? state.error) && (
+      {state.error && (
         <p className="form-error" role="alert">
-          {problem ?? state.error}
+          {state.error}
         </p>
       )}
-      <button className="button primary" disabled={pending || Boolean(problem)}>
-        {pending ? 'Uploading' : 'Upload invoice'}
-      </button>
     </form>
   );
 }
@@ -242,18 +281,69 @@ export function ActionForm({
   );
 }
 
+// Every open finding of an invoice decided at once. The pressed button sends its decision, after its question; the form
+// carries the findings and versions this page showed and a request id made when it rendered, so a retry changes nothing
+// twice and a change made meanwhile is refused with a way to reload.
+export function BulkDecision({
+  id,
+  requestId,
+  seen,
+  buttons,
+}: {
+  id: string;
+  requestId: string;
+  seen: string;
+  buttons: { decision: InvoiceDecision; label: string; question: string; tone?: 'primary' | 'danger' }[];
+}) {
+  const [state, action, pending] = useActionState<ActionState, FormData>(review, {});
+  const path = usePathname();
+  return (
+    <form
+      action={action}
+      className="bulk"
+      onSubmit={(event) => {
+        const question = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.dataset.question;
+        if (question && !window.confirm(question)) event.preventDefault();
+      }}
+    >
+      <input type="hidden" name="intent" value="decide" />
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="requestId" value={requestId} />
+      <input type="hidden" name="seen" value={seen} />
+      <div className="row">
+        {buttons.map((button) => (
+          <button key={button.decision} className={`button${button.tone ? ` ${button.tone}` : ''}`} name="decision" value={button.decision} data-question={button.question} disabled={pending}>
+            {button.label}
+          </button>
+        ))}
+      </div>
+      {state.error && (
+        <p className="form-error" role="alert">
+          {state.error}
+          {state.code === 'CONFLICT' && (
+            <>
+              {' '}
+              <a href={path}>Reload</a>
+            </>
+          )}
+        </p>
+      )}
+    </form>
+  );
+}
+
 // A finding's decision in one row: an optional note, then approve the charge or dispute it. The pressed button sends
-// its intent.
-export function DecideForm({ id }: { id: string }) {
+// its intent; describedBy names the finding the buttons act on.
+export function DecideForm({ id, describedBy }: { id: string; describedBy?: string }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(review, {});
   return (
     <form action={action} className="row decide">
       <input type="hidden" name="id" value={id} />
       <input name="note" placeholder="Note (optional)" aria-label="Note" maxLength={1000} />
-      <button className="button" name="intent" value="dismiss" disabled={pending}>
+      <button className="button" name="intent" value="dismiss" disabled={pending} aria-describedby={describedBy}>
         Approve charge
       </button>
-      <button className="button danger" name="intent" value="confirm" disabled={pending}>
+      <button className="button danger" name="intent" value="confirm" disabled={pending} aria-describedby={describedBy}>
         Dispute
       </button>
       {state.error && (

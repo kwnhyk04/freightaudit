@@ -2,6 +2,8 @@
 import {
   ApproveInvoiceDocument,
   CorrectInvoiceDocument,
+  DecideInvoiceDocument,
+  type InvoiceDecision,
   RejectInvoiceDocument,
   ReplayDeadLetterDocument,
   ResolveDiscrepancyDocument,
@@ -10,13 +12,17 @@ import { checkUpload } from '@freightaudit/contracts/limits';
 import { refresh } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { createLimiter } from '../lib/limiter.ts';
 import { verifyPassword } from '../lib/password.ts';
-import { ApiError, clientKey, currentSession, env, gql, isLive, log, markOffline, rest, REVIEWER } from '../lib/server.ts';
+import { SAMPLES } from '../lib/samples.ts';
+import { ApiError, clientKey, currentSession, env, forgetSummary, gql, isLive, log, markOffline, rest, REVIEWER } from '../lib/server.ts';
 import { createToken, safeNext, SESSION_COOKIE, SESSION_COOKIE_ATTRIBUTES, SESSION_SECONDS } from '../lib/session.ts';
 
-export type ActionState = { error?: string };
+// error is the API's refusal as a sentence, with its code (CONFLICT means the page is out of date); done says what worked.
+export type ActionState = { error?: string; code?: string; done?: string };
 
 const limiter = createLimiter();
 // The API's messages start lower case and stop without a period; the UI shows them as sentences.
@@ -46,6 +52,19 @@ async function asReviewer() {
 }
 
 const text = (form: FormData, name: string) => String(form.get(name) ?? '').trim();
+const DECISIONS: InvoiceDecision[] = ['APPROVE_AS_BILLED', 'DISPUTE', 'APPROVE_AT_RATE_CARD'];
+// The findings a bulk decision saw, as the page sent them; the api compares them with what it holds.
+function seenOf(form: FormData) {
+  try {
+    const seen: unknown = JSON.parse(text(form, 'seen'));
+    if (Array.isArray(seen) && seen.every((each) => typeof each?.id === 'string' && typeof each?.version === 'string')) {
+      return seen.map(({ id, version }: { id: string; version: string }) => ({ id, version }));
+    }
+  } catch {
+    // Not JSON: refused below like any other malformed request.
+  }
+  return undefined;
+}
 
 export async function review(_: ActionState, form: FormData): Promise<ActionState> {
   try {
@@ -56,30 +75,34 @@ export async function review(_: ActionState, form: FormData): Promise<ActionStat
     else if (intent === 'confirm' || intent === 'dismiss') {
       const decision = intent === 'confirm' ? 'CONFIRM' : 'DISMISS';
       await gql(ResolveDiscrepancyDocument, { id, decision, note: text(form, 'note') || null }, REVIEWER);
+    } else if (intent === 'decide') {
+      const decision = DECISIONS.find((each) => each === text(form, 'decision'));
+      const seen = seenOf(form);
+      if (!decision || !seen) return { error: 'Unknown action.' };
+      await gql(DecideInvoiceDocument, { id, decision, seen, requestId: text(form, 'requestId') }, REVIEWER);
     } else if (intent === 'correct') {
       await gql(CorrectInvoiceDocument, { id, carrierId: text(form, 'carrierId') || null, proNumber: text(form, 'proNumber') || null }, REVIEWER);
     } else if (intent === 'reject') await gql(RejectInvoiceDocument, { id, reason: text(form, 'reason') }, REVIEWER);
     else if (intent === 'replay') await gql(ReplayDeadLetterDocument, { id }, REVIEWER);
     else return { error: 'Unknown action.' };
   } catch (err) {
-    if (err instanceof ApiError) return { error: sentence(err.message) };
+    if (err instanceof ApiError) return { error: sentence(err.message), code: err.code };
     throw err;
   }
+  forgetSummary();
   refresh();
   return {};
 }
 
-export async function upload(_: ActionState, form: FormData): Promise<ActionState> {
-  let id: string;
+// One upload, from a chosen file or a sample: the same checks the api runs, so a refused file never travels further
+// than this server, then POST /v1/invoices. The page stays and refreshes, and the new invoice shows in its list.
+async function send(file: File, key: string): Promise<ActionState> {
   try {
     await asReviewer();
-    const file = form.get('file');
-    if (!(file instanceof File) || file.size === 0) return { error: 'Choose a file to upload.' };
-    // The same checks the api runs, so a refused file never travels further than this server.
     const checked = checkUpload(new Uint8Array(await file.arrayBuffer()), file.size);
     if (!checked.ok) return { error: sentence(`${file.name}: ${checked.detail}`) };
     const { data, error, response } = await rest().POST('/v1/invoices', {
-      params: { header: { 'Idempotency-Key': randomUUID() } },
+      params: { header: { 'Idempotency-Key': key } },
       body: { file },
       bodySerializer: () => {
         const body = new FormData();
@@ -92,14 +115,37 @@ export async function upload(_: ActionState, form: FormData): Promise<ActionStat
       const detail = (error as { detail?: string } | undefined)?.detail ?? `the upload failed with HTTP ${response.status}`;
       return { error: sentence(detail) + (wait ? ` Try again in ${wait} seconds.` : '') };
     }
-    id = data.id;
   } catch (err) {
-    if (err instanceof ApiError) return { error: sentence(err.message) };
+    if (err instanceof ApiError) return { error: sentence(err.message), code: err.code };
     if (err instanceof TypeError) {
       markOffline();
       return { error: 'The FreightAudit API did not answer. Try again in a moment.' };
     }
     throw err;
   }
-  redirect(`/invoices/${id}`);
+  forgetSummary();
+  refresh();
+  return { done: `${file.name} uploaded.` };
+}
+
+export async function upload(_: ActionState, form: FormData): Promise<ActionState> {
+  const file = form.get('file');
+  if (!(file instanceof File) || file.size === 0) return { error: 'Choose a file to upload.' };
+  return send(file, randomUUID());
+}
+
+// A sample by its key only, never a path: its bytes come from public/samples on this server's disk. Its Idempotency-Key
+// is the content's digest, so tapping it again inserts no key row; the api's content hash finds the same invoice.
+export async function uploadSample(_: ActionState, form: FormData): Promise<ActionState> {
+  const sample = SAMPLES.find((each) => each.key === text(form, 'sample'));
+  if (!sample) return { error: 'Unknown sample.' };
+  let bytes: Buffer;
+  try {
+    bytes = await readFile(join(process.cwd(), 'public', 'samples', sample.file));
+  } catch {
+    log('error', 'sample file missing', { file: sample.file });
+    return { error: `The sample ${sample.file} is missing on this server.` };
+  }
+  const digest = createHash('sha256').update(bytes).digest('hex');
+  return send(new File([new Uint8Array(bytes)], sample.file, { type: 'application/pdf' }), `sample-${digest}`);
 }

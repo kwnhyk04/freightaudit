@@ -61,6 +61,7 @@ query Invoice($id: ID!) {
           evidence
           note
           resolvedAt
+          version
           lineItem {
             id
             lineNumber

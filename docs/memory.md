@@ -267,6 +267,19 @@ From the approved design doc:
   - What we did (user decision): phase B pins exactly 6.4.299 and adds two guard tests.
     - One fails if `build/pdf.mjs`, `build/pdf.min.mjs` or `build/pdf.worker.min.mjs` holds `eval(` or `new Function(`.
     - One fails if the app imports the sandbox or turns scripting on.
+  - Done in phase B (`apps/web/lib/pdfjs.test.ts`): the pin test failed on `^6.4.299` before the pin, and adding `build/pdf.sandbox.mjs` to the list, or a file mentioning `enableScripting`, each failed its test.
+- 2026-10-18: Document marks, as built in phase B (`apps/web/lib/marks.ts`).
+  - What happened: pdf.js gives the ledger layout's every word and space as its own text item ("COPPERLINE", " ", "HAULAGE"), so matching inside one item could never mark its carrier or a line. The remit layout gives whole phrases.
+  - Why: each layout's PDF, as Chromium printed it, splits text differently.
+  - What we did: a page's items are joined in order, with a newline at each line end, and a match maps back to its first and last item and character. So a value never spans two lines.
+    - Spaces collapse to one; commas and currency signs drop, a letter prefix before `$` included (`C$`). Letters or digits around a value refuse it, and so does a decimal point before an amount.
+    - Dates count their places across ISO, MM/DD/YYYY, "Mon D, YYYY" and DD-MON-YYYY.
+    - Only the carrier ignores case. Descriptions match as read, and the AI copies the ledger's capitals (the sample's g002 and g056 readings).
+    - A line's band needs its description and amount on one row, in that order.
+    - EUR's `1.234,56` is not matched, so EUR invoices get no amount marks.
+  - Reason: the one-place rule then holds for every layout, and the golden test shows it. Three mutations each failed it: no case folding, no boundary check, and the first place for every identical line.
+- 2026-10-18: One-tap samples are g001, g067 and g062; g062 ("Fuel surcharge billed twice") replaced g071 (plan). A sample's Idempotency-Key is `sample-<sha256 of its bytes>`. Reason: a repeat tap then inserts no `idempotency_keys` row, where a random key would add one per tap. `duplicate-invoice-g071.pdf` was deleted from `apps/web/public/samples` (the golden original stays); the deletion was not refused.
+- 2026-10-18: The upload page's file input stays disabled until the page hydrates. What happened: the first `pnpm e2e` of phase B chose files before hydration; React's `onChange` never ran, so nothing was checked or sent, and two upload tests failed. Why: the change event fired on the server-rendered input before React attached its handler, and React does not replay it. What we did: an effect enables the input, and the tests wait for `toBeEnabled()` before `setInputFiles`. Best because a person on a slow phone gets the same fix: choosing a file before the page can act on it is no longer possible.
 
 ## Preferences and Instructions
 
@@ -420,6 +433,18 @@ From the approved design doc:
     - A `.gitattributes` line `packages/contracts/src/generated/** text eol=lf` would end it. Not applied: not asked for.
 - 2026-10-18: The small seed gives about 70 % of invoices an upload `idempotency_keys` row (`seed.ts`). A test that counts an invoice's keys must filter by prefix (`decide:%`). Found when two decide tests saw 1 where they expected 0.
 - 2026-10-18: Postgres accepts a correlated `NOT EXISTS` inside an aggregate `FILTER`. Checked on the dev database before the summary relied on it.
+- 2026-10-18: The GitHub CLI (`gh`) is not installed on this PC.
+  - What happened: checking PR A's Release run, `gh api` failed with "command not found" in Git Bash, and PowerShell found no `gh.exe`.
+  - Why: never installed here (not confirmed how earlier sessions read GitHub).
+  - What we did: the repository is public, so `curl -s https://api.github.com/repos/kwnhyk04/freightaudit/...` answers without a login (commits, `actions/runs?head_sha=`; 60 requests an hour unauthenticated). GHCR tags were read with `docker buildx imagetools inspect ghcr.io/kwnhyk04/freightaudit-<app>:<tag>`.
+- 2026-10-18: The web typechecks against `@freightaudit/contracts`'s built `dist/`, not its sources. What happened: after codegen added phase B's operations, `pnpm --filter @freightaudit/web typecheck` reported every new document and field as missing. Why: the package exports its build output. What we did: `pnpm --filter @freightaudit/contracts build`, then the typecheck passed; `pnpm e2e` and turbo builds do it on their own.
+- 2026-10-18: `pnpm install --offline` cannot change a specifier when the store lacks a package's registry metadata (`ERR_PNPM_NO_OFFLINE_META`, here for `@graphql-tools/executor`). What we did for pdf.js's exact pin: `pnpm install --lockfile-only`, which changed only the `specifier` line of `pdfjs-dist` in `pnpm-lock.yaml`. CI's frozen install needs the specifier to match package.json.
+- 2026-10-18: Playwright's `hasText` is a case-insensitive substring. What happened: `locator('.stats > div', { hasText: 'Open findings' })` matched two cards, since "Billed above the rate card, open findings only" contains it. What we did: `.stats dt:text-is("Open findings") + dd`.
+- 2026-10-18: Chrome put a space before a comma that began a visually hidden span, so the nav link read "Review queue , 79 open findings". Why: not confirmed; the span is `position: absolute`, which the name computation treats like a block. What we did: the counted links carry an explicit `aria-label` ("Review queue, 79 open findings").
+- 2026-10-18: Visually hidden text inside a horizontal scroller can widen the page. What happened: the round-1 phone shot of the invoice list measured 802 px wide. Why: each status tab carries a hidden " invoices" span (`position: absolute`); with no positioned ancestor, the spans of tabs scrolled off to the right escaped the tab strip's overflow and extended the document. What we did: `.tabs` and `.table-wrap` are `position: relative`, so their hidden text is clipped with them; the phone pages measure 390 px again.
+- 2026-10-18: React must not render into an element an effect empties. What happened: the final review found that a draw error, then a zoom, crashed the invoice page; an e2e test reproduced it. Why: the viewer's error text was React's child of the element the draw effect clears with `replaceChildren()`, so React later removed a node that was gone. What we did: the effect draws into its own child element and the error renders beside it.
+- 2026-10-18: `pnpm lint` fails after a Playwright run with a failed test. What happened: ESLint reported thousands of errors in `apps/web/playwright-report/trace/*.js`. Why: the HTML report bundles the trace viewer when a trace was kept (`retain-on-failure`), and the shared ESLint config ignores `dist/`, `.next/` and generated code but not `playwright-report/`. What we did: reran lint after a green run, which writes no trace folder (12/12). Adding `'**/playwright-report/'` to `globalIgnores` in `packages/config/eslint.js` would end it; that file is protected, so the user applies such lines.
+- 2026-10-18: In the api's pino log, a request's path and its status are on different lines ("incoming request" has `req.url`; "request completed" has `res.statusCode`), joined by `reqId`. A read-only watch that pairs them: `docker logs -f --since 1s freightaudit-prod-api-1 2>&1 | node <script>`, where the script prints only time, method, path and status.
 
 ## Rejected Approaches
 

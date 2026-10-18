@@ -1,0 +1,15 @@
+query InvoiceSummary {
+  invoiceSummary {
+    statusCounts {
+      status
+      count
+    }
+    receivedLast7Days
+    openFindings
+    invoicesWithOpenFindings
+    oldestOpenFindingAt
+    openOverchargeCents
+    matchedRateCard
+    openDeadLetters
+  }
+}

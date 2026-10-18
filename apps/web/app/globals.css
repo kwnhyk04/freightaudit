@@ -117,9 +117,6 @@ h1.id {
 .nowrap {
   white-space: nowrap;
 }
-.show-narrow {
-  display: none;
-}
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -172,6 +169,29 @@ h1.id {
   background: var(--accent-tint);
   color: var(--text);
   font-weight: 500;
+}
+.nav .count {
+  color: var(--text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.nav .count.warn {
+  color: var(--warn);
+}
+/* Hidden until a keyboard reaches it: the first stop on every page jumps past the sidebar. */
+.skip {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 10;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 500;
+}
+.skip:focus {
+  top: 12px;
 }
 .sidebar-foot {
   margin-top: auto;
@@ -278,21 +298,6 @@ label {
   color: var(--bad);
   font-size: 13px;
 }
-input[type='file'] {
-  padding: 3px;
-  max-width: 100%;
-}
-input[type='file']::file-selector-button {
-  height: 24px;
-  margin-right: 10px;
-  padding: 0 10px;
-  border: 1px solid var(--rule-strong);
-  border-radius: 4px;
-  background: var(--sunken);
-  color: var(--text);
-  font: 500 12.5px/1 var(--sans);
-  cursor: pointer;
-}
 .decide input {
   width: 180px;
 }
@@ -352,7 +357,9 @@ td .decide input {
 }
 
 /* Tabs as links: the filter lives in the URL. */
+/* Scrollers are positioned, so the visually hidden text inside them is clipped with them instead of widening the page. */
 .tabs {
+  position: relative;
   display: flex;
   gap: 2px;
   border-bottom: 1px solid var(--rule);
@@ -378,6 +385,7 @@ td .decide input {
 
 /* Tables are the product: compact rows, a sticky header, numbers right-aligned. */
 .table-wrap {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
@@ -419,9 +427,98 @@ tr.flagged td:first-child {
 }
 .pager {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 8px 16px;
   margin-top: 12px;
+}
+.pager > .muted {
+  margin-right: auto;
+}
+.button[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.button[aria-disabled='true']:hover {
+  background: var(--surface);
+}
+.text-bad {
+  color: var(--bad);
+}
+.text-warn {
+  color: var(--warn);
+}
+.text-ok {
+  color: var(--ok);
+}
+.text-accent {
+  color: var(--accent);
+}
+td .reason {
+  margin-top: 4px;
+}
+
+/* The invoices page: four counts in one card, then the tabs beside the search. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 16px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+.stats > div {
+  padding: 14px 16px;
+  display: grid;
+  gap: 2px;
+  align-content: start;
+}
+.stats > div + div {
+  border-left: 1px solid var(--rule);
+}
+.stats dt {
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.stats dd {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+}
+.stats dd.stat {
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stats dd.stat .num {
+  text-align: left;
+}
+.list-bar {
+  display: flex;
+  align-items: end;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.list-bar .tabs {
+  border-bottom: 0;
+  margin-bottom: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.tabs .count {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.search {
+  flex: 0 0 240px;
+  padding-bottom: 6px;
+}
+.search input {
+  width: 100%;
 }
 
 /* Empty and error states say what will appear and what to do next. */
@@ -459,7 +556,14 @@ tr.flagged td:first-child {
   border-radius: var(--radius);
   max-height: calc(100dvh - 32px);
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+.doc-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .doc-bar {
   display: flex;
@@ -472,17 +576,62 @@ tr.flagged td:first-child {
   font-size: 12.5px;
   color: var(--text-2);
 }
+/* Each page keeps its drawn width in its own frame, centred while it fits; a zoomed page scrolls both ways from its left
+   edge. The marks sit over the always-white page, so their colors stay fixed in dark mode. */
 .doc-pages {
   overflow: auto;
   padding: 16px;
-  display: grid;
-  gap: 12px;
-  justify-items: center;
+}
+.doc-page {
+  position: relative;
+  width: fit-content;
+  margin-inline: auto;
+}
+.doc-page + .doc-page {
+  margin-top: 12px;
 }
 .doc-pages canvas {
+  display: block;
   background: #fff;
   box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
-  max-width: 100%;
+}
+.marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.mark {
+  position: absolute;
+  border: 1px dashed #2b4c7e;
+  border-radius: 2px;
+}
+.mark.line {
+  border: 0;
+  border-left: 3px solid #b42318;
+  border-radius: 0;
+  background: rgb(180 35 24 / 12%);
+}
+.doc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--rule);
+  background: var(--surface);
+}
+.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+}
+.mark-swatch {
+  border: 1px dashed var(--accent);
+}
+.line-swatch {
+  margin-left: 10px;
+  border-left: 3px solid var(--bad);
+  background: var(--bad-tint);
 }
 .panel {
   background: var(--surface);
@@ -499,14 +648,75 @@ tr.flagged td:first-child {
   border-color: color-mix(in srgb, var(--bad) 45%, var(--rule));
   box-shadow: inset 3px 0 0 var(--bad);
 }
+/* A finding: its overcharge in a narrow column, then its title, pill, evidence and decision. */
 .findings article {
   display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 12px;
+}
+.findings article > .num {
+  text-align: left;
+  font-weight: 600;
+  line-height: 22px;
+}
+.finding-body {
+  display: grid;
   gap: 6px;
+  min-width: 0;
+}
+.finding-body .row {
+  align-items: center;
+}
+.findings h3 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 600;
 }
 .findings article + article {
   border-top: 1px solid var(--rule);
   margin-top: 12px;
   padding-top: 12px;
+}
+.faint-heading {
+  color: var(--text-3);
+  font-weight: 400;
+}
+.panel-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.panel-head h2 {
+  margin-bottom: 2px;
+}
+table.charges tfoot th,
+table.charges tfoot td {
+  position: static;
+  padding: 7px 12px;
+  border-top: 1px solid var(--rule);
+  background: none;
+  color: var(--text);
+  font-weight: 600;
+  text-align: left;
+}
+table.charges tfoot td {
+  text-align: right;
+}
+.crumbs {
+  font-size: 12.5px;
+  margin-bottom: 2px;
+}
+.detail-head .title {
+  align-items: center;
+  margin-bottom: 4px;
+}
+.bulk {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
 }
 .facts {
   display: grid;
@@ -557,29 +767,160 @@ dialog {
 dialog::backdrop {
   background: rgb(10 12 15 / 40%);
 }
+/* The upload page: the dropzone and recent uploads beside the samples card. */
+.upload {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+  align-items: start;
+}
+.upload-main {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
 .drop {
-  max-width: 560px;
+  position: relative;
   border: 1px dashed var(--rule-strong);
   border-radius: var(--radius);
   background: var(--surface);
-  padding: 24px;
+  padding: 44px 24px 28px;
   display: grid;
-  gap: 12px;
-  justify-items: start;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+}
+.drop:focus-within {
+  box-shadow: var(--focus);
 }
 .drop.over {
   border-color: var(--accent);
   background: var(--accent-tint);
 }
-.samples {
-  max-width: 560px;
-  margin-top: 16px;
+.drop-icon {
+  color: var(--text-2);
 }
-.samples ul {
-  margin: 0 0 8px;
-  padding-left: 18px;
+.drop p {
+  max-width: 520px;
+}
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.drop label.link {
+  display: inline;
+  font-size: inherit;
+  font-weight: 600;
+}
+.link[disabled] {
+  color: var(--text-2);
+  text-decoration: none;
+  cursor: progress;
+}
+.recent {
+  padding: 0;
+  overflow: hidden;
+}
+.recent h2 {
+  margin: 0;
+  padding: 14px 16px;
+}
+.recent > .faint {
+  padding: 0 16px 14px;
+}
+.recent .table-wrap {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  border-radius: 0;
+}
+td.wrap {
+  white-space: normal;
+}
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-3);
+}
+.steps li:not(:last-child)::after {
+  content: '\2192';
+  margin-left: 6px;
+  color: var(--text-3);
+  font-weight: 400;
+}
+.steps li.done {
+  color: var(--ok);
+}
+.steps li.now {
+  color: var(--text);
+  font-weight: 600;
+}
+.steps li.now::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 6px 2px 0;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.samples {
+  padding: 0;
+  overflow: hidden;
+}
+.samples-head,
+.sample {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.samples-head h2 {
+  margin-bottom: 2px;
+}
+.sample {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+}
+.sample .link {
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+}
+.sample .link:hover {
+  text-decoration: underline;
+}
+.notice {
   display: grid;
   gap: 6px;
+  padding: 12px 16px;
+  background: var(--warn-tint);
+  color: var(--warn);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+}
+.notice .note {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}
+.notice a {
+  color: inherit;
+  text-decoration: underline;
+}
+.not-found {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  max-width: 560px;
 }
 .login {
   min-height: 100dvh;
@@ -594,7 +935,8 @@ dialog::backdrop {
 }
 
 @media (max-width: 1023px) {
-  .review {
+  .review,
+  .upload {
     grid-template-columns: minmax(0, 1fr);
   }
   .doc {
@@ -606,47 +948,41 @@ dialog::backdrop {
   .shell {
     grid-template-columns: 1fr;
   }
+  /* Phone: the sidebar stacks above the work, each section on its own line and sign-out under them. */
   .sidebar {
     position: static;
     height: auto;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px;
     border-right: 0;
     border-bottom: 1px solid var(--rule);
   }
   .wordmark {
-    padding: 4px 8px;
-  }
-  /* Phone: the wordmark and sign-out share the first line, the sections scroll on the second. */
-  .nav {
-    display: flex;
-    overflow-x: auto;
-    order: 2;
-    flex-basis: 100%;
+    padding: 4px 8px 12px;
   }
   .sidebar-foot {
-    margin: 0 0 0 auto;
-    padding: 0;
-    border-top: 0;
-    display: flex;
-    align-items: center;
+    margin-top: 6px;
   }
   .main {
     padding: 16px;
+  }
+  /* Phone: the counts stack in their one card, the tabs scroll and the search takes the full width. */
+  .stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stats > div + div {
+    border-left: 0;
+  }
+  .list-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .search {
+    flex-basis: auto;
   }
   .trail li {
     grid-template-columns: 1fr;
     gap: 2px;
   }
-  /* Phone: tables drop secondary columns and tighten, so the amounts stay in view. */
-  .hide-narrow {
-    display: none;
-  }
-  .show-narrow {
-    display: block;
-  }
+  /* Phone: tables keep every column and tighten; their wrapper scrolls sideways, never the page. */
   th,
   td {
     padding-left: 8px;

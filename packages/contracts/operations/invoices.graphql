@@ -1,5 +1,7 @@
-query Invoices($first: Int, $after: String, $status: InvoiceStatus) {
-  invoices(first: $first, after: $after, status: $status) {
+query Invoices($first: Int, $after: String, $last: Int, $before: String, $status: InvoiceStatus, $search: String) {
+  invoices(first: $first, after: $after, last: $last, before: $before, status: $status, search: $search) {
+    totalCount
+    offset
     edges {
       cursor
       node {
@@ -13,10 +15,27 @@ query Invoices($first: Int, $after: String, $status: InvoiceStatus) {
         totalCents
         createdAt
         openDiscrepancyCount
+        reviewReason
+        failureReason
+        rateCardVersion {
+          id
+        }
+        discrepancies(first: 100) {
+          edges {
+            node {
+              id
+              status
+              expectedCents
+              billedCents
+            }
+          }
+        }
       }
     }
     pageInfo {
       hasNextPage
+      hasPreviousPage
+      startCursor
       endCursor
     }
   }

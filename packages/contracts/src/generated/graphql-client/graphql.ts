@@ -60,6 +60,15 @@ export type DiscrepancyType =
   | 'UNCONTRACTED_CHARGE'
   | 'WEIGHT_MISMATCH';
 
+/** A reviewer's decision on every open discrepancy of an invoice at once. */
+export type InvoiceDecision =
+  /** Dismiss every open discrepancy, so the billed amounts stand, then approve the invoice. */
+  | 'APPROVE_AS_BILLED'
+  /** Confirm every open discrepancy, then approve the invoice: what the rate card allows is paid. */
+  | 'APPROVE_AT_RATE_CARD'
+  /** Confirm every open discrepancy: the overcharges are disputed, and the invoice stays reconciled. */
+  | 'DISPUTE';
+
 /** Processing status of an invoice. */
 export type InvoiceStatus =
   /** Approved for payment. Final. */
@@ -80,6 +89,13 @@ export type InvoiceStatus =
   | 'RECONCILING'
   /** A reviewer refused the invoice for payment. Final. */
   | 'REJECTED';
+
+/** A discrepancy as the reviewer saw it. */
+export type SeenDiscrepancy = {
+  id: string | number;
+  /** Its version when the reviewer's page loaded. */
+  version: string;
+};
 
 export type ApproveInvoiceMutationVariables = Exact<{
   id: string | number;
@@ -106,6 +122,16 @@ export type DeadLettersQueryVariables = Exact<{
 
 export type DeadLettersQuery = { deadLetters: { edges: Array<{ cursor: string, node: { id: string, queue: string, jobId: string, error: string, attempts: number, createdAt: string, replayedAt: string | null, invoice: { id: string, number: string | null, filename: string, carrier: string | null, status: InvoiceStatus } | null } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
 
+export type DecideInvoiceMutationVariables = Exact<{
+  id: string | number;
+  decision: InvoiceDecision;
+  seen: Array<SeenDiscrepancy> | SeenDiscrepancy;
+  requestId: string | number;
+}>;
+
+
+export type DecideInvoiceMutation = { decideInvoice: { id: string, status: InvoiceStatus } };
+
 export type DiscrepanciesQueryVariables = Exact<{
   first?: number | null | undefined;
   after?: string | null | undefined;
@@ -115,21 +141,34 @@ export type DiscrepanciesQueryVariables = Exact<{
 
 export type DiscrepanciesQuery = { discrepancies: { edges: Array<{ cursor: string, node: { id: string, type: DiscrepancyType, status: DiscrepancyStatus, expectedCents: number, billedCents: number, evidence: string, note: string | null, resolvedAt: string | null, lineItem: { id: string, lineNumber: number, description: string, chargeCode: string | null } | null, invoice: { id: string, number: string | null, filename: string, carrier: string | null, currency: string | null, status: InvoiceStatus } } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
 
+export type InvoiceSummaryQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type InvoiceSummaryQuery = { invoiceSummary: { receivedLast7Days: number, openFindings: number, invoicesWithOpenFindings: number, oldestOpenFindingAt: string | null, openOverchargeCents: number, matchedRateCard: number, openDeadLetters: number, statusCounts: Array<{ status: InvoiceStatus, count: number }> } };
+
 export type InvoiceQueryVariables = Exact<{
   id: string | number;
 }>;
 
 
-export type InvoiceQuery = { invoice: { id: string, status: InvoiceStatus, failureReason: string | null, reviewReason: string | null, filename: string, contentHash: string, carrier: string | null, number: string | null, proNumber: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number, lineItems: Array<{ id: string, lineNumber: number, description: string, chargeCode: string | null, amountCents: number }>, extraction: { id: string, model: string, step: string | null, carrierRead: string | null, carrierMatch: CarrierMatch | null, problems: Array<string>, extractedAt: string, lines: Array<{ lineNumber: number, description: string, chargeCode: string | null, amountCents: number }> } | null, shipment: { id: string, reference: string, carrier: string, origin: string, destination: string, shippedOn: string } | null, rateCardVersion: { id: string, version: number, effectiveFrom: string | null, effectiveTo: string | null } | null, discrepancies: { edges: Array<{ node: { id: string, type: DiscrepancyType, status: DiscrepancyStatus, expectedCents: number, billedCents: number, evidence: string, note: string | null, resolvedAt: string | null, lineItem: { id: string, lineNumber: number } | null } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }, auditTrail: Array<{ id: string, at: string, actor: string | null, action: AuditAction, detail: string | null, changes: Array<{ field: string, from: string | null, to: string | null }> }>, deadLetter: { id: string, queue: string, error: string, createdAt: string } | null } | null, carriers: Array<{ id: string, name: string }> };
+export type InvoiceQuery = { invoice: { id: string, status: InvoiceStatus, failureReason: string | null, reviewReason: string | null, filename: string, contentHash: string, carrier: string | null, number: string | null, proNumber: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number, lineItems: Array<{ id: string, lineNumber: number, description: string, chargeCode: string | null, amountCents: number }>, extraction: { id: string, model: string, step: string | null, carrierRead: string | null, carrierMatch: CarrierMatch | null, problems: Array<string>, extractedAt: string, lines: Array<{ lineNumber: number, description: string, chargeCode: string | null, amountCents: number }> } | null, shipment: { id: string, reference: string, carrier: string, origin: string, destination: string, shippedOn: string } | null, rateCardVersion: { id: string, version: number, effectiveFrom: string | null, effectiveTo: string | null } | null, discrepancies: { edges: Array<{ node: { id: string, type: DiscrepancyType, status: DiscrepancyStatus, expectedCents: number, billedCents: number, evidence: string, note: string | null, resolvedAt: string | null, version: string, lineItem: { id: string, lineNumber: number } | null } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }, auditTrail: Array<{ id: string, at: string, actor: string | null, action: AuditAction, detail: string | null, changes: Array<{ field: string, from: string | null, to: string | null }> }>, deadLetter: { id: string, queue: string, error: string, createdAt: string } | null } | null, carriers: Array<{ id: string, name: string }> };
 
 export type InvoicesQueryVariables = Exact<{
   first?: number | null | undefined;
   after?: string | null | undefined;
+  last?: number | null | undefined;
+  before?: string | null | undefined;
   status?: InvoiceStatus | null | undefined;
+  search?: string | null | undefined;
 }>;
 
 
-export type InvoicesQuery = { invoices: { edges: Array<{ cursor: string, node: { id: string, status: InvoiceStatus, filename: string, carrier: string | null, number: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+export type InvoicesQuery = { invoices: { totalCount: number, offset: number, edges: Array<{ cursor: string, node: { id: string, status: InvoiceStatus, filename: string, carrier: string | null, number: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number, reviewReason: string | null, failureReason: string | null, rateCardVersion: { id: string } | null, discrepancies: { edges: Array<{ node: { id: string, status: DiscrepancyStatus, expectedCents: number, billedCents: number } }> } } }>, pageInfo: { hasNextPage: boolean, hasPreviousPage: boolean, startCursor: string | null, endCursor: string | null } } };
+
+export type RecentUploadsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type RecentUploadsQuery = { invoices: { edges: Array<{ node: { id: string, status: InvoiceStatus, filename: string, currency: string | null, totalCents: number | null, createdAt: string, reviewReason: string | null, failureReason: string | null, discrepancies: { edges: Array<{ node: { id: string, status: DiscrepancyStatus, expectedCents: number, billedCents: number } }> }, auditTrail: Array<{ id: string, at: string, action: AuditAction, changes: Array<{ field: string, to: string | null }> }> } }> } };
 
 export type RejectInvoiceMutationVariables = Exact<{
   id: string | number;
@@ -219,6 +258,14 @@ export const DeadLettersDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<DeadLettersQuery, DeadLettersQueryVariables>;
+export const DecideInvoiceDocument = new TypedDocumentString(`
+    mutation DecideInvoice($id: ID!, $decision: InvoiceDecision!, $seen: [SeenDiscrepancy!]!, $requestId: ID!) {
+  decideInvoice(id: $id, decision: $decision, seen: $seen, requestId: $requestId) {
+    id
+    status
+  }
+}
+    `) as unknown as TypedDocumentString<DecideInvoiceMutation, DecideInvoiceMutationVariables>;
 export const DiscrepanciesDocument = new TypedDocumentString(`
     query Discrepancies($first: Int, $after: String, $status: DiscrepancyStatus) {
   discrepancies(first: $first, after: $after, status: $status) {
@@ -256,6 +303,23 @@ export const DiscrepanciesDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<DiscrepanciesQuery, DiscrepanciesQueryVariables>;
+export const InvoiceSummaryDocument = new TypedDocumentString(`
+    query InvoiceSummary {
+  invoiceSummary {
+    statusCounts {
+      status
+      count
+    }
+    receivedLast7Days
+    openFindings
+    invoicesWithOpenFindings
+    oldestOpenFindingAt
+    openOverchargeCents
+    matchedRateCard
+    openDeadLetters
+  }
+}
+    `) as unknown as TypedDocumentString<InvoiceSummaryQuery, InvoiceSummaryQueryVariables>;
 export const InvoiceDocument = new TypedDocumentString(`
     query Invoice($id: ID!) {
   invoice(id: $id) {
@@ -320,6 +384,7 @@ export const InvoiceDocument = new TypedDocumentString(`
           evidence
           note
           resolvedAt
+          version
           lineItem {
             id
             lineNumber
@@ -357,8 +422,17 @@ export const InvoiceDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<InvoiceQuery, InvoiceQueryVariables>;
 export const InvoicesDocument = new TypedDocumentString(`
-    query Invoices($first: Int, $after: String, $status: InvoiceStatus) {
-  invoices(first: $first, after: $after, status: $status) {
+    query Invoices($first: Int, $after: String, $last: Int, $before: String, $status: InvoiceStatus, $search: String) {
+  invoices(
+    first: $first
+    after: $after
+    last: $last
+    before: $before
+    status: $status
+    search: $search
+  ) {
+    totalCount
+    offset
     edges {
       cursor
       node {
@@ -372,15 +446,69 @@ export const InvoicesDocument = new TypedDocumentString(`
         totalCents
         createdAt
         openDiscrepancyCount
+        reviewReason
+        failureReason
+        rateCardVersion {
+          id
+        }
+        discrepancies(first: 100) {
+          edges {
+            node {
+              id
+              status
+              expectedCents
+              billedCents
+            }
+          }
+        }
       }
     }
     pageInfo {
       hasNextPage
+      hasPreviousPage
+      startCursor
       endCursor
     }
   }
 }
     `) as unknown as TypedDocumentString<InvoicesQuery, InvoicesQueryVariables>;
+export const RecentUploadsDocument = new TypedDocumentString(`
+    query RecentUploads {
+  invoices(first: 5) {
+    edges {
+      node {
+        id
+        status
+        filename
+        currency
+        totalCents
+        createdAt
+        reviewReason
+        failureReason
+        discrepancies(first: 100) {
+          edges {
+            node {
+              id
+              status
+              expectedCents
+              billedCents
+            }
+          }
+        }
+        auditTrail {
+          id
+          at
+          action
+          changes {
+            field
+            to
+          }
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RecentUploadsQuery, RecentUploadsQueryVariables>;
 export const RejectInvoiceDocument = new TypedDocumentString(`
     mutation RejectInvoice($id: ID!, $reason: String!) {
   rejectInvoice(id: $id, reason: $reason) {

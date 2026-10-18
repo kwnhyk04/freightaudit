@@ -1,16 +1,23 @@
-// Golden-set PDFs a visitor can try on the upload page, served from public/samples/. pnpm db:reset-demo loads none of
-// them, so each runs through the pipeline fresh; the public demo's api accepts only golden-set files.
+// Golden-set PDFs a reviewer uploads in one tap on the upload page, read from public/samples/. pnpm db:reset-demo loads
+// none of them, so each runs through the pipeline fresh; the public demo's api accepts only golden-set files.
 export const SAMPLES = [
-  { file: 'clean-digital-g001.pdf', label: 'Clean digital invoice', note: 'Every line matches the contract.' },
   {
-    file: 'scanned-uncontracted-g067.pdf',
-    label: 'Scanned invoice with an overcharge',
-    note: 'Read from the page image; it bills a charge the contract does not include.',
+    key: 'g001',
+    file: 'clean-digital-g001.pdf',
+    label: 'Clean digital invoice',
+    note: 'Every line matches the rate card, so it reconciles with no findings and waits only for approval.',
   },
   {
-    file: 'duplicate-invoice-g071.pdf',
-    label: 'Duplicate invoice',
-    note: 'Bills a shipment the demo already holds an invoice for, so every line is flagged as a duplicate charge.',
+    key: 'g067',
+    file: 'scanned-uncontracted-g067.pdf',
+    label: 'Scanned invoice with an overcharge',
+    note: "Read from the page image; it bills residential delivery, which isn't on the rate card.",
+  },
+  {
+    key: 'g062',
+    file: 'duplicate-fuel-g062.pdf',
+    label: 'Fuel surcharge billed twice',
+    note: 'The same charge appears on two lines of one invoice.',
   },
 ] as const;
 

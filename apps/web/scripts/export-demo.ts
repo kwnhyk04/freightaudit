@@ -43,7 +43,8 @@ for (const id of ids) {
 const keep = new Set(ids);
 const invoices = await gql(InvoicesDocument, { first: 100, after: null, status: null });
 invoices.invoices.edges = invoices.invoices.edges.filter(({ node }) => keep.has(node.id));
-invoices.invoices.pageInfo = { hasNextPage: false, endCursor: null };
+invoices.invoices.totalCount = invoices.invoices.edges.length;
+invoices.invoices.pageInfo = { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null };
 const discrepancies = { discrepancies: { edges: [] as unknown[], pageInfo: { hasNextPage: false, endCursor: null } } };
 for (const status of ['OPEN', 'CONFIRMED', 'DISMISSED'] as const) {
   const page = await gql(DiscrepanciesDocument, { first: 100, after: null, status });
