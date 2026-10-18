@@ -92,3 +92,104 @@ test('signed in while the backend is down, the app shows the same sample under t
   await expect(page).toHaveURL(`${offline}/demo/invoices`);
   await expect(page.getByRole('status')).toHaveText('Live backend offline, showing sample data');
 });
+
+test('a repeated q or status in a pasted link still shows the sample list', async ({ page }) => {
+  await page.goto('/demo/invoices?q=a&q=b&status=reconciled&status=approved');
+  await expect(page.getByRole('heading', { name: 'Invoices', level: 1 })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Reconciled/ })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('searchbox', { name: 'Search invoices' })).toHaveValue('a');
+});
+
+test('leaving an invoice while its viewer loads fetches no PDF', async ({ page }) => {
+  test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
+  const id = sampleId('g069.pdf');
+  // pdf.js arrives in chunks that name its WorkerMessageHandler; they wait until the page has been left.
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => (release = resolve));
+  let hold!: () => void;
+  const held = new Promise<void>((resolve) => (hold = resolve));
+  await page.route('**/_next/static/chunks/**', async (route) => {
+    const response = await route.fetch();
+    const body = await response.body();
+    if (body.includes('WorkerMessageHandler')) {
+      hold();
+      await released;
+    }
+    await route.fulfill({ response, body });
+  });
+  const fetched: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === `/demo/${id}.pdf`) fetched.push(request.url());
+  });
+  try {
+    await page.goto(`/demo/invoices/${id}`, { waitUntil: 'commit' });
+    await held;
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Invoices', exact: true }).click();
+    await expect(page).toHaveURL(/\/demo\/invoices$/);
+  } finally {
+    release();
+  }
+  // Another invoice's viewer loads after the held chunks resolve; by its PDF request the left page would have asked too.
+  const other = sampleId('g056.pdf');
+  const next = page.waitForRequest((request) => new URL(request.url()).pathname === `/demo/${other}.pdf`);
+  await page.locator(`a[href="/demo/invoices/${other}"]`).click();
+  await next;
+  expect(fetched).toEqual([]);
+});
+
+test('a finding reads its title before its amount, and the amount still sits left of it', async ({ page }) => {
+  test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
+  await page.goto(`/demo/invoices/${sampleId('g056.pdf')}`);
+  const finding = page.locator('.findings article').first();
+  const titleFirst = await finding.evaluate((article) =>
+    Boolean(article.querySelector('h3')!.compareDocumentPosition(article.querySelector(':scope > .num')!) & Node.DOCUMENT_POSITION_FOLLOWING),
+  );
+  expect(titleFirst).toBe(true);
+  const [title, amount] = await Promise.all([finding.getByRole('heading', { level: 3 }).boundingBox(), finding.locator(':scope > .num').boundingBox()]);
+  expect(amount!.x).toBeLessThan(title!.x);
+});
+
+test('a finding names its charge as the invoice prints it, not by its code in capitals', async ({ page }) => {
+  test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
+  const code = /\b[A-Z][A-Z_]{3,}\b/;
+  await page.goto(`/demo/invoices/${sampleId('g069.pdf')}`);
+  const texts = await page.locator('.findings .finding-body > p.muted').allTextContents();
+  expect(texts).toHaveLength(3);
+  for (const text of texts) expect(text).not.toMatch(code);
+  // The review queue names each finding's line the same way.
+  await page.goto('/demo/discrepancies');
+  const cells = await page.locator('tbody td:nth-child(3), tbody td.muted').allTextContents();
+  expect(cells.length).toBeGreaterThan(0);
+  for (const text of cells) expect(text).not.toMatch(code);
+});
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('a charge keeps its finding type on one line, and only the table scrolls sideways', async ({ page }) => {
+    test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
+    await page.goto(`/demo/invoices/${sampleId('g069.pdf')}`);
+    const types = page.locator('table.charges tbody td:nth-child(2) > div.faint');
+    await expect(types).toHaveCount(3);
+    // A range over the text has one box per line the text fills.
+    const lines = await types.evaluateAll((elements) =>
+      elements.map((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return range.getClientRects().length;
+      }),
+    );
+    expect(lines).toEqual([1, 1, 1]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+
+  test('the document bar shows the whole file name, with its controls on one row', async ({ page }) => {
+    test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
+    await page.goto(`/demo/invoices/${sampleId('g069.pdf')}`);
+    await expect(page.getByRole('region', { name: 'Document pages' })).toHaveAttribute('aria-busy', 'false');
+    expect(await page.locator('.doc-name').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    const controls = [page.getByRole('button', { name: 'Zoom out' }), page.getByRole('button', { name: 'Zoom in' }), page.getByRole('link', { name: 'Open PDF' })];
+    const tops = await Promise.all(controls.map(async (control) => Math.round((await control.boundingBox())!.y)));
+    expect(new Set(tops).size).toBe(1);
+  });
+});

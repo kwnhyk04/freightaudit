@@ -2,11 +2,11 @@ import { notFound, redirect } from 'next/navigation';
 import { InvoiceDetail } from '../../../components/detail.tsx';
 import { DeadLetterList, DiscrepancyList, InvoiceList } from '../../../components/views.tsx';
 import { demoDeadLetters, demoDiscrepancies, demoInvoice, demoInvoices, demoSummary } from '../../../lib/demo.ts';
-import { statusParam } from '../../../lib/labels.ts';
+import { firstParams, statusParam } from '../../../lib/labels.ts';
 
 // Every sample page: the same views as the live ones, from the snapshot files only, with no actions.
-export default async function DemoPage({ params, searchParams }: { params: Promise<{ path?: string[] }>; searchParams: Promise<{ status?: string; q?: string }> }) {
-  const [{ path = [] }, { status: raw, q }] = await Promise.all([params, searchParams]);
+export default async function DemoPage({ params, searchParams }: { params: Promise<{ path?: string[] }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [{ path = [] }, { status: raw, q }] = await Promise.all([params, firstParams(searchParams)]);
   const [section, id] = path;
   const head = (title: string) => (
     <div className="page-head">

@@ -125,9 +125,80 @@ test.describe('upload', () => {
     );
     expect(rows).toEqual([{ extractions: 1, keys: 1 }]);
   });
+
+  test('a file dropped while another uploads is refused out loud, never sent without its bytes', async ({ page }) => {
+    await page.goto('/upload');
+    const file = page.getByLabel('Invoice file');
+    await expect(file).toBeEnabled();
+    // The first upload is held, so the drop lands while it is still sending.
+    let release!: () => void;
+    const released = new Promise<void>((resolve) => (release = resolve));
+    let posts = 0;
+    await page.route('**/upload', async (route) => {
+      if (route.request().method() === 'POST') {
+        posts += 1;
+        await released;
+      }
+      await route.continue();
+    });
+    const status = page.getByRole('status');
+    try {
+      await file.setInputFiles({ name: 'digital.pdf', mimeType: 'application/pdf', buffer: digital });
+      await expect(status).toHaveText('Uploading digital.pdf');
+      const second = await page.evaluateHandle((bytes) => {
+        const transfer = new DataTransfer();
+        transfer.items.add(new File([new Uint8Array(bytes)], 'second.pdf', { type: 'application/pdf' }));
+        return transfer;
+      }, [...digital]);
+      await page.locator('form.drop').dispatchEvent('drop', { dataTransfer: second });
+      await expect(status).toHaveText(/^second[.]pdf not accepted: .*Drop it again[.]$/);
+    } finally {
+      release();
+    }
+    // The first upload's own result follows the refusal; the refused file keeps its row.
+    await expect(status).toHaveText('digital.pdf uploaded.');
+    await expect(page.getByRole('row', { name: /second[.]pdf/ }).getByRole('cell')).toHaveText(['second.pdf', 'Not accepted', /Drop it again/]);
+    expect(posts).toBe(1);
+  });
+
+  test('an upload posted after the session ended goes to sign-in before the server reads the form', async ({ page }) => {
+    await page.goto('/upload');
+    await expect(page.getByLabel('Invoice file')).toBeEnabled();
+    await page.context().clearCookies();
+    // With no file, the server would answer "Choose a file to upload." were the form read before the session check.
+    await page.locator('form.drop').evaluate((form: HTMLFormElement) => form.requestSubmit());
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByText('Choose a file to upload.')).toHaveCount(0);
+  });
+
+  test('a sample tapped after the session ended goes to sign-in before the server looks the sample up', async ({ page }) => {
+    await page.goto('/upload');
+    await expect(page.getByLabel('Invoice file')).toBeEnabled();
+    const sample = page.getByRole('button', { name: 'Clean digital invoice' });
+    // A key the server refuses by name, were it looked up before the session check.
+    await page.locator('form.sample', { has: sample }).locator('input[name="sample"]').evaluate((input: HTMLInputElement) => {
+      input.value = 'no-such-sample';
+    });
+    await page.context().clearCookies();
+    await sample.click();
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByText('Unknown sample.')).toHaveCount(0);
+  });
 });
 
 test.describe('review', () => {
+  test('an open finding reads its title and text, then its amount, then the decision', async ({ page }) => {
+    const [open] = await db<{ id: string }>(
+      `SELECT i.id FROM invoices i JOIN discrepancies d ON d.invoice_id = i.id WHERE i.status = 'reconciled' AND d.status = 'open' ORDER BY i.id LIMIT 1`,
+    );
+    await page.goto(`/invoices/${open!.id}`);
+    const order = await page
+      .locator('.findings article', { has: page.getByRole('button', { name: 'Dispute', exact: true }) })
+      .first()
+      .evaluate((article) => ['h3', ':scope > p, .finding-body > p', ':scope > .num', 'button'].map((selector) => [...article.querySelectorAll('*')].indexOf(article.querySelector(selector)!)));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+
   test('a reviewer disputes one finding, approves the other charges, then approves the invoice', async ({ page }) => {
     const [row] = await db<{ id: string }>(
       "SELECT i.id FROM invoices i JOIN discrepancies d ON d.invoice_id = i.id WHERE i.status = 'reconciled' AND d.status = 'open' LIMIT 1",
@@ -200,6 +271,13 @@ test.describe('list', () => {
     await page.goto('/invoices/00000000-0000-4000-8000-000000000000');
     await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+  });
+
+  test('a repeated q or status in the address still shows the list', async ({ page }) => {
+    await page.goto('/invoices?q=a&q=b&status=reconciled&status=approved');
+    await expect(page.getByRole('heading', { name: 'Invoices', level: 1 })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Reconciled/ })).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('searchbox', { name: 'Search invoices' })).toHaveValue('a');
   });
 });
 

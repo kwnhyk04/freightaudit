@@ -1,6 +1,6 @@
 import type { DeadLettersQuery, DiscrepanciesQuery, DiscrepancyStatus, InvoicesQuery, InvoiceStatus, InvoiceSummaryQuery } from '@freightaudit/contracts/graphql';
 import Link from 'next/link';
-import { DECISION, FILTERS, FINDING, IN_FLIGHT, invoiceAmounts, openFindingsNote, QUEUE, STATUS, statusReason, statusTotals } from '../lib/labels.ts';
+import { DECISION, FILTERS, FINDING, findingText, IN_FLIGHT, invoiceAmounts, lineLabel, openFindingsNote, QUEUE, STATUS, statusReason, statusTotals } from '../lib/labels.ts';
 import { ActionForm, DecideForm } from './client.tsx';
 import { Badge, Day, Difference, Empty, Moment, Money, Pager, StatusBadge, Tabs } from './ui.tsx';
 
@@ -201,7 +201,7 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
                     </Link>
                     <div className="faint nowrap">{node.invoice.carrier}</div>
                   </td>
-                  <td>{node.lineItem ? `${node.lineItem.lineNumber}. ${node.lineItem.description}` : <span className="faint">Whole invoice</span>}</td>
+                  <td>{node.lineItem ? `${node.lineItem.lineNumber}. ${lineLabel(node.lineItem.description)}` : <span className="faint">Whole invoice</span>}</td>
                   <td className="num">
                     <Money cents={node.expectedCents} currency={node.invoice.currency} />
                   </td>
@@ -209,7 +209,7 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
                     <Money cents={node.billedCents} currency={node.invoice.currency} />
                   </td>
                   <td className="muted" style={{ maxWidth: 360 }}>
-                    {node.evidence}
+                    {findingText(node, node.lineItem, undefined, node.invoice.currency)}
                   </td>
                   <td>{!readOnly && node.status === 'OPEN' && node.invoice.status === 'RECONCILED' ? <DecideForm id={node.id} /> : <Badge tone={DECISION[node.status].tone}>{DECISION[node.status].label}</Badge>}</td>
                 </tr>

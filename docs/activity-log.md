@@ -19,6 +19,115 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-18: PR C2 planned (read-only, not committed)
+
+- **Counts (read-only, demo database and MinIO):**
+  - What happened: 513 invoices, of which 13 are uploads and 500 seeded with no model call. MinIO holds 13 objects. 208 of 209 approved invoices have no `approved` audit row; the one with a row is check 3's bulk decision.
+  - Why: the seed writes rows only, with no documents and no audit rows.
+  - What we did: counted with `psql` in a read-only transaction, and with a shell glob in the MinIO container (`find` is not in that image).
+- **Plan:** C2 is web only. It covers the status words, the exact-duplicate warning and the example-data labels. C3 is the api, then a Release and `pnpm demo:up`: a near-duplicate finding, an open-findings filter and optional GraphQL limits. C4 is the web once C3 runs. Details are in the plan sent to the user, mirrored in docs/todo.md.
+- Files: docs/{activity-log,context,todo}.md
+- Validation: none; no code changed.
+- Outstanding: the user's OK.
+
+### 2026-10-18: PR C1, the follow-ups (branch ui-c1-followups from main `2676576`, not committed)
+
+- **Start:** the user's answers were items 1 to 9, a refused drop rather than a queue, and item 9 included. #24 deployed by itself, so the Vercel branch-rule item closed. The ESLint line is the user's: `packages/config/eslint.js` already showed the user's edit before the branch was created, and the agent left it alone.
+- **AGENTS.md (setting changed):** "Do not initialize Git or create commits unless requested." became "Do not initialize Git or create new repositories unless requested.". "Do not automatically stage or commit documentation or activity logs." became "Do not automatically stage documentation or activity logs.". Both changes follow from the shipping rule covering commits (user request).
+- **Tests first:**
+  - What happened: the two new unit tests failed on missing exports, and `next build` would then have failed too.
+  - Why: the web's tsconfig includes `**/*.ts`, so the build type-checks the unit tests (memory, pitfall).
+  - What we did: stubbed `firstParams` and `findingText` with today's behavior. Both unit tests then failed on their assertions, and the e2e RED run built: all 10 new e2e tests failed at their expected assertions, and the 17 existing ones passed (lockout did not run, since its dependencies failed).
+- **Item 4's gap is real:**
+  - What happened: the plan named a source guard. The TDD skill's guidance prefers a behavior test, so the agent tried an e2e first. With the cookie cleared, a tampered sample tap answered "Unknown sample.".
+  - Why: the action ran without a session (memory, pitfall).
+  - What we did: `requireSession()` comes first in `uploadSample`, pinned by that e2e test instead of the guard.
+- **First GREEN:**
+  - Results: unit 100/100, lint and typecheck clean, `pnpm e2e` 28/28, `pnpm turbo run test --force` 18 tasks, `pnpm e2e:screenshots` 8/8.
+  - The screenshot run retakes every picture; most differ by timestamps only.
+  - The round-1 detail shots, light and phone, show the three picture fixes against the approved pictures.
+- **Fresh review (read-only), no Critical; two Important, both valid:**
+  1. A refusal made during an upload hid that upload's own result, an error included (memory, lesson).
+  2. Item 9's banner link duplicated the sidebar's existing "Try live data" and had too little contrast (memory, lesson: the premise was wrong).
+  - Minor, acted on:
+    - The amount was read after the decision buttons.
+    - `upload()` had item 4's gap: "Choose a file to upload." without a session.
+    - The leave test proved a negative with a 1.5 s sleep.
+    - The repeated-parameter tests never checked `q`.
+    - Four comments ran past one sentence.
+  - Minor, left as planned: the queue's sentence has no rate card version.
+- **Second round, tests first:**
+  - The drop test now expects the first upload's result.
+  - New tests: `upload()` without a session, and a finding's read order (title, text, amount, decision).
+  - The leave test now opens another invoice and waits for its PDF request instead of sleeping.
+  - The banner test was removed.
+  - What we did: removed the viewer guard for this run as a mutation. Exactly the four expected tests failed, the leave test among them, and 24 passed.
+- **Second GREEN:**
+  - The notice clears when the upload settles, and `upload()` checks the session first.
+  - The amount sits between the text and the decision in the DOM.
+  - Item 9 was reverted: `app/demo/layout.tsx` and `components/shell.tsx` match main.
+  - The guard was restored, and the comments were shortened.
+- **Small events:**
+  - GateGuard blocked the first edit of each file, 25 times this session; each retry passed.
+  - Placeholder edit (agent mistake). What happened: one call aimed at a wrong path (`H:\Projects\projects\freight-audit\app\demo\layout.tsx`) with the same old and new text. Why: a leftover call in a batch. What we did: the tool refused it ("No changes to make"), and the real edits followed.
+  - A background e2e run reports exit 0 for its wrapper; the run's own exit code is the last line of its output file.
+- Files:
+  - apps/web: `app/(app)/{invoices,discrepancies,dead-letters}/page.tsx`, `app/demo/[[...path]]/page.tsx`, `app/actions.ts`, `app/globals.css`, `components/{client,detail,viewer,views}.tsx`, `lib/labels.ts`, `lib/labels.test.ts`, `e2e/{demo,main}.spec.ts`
+  - `docs/screenshots/ui/` (retaken), AGENTS.md, `docs/{activity-log,context,memory,threat-notes,todo}.md`
+  - `packages/config/eslint.js` is the user's edit.
+- Validation (final code): `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 100 tests), `pnpm e2e` 29/29 in 45 s, `pnpm e2e:screenshots` 8/8. No live model call; the e2e runs use the recorded-fixture models.
+- Outstanding: the user ships C1. After merge, production `/demo/invoices?q=a&q=b` should answer 200. Then the C2 plan.
+
+### 2026-10-18: Phase B live after #24 (main `2676576`): checks, shipping rule, live checks, follow-up plan (not committed)
+
+Times are UTC; the user gave the merge time as 15:57 Taipei (07:57 UTC).
+
+- **Folder and production (read-only):**
+  - What happened: the folder was on main `2676576`, clean, with no line-ending changes either. On the production domain, `/demo/invoices/does-not-exist` answered 404 with phase B's sample not-found text, and `/demo/invoices` showed "Showing 1 to 11 of 11" and the four cards (`x-vercel-id: sin1::hkg1::…`).
+  - Why: only main deploys, and `2676576` is the only main commit with this web code. The site shows no hash.
+  - What we did: requested public pages with `curl`, with no GitHub call.
+- **Api compatibility:**
+  - What happened: phase B's web needed no Release and no `pnpm demo:up`.
+  - Why:
+    - Yoga accepts any valid operation; it has no allowlist, persisted documents, or depth or cost limit.
+    - Phase B changed only operations, generated client types (the api imports none of them), the web's lockfile specifier and `.impeccable/config.json`.
+    - The sample key `sample-<64 hex>` (71 characters) fits the spec's 1 to 255, and `decideInvoice` gets `crypto.randomUUID()`.
+    - g001, g062 and g067 are golden v1 cases.
+  - What we did: read `apps/api/src/graphql.ts`, `openapi.yaml` and `review.ts`, ran `git diff --stat e61f28c 2676576`, and hashed the samples against the manifest. `docker inspect` showed the api and worker on `e61f28cb…`, healthy, started 2026-10-17 22:20 UTC.
+- **AGENTS.md:** the user's shipping line, added under Git (memory, decision). The older line "Do not initialize Git or create commits unless requested" now overlaps it; it was left as is.
+- **Live checks** (the user on the phone; the api log watched read-only through a scratchpad `watch-api.mjs` under Monitor; counts read with `psql` in a read-only transaction):
+  1. List, pass. The database at 08:14 and 08:22 held 512 invoices, 86 open findings on 84 invoices, $29,249.24 open overcharge, 107 matched, 61 in flight and 19 open dead letters. The user's load (08:22:32: `/readyz`, two `POST /graphql`, all 200) showed the same.
+  2. Sample tap, pass. The agent suggested g062, but the user tapped g067 (memory, lesson). The first tap answered `POST /v1/invoices` 202 at 08:26:55.846. It wrote one `sample-8dcc67a8055c…` key and made one Gemini `gemini-3.5-flash-lite` first pass (1,325 + 291 tokens, 2,759 ms, $0). The invoice reconciled at 08:26:59.5 with 5 lines, one open uncontracted charge (+$150.93) and 4 status audit rows. The repeat answered 200 at 08:28:03.913; every row count and newest write time was unchanged, and the day still had one model call.
+  3. Bulk decision, pass. "Approve at rate card" on seeded invoice 05721816 (hash in neither golden manifest) answered `POST /graphql` 200 at 08:30:34.912. All its rows carry 08:30:34.875: the invoice approved, its duplicate charge confirmed, `discrepancy_confirmed` and `approved` ("at rate card") by `reviewer`, and a `decide:APPROVE_AT_RATE_CARD:…` key.
+  4. Offline, pass on the second round:
+     - What happened: after the first `pnpm demo:down` (log ended 08:32:56), the user reported "Sample data, read-only" on the three pages, read after `pnpm demo:up` (api back 08:37:23).
+     - Why: that banner is what `/demo` pages show while the api answers (memory, pitfall).
+     - What we did: a second `pnpm demo:down` (log ended 08:42:03; 0 `freightaudit-prod` containers, the two data volumes and the Tailscale state kept). Before `pnpm demo:up`, the user opened the three pages; each matched (twin, sample list, sample not-found) under "Live backend offline, showing sample data". The api came back at 08:44:44, with the public check at 08:45:11.
+  5. Zoom, pass. The view of g001 made one document request (08:45:40.457, 200) and the zooms none, through 08:46:42. Zoom in kept the left edge, the page scrolled right to the amounts, and zoom out worked.
+- **Images changed by the offline check (setting changed):**
+  - What happened: the first `pnpm demo:up` pulled `:latest`, and the api, worker and squid now run `2676576` builds (api `sha256:c81f89ab…`, worker `sha256:f531e235…`).
+  - Why: `.env.prod` runs `IMAGE_TAG=latest`.
+  - What we did: told the user before the run; phase B changed nothing in those images.
+- **Small events:**
+  - GateGuard blocked the first Bash call and the first touch of each file: AGENTS.md, three scratchpad files and the four docs. It blocked even when the facts were stated before the call; each retry passed.
+  - Output flood (agent mistake). What happened: the first production probe printed whole RSC payload lines. Why: its grep pattern matched inside one long line. What we did: later probes used bounded `grep -o` patterns.
+  - The watch script's 10 s timer would have kept node alive after the log ended, so the reattach loop could never reattach. Found before the first run; it now exits when stdin closes, checked on synthetic lines.
+  - After the first tap, a per-sample query came back empty. Why: it filtered on g062's hash. What we did: queried by the new invoice's id.
+  - The Monitor expired after 30 minutes (29 events) and was re-armed before the second `demo:up`.
+  - `GET / 401` at 08:20:20 and 08:40:49: requests to the Funnel root without a key, not from the web.
+  - Document requests for seeded invoices answered 404, and their pages say "No document is stored for this invoice.", since the seed stores no PDFs (context, Known Limitations).
+- **Follow-up plan** (docs/todo.md, waiting for the user's OK):
+  - What happened: the user asked for a plan only.
+  - Why: the five deferred minors, three picture fixes, the live checks' findings and the ESLint line.
+  - What we did: read each cause in the source. Production answered 500 for `/demo/invoices?q=a&q=b` and for `status` given twice, and 200 for `?q=a`. Every item is web only; the finding-text item belongs in the web (memory, decision).
+- **Docs discrepancy:** entries dated 2026-10-18 hold UTC times from 2026-10-17 (memory, pitfall); no past entry was changed.
+- Files: AGENTS.md, docs/{activity-log,context,memory,todo}.md
+- Validation: the checks above. No code changed, and no test was run.
+- Outstanding:
+  1. The user's OK on the follow-up plan, and its defaults: a refused drop rather than a queue, and the optional "Back to the live invoices" link.
+  2. The ESLint line in `packages/config/eslint.js` (the user's decision).
+  3. Whether #24 deployed without a manual redeploy, which would close the Vercel branch-rule item (the user's to report).
+
 ### 2026-10-18: UI round 1, phase B, the web (branch ui-round-1-web from main `e61f28c`, not committed)
 
 - **Start:** every phase A item in docs/todo.md was ticked, the production `POST /graphql` 200 included. The agent read the plan's sections "Phase B: web", "One-tap upload: cost and abuse", "Documentation" and "Verification after each merge", and memory's UI round 1 entries, then created `ui-round-1-web` from main `e61f28c`; the uncommitted doc updates came along.

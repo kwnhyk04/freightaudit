@@ -1,10 +1,10 @@
 import { InvoicesDocument } from '@freightaudit/contracts/graphql';
 import { InvoiceList, PAGE_SIZE, query } from '../../../components/views.tsx';
-import { statusParam } from '../../../lib/labels.ts';
+import { firstParams, statusParam } from '../../../lib/labels.ts';
 import { gql, livePage, summary } from '../../../lib/server.ts';
 
-export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ status?: string; after?: string; before?: string; q?: string }> }) {
-  const { status: raw, after, before, q } = await searchParams;
+export default async function InvoicesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const { status: raw, after, before, q } = await firstParams(searchParams);
   const status = statusParam(raw);
   const search = q?.trim().slice(0, 100) || undefined;
   // Offline, the sample shows the same filter and search.

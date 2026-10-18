@@ -280,6 +280,16 @@ From the approved design doc:
   - Reason: the one-place rule then holds for every layout, and the golden test shows it. Three mutations each failed it: no case folding, no boundary check, and the first place for every identical line.
 - 2026-10-18: One-tap samples are g001, g067 and g062; g062 ("Fuel surcharge billed twice") replaced g071 (plan). A sample's Idempotency-Key is `sample-<sha256 of its bytes>`. Reason: a repeat tap then inserts no `idempotency_keys` row, where a random key would add one per tap. `duplicate-invoice-g071.pdf` was deleted from `apps/web/public/samples` (the golden original stays); the deletion was not refused.
 - 2026-10-18: The upload page's file input stays disabled until the page hydrates. What happened: the first `pnpm e2e` of phase B chose files before hydration; React's `onChange` never ran, so nothing was checked or sent, and two upload tests failed. Why: the change event fired on the server-rendered input before React attached its handler, and React does not replay it. What we did: an effect enables the input, and the tests wait for `toBeEnabled()` before `setInputFiles`. Best because a person on a slow phone gets the same fix: choosing a file before the page can act on it is no longer possible.
+- 2026-10-18: Shipping belongs to the user (user decision, AGENTS.md, Git).
+  - What happened: after #24 merged, the user asked for the rule in AGENTS.md.
+  - Why: user decision. The ship command (`H:\Projects\projects\_tools\ship.ps1`) commits, pushes, opens the pull request, waits for every check and merges only when all pass.
+  - What we did: added the user's line under Git in AGENTS.md. Claude Code never commits, pushes, opens or merges pull requests, and never runs `gh`, read-only commands included. A CI or pull request result comes from the user. This ends the earlier practice of reading Actions runs and commit statuses through GitHub's REST API with curl (the `gh` entry under Known Issues). What production serves is read from its public pages, and what the demo runs from `docker inspect`.
+- 2026-10-18: The finding-text fix belongs in the web, not the api (plan for the follow-up PR, waiting for the user's OK).
+  - What happened: finding text shows the charge code in capitals ("INSIDE_DELIVERY is billed twice.").
+  - Why: `reconcileInvoice` builds the text from the code (`packages/domain/src/reconcile.ts:64-69`), and the worker and the seed store it per finding.
+  - What we did: planned `findingText()` in `apps/web/lib/labels.ts`, using the line's label, for the detail page and the review queue. Changing the domain's text would need a Release and `pnpm demo:up`, would fix only findings reconciled afterwards, and would change stored data, which the `formatMoney` entry of 2026-10-17 rules out. The web already has each line's description, both amounts and the invoice's rate card version.
+
+- 2026-10-18: PR C1 decisions (user): a drop while an upload sends is refused with a notice and a "Not accepted" row, not queued; the upload's own result follows the refusal. The ESLint ignore for `playwright-report/` was applied by the user. The planned banner link was dropped (lesson below).
 
 ## Preferences and Instructions
 
@@ -445,6 +455,24 @@ From the approved design doc:
 - 2026-10-18: React must not render into an element an effect empties. What happened: the final review found that a draw error, then a zoom, crashed the invoice page; an e2e test reproduced it. Why: the viewer's error text was React's child of the element the draw effect clears with `replaceChildren()`, so React later removed a node that was gone. What we did: the effect draws into its own child element and the error renders beside it.
 - 2026-10-18: `pnpm lint` fails after a Playwright run with a failed test. What happened: ESLint reported thousands of errors in `apps/web/playwright-report/trace/*.js`. Why: the HTML report bundles the trace viewer when a trace was kept (`retain-on-failure`), and the shared ESLint config ignores `dist/`, `.next/` and generated code but not `playwright-report/`. What we did: reran lint after a green run, which writes no trace folder (12/12). Adding `'**/playwright-report/'` to `globalIgnores` in `packages/config/eslint.js` would end it; that file is protected, so the user applies such lines.
 - 2026-10-18: In the api's pino log, a request's path and its status are on different lines ("incoming request" has `req.url`; "request completed" has `res.statusCode`), joined by `reqId`. A read-only watch that pairs them: `docker logs -f --since 1s freightaudit-prod-api-1 2>&1 | node <script>`, where the script prints only time, method, path and status.
+- 2026-10-18: Entry dates in these docs are local (Taipei, UTC+8) dates, while their times are UTC.
+  - What happened: `docker inspect` gave the demo api's start as 2026-10-17T22:20:11Z, which the docs record as "22:20 UTC" under 2026-10-18 entries.
+  - Why: entries are dated by the user's day; not confirmed for every entry.
+  - What we did: changed no past entry (AGENTS.md). New entries give the UTC date wherever it differs from the entry's date.
+- 2026-10-18: `pnpm demo:up` pulls `:latest` for api, worker, egress-proxy and tailscale (`scripts/demo.ts:65`), so an offline test that ends with it also deploys whatever Release last published.
+  - What happened: the offline check's `demo:up` moved the api, worker and squid from `e61f28c` to the `2676576` builds at 08:37 UTC.
+  - Why: the containers run `:latest` (`Config.Image`), so `.env.prod`'s `IMAGE_TAG` is `latest`.
+  - What we did: told the user before the run. It was harmless, since phase B changed nothing in those images. To keep a revision, set `IMAGE_TAG=sha-<7 hex>` in `.env.prod` first.
+- 2026-10-18: The offline banner shows only while the api is down. After `pnpm demo:up`, a signed-in reviewer's `/demo` pages read "Sample data, read-only" by design (`app/demo/layout.tsx`).
+  - What happened: the first offline round was read after `demo:up` and showed that banner.
+  - Why: the reloads came once the api answered again.
+  - What we did: redid the round with `pnpm demo:down`, read the three pages before `pnpm demo:up`, and all three passed.
+- 2026-10-18: A GraphQL mutation logs `POST /graphql 200` even when it fails, since errors travel in the body. Confirm a reviewer action from its rows (status, audit events, the `decide:` key), not from the api log.
+- 2026-10-18: A server action runs without a session wherever its request gets past `proxy.ts`.
+  - What happened: in the RED e2e run, a sample tap with the cookie cleared and a tampered key answered "Unknown sample."; an empty upload answered "Choose a file to upload.".
+  - Why: not confirmed. The proxy redirects a sessionless request to `/login`, which its matcher skips, and the action ran anyway.
+  - What we did: `upload` and `uploadSample` call `requireSession()` first (PR C1), each pinned by an e2e test. Every action must check the session before it reads anything.
+- 2026-10-18: `next build` type-checks the unit tests too (the web's tsconfig includes `**/*.ts`), so a unit test that imports a missing export breaks the e2e build. Before an e2e RED run, stub the export with today's behavior; the unit test then fails on its assertion.
 
 ## Rejected Approaches
 
@@ -466,6 +494,18 @@ From the approved design doc:
     1. Found the change with grep and read the lines.
     2. Ran the "changed" test once against it; it failed, as a mutation test should.
     3. Restored the line with Edit, checked no marker was left, and reran the decide tests (9/9).
+- 2026-10-18: Give the cost of every option the user may pick, not only the recommended one (agent mistake).
+  - What happened: before the sample tap, the agent gave g062's cost only and said g067 was not on the demo either. The user tapped g067.
+  - Why: the agent assumed its suggestion would be followed.
+  - What we did: reported g067's real cost right after the tap: one Gemini call, 1,616 tokens, $0, under the plan's estimate of about 3,000 tokens.
+- 2026-10-18: Read the whole shell before saying a page has no way back (agent mistake).
+  - What happened: the plan's item 9 claimed that a signed-in reviewer on a sample page had no link back to the live pages, and the user approved a banner link for it. The sidebar already shows "Try live data" to that reviewer (`components/shell.tsx`, `sidebar-foot`).
+  - Why: the agent read the banner and the page links, not the sidebar's footer. A fresh review found it.
+  - What we did: removed the banner link and its test from PR C1 and told the user.
+- 2026-10-18: Assert the main flow's outcome beside a new branch's (agent mistake).
+  - What happened: the drop test checked the refusal, but not the first upload's result. A fresh review found that the refusal hid that result, an error included.
+  - Why: the test asserted only what the change added.
+  - What we did: the test now expects "digital.pdf uploaded." after the refusal (it failed first), and the notice clears when the upload settles.
 
 ## Constraints
 

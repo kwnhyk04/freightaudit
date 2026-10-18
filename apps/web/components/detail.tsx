@@ -2,7 +2,7 @@ import type { InvoiceQuery } from '@freightaudit/contracts/graphql';
 import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import type { MarkValues } from '../lib/marks.ts';
-import { DECISION, decisionQuestion, FINDING, findingTitle, IN_FLIGHT, invoiceAmounts, lineAmounts, lineLabel, overcharge, plural, reviewReason, STATUS, trailRows } from '../lib/labels.ts';
+import { DECISION, decisionQuestion, FINDING, findingText, findingTitle, IN_FLIGHT, invoiceAmounts, lineAmounts, lineLabel, overcharge, plural, reviewReason, STATUS, trailRows } from '../lib/labels.ts';
 import { ActionForm, BulkDecision, DecideForm, DialogAction, StatusPoller } from './client.tsx';
 import { Badge, Day, Difference, Moment, Money, StatusBadge } from './ui.tsx';
 import { DocumentViewer } from './viewer.tsx';
@@ -125,16 +125,17 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc }: Where & { d
                   const title = `finding-${finding.id}`;
                   return (
                     <article key={finding.id} aria-labelledby={title}>
-                      <Difference cents={overcharge(finding)} currency={invoice.currency} />
+                      {/* Read as title, text, amount, then the decision; CSS keeps the amount in the left column. */}
                       <div className="finding-body">
                         <div className="row">
                           <h3 id={title}>{findingTitle(finding.type, line?.description)}</h3>
                           <Badge tone={DECISION[finding.status].tone}>{DECISION[finding.status].label}</Badge>
                         </div>
-                        <p className="muted">{finding.evidence}</p>
+                        <p className="muted">{findingText(finding, line, invoice.rateCardVersion?.version, invoice.currency)}</p>
                         {finding.note && <p className="faint">Note: {finding.note}</p>}
-                        {!readOnly && finding.status === 'OPEN' && invoice.status === 'RECONCILED' && <DecideForm id={finding.id} describedBy={title} />}
                       </div>
+                      <Difference cents={overcharge(finding)} currency={invoice.currency} />
+                      {!readOnly && finding.status === 'OPEN' && invoice.status === 'RECONCILED' && <DecideForm id={finding.id} describedBy={title} />}
                     </article>
                   );
                 })}
@@ -194,7 +195,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc }: Where & { d
                               <td className="num">{line.lineNumber}</td>
                               <td>
                                 {lineLabel(line.description)}
-                                {finding && <div className="faint">{FINDING[finding.type]}</div>}
+                                {finding && <div className="faint nowrap">{FINDING[finding.type]}</div>}
                               </td>
                               <td className="id">{line.chargeCode ?? <span className="faint">None</span>}</td>
                               <td className="num">

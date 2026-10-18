@@ -121,8 +121,9 @@ For small, clearly authorized changes, proceed without unnecessary confirmation.
 
 ## Git
 
-- Do not initialize Git or create commits unless requested.
-- Do not automatically stage or commit documentation or activity logs.
+- Do not initialize Git or create new repositories unless requested.
+- Do not automatically stage documentation or activity logs.
+- Shipping: Claude Code never commits, pushes, opens or merges pull requests, and never runs gh (the GitHub CLI) for anything, read-only commands included. The user ships with the ship command (H:\Projects\projects\_tools\ship.ps1): it commits, pushes, opens the pull request, waits for every check and merges only when all pass. When you need a CI or pull request result, ask the user.
 
 <!-- BEGIN:turborepo-agent-rules -->
 

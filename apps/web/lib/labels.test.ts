@@ -2,7 +2,9 @@ import type { InvoiceQuery } from '@freightaudit/contracts/graphql';
 import {
   decisionQuestion,
   duration,
+  findingText,
   findingTitle,
+  firstParams,
   invoiceAmounts,
   lineAmounts,
   lineLabel,
@@ -37,6 +39,26 @@ test('a finding title names the line and what is wrong with it, or the type alon
   expect(findingTitle('UNCONTRACTED_CHARGE', 'Residential delivery')).toBe('Residential delivery charged, but not on the rate card');
   expect(findingTitle('DUPLICATE_CHARGE', 'Fuel surcharge')).toBe('Fuel surcharge billed twice');
   expect(findingTitle('RATE_MISMATCH')).toBe('Rate mismatch');
+});
+
+test('a finding names its line as the invoice prints it, not by its charge code', () => {
+  const finding = (type: 'RATE_MISMATCH' | 'UNCONTRACTED_CHARGE' | 'DUPLICATE_CHARGE', expectedCents: number, billedCents: number) => ({
+    type,
+    evidence: 'Stored text with CODE.',
+    expectedCents,
+    billedCents,
+  });
+  expect(findingText(finding('UNCONTRACTED_CHARGE', 0, 16025), { description: 'INSIDE DELIVERY' }, 1, 'USD')).toBe('Inside delivery is not on rate card version 1.');
+  expect(findingText(finding('RATE_MISMATCH', 534360, 614514), { description: 'LINEHAUL' }, 2, 'USD')).toBe('Rate card version 2 sets Linehaul at $5,343.60; billed $6,145.14.');
+  expect(findingText(finding('DUPLICATE_CHARGE', 0, 3806), { description: 'Fuel surcharge' }, 1, 'USD')).toBe('Fuel surcharge is billed twice.');
+  // Without the version, as in the review queue, the sentence says "the rate card"; without a line, the stored text stands.
+  expect(findingText(finding('UNCONTRACTED_CHARGE', 0, 9500), { description: 'Liftgate service' }, undefined, 'USD')).toBe('Liftgate service is not on the rate card.');
+  expect(findingText(finding('RATE_MISMATCH', 34720, 39680), { description: 'FUEL SURCHARGE' }, undefined, 'USD')).toBe('The rate card sets Fuel surcharge at $347.20; billed $396.80.');
+  expect(findingText(finding('RATE_MISMATCH', 34720, 39680), null, 1, 'USD')).toBe('Stored text with CODE.');
+});
+
+test('a repeated URL parameter reads as its first value, so a pasted link cannot break a page', async () => {
+  expect(await firstParams(Promise.resolve({ q: ['a', 'b'], status: 'reconciled', after: undefined }))).toEqual({ q: 'a', status: 'reconciled', after: undefined });
 });
 
 test('a review reason is a sentence on the invoice and a short phrase in a list row', () => {

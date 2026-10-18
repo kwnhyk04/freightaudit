@@ -37,7 +37,7 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
       - [x] After the user's `pnpm demo:up`, the demo api and worker run revision `e61f28cb…`, started 22:20 UTC, healthy. The api's image digest equals GHCR's `sha-e61f28c`.
       - [x] Production `/login` answers 200 from a function (`x-vercel-id: sin1::hkg1::…`).
       - [x] The api logs `POST /graphql` 200 when the production invoice list loads. The user loaded it twice: `GET /readyz` 200 then `POST /graphql` 200 at 22:26:26–27 and again at 22:26:38 UTC. Before that, the only request since the restart was demo:up's own `GET /v1/invoices` 401.
-  - [ ] Phase B, web: branch `ui-round-1-web` from main `e61f28c` (created 2026-10-18 after phase A ran on the demo; not committed).
+  - [x] Phase B, web: branch `ui-round-1-web` from main `e61f28c`, merged as `2676576` (#24, 2026-10-18 07:57 UTC).
     - [x] Shell: counts, skip link, stacked phone nav; the summary cached 10 s; the poller slows to 60 s after 2 minutes.
     - [x] List: stat cards, tab counts, search, status reason lines, Billed, Expected and Difference, "Showing a to b of N" with Previous and Next.
     - [x] Detail: bulk decisions through `decideInvoice`, findings, charges against the rate card, invoice details, the audit trail in plain words.
@@ -48,19 +48,41 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
     - [x] Tests: marks over the golden PDFs (73, three mutations caught), pdf.js guards (5, two mutations caught), labels and sample maths, e2e (upload, samples, bulk decision, "changed", search, paging, zoom, offline, not-found, marks), `pnpm e2e:screenshots` round-1 shots in `docs/screenshots/ui/round-1/` beside the approved pictures.
     - [x] Docs and README screenshots (sample g056): context, memory, activity log, threat notes, README.
     - [x] Checks (2026-10-18), run locally: `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm contracts:check`, `pnpm e2e` 18/18, `pnpm e2e:screenshots` 8/8, the `/upload` trace lists the three sample PDFs. A fresh review found no Critical or Important defect; two minors re-graded Important were fixed test first (activity log).
-    - [ ] Optional, the review's five deferred minors (activity log, 2026-10-18 phase B): a second PDF fetch when a page is left during pdf.js's load; a drop during an upload is lost; `uploadSample` reads before the session check; a repeated `q` or `status` parameter throws; a finding's amount precedes its heading.
-    - [ ] The user commits and opens PR B (the demo api already runs phase A, `e61f28c`).
-    - [ ] After merge, on the production domain (the user): the list's cards and counts; one sample tap and a repeat; a bulk decision on a demo invoice; offline, the twin page, the sample list for an unknown id and the not-found page; zoom on a phone.
-
-- [ ] Vercel builds main without the Ignored Build Step (branch `fix/vercel-production-builds` from main `dc6703b`; not committed; carries the doc updates made since #21).
-  - [x] `apps/web/vercel.json`: `ignoreCommand` removed. `git.deploymentEnabled` is `{"**": false, "main": true}`, checked against Vercel's Git configuration docs: minimatch patterns, and a branch matching several rules deploys if one is `true`.
-  - [x] docs/deploy.md: why, and the checks after merge.
-  - [ ] After merge:
-    - The merge commit's GitHub status shows a completed Vercel deployment with no manual redeploy.
-    - The pull request's branch got no Vercel deployment.
-  - The cause of the old cancellations stays unknown. The user checked: Production tracks main, system variables are exposed, the Ignored Build Step is "Overridden" by vercel.json with Automatic behind it, and the canceled builds' logs cannot be opened.
+    - [x] PR B merged as `2676576` (#24). No Release or `pnpm demo:up` was needed for it: phase B changed only operations and generated client types, and the api accepts any valid operation (activity log, 2026-10-18 live checks).
+    - [x] Live on the production domain (2026-10-18, 08:22 to 08:46 UTC; the user on the phone, the api log and read-only database counts):
+      - [x] List: cards, tabs, "Showing 1 to 25 of 512" and the sidebar matched the database (512 invoices, 86 open findings on 84 invoices, $29,249.24, 107 matched, 61 processing, 19 open dead letters).
+      - [x] Sample: g067's first tap answered 202 and made one Gemini call (1,616 tokens, $0); it reconciled in 3.7 s. The repeat answered 200 with no model call and no Postgres write.
+      - [x] Bulk decision: "Approve at rate card" on seeded invoice 05721816 (not golden). It approved the invoice and confirmed its finding, with two `reviewer` audit rows and one `decide:` key, all in one transaction.
+      - [x] Offline (`pnpm demo:down`, then `pnpm demo:up`): the twin page, the sample list for an unknown id and the sample not-found page, each under "Live backend offline, showing sample data". This passed on the second round; the first was read after `demo:up`.
+      - [x] Zoom on the phone: one document request for the view and none for the zooms; the page scrolls both ways, and zoom out works.
+  - [ ] PR C1, the follow-ups (the user's OK 2026-10-18; branch `ui-c1-followups` from main `2676576`, not committed). Web only: no api Release and no `pnpm demo:up`; Vercel deploys it on merge. Each item's test failed first (activity log).
+    - [x] Repeated URL parameter (production answered 500 for `/demo/invoices?q=a&q=b`): `firstParams()` in `lib/labels.ts`, used by the invoices, review queue, dead letters and demo pages. Tests: `lib/labels.test.ts`, and a repeated `q` and `status` in `e2e/demo.spec.ts` and `e2e/main.spec.ts`.
+    - [x] PDF fetched after leaving during pdf.js's load: `if (cancelled) return;` before `getDocument` (`components/viewer.tsx`). Test: `e2e/demo.spec.ts` holds the pdf.js chunks, leaves, opens another invoice and expects no request for the first one's PDF; with the guard removed it failed.
+    - [x] Drop during an upload: refused with a notice and a "Not accepted" row (user decision: no queue), and the first upload's own result follows the refusal (`components/client.tsx`). Test: `e2e/main.spec.ts`.
+    - [x] Session first in `upload` and `uploadSample` (`requireSession()`, `app/actions.ts`). With the cookie cleared, a tampered sample tap answered "Unknown sample." and an empty upload "Choose a file to upload.", so both actions ran without a session. Tests: two in `e2e/main.spec.ts`, behavior tests in place of the planned source guard.
+    - [x] Finding read order: title, text, amount, then the decision; CSS keeps the amount in the left column (`components/detail.tsx`, `app/globals.css`). Tests: `e2e/demo.spec.ts` and `e2e/main.spec.ts`.
+    - [x] Picture: "Duplicate charge" stays on one line (`.nowrap` in `components/detail.tsx`). Test: `e2e/demo.spec.ts` at 390 px.
+    - [x] Picture: the phone document bar keeps the whole file name, with the controls on one row (`app/globals.css`). Test: `e2e/demo.spec.ts` at 390 px.
+    - [x] Picture: finding text names the line as printed, not the charge code (`findingText()` in `lib/labels.ts`, for the detail page and the review queue). Tests: `lib/labels.test.ts`, `e2e/demo.spec.ts`.
+    - [x] Dropped: the "Back to the live invoices" banner link. Its premise was wrong: the sidebar already shows "Try live data" to a signed-in reviewer on the sample (memory, lesson).
+    - [x] The ESLint ignore for `playwright-report/` at `packages/config/eslint.js:6`, applied by the user.
+    - [x] Checks (2026-10-18, final code): `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 100 tests), `pnpm e2e` 29/29, `pnpm e2e:screenshots` 8/8. A fresh review's two Important findings and four Minor ones were fixed test first (activity log).
+    - [ ] The user ships C1 (`ship.ps1`). After merge, `/demo/invoices?q=a&q=b` should answer 200 on production.
+  - [ ] PR C2 and after (planned 2026-10-18, waiting for the user's OK; the plan is in the activity log):
+    - C2, web only, with no api change, migration, Release or `demo:up`:
+      - [ ] Status words: "Ready to approve", "Billing issues (N)", "Reading needs a check", "Reading" and "Checking" wherever a status shows, with one explanation line by the filter.
+      - [ ] Exact duplicate upload: a 200 from the api shows "Already uploaded as invoice <number> on <date>. Nothing new was created." with a link, for a chosen file and a sample tap.
+      - [ ] Seeded invoices labelled as example data, in the PDF panel, the details line and the trail.
+    - C3, api first, then a Release and `pnpm demo:up`: a `duplicate_invoice` finding for a near duplicate (migration 0014, expand only), an open-findings filter on `invoices` for split tabs, and optional GraphQL depth and alias limits.
+    - C4, the web, once C3 runs on the demo: the split tabs and the near-duplicate finding's words.
 
 ## Completed
+
+- [x] Vercel builds main without the Ignored Build Step (branch `fix/vercel-production-builds` from main `dc6703b`, merged as #22, `5fb695e`). Closed 2026-10-18: #24 deployed to production by itself, with no manual redeploy (reported by the user), and production serves its pages.
+  - [x] `apps/web/vercel.json`: `ignoreCommand` removed. `git.deploymentEnabled` is `{"**": false, "main": true}`, checked against Vercel's Git configuration docs: minimatch patterns, and a branch matching several rules deploys if one is `true`.
+  - [x] docs/deploy.md: why, and the checks after merge.
+  - [x] After merge: #24 deployed with no manual redeploy (the user). Whether a pull request's branch got a Vercel deployment was not reported.
+  - The cause of the old cancellations stays unknown. The user checked: Production tracks main, system variables are exposed, the Ignored Build Step is "Overridden" by vercel.json with Automatic behind it, and the canceled builds' logs cannot be opened.
 
 - [x] Documents never cached, and sign-out clears the cache (PR #21, merged as `dc6703b`, live 2026-10-18).
   - Found 2026-10-18: `private, max-age=31536000, immutable` let a browser keep each viewed PDF for a year, after sign-out and while the backend was offline.
