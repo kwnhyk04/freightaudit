@@ -19,6 +19,70 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-19: C2 pre-ship tidy (branch ui-c2-wording, not committed)
+
+- **Base:**
+  - `git log -1 main` is `a2f046e`, the C1 merge (#25). `origin/main`, as of the last fetch, is the same.
+  - `git log --oneline main..HEAD` is empty: the branch has no commits, and C2 is uncommitted on `a2f046e`.
+- **Leftover audit:** read the whole diff file by file. No mutations, debug output, focused tests or TODOs were left. The six `test.skip(sample.invoices.edges.length === 0, …)` lines in `e2e/demo.spec.ts` are conditional and already on main.
+  - What happened: the first scan, `grep -nE` over the diff, failed with "Unmatched ( or \(".
+  - Why: not confirmed; the shell's output wrapper may have rewritten the command.
+  - What we did: reran the scan with the Grep tool.
+- **AGENTS.md line endings:**
+  - What happened: `git ls-files --eol` gave `i/lf w/mixed`. Both `git diff --stat` and `git diff --ignore-cr-at-eol --stat` were empty, and `git hash-object AGENTS.md` matched the index blob `7a9cca8`. So `git add -A` would have committed no change; only `git status` listed the file.
+  - Why:
+    - Lines 1 to 127 were CRLF from the checkout (system `core.autocrlf=true`).
+    - turbo's managed block, lines 128 to 136, was LF. The file's time was 15:18 UTC on 2026-10-18, after the C1 merge.
+    - The size fell from the cached 9964 bytes to 9955, and Git reports a size change as modified without rehashing.
+  - What we did:
+    1. Added `/AGENTS.md text eol=lf` to `.gitattributes`. It is anchored, so it covers only the root file, the only tracked AGENTS.md.
+    2. Ran `git checkout -- AGENTS.md`, guarded to run only if `git hash-object` matched the index. The result is `i/lf w/lf attr/text eol=lf`: 9827 bytes, the same blob.
+    3. Ran `pnpm lint`, which ran turbo (12 tasks, none cached). Afterwards the file was still LF, and status no longer listed it.
+  - This rule stops the mixing at its source. Turning off turbo's guidance (`agentGuidance`) instead would have changed turbo's config.
+  - GateGuard asked for facts before the `.gitattributes` edit and before the checkout; both ran after the facts were given.
+- **New operation file:** `git check-ignore -v packages/contracts/operations/invoice-brief.graphql` prints nothing (exit 1), so ship's `git add -A` includes it.
+- **Design hook:**
+  - What happened:
+    - The entry in `.impeccable/config.json` is `side-tab` = `*` for `apps/web/app/globals.css`.
+    - The engine (`~/.impeccable/bin/0.1.11/impeccable.exe detect --json`) finds nothing from the repo root.
+    - From `apps/web`, it finds `side-tab` at lines 617 and 640, the same findings the hook cached there during C2.
+  - Why:
+    - From `apps/web`, the engine reads `apps/web/.impeccable/config.json`, which does not exist. `impeccable ignores list` there shows no ignores, and it does not look in parent folders.
+    - The entry's path is right for the root config. So the C2 entry's reason, "where the path does not match", was wrong (memory, lesson).
+    - A Bash `cd apps/web` moves the session's working directory, as this session's environment notes showed. Which C2 command left it there is not confirmed.
+  - What we did:
+    - Changed no hook setting. No path in the root config can match, since the engine does not read that file from `apps/web`.
+    - Tested the alternative in the scratchpad: a copy of `globals.css` under `app/`, with a config beside it whose entry is the same except for the path `app/globals.css`. It drops exactly those two findings (2 to 0), and `--no-config` brings them back.
+    - The user chooses.
+- Files: `.gitattributes`, docs/{activity-log,context,memory,todo}.md. AGENTS.md changed line endings only; it has no content change and is no longer listed.
+- Validation:
+  - `pnpm lint` 12/12, `pnpm typecheck` 21/21.
+  - `pnpm turbo run test --force` 18 tasks (web 105), `pnpm contracts:check`.
+  - `pnpm e2e` 32/32, none skipped.
+  - `pnpm e2e:screenshots` 8/8, the same 32 pictures.
+- Outstanding: the user's choice for the design hook; the user ships C2; then plan C3 and C4.
+
+### 2026-10-18: PR C2 built (branch ui-c2-wording from main `a2f046e`, not committed)
+
+- **C1 live:** production answers 200 for `/demo/invoices?q=a&q=b` and for `status` given twice; both answered 500 before C1.
+- **Delegated build:**
+  - What happened: a fresh agent built C2 test first from a fixed spec.
+  - Its runs, in the scratchpad: unit RED 6 of 18 failed; e2e RED 9 failed and 22 passed; unit GREEN 105/105; e2e GREEN 32/32. Two unit mutations and one e2e mutation each failed their tests.
+  - Then the agent stopped on the account's weekly limit (HTTP 429, resets Oct 22, 17:00 Taipei).
+- **Leftover mutation (found):**
+  - What happened: `apps/web/app/(app)/invoices/[id]/page.tsx` still held the agent's e2e mutation. It computed `isExampleData({ stored: false, trail: trail.slice(0, 1) }) || … === null`, which labels every invoice example data and never asks for the PDF.
+  - Why: the agent stopped right after that run, before restoring it.
+  - What we did: read the diff, restored `isExampleData({ stored: false, trail }) && !(await documentStored(id))`, and reran every check (memory, lesson).
+- **Kept from the spec:**
+  - The status pill takes the open-findings count.
+  - The duplicate warning uses a new client operation, `InvoiceBrief`.
+  - `documentStored` sends HEAD to the api's document route (Fastify answers HEAD for GET routes) and returns false only on a 404.
+- **Design hook:** it flagged the approved `side-tab` borders again. The repo-level ignore exists; the hook scanned from `apps/web`, where the path does not match. They were left standing.
+- **AGENTS.md:** shows as modified with no content change (turbo's managed block, line endings).
+- Files: apps/web/{app/(app)/invoices/[id]/page.tsx, app/actions.ts, components/{client,detail,ui,views}.tsx, lib/{labels,labels.test,server}.ts, e2e/{demo,main}.spec.ts}, packages/contracts/operations/invoice-brief.graphql (new) and its generated client, docs/screenshots/ui/ (retaken), docs/{activity-log,context,memory,todo}.md.
+- Validation (final code): `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 105), `pnpm contracts:check`, `pnpm e2e` 32/32, `pnpm e2e:screenshots` 8/8. The list shot shows the new tabs on one row.
+- Outstanding: the user ships C2; then plan C3 (api) and C4 (web).
+
 ### 2026-10-18: PR C2 planned (read-only, not committed)
 
 - **Counts (read-only, demo database and MinIO):**

@@ -55,7 +55,7 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
       - [x] Bulk decision: "Approve at rate card" on seeded invoice 05721816 (not golden). It approved the invoice and confirmed its finding, with two `reviewer` audit rows and one `decide:` key, all in one transaction.
       - [x] Offline (`pnpm demo:down`, then `pnpm demo:up`): the twin page, the sample list for an unknown id and the sample not-found page, each under "Live backend offline, showing sample data". This passed on the second round; the first was read after `demo:up`.
       - [x] Zoom on the phone: one document request for the view and none for the zooms; the page scrolls both ways, and zoom out works.
-  - [ ] PR C1, the follow-ups (the user's OK 2026-10-18; branch `ui-c1-followups` from main `2676576`, not committed). Web only: no api Release and no `pnpm demo:up`; Vercel deploys it on merge. Each item's test failed first (activity log).
+  - [x] PR C1, the follow-ups (the user's OK 2026-10-18; branch `ui-c1-followups` from main `2676576`), merged as `a2f046e`. Web only: no api Release and no `pnpm demo:up`; Vercel deploys it on merge. Each item's test failed first (activity log).
     - [x] Repeated URL parameter (production answered 500 for `/demo/invoices?q=a&q=b`): `firstParams()` in `lib/labels.ts`, used by the invoices, review queue, dead letters and demo pages. Tests: `lib/labels.test.ts`, and a repeated `q` and `status` in `e2e/demo.spec.ts` and `e2e/main.spec.ts`.
     - [x] PDF fetched after leaving during pdf.js's load: `if (cancelled) return;` before `getDocument` (`components/viewer.tsx`). Test: `e2e/demo.spec.ts` holds the pdf.js chunks, leaves, opens another invoice and expects no request for the first one's PDF; with the guard removed it failed.
     - [x] Drop during an upload: refused with a notice and a "Not accepted" row (user decision: no queue), and the first upload's own result follows the refusal (`components/client.tsx`). Test: `e2e/main.spec.ts`.
@@ -67,13 +67,24 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
     - [x] Dropped: the "Back to the live invoices" banner link. Its premise was wrong: the sidebar already shows "Try live data" to a signed-in reviewer on the sample (memory, lesson).
     - [x] The ESLint ignore for `playwright-report/` at `packages/config/eslint.js:6`, applied by the user.
     - [x] Checks (2026-10-18, final code): `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 100 tests), `pnpm e2e` 29/29, `pnpm e2e:screenshots` 8/8. A fresh review's two Important findings and four Minor ones were fixed test first (activity log).
-    - [ ] The user ships C1 (`ship.ps1`). After merge, `/demo/invoices?q=a&q=b` should answer 200 on production.
-  - [ ] PR C2 and after (planned 2026-10-18, waiting for the user's OK; the plan is in the activity log):
+    - [x] The user shipped C1 (`ship.ps1`). After the merge, production answers 200 for `/demo/invoices?q=a&q=b` and for `status` given twice; both answered 500 before (2026-10-18).
+  - [ ] PR C2 and after (the user's OK 2026-10-18). C2 is in progress on branch `ui-c2-wording` from main `a2f046e`. C3 and C4 are each planned first.
     - C2, web only, with no api change, migration, Release or `demo:up`:
-      - [ ] Status words: "Ready to approve", "Billing issues (N)", "Reading needs a check", "Reading" and "Checking" wherever a status shows, with one explanation line by the filter.
-      - [ ] Exact duplicate upload: a 200 from the api shows "Already uploaded as invoice <number> on <date>. Nothing new was created." with a link, for a chosen file and a sample tap.
-      - [ ] Seeded invoices labelled as example data, in the PDF panel, the details line and the trail.
-    - C3, api first, then a Release and `pnpm demo:up`: a `duplicate_invoice` finding for a near duplicate (migration 0014, expand only), an open-findings filter on `invoices` for split tabs, and optional GraphQL depth and alias limits.
+      - [x] Status words: "Ready to approve", "Billing issues (N)", "Reading needs a check", "Reading" and "Checking" wherever a status shows, with one explanation line by the filter.
+      - [x] Exact duplicate upload: a 200 from the api shows "Already uploaded as invoice <number> on <date>. Nothing new was created." with a link, for a chosen file and a sample tap. It uses a new client operation `InvoiceBrief`; the schema is unchanged.
+      - [x] Seeded invoices labelled as example data, in the PDF panel, the details line and the trail. An invoice is example data only when no PDF is stored AND its trail holds only the synthetic Received entry (user condition), with a test that a real upload still waiting is not labelled.
+      - [x] Checks (2026-10-18, final code): `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 105 tests), `pnpm contracts:check`, `pnpm e2e` 32/32, `pnpm e2e:screenshots` 8/8.
+      - [x] Pre-ship tidy (2026-10-19, activity log):
+        - The branch is `a2f046e` with no commits of its own.
+        - The diff has no leftovers.
+        - AGENTS.md stays LF through `/AGENTS.md text eol=lf` in `.gitattributes`.
+        - `invoice-brief.graphql` is not ignored.
+        - Every check reran green.
+      - [ ] The design hook's approved `side-tab` exception does not apply when the session's working directory is `apps/web`. The user chooses between two options:
+        - Keep the shell at the repo root.
+        - Add `apps/web/.impeccable/config.json`.
+      - [ ] The user ships C2.
+    - C3, api first, then a Release and `pnpm demo:up`: a `duplicate_invoice` finding for a near duplicate (migration 0014, expand only), an open-findings filter on `invoices` for split tabs, and GraphQL depth and cost limits (included, user decision).
     - C4, the web, once C3 runs on the demo: the split tabs and the near-duplicate finding's words.
 
 ## Completed

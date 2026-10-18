@@ -2,11 +2,12 @@ import type { InvoiceStatus } from '@freightaudit/contracts/graphql';
 import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { STATUS, type Tone } from '../lib/labels.ts';
+import { STATUS, statusLabel, type Tone } from '../lib/labels.ts';
 
 export const Badge = ({ tone, children }: { tone: Tone; children: ReactNode }) => <span className={`badge ${tone}`}>{children}</span>;
 
-export const StatusBadge = ({ status }: { status: InvoiceStatus }) => <Badge tone={STATUS[status].tone}>{STATUS[status].label}</Badge>;
+// open is the invoice's open findings, which a checked invoice's pill counts.
+export const StatusBadge = ({ status, open }: { status: InvoiceStatus; open: number }) => <Badge tone={STATUS[status].tone}>{statusLabel(status, open)}</Badge>;
 
 // Amounts arrive as integer cents, or as bigint from the domain's review helpers, and are only formatted here; the UI
 // never adds or subtracts them.

@@ -1,16 +1,19 @@
 import type { InvoiceQuery } from '@freightaudit/contracts/graphql';
 import {
   decisionQuestion,
+  duplicateNote,
   duration,
   findingText,
   findingTitle,
   firstParams,
   invoiceAmounts,
+  isExampleData,
   lineAmounts,
   lineLabel,
   modelName,
   openFindingsNote,
   reviewReason,
+  statusLabel,
   statusReason,
   statusTotals,
   trailRows,
@@ -79,8 +82,41 @@ test('a list row explains its status: open findings, the review or failure reaso
   expect(statusReason({ ...row, status: 'NEEDS_REVIEW', reviewReason: 'unsupported_currency: CAD' })).toBe('Billed in CAD');
   expect(statusReason({ ...row, status: 'FAILED', failureReason: 'shipment has no miles' })).toBe('Shipment has no miles');
   expect(statusReason({ ...row, status: 'EXTRACTING' })).toBe('Reading the document');
+  expect(statusReason({ ...row, status: 'EXTRACTED' })).toBe('Waiting to be checked');
   expect(statusReason({ ...row, status: 'REJECTED' })).toBe('Rejected by a reviewer');
   expect(statusReason({ ...row, status: 'APPROVED' })).toBeNull();
+});
+
+test('a status reads in plain words; a checked invoice says whether billing issues wait or it is ready to approve', () => {
+  expect(statusLabel('RECONCILED', 2)).toBe('Billing issues (2)');
+  expect(statusLabel('RECONCILED', 0)).toBe('Ready to approve');
+  expect(statusLabel('EXTRACTING', 0)).toBe('Reading');
+  expect(statusLabel('EXTRACTED', 0)).toBe('Checking');
+  expect(statusLabel('RECONCILING', 0)).toBe('Checking');
+  expect(statusLabel('NEEDS_REVIEW', 1)).toBe('Reading needs a check');
+});
+
+test('an exact duplicate upload names the invoice it already is, by its number or else its file name, on its day in UTC', () => {
+  // 23:30 UTC on Oct 17 is already Oct 18 east of UTC, so the day must be read in UTC.
+  expect(duplicateNote({ number: '98211354', filename: 'digital.pdf', createdAt: '2026-10-17T23:30:00.000Z' })).toBe(
+    'Already uploaded as invoice 98211354 on Oct 17, 2026. Nothing new was created.',
+  );
+  expect(duplicateNote({ number: null, filename: 'photo.png', createdAt: '2026-10-18T08:00:00.000Z' })).toBe(
+    'Already uploaded as photo.png on Oct 18, 2026. Nothing new was created.',
+  );
+});
+
+const received = { action: 'RECEIVED' as const };
+test('a seeded invoice, with no stored PDF and only the Received entry, is example data', () => {
+  expect(isExampleData({ stored: false, trail: [received] })).toBe(true);
+});
+
+test('a real upload still waiting, with its PDF stored and only the Received entry, is not example data', () => {
+  expect(isExampleData({ stored: true, trail: [received] })).toBe(false);
+});
+
+test('an invoice with no stored PDF whose trail has pipeline rows is not example data', () => {
+  expect(isExampleData({ stored: false, trail: [received, { action: 'STATUS_CHANGED' as const }] })).toBe(false);
 });
 
 test('status counts give every tab, the invoices waiting for a decision and those still processing', () => {
@@ -168,7 +204,7 @@ test('the audit trail reads as plain words: who read it with which model and how
     ['Received', 'by the pipeline', ['g066.pdf']],
     ['Reading started', '', []],
     ['Read', 'by Gemini 3.5 Flash-Lite in 3.3 s', ['after 1 repair', 'Carrier read as “BRAMBLEWOOD EXPRESS”, matched Bramblewood Express after normalizing case and spacing']],
-    ['Matching started', '', []],
+    ['Checking started', '', []],
     ['Matched', 'to shipment SHP-000413 and Bramblewood Express, checked against rate card version 2 by rules in code', ['1 finding, so it waits for a reviewer']],
     ['Overcharge disputed', 'by reviewer', ['Status: open to confirmed', 'Contract rate applies']],
   ]);
@@ -186,12 +222,16 @@ test('the audit trail reads as plain words: who read it with which model and how
   expect(words(trailRows(review, 0))).toEqual([
     ['Reading started', '', []],
     ['Read', 'by Qwen3.8 27B in 1.0 s', ['on the fallback model']],
-    ['Matching started', '', []],
+    ['Checking started', '', []],
     ['Sent to review', 'by the pipeline', ['No shipment matches this carrier and PRO number.']],
     ['Status changed', 'by reviewer', ['Failed to Received']],
   ]);
   const clean = { ...invoice, auditTrail: [move(6, 'reconciling', 'reconciled')] } as unknown as Detail;
   expect(trailRows(clean, 0)[0]!.notes).toEqual(['No findings, so it waits only for approval']);
+  // Example data has only its Received entry, whose note says the seed set the status and no one decided it.
+  const seeded = { ...invoice, status: 'APPROVED', auditTrail: invoice.auditTrail.slice(0, 1) } as unknown as Detail;
+  expect(trailRows(seeded, 0, true)[0]!.notes).toEqual(['g066.pdf', 'Approved in the example data; no reviewer decision is recorded.']);
+  expect(trailRows({ ...seeded, status: 'RECONCILED' }, 0, true)[0]!.notes).toEqual(['g066.pdf', 'Example data: the seed set this status; no pipeline or reviewer record exists.']);
   expect(modelName('someone/new-model')).toBe('someone/new-model');
 });
 
@@ -205,11 +245,17 @@ test('a recent upload shows its step while in flight, then how long it took and 
   const finding = { node: { id: 'f', status: 'OPEN' as const, billedCents: 39_680, expectedCents: 25_220 } };
   expect(uploadState({ ...settled, status: 'RECONCILED', discrepancies: { edges: [finding] } }, now)).toEqual({
     done: 'Done in 3.4 s',
-    result: 'Reconciled, +$144.60 over the rate card',
+    result: 'Billing issues (1), +$144.60 over the rate card',
     tone: 'accent',
   });
-  expect(uploadState({ ...settled, status: 'RECONCILED' }, now)).toMatchObject({ result: 'Matched the rate card, ready to approve', tone: 'ok' });
-  expect(uploadState({ ...settled, status: 'NEEDS_REVIEW', reviewReason: 'no_shipment_match' }, now)).toMatchObject({ result: 'Needs review: No shipment matches', tone: 'warn' });
+  // A disputed finding still stands over the rate card, but no billing issue is left open.
+  const disputed = { node: { ...finding.node, status: 'CONFIRMED' as const } };
+  expect(uploadState({ ...settled, status: 'RECONCILED', discrepancies: { edges: [disputed] } }, now)).toMatchObject({ result: 'Ready to approve, +$144.60 over the rate card' });
+  expect(uploadState({ ...settled, status: 'RECONCILED' }, now)).toMatchObject({ result: 'Ready to approve, matched the rate card', tone: 'ok' });
+  expect(uploadState({ ...settled, status: 'NEEDS_REVIEW', reviewReason: 'no_shipment_match' }, now)).toMatchObject({
+    result: 'Reading needs a check: No shipment matches',
+    tone: 'warn',
+  });
   expect(uploadState({ ...base, status: 'FAILED', failureReason: 'shipment has no miles' }, now)).toEqual({ done: 'Done', result: 'Failed: Shipment has no miles', tone: 'bad' });
   expect(uploadState({ ...settled, status: 'APPROVED' }, now)).toMatchObject({ result: 'Approved', tone: 'ok' });
   expect(uploadState({ ...settled, status: 'REJECTED' }, now)).toMatchObject({ result: 'Rejected', tone: 'faint' });

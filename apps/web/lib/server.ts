@@ -111,6 +111,19 @@ export async function gql<Result, Variables>(document: TypedDocumentString<Resul
   return body.data;
 }
 
+// Whether the api holds an invoice's PDF, by HEAD on its document. Only a 404 says no; any other answer, an error
+// included, counts as stored, so nothing real is taken for example data.
+export const documentStored = (id: string) =>
+  fetch(new URL(`/v1/invoices/${id}/document`, env().API_URL), {
+    method: 'HEAD',
+    headers: { 'x-api-key': env().API_KEY },
+    cache: 'no-store',
+    signal: AbortSignal.timeout(2_500),
+  }).then(
+    (response) => response.status !== 404,
+    () => true,
+  );
+
 // The typed REST client for uploads and documents.
 export const rest = () => createClient<paths>({ baseUrl: env().API_URL, headers: { 'x-api-key': env().API_KEY } });
 

@@ -16,6 +16,8 @@ test('signed out, the sample is public and read-only, and live pages still need 
   await page.getByRole('link', { name: 'View sample data without signing in' }).click();
   await expect(page).toHaveURL(/\/demo\/invoices$/);
   await expect(page.getByRole('status')).toHaveText('Sample data, read-only');
+  // Under the tabs, one line says what the current filter holds.
+  await expect(page.getByText('Every invoice, newest first.')).toBeVisible();
   if (sample.invoices.edges.length > 0) {
     // The cards, tabs and sidebar count what the sample holds.
     const open = sample.invoices.edges.reduce((sum, { node }) => sum + node.openDiscrepancyCount, 0);
@@ -36,7 +38,7 @@ test('signed out, the sample is public and read-only, and live pages still need 
     const review = sample.invoices.edges.find(({ node }) => node.status === 'NEEDS_REVIEW');
     expect(review, 'the sample holds an invoice in needs review').toBeDefined();
     await page.goto(`/demo/invoices/${review!.node.id}`);
-    await expect(page.getByRole('region', { name: 'Needs review' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Reading needs a check' })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Carrier' })).toBeDisabled();
     await expect(page.getByRole('textbox', { name: 'PRO number' })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Re-run matching' })).toHaveCount(0);
@@ -96,7 +98,8 @@ test('signed in while the backend is down, the app shows the same sample under t
 test('a repeated q or status in a pasted link still shows the sample list', async ({ page }) => {
   await page.goto('/demo/invoices?q=a&q=b&status=reconciled&status=approved');
   await expect(page.getByRole('heading', { name: 'Invoices', level: 1 })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Reconciled/ })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Checked/ })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByText('Checked against the rate card: ready to approve, or billing issues to decide.')).toBeVisible();
   await expect(page.getByRole('searchbox', { name: 'Search invoices' })).toHaveValue('a');
 });
 

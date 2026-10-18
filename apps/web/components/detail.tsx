@@ -2,7 +2,22 @@ import type { InvoiceQuery } from '@freightaudit/contracts/graphql';
 import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import type { MarkValues } from '../lib/marks.ts';
-import { DECISION, decisionQuestion, FINDING, findingText, findingTitle, IN_FLIGHT, invoiceAmounts, lineAmounts, lineLabel, overcharge, plural, reviewReason, STATUS, trailRows } from '../lib/labels.ts';
+import {
+  DECISION,
+  decisionQuestion,
+  FINDING,
+  findingText,
+  findingTitle,
+  IN_FLIGHT,
+  invoiceAmounts,
+  lineAmounts,
+  lineLabel,
+  overcharge,
+  plural,
+  reviewReason,
+  statusLabel,
+  trailRows,
+} from '../lib/labels.ts';
 import { ActionForm, BulkDecision, DecideForm, DialogAction, StatusPoller } from './client.tsx';
 import { Badge, Day, Difference, Moment, Money, StatusBadge } from './ui.tsx';
 import { DocumentViewer } from './viewer.tsx';
@@ -15,8 +30,9 @@ type Amounts = ReturnType<typeof invoiceAmounts>;
 const MAX_BULK = 100;
 
 // One invoice: the document beside what was read from it, the findings to decide, every charge against the rate card,
-// the facts and the audit trail. base prefixes every link; readOnly (the sample) hides every action.
-export function InvoiceDetail({ data, base, readOnly, documentSrc }: Where & { data: InvoiceQuery; documentSrc: string }) {
+// the facts and the audit trail. base prefixes every link; readOnly (the sample) hides every action; example (the seed's
+// rows, which have no document) asks for no document and says so.
+export function InvoiceDetail({ data, base, readOnly, documentSrc, example = false }: Where & { data: InvoiceQuery; documentSrc: string; example?: boolean }) {
   const invoice = data.invoice!;
   const extraction = invoice.extraction;
   const findings = invoice.discrepancies.edges.map(({ node }) => node);
@@ -60,7 +76,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc }: Where & { d
           <div className="row title">
             <h1 className="id">{invoice.number ?? invoice.filename}</h1>
             {carrier && <span className="muted">{carrier}</span>}
-            <StatusBadge status={invoice.status} />
+            <StatusBadge status={invoice.status} open={open} />
           </div>
           <p className="muted">
             Received <Moment value={invoice.createdAt} />
@@ -75,13 +91,19 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc }: Where & { d
         </div>
         {!readOnly && <InvoiceActions invoice={invoice} findings={findings} money={money} />}
       </div>
-      <StatusPoller active={IN_FLIGHT.has(invoice.status)} label={STATUS[invoice.status].label} />
+      <StatusPoller active={IN_FLIGHT.has(invoice.status)} label={statusLabel(invoice.status, open)} />
       <div className="review">
-        <DocumentViewer key={documentSrc} src={documentSrc} filename={invoice.filename} values={markValues(invoice, lines, byLine)} />
+        {example ? (
+          <section className="doc" aria-label="Invoice document">
+            <p className="empty">Example data: the seed created this invoice without a document.</p>
+          </section>
+        ) : (
+          <DocumentViewer key={documentSrc} src={documentSrc} filename={invoice.filename} values={markValues(invoice, lines, byLine)} />
+        )}
         <div>
           {invoice.status === 'NEEDS_REVIEW' && (
-            <section className="panel attention" aria-label="Needs review">
-              <h2>Why it needs review</h2>
+            <section className="panel attention" aria-label="Reading needs a check">
+              <h2>Reading needs a check</h2>
               <p>{reviewReason(invoice.reviewReason)}</p>
               {extraction && extraction.problems.length > 0 && (
                 <ul className="faint">
@@ -152,7 +174,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc }: Where & { d
                 </dd>
               </dl>
               <p className="faint" style={{ marginTop: 8 }}>
-                {invoice.status === 'FAILED' ? 'Nothing was read from the file.' : 'The pipeline has not read the file yet.'}
+                {example ? 'Example data: there is no file to read.' : invoice.status === 'FAILED' ? 'Nothing was read from the file.' : 'The pipeline has not read the file yet.'}
               </p>
             </section>
           ) : (
@@ -239,13 +261,13 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc }: Where & { d
                   </div>
                 )}
               </section>
-              <InvoiceFacts invoice={invoice} correct={correctable && !readOnly} />
+              <InvoiceFacts invoice={invoice} correct={correctable && !readOnly} example={example} />
             </>
           )}
           <section className="panel" aria-labelledby="trail-title">
             <h2 id="trail-title">Audit trail</h2>
             <ol className="trail">
-              {trailRows(invoice, findings.length).map((row) => (
+              {trailRows(invoice, findings.length, example).map((row) => (
                 <li key={row.id}>
                   <Moment value={row.at} />
                   <div>
@@ -312,15 +334,18 @@ function InvoiceActions({ invoice, findings, money }: { invoice: Detail; finding
   return <ActionForm hidden={{ intent: 'approve', id: invoice.id }} submit="Approve for payment" tone="primary" />;
 }
 
-// What was read from the invoice and what it was matched to. correct links to the correction form when one applies.
-function InvoiceFacts({ invoice, correct }: { invoice: Detail; correct: boolean }) {
+// What was read from the invoice and what it was matched to. correct links to the correction form when one applies;
+// example data was written by the seed, not read.
+function InvoiceFacts({ invoice, correct, example }: { invoice: Detail; correct: boolean; example: boolean }) {
   const extraction = invoice.extraction;
   return (
     <section className="panel" aria-labelledby="details-title">
       <div className="panel-head">
         <div>
           <h2 id="details-title">Invoice details</h2>
-          <p className="faint">Read from the document by the AI. Check them against it: a misread field means wrong findings.</p>
+          <p className="faint">
+            {example ? 'Example data written by the seed, not read from a document.' : 'Read from the document by the AI. Check them against it: a misread field means wrong findings.'}
+          </p>
         </div>
         {correct && (
           <a className="button small" href="#correct">

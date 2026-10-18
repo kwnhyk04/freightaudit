@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { type ReactNode, useActionState, useEffect, useRef, useState } from 'react';
 import { type ActionState, login, review, upload, uploadSample } from '../app/actions.ts';
-import { STEPS, type UploadState } from '../lib/labels.ts';
+import { duplicateParts, STEPS, type UploadState } from '../lib/labels.ts';
 
 // The sidebar's links, marking the section the reader is in, with a count where one waits; screen readers hear the
 // count as words.
@@ -86,6 +86,21 @@ const describe = (file: File, check: Exclude<UploadCheck, { ok: true }>) => {
 };
 
 export type RecentRow = UploadState & { id: string; filename: string };
+
+// An exact duplicate's warning, with the invoice it already is as a link. The span keeps the sentence on its lines,
+// since a notice lays out its children as a grid.
+function DuplicateNotice({ existing, role }: { existing: NonNullable<ActionState['existing']>; role?: 'status' }) {
+  const [before, name, after] = duplicateParts(existing);
+  return (
+    <p className="notice" role={role}>
+      <span>
+        {before}
+        <Link href={`/invoices/${existing.id}`}>{name}</Link>
+        {after}
+      </span>
+    </p>
+  );
+}
 
 // The dropzone and the recent uploads below it. A chosen or dropped file is checked as the api would check it and then
 // uploads by itself; a refused one joins the list as "Not accepted" until the page reloads, since it never reaches the
@@ -172,10 +187,12 @@ export function UploadArea({ rows }: { rows: RecentRow[] }) {
         <p id="upload-hint" className="faint">
           PDF, PNG or JPG, up to {MAX_UPLOAD_LABEL}, one invoice per file. A PDF may have up to {MAX_PDF_PAGES} pages. It uploads as soon as you choose it.
         </p>
-        {/* The list below shows uploads and refused files; only a refusal from the server shows here too. */}
+        {/* The list below shows uploads and refused files; only a refusal from the server, or a duplicate's warning with
+            its link, shows here too. */}
         <p className={state.error && !pending && !notice ? 'form-error' : 'visually-hidden'} role="status" aria-live="polite">
           {status}
         </p>
+        {state.existing && !pending && !notice && <DuplicateNotice existing={state.existing} />}
       </form>
       <section className="panel recent" aria-labelledby="recent-title">
         <h2 id="recent-title">Recent uploads</h2>
@@ -246,6 +263,7 @@ export function SampleButton({ sample, label, note }: { sample: string; label: s
       <p id={`${id}-note`} className="faint">
         {note}
       </p>
+      {state.existing && !pending && <DuplicateNotice existing={state.existing} role="status" />}
       {state.error && (
         <p className="form-error" role="alert">
           {state.error}
