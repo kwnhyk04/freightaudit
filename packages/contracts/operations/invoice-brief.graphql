@@ -1,0 +1,8 @@
+query InvoiceBrief($id: ID!) {
+  invoice(id: $id) {
+    id
+    number
+    filename
+    createdAt
+  }
+}

@@ -291,6 +291,12 @@ From the approved design doc:
 
 - 2026-10-18: PR C1 decisions (user): a drop while an upload sends is refused with a notice and a "Not accepted" row, not queued; the upload's own result follows the refusal. The ESLint ignore for `playwright-report/` was applied by the user. The planned banner link was dropped (lesson below).
 
+- 2026-10-18: PR C2 decisions (user).
+  - Status words are display only: "Ready to approve", "Billing issues (N)", "Reading needs a check", "Reading" and "Checking". Database and api names stay. There is one "Checked" tab until C3 adds an open-findings filter.
+  - Seeded invoices get honest labels (option 1). An invoice counts as example data only when no PDF is stored AND its trail holds only the synthetic Received entry, so a real upload still waiting is never labelled.
+  - C3 includes the GraphQL depth and cost limits.
+  - Reason: the user's answers to the C2 plan.
+
 ## Preferences and Instructions
 
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).
@@ -473,6 +479,20 @@ From the approved design doc:
   - Why: not confirmed. The proxy redirects a sessionless request to `/login`, which its matcher skips, and the action ran anyway.
   - What we did: `upload` and `uploadSample` call `requireSession()` first (PR C1), each pinned by an e2e test. Every action must check the session before it reads anything.
 - 2026-10-18: `next build` type-checks the unit tests too (the web's tsconfig includes `**/*.ts`), so a unit test that imports a missing export breaks the e2e build. Before an e2e RED run, stub the export with today's behavior; the unit test then fails on its assertion.
+- 2026-10-19: `git status` lists a file whose only change is its line endings when its size differs from the size Git cached. `git diff` shows nothing, and `git add` stores the same blob.
+  - What happened: AGENTS.md showed as modified on the C2 branch, yet `git hash-object` matched the index blob.
+  - Why:
+    - Checkout writes CRLF here (system `core.autocrlf=true`).
+    - turbo rewrote its managed block with LF, so the file shrank by 9 bytes.
+    - Git reports a size change as modified without rehashing.
+  - What we did:
+    - Added `/AGENTS.md text eol=lf` to `.gitattributes`.
+    - Ran `git checkout -- AGENTS.md`, guarded by the hash check, which rewrote the file as LF.
+    - After a turbo run, status no longer lists it.
+- 2026-10-19: The impeccable engine reads `.impeccable/config.json` only from the session's working directory, never from a parent folder.
+  - What happened: the design hook flagged the approved `side-tab` borders in `apps/web/app/globals.css` during C2.
+  - Why: a Bash `cd apps/web` moves the session's working directory, and from there the engine reads `apps/web/.impeccable/config.json`, which does not exist. Check with `impeccable ignores list` from each folder.
+  - What we did: changed no hook setting. Keep the shell at the repo root: use absolute paths or `pnpm --filter`, or run a `cd` inside a subshell.
 
 ## Rejected Approaches
 
@@ -506,6 +526,17 @@ From the approved design doc:
   - What happened: the drop test checked the refusal, but not the first upload's result. A fresh review found that the refusal hid that result, an error included.
   - Why: the test asserted only what the change added.
   - What we did: the test now expects "digital.pdf uploaded." after the refusal (it failed first), and the notice clears when the upload settles.
+
+- 2026-10-18: Check a delegated agent's diff for test mutations it left behind (agent mistake, found by the main agent).
+  - What happened: the C2 agent stopped on a usage limit right after an e2e mutation run, and `invoices/[id]/page.tsx` still held the mutation, which labelled every invoice example data.
+  - Why: the agent was cut off before restoring the code.
+  - What we did: read the diff line by line, restored the rule, and reran every check green before reporting.
+- 2026-10-19: Run the tool from both folders before naming why its ignore misses (agent mistake).
+  - What happened: the C2 report and its activity-log entry said the design hook's ignore path did not match from `apps/web`. The path was right; from `apps/web` the engine reads a different config file, which does not exist.
+  - Why: the agent inferred the cause from where the hook's cache was written and did not run `impeccable ignores list` from each folder.
+  - What we did:
+    - Ran `impeccable detect` and `impeccable ignores list` from the root and from `apps/web`.
+    - Corrected the cause in the 2026-10-19 activity-log entry. The C2 entry stays as written.
 
 ## Constraints
 

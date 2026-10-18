@@ -141,6 +141,13 @@ export type DiscrepanciesQueryVariables = Exact<{
 
 export type DiscrepanciesQuery = { discrepancies: { edges: Array<{ cursor: string, node: { id: string, type: DiscrepancyType, status: DiscrepancyStatus, expectedCents: number, billedCents: number, evidence: string, note: string | null, resolvedAt: string | null, lineItem: { id: string, lineNumber: number, description: string, chargeCode: string | null } | null, invoice: { id: string, number: string | null, filename: string, carrier: string | null, currency: string | null, status: InvoiceStatus } } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
 
+export type InvoiceBriefQueryVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type InvoiceBriefQuery = { invoice: { id: string, number: string | null, filename: string, createdAt: string } | null };
+
 export type InvoiceSummaryQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -303,6 +310,16 @@ export const DiscrepanciesDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<DiscrepanciesQuery, DiscrepanciesQueryVariables>;
+export const InvoiceBriefDocument = new TypedDocumentString(`
+    query InvoiceBrief($id: ID!) {
+  invoice(id: $id) {
+    id
+    number
+    filename
+    createdAt
+  }
+}
+    `) as unknown as TypedDocumentString<InvoiceBriefQuery, InvoiceBriefQueryVariables>;
 export const InvoiceSummaryDocument = new TypedDocumentString(`
     query InvoiceSummary {
   invoiceSummary {

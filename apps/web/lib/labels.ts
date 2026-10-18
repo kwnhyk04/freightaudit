@@ -7,15 +7,18 @@ export type Tone = 'ok' | 'warn' | 'bad' | 'neutral' | 'busy';
 // Each status's pill, and the reason line a list row shows under it where the status alone says why.
 export const STATUS: Record<InvoiceStatus, { label: string; tone: Tone; reason?: string }> = {
   RECEIVED: { label: 'Received', tone: 'busy', reason: 'Waiting to be read' },
-  EXTRACTING: { label: 'Extracting', tone: 'busy', reason: 'Reading the document' },
-  EXTRACTED: { label: 'Extracted', tone: 'busy', reason: 'Waiting for matching' },
-  RECONCILING: { label: 'Reconciling', tone: 'busy', reason: 'Comparing with the rate card' },
-  RECONCILED: { label: 'Reconciled', tone: 'neutral' },
-  NEEDS_REVIEW: { label: 'Needs review', tone: 'warn' },
+  EXTRACTING: { label: 'Reading', tone: 'busy', reason: 'Reading the document' },
+  EXTRACTED: { label: 'Checking', tone: 'busy', reason: 'Waiting to be checked' },
+  RECONCILING: { label: 'Checking', tone: 'busy', reason: 'Comparing with the rate card' },
+  RECONCILED: { label: 'Checked', tone: 'neutral' },
+  NEEDS_REVIEW: { label: 'Reading needs a check', tone: 'warn' },
   APPROVED: { label: 'Approved', tone: 'ok' },
   REJECTED: { label: 'Rejected', tone: 'neutral', reason: 'Rejected by a reviewer' },
   FAILED: { label: 'Failed', tone: 'bad' },
 };
+// A status pill's words; a checked invoice says whether billing issues wait for a decision or it is ready to approve.
+export const statusLabel = (status: InvoiceStatus, open: number) =>
+  status !== 'RECONCILED' ? STATUS[status].label : open > 0 ? `Billing issues (${open})` : 'Ready to approve';
 // A status from a URL parameter such as ?status=needs_review; anything else means all.
 export const statusParam = (raw: string | undefined) => {
   const upper = raw?.toUpperCase();
@@ -27,17 +30,30 @@ export const firstParams = async (params: Promise<Record<string, string | string
 // Statuses the pipeline is still moving through; a page showing one refreshes until it settles.
 export const IN_FLIGHT = new Set<InvoiceStatus>(['RECEIVED', 'EXTRACTING', 'EXTRACTED', 'RECONCILING']);
 
-// The list's filters, in the order a reviewer works through them.
-export const FILTERS: { status?: InvoiceStatus; label: string }[] = [
-  { label: 'All' },
-  { status: 'NEEDS_REVIEW', label: 'Needs review' },
-  { status: 'RECONCILED', label: 'Reconciled' },
-  { status: 'FAILED', label: 'Failed' },
-  { status: 'APPROVED', label: 'Approved' },
-  { status: 'REJECTED', label: 'Rejected' },
-  { status: 'RECEIVED', label: 'Received' },
-  { status: 'EXTRACTED', label: 'Extracted' },
+// The list's filters, in the order a reviewer works through them, each with the line that says what it holds.
+export const FILTERS: { status?: InvoiceStatus; label: string; note: string }[] = [
+  { label: 'All', note: 'Every invoice, newest first.' },
+  { status: 'NEEDS_REVIEW', label: 'Reading needs a check', note: "The AI's reading matched no shipment or failed its checks; a reviewer corrects or rejects it." },
+  { status: 'RECONCILED', label: 'Checked', note: 'Checked against the rate card: ready to approve, or billing issues to decide.' },
+  { status: 'FAILED', label: 'Failed', note: 'Processing used up its retries; each invoice shows why.' },
+  { status: 'APPROVED', label: 'Approved', note: 'Approved for payment.' },
+  { status: 'REJECTED', label: 'Rejected', note: 'Rejected by a reviewer, with a reason.' },
+  { status: 'RECEIVED', label: 'Received', note: 'Uploaded, waiting to be read.' },
+  { status: 'EXTRACTED', label: 'Checking', note: 'Read, waiting to be checked against the rate card.' },
 ];
+
+const uploadDay = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
+type Brief = { number: string | null; filename: string; createdAt: string };
+// An exact duplicate upload's warning in three parts, the middle one naming the invoice it already is: its number, or
+// else its file name. The upload page links that part.
+export const duplicateParts = ({ number, filename, createdAt }: Brief) =>
+  ['Already uploaded as ', number ? `invoice ${number}` : filename, ` on ${uploadDay.format(new Date(createdAt))}. Nothing new was created.`] as const;
+export const duplicateNote = (brief: Brief) => duplicateParts(brief).join('');
+
+// Example data is what the seed wrote: no stored PDF and nothing in the trail past the synthetic Received entry. Both
+// must hold, so a real upload still waiting, its PDF stored, is never taken for it.
+export const isExampleData = ({ stored, trail }: { stored: boolean; trail: { action: AuditAction }[] }) =>
+  !stored && trail.length === 1 && trail[0]!.action === 'RECEIVED';
 
 export const FINDING: Record<DiscrepancyType, string> = {
   RATE_MISMATCH: 'Rate mismatch',
@@ -189,12 +205,12 @@ export const modelName = (id: string) => MODEL[id] ?? id;
 
 type Detail = NonNullable<InvoiceQuery['invoice']>;
 type Entry = Detail['auditTrail'][number];
-const statusLabel = (status: string | null) => (status ? (STATUS[status.toUpperCase() as InvoiceStatus]?.label ?? status) : 'none');
+const statusWord = (status: string | null) => (status ? (STATUS[status.toUpperCase() as InvoiceStatus]?.label ?? status) : 'none');
 // An audit detail in words: a review reason code, or free text such as a failure or a note.
 const reasonText = (detail: string) => (/^[a-z_]+(:|$)/.test(detail) ? reviewReason(detail) : capital(detail));
 // A field change in words: statuses by their labels, and on extraction the carrier as read and how it matched.
 function changeText(entry: Entry, { field, from, to }: Entry['changes'][number]) {
-  if (field === 'status') return `${entry.action === 'STATUS_CHANGED' ? '' : 'Status: '}${statusLabel(from)} to ${statusLabel(to)}`;
+  if (field === 'status') return `${entry.action === 'STATUS_CHANGED' ? '' : 'Status: '}${statusWord(from)} to ${statusWord(to)}`;
   if (field === 'carrier' && entry.action === 'STATUS_CHANGED') {
     return `Carrier read as “${from}”, ${to ? `matched ${to} ${CARRIER_MATCH[entry.detail ?? 'exact'] ?? ''}` : CARRIER_MATCH.no_match}`;
   }
@@ -203,14 +219,15 @@ function changeText(entry: Entry, { field, from, to }: Entry['changes'][number])
 
 export type TrailRow = { id: string; at: string; verb: string; rest: string; notes: string[] };
 // The audit trail in plain words: each pipeline move says what happened, reviewer rows say who did what. findings is the
-// number the reconcile run wrote.
-export function trailRows(invoice: Pick<Detail, 'auditTrail' | 'extraction' | 'shipment' | 'carrier' | 'rateCardVersion'>, findings: number): TrailRow[] {
+// number the reconcile run wrote; example data's Received entry says the seed, not a record, set its status.
+export function trailRows(invoice: Pick<Detail, 'auditTrail' | 'extraction' | 'shipment' | 'carrier' | 'rateCardVersion' | 'status'>, findings: number, example = false): TrailRow[] {
+  const seeded = invoice.status === 'APPROVED' ? 'Approved in the example data; no reviewer decision is recorded.' : 'Example data: the seed set this status; no pipeline or reviewer record exists.';
   let readingFrom: string | undefined;
   return invoice.auditTrail.map((entry) => {
     const row = (verb: string, rest = '', notes: string[] = []) => ({ id: entry.id, at: entry.at, verb, rest, notes });
     const by = entry.actor ? `by ${entry.actor}` : 'by the pipeline';
     const status = entry.changes.find((change) => change.field === 'status');
-    if (entry.action === 'RECEIVED') return row('Received', 'by the pipeline', entry.detail ? [entry.detail] : []);
+    if (entry.action === 'RECEIVED') return row('Received', 'by the pipeline', [...(entry.detail ? [entry.detail] : []), ...(example ? [seeded] : [])]);
     if (entry.action !== 'STATUS_CHANGED' || !status || entry.actor) {
       const carrier = entry.changes.some((change) => change.field === 'carrier');
       const notes = entry.changes.map((change) => changeText(entry, change));
@@ -228,7 +245,7 @@ export function trailRows(invoice: Pick<Detail, 'auditTrail' | 'extraction' | 's
       const carrier = entry.changes.filter((change) => change.field === 'carrier').map((change) => changeText(entry, change));
       return row('Read', `by${model}${time}`, [...step, ...carrier]);
     }
-    if (to === 'reconciling') return row('Matching started');
+    if (to === 'reconciling') return row('Checking started');
     if (from === 'reconciling' && to === 'reconciled') {
       const shipment = invoice.shipment ? `shipment ${invoice.shipment.reference}` : 'its shipment';
       const carrier = invoice.carrier ? ` and ${invoice.carrier}` : '';
@@ -243,7 +260,7 @@ export function trailRows(invoice: Pick<Detail, 'auditTrail' | 'extraction' | 's
 }
 
 // The upload page's progress steps; a step index says which one is under way.
-export const STEPS = ['Uploaded', 'Reading', 'Matching', 'Checked'] as const;
+export const STEPS = ['Uploaded', 'Reading', 'Checking', 'Checked'] as const;
 const SETTLED = new Set(['reconciled', 'needs_review', 'failed']);
 type Recent = Omit<RecentUploadsQuery['invoices']['edges'][number]['node'], 'id' | 'filename'>;
 export type UploadState = { step?: number; done?: string; result: string; tone: 'ok' | 'warn' | 'bad' | 'accent' | 'faint' };
@@ -259,11 +276,12 @@ export function uploadState(upload: Recent, now: number): UploadState {
   if (upload.status === 'RECONCILED') {
     const findings = upload.discrepancies.edges.map(({ node }) => node);
     const { standingCents } = invoiceAmounts(upload.totalCents ?? 0, findings);
+    const open = findings.filter((finding) => finding.status === 'OPEN').length;
     return standingCents > 0n
-      ? { done, result: `Reconciled, +${formatMoney(standingCents, upload.currency)} over the rate card`, tone: 'accent' }
-      : { done, result: 'Matched the rate card, ready to approve', tone: 'ok' };
+      ? { done, result: `${statusLabel('RECONCILED', open)}, +${formatMoney(standingCents, upload.currency)} over the rate card`, tone: 'accent' }
+      : { done, result: 'Ready to approve, matched the rate card', tone: 'ok' };
   }
-  if (upload.status === 'NEEDS_REVIEW') return { done, result: `Needs review: ${reviewReason(upload.reviewReason, true)}`, tone: 'warn' };
+  if (upload.status === 'NEEDS_REVIEW') return { done, result: `${STATUS.NEEDS_REVIEW.label}: ${reviewReason(upload.reviewReason, true)}`, tone: 'warn' };
   if (upload.status === 'FAILED') return { done, result: `Failed: ${upload.failureReason ? capital(upload.failureReason) : 'Used up its retries'}`, tone: 'bad' };
   return { done, result: STATUS[upload.status].label, tone: upload.status === 'APPROVED' ? 'ok' : 'faint' };
 }

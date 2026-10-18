@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import pg from 'pg';
@@ -22,6 +22,17 @@ const allOpen = (order: 'ASC' | 'DESC') =>
     `SELECT i.id, count(*)::int AS open FROM invoices i JOIN discrepancies d ON d.invoice_id = i.id WHERE i.status = 'reconciled'
      GROUP BY i.id HAVING bool_and(d.status = 'open') ORDER BY i.id ${order} LIMIT 1`,
   );
+const day = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
+// The warning an exact duplicate gets, from the invoice it already is: its number, or else its file name, and its day.
+async function duplicateOf(filename: string) {
+  const [invoice] = await db<{ id: string; number: string | null; created_at: Date }>(
+    `SELECT id, invoice_number AS number, created_at FROM invoices WHERE filename = '${filename}'`,
+  );
+  const name = invoice!.number ? `invoice ${invoice!.number}` : filename;
+  return { id: invoice!.id, name, text: `Already uploaded as ${name} on ${day.format(invoice!.created_at)}. Nothing new was created.` };
+}
+const documentHead = (request: APIRequestContext, id: string) =>
+  request.head(`http://127.0.0.1:${env.API_PORT}/v1/invoices/${id}/document`, { headers: { 'x-api-key': env.API_KEY! } });
 
 test.describe('login', () => {
   test('pages need a session; the cookie is httpOnly, Secure and SameSite=Lax; the browser never calls the API; sign-out drops the cookie and the cache and refuses another site', async ({ browser }) => {
@@ -90,8 +101,23 @@ test.describe('upload', () => {
       headers: { 'x-api-key': env.API_KEY! },
     });
     expect([stored.status(), stored.headers()['cache-control']]).toEqual([200, 'private, no-store']);
-    await expect(badge(page, 'Reconciled')).toBeVisible();
+    // The recorded fixture bills three charges above the rate card, all open.
+    await expect(badge(page, 'Billing issues (3)')).toBeVisible();
     await expect(page.getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
+  });
+
+  test('choosing a file uploaded before says which invoice it already is, with a link to it', async ({ page }) => {
+    const again = await duplicateOf('digital.pdf');
+    await page.goto('/upload');
+    const file = page.getByLabel('Invoice file');
+    await expect(file).toBeEnabled();
+    await file.setInputFiles({ name: 'digital.pdf', mimeType: 'application/pdf', buffer: digital });
+    // Screen readers hear the plain sentence; the eye sees it with the invoice as a link.
+    await expect(page.getByRole('status')).toHaveText(again.text);
+    const notice = page.locator('form.drop p.notice');
+    await expect(notice).toHaveText(again.text);
+    await notice.getByRole('link', { name: again.name }).click();
+    await expect(page).toHaveURL(new RegExp(`/invoices/${again.id}$`));
   });
 
   test('a PNG is accepted and kept as a one-page PDF', async ({ page }) => {
@@ -118,6 +144,11 @@ test.describe('upload', () => {
     await expect(page.getByRole('row', { name: /clean-digital-g001[.]pdf/ })).toContainText(/Done in/, { timeout: 45_000 });
     await tap();
     await expect(sample).toBeEnabled();
+    // The second tap says, under its button, which invoice the sample already is, with a link to it.
+    const again = await duplicateOf('clean-digital-g001.pdf');
+    const notice = page.locator('form.sample', { has: sample }).getByRole('status');
+    await expect(notice).toHaveText(again.text);
+    await expect(notice.getByRole('link', { name: again.name })).toHaveAttribute('href', `/invoices/${again.id}`);
     const rows = await db<{ extractions: number; keys: number }>(
       `SELECT (SELECT count(*) FROM extractions e WHERE e.invoice_id = i.id)::int AS extractions,
               (SELECT count(*) FROM idempotency_keys k WHERE k.invoice_id = i.id AND k.key LIKE 'sample-%')::int AS keys
@@ -155,8 +186,8 @@ test.describe('upload', () => {
     } finally {
       release();
     }
-    // The first upload's own result follows the refusal; the refused file keeps its row.
-    await expect(status).toHaveText('digital.pdf uploaded.');
+    // The first upload's own result follows the refusal: digital.pdf was uploaded before, so it is the duplicate warning.
+    await expect(status).toHaveText((await duplicateOf('digital.pdf')).text);
     await expect(page.getByRole('row', { name: /second[.]pdf/ }).getByRole('cell')).toHaveText(['second.pdf', 'Not accepted', /Drop it again/]);
     expect(posts).toBe(1);
   });
@@ -276,7 +307,7 @@ test.describe('list', () => {
   test('a repeated q or status in the address still shows the list', async ({ page }) => {
     await page.goto('/invoices?q=a&q=b&status=reconciled&status=approved');
     await expect(page.getByRole('heading', { name: 'Invoices', level: 1 })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Reconciled/ })).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Checked/ })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByRole('searchbox', { name: 'Search invoices' })).toHaveValue('a');
   });
 });
@@ -336,7 +367,8 @@ test.describe('needs review', () => {
     await expect(page.getByText('No shipment matches this carrier and PRO number.')).toBeVisible();
     await page.getByLabel('PRO number').fill(pro);
     await page.getByRole('button', { name: 'Re-run matching' }).click();
-    await expect(badge(page, 'Reconciled')).toBeVisible({ timeout: 30_000 });
+    // The seed bills needs-review invoices at the contract rates, so the corrected one matches the rate card.
+    await expect(badge(page, 'Ready to approve')).toBeVisible({ timeout: 30_000 });
     const trail = page.getByRole('region', { name: 'Audit trail' });
     await expect(trail.getByText(`PRO number: ${fix!.pro_number} to ${pro}`)).toBeVisible();
     await expect(trail.getByText('by reviewer')).toBeVisible();
@@ -347,5 +379,34 @@ test.describe('needs review', () => {
     await page.getByRole('button', { name: 'Reject invoice' }).click();
     await expect(badge(page, 'Rejected')).toBeVisible();
     await expect(page.getByRole('region', { name: 'Audit trail' }).getByText('Billed twice for this shipment')).toBeVisible();
+  });
+});
+
+test.describe('example data', () => {
+  test('a seeded approved invoice says it is example data for its document, details and approval, and asks for no document', async ({ page, request }) => {
+    const [seeded] = await db<{ id: string }>(
+      "SELECT i.id FROM invoices i WHERE i.status = 'approved' AND NOT EXISTS (SELECT 1 FROM audit_events a WHERE a.invoice_id = i.id) ORDER BY i.id LIMIT 1",
+    );
+    // The api answers HEAD on the document route; the seed stores no PDF, so 404.
+    expect((await documentHead(request, seeded!.id)).status()).toBe(404);
+    const asked: string[] = [];
+    page.on('request', (sent) => {
+      if (new URL(sent.url()).pathname === `/api/invoices/${seeded!.id}/document`) asked.push(sent.url());
+    });
+    await page.goto(`/invoices/${seeded!.id}`);
+    await expect(page.getByRole('region', { name: 'Invoice document' })).toHaveText('Example data: the seed created this invoice without a document.');
+    await expect(page.getByText('Example data written by the seed, not read from a document.')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Audit trail' }).getByText('Approved in the example data; no reviewer decision is recorded.')).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    expect(asked).toEqual([]);
+  });
+
+  test('an uploaded invoice, with its PDF stored and a trail past Received, shows no example data', async ({ page, request }) => {
+    const [uploaded] = await db<{ id: string }>("SELECT id FROM invoices WHERE filename = 'digital.pdf'");
+    // HEAD finds the stored PDF, so a real upload still waiting would not be taken for example data.
+    expect((await documentHead(request, uploaded!.id)).status()).toBe(200);
+    await page.goto(`/invoices/${uploaded!.id}`);
+    await expect(page.getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
+    await expect(page.getByText('Example data')).toHaveCount(0);
   });
 });

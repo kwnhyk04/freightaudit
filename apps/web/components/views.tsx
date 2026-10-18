@@ -31,6 +31,7 @@ export function InvoiceList({ data, summary, status, search, base, readOnly }: W
   const previous = !pageInfo.hasPreviousPage || !pageInfo.startCursor ? null : offset <= PAGE_SIZE ? list({}) : list({ before: pageInfo.startCursor });
   const next = pageInfo.hasNextPage && pageInfo.endCursor ? list({ after: pageInfo.endCursor }) : null;
   const where = status ? ` ${STATUS[status].label.toLowerCase()}` : '';
+  const note = FILTERS.find((filter) => filter.status === status)?.note;
   const hint = readOnly
     ? 'The sample holds a few invoices from the golden set, frozen after review.'
     : status === 'NEEDS_REVIEW'
@@ -67,12 +68,12 @@ export function InvoiceList({ data, summary, status, search, base, readOnly }: W
         <div>
           <dt>Matched the rate card</dt>
           <dd className="stat">{summary.matchedRateCard}</dd>
-          <dd className="faint">Reconciled with no findings, ready to approve</dd>
+          <dd className="faint">Checked with no findings, ready to approve</dd>
         </div>
         <div>
           <dt>Still processing</dt>
           <dd className="stat">{totals.processing}</dd>
-          <dd className="faint">Received, being read or matched</dd>
+          <dd className="faint">Received, being read or checked</dd>
         </div>
       </dl>
       <div className="list-bar">
@@ -85,6 +86,11 @@ export function InvoiceList({ data, summary, status, search, base, readOnly }: W
           <input id="invoice-search" type="search" name="q" defaultValue={search} maxLength={100} placeholder="Invoice, PRO or carrier" />
         </form>
       </div>
+      {note && (
+        <p className="faint" style={{ marginBottom: 12 }}>
+          {note}
+        </p>
+      )}
       {edges.length === 0 ? (
         <div className="table-wrap">
           {search ? (
@@ -134,7 +140,7 @@ export function InvoiceList({ data, summary, status, search, base, readOnly }: W
                 return (
                   <tr key={node.id} className="link-row">
                     <td>
-                      <StatusBadge status={node.status} />
+                      <StatusBadge status={node.status} open={node.openDiscrepancyCount} />
                       {reason && <div className="faint reason">{reason}</div>}
                     </td>
                     <td>

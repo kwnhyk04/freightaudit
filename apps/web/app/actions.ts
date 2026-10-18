@@ -3,6 +3,8 @@ import {
   ApproveInvoiceDocument,
   CorrectInvoiceDocument,
   DecideInvoiceDocument,
+  InvoiceBriefDocument,
+  type InvoiceBriefQuery,
   type InvoiceDecision,
   RejectInvoiceDocument,
   ReplayDeadLetterDocument,
@@ -15,14 +17,16 @@ import { redirect } from 'next/navigation';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { duplicateNote } from '../lib/labels.ts';
 import { createLimiter } from '../lib/limiter.ts';
 import { verifyPassword } from '../lib/password.ts';
 import { SAMPLES } from '../lib/samples.ts';
 import { ApiError, clientKey, currentSession, env, forgetSummary, gql, isLive, log, markOffline, requireSession, rest, REVIEWER } from '../lib/server.ts';
 import { createToken, safeNext, SESSION_COOKIE, SESSION_COOKIE_ATTRIBUTES, SESSION_SECONDS } from '../lib/session.ts';
 
-// error is the API's refusal as a sentence, with its code (CONFLICT means the page is out of date); done says what worked.
-export type ActionState = { error?: string; code?: string; done?: string };
+// error is the API's refusal as a sentence, with its code (CONFLICT means the page is out of date); done says what worked;
+// existing is the invoice an exact duplicate upload already is.
+export type ActionState = { error?: string; code?: string; done?: string; existing?: NonNullable<InvoiceBriefQuery['invoice']> };
 
 const limiter = createLimiter();
 // The API's messages start lower case and stop without a period; the UI shows them as sentences.
@@ -114,6 +118,11 @@ async function send(file: File, key: string): Promise<ActionState> {
       const wait = response.headers.get('retry-after');
       const detail = (error as { detail?: string } | undefined)?.detail ?? `the upload failed with HTTP ${response.status}`;
       return { error: sentence(detail) + (wait ? ` Try again in ${wait} seconds.` : '') };
+    }
+    // A 200 means these exact bytes were uploaded before and nothing new was created: say which invoice they are.
+    if (response.status === 200) {
+      const { invoice } = await gql(InvoiceBriefDocument, { id: data.id });
+      if (invoice) return { done: duplicateNote(invoice), existing: invoice };
     }
   } catch (err) {
     if (err instanceof ApiError) return { error: sentence(err.message), code: err.code };

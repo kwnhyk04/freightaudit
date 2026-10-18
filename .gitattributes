@@ -1,2 +1,4 @@
 # Hooks run under sh, so they keep LF endings on every platform.
 .githooks/* text eol=lf
+# turbo rewrites its block in AGENTS.md with LF endings, so the file keeps LF on every platform.
+/AGENTS.md text eol=lf
