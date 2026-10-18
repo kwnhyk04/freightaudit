@@ -21,6 +21,9 @@ export const statusParam = (raw: string | undefined) => {
   const upper = raw?.toUpperCase();
   return upper && Object.hasOwn(STATUS, upper) ? (upper as InvoiceStatus) : undefined;
 };
+// The first value of each URL parameter: a repeated ?q=a&q=b reads as a, so a pasted link never hands a page a list.
+export const firstParams = async (params: Promise<Record<string, string | string[] | undefined>>) =>
+  Object.fromEntries(Object.entries(await params).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value])) as Record<string, string | undefined>;
 // Statuses the pipeline is still moving through; a page showing one refreshes until it settles.
 export const IN_FLIGHT = new Set<InvoiceStatus>(['RECEIVED', 'EXTRACTING', 'EXTRACTED', 'RECONCILING']);
 
@@ -53,6 +56,21 @@ const TITLE: Record<DiscrepancyType, (line: string) => string> = {
   ARITHMETIC_ERROR: (line) => `${line} does not add up`,
 };
 export const findingTitle = (type: DiscrepancyType, description?: string) => (description ? TITLE[type](lineLabel(description)) : FINDING[type]);
+// A finding's sentence naming its line as printed; the stored evidence, which names the code in capitals, stands only without a line.
+export function findingText(
+  finding: { type: DiscrepancyType; evidence: string; expectedCents: number; billedCents: number },
+  line?: { description: string } | null,
+  version?: number,
+  currency?: string | null,
+) {
+  if (!line) return finding.evidence;
+  const label = lineLabel(line.description);
+  const card = version === undefined ? 'the rate card' : `rate card version ${version}`;
+  if (finding.type === 'DUPLICATE_CHARGE') return `${label} is billed twice.`;
+  if (finding.type === 'UNCONTRACTED_CHARGE') return `${label} is not on ${card}.`;
+  if (finding.type === 'RATE_MISMATCH') return `${capital(card)} sets ${label} at ${formatMoney(finding.expectedCents, currency)}; billed ${formatMoney(finding.billedCents, currency)}.`;
+  return finding.evidence;
+}
 
 // A description printed in capitals, as some layouts print every line, reads in sentence case; any other stays as read.
 export const lineLabel = (text: string) => (/[a-z]/.test(text) ? text : `${text.charAt(0)}${text.slice(1).toLowerCase()}`);

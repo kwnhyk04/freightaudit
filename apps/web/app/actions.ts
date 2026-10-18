@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { createLimiter } from '../lib/limiter.ts';
 import { verifyPassword } from '../lib/password.ts';
 import { SAMPLES } from '../lib/samples.ts';
-import { ApiError, clientKey, currentSession, env, forgetSummary, gql, isLive, log, markOffline, rest, REVIEWER } from '../lib/server.ts';
+import { ApiError, clientKey, currentSession, env, forgetSummary, gql, isLive, log, markOffline, requireSession, rest, REVIEWER } from '../lib/server.ts';
 import { createToken, safeNext, SESSION_COOKIE, SESSION_COOKIE_ATTRIBUTES, SESSION_SECONDS } from '../lib/session.ts';
 
 // error is the API's refusal as a sentence, with its code (CONFLICT means the page is out of date); done says what worked.
@@ -129,6 +129,8 @@ async function send(file: File, key: string): Promise<ActionState> {
 }
 
 export async function upload(_: ActionState, form: FormData): Promise<ActionState> {
+  // The session comes first: an action also runs where proxy.ts lets requests through without one, such as /login.
+  await requireSession();
   const file = form.get('file');
   if (!(file instanceof File) || file.size === 0) return { error: 'Choose a file to upload.' };
   return send(file, randomUUID());
@@ -137,6 +139,8 @@ export async function upload(_: ActionState, form: FormData): Promise<ActionStat
 // A sample by its key only, never a path: its bytes come from public/samples on this server's disk. Its Idempotency-Key
 // is the content's digest, so tapping it again inserts no key row; the api's content hash finds the same invoice.
 export async function uploadSample(_: ActionState, form: FormData): Promise<ActionState> {
+  // The session first, as in upload.
+  await requireSession();
   const sample = SAMPLES.find((each) => each.key === text(form, 'sample'));
   if (!sample) return { error: 'Unknown sample.' };
   let bytes: Buffer;

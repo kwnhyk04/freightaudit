@@ -33,6 +33,8 @@ export function DocumentViewer({ src, filename, values }: { src: string; filenam
         // @ts-expect-error -- the worker module ships no types; importing it only registers it.
         await import('pdfjs-dist/build/pdf.worker.min.mjs');
         const [pdfjs, marks] = await Promise.all([import('pdfjs-dist'), import('../lib/marks.ts')]);
+        // Left while pdf.js loaded: cleanup had no task to destroy yet, so fetch nothing for a page that is gone.
+        if (cancelled) return;
         task = pdfjs.getDocument({ url: src });
         const doc = await task.promise;
         const pages: Loaded['pages'] = [];

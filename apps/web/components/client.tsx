@@ -100,15 +100,22 @@ export function UploadArea({ rows }: { rows: RecentRow[] }) {
   // Choosing a file does nothing until React can check it, so the input waits for the page to hydrate.
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
+  // An upload's own result comes after any refusal made while it was sending.
+  useEffect(() => {
+    if (!pending) setNotice(undefined);
+  }, [pending]);
   const form = useRef<HTMLFormElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  // A file that never reaches the server joins the list as "Not accepted" and is announced.
+  function refuse(name: string, reason: string) {
+    setRefused((list) => [{ name, reason }, ...list]);
+    setNotice(`${name} not accepted: ${reason}`);
+  }
   async function take(file: File | undefined) {
     if (!file) return;
     const result = checkUpload(new Uint8Array(await file.slice(0, 1024 * 1024).arrayBuffer()), file.size);
     if (!result.ok) {
-      const reason = describe(file, result);
-      setRefused((list) => [{ name: file.name, reason }, ...list]);
-      setNotice(`${file.name} not accepted: ${reason}`);
+      refuse(file.name, describe(file, result));
       setSending(undefined);
       if (input.current) input.current.value = '';
       return;
@@ -117,7 +124,8 @@ export function UploadArea({ rows }: { rows: RecentRow[] }) {
     setSending(file.name);
     form.current?.requestSubmit();
   }
-  const status = pending ? `Uploading ${sending}` : (notice ?? state.error ?? state.done ?? '');
+  // A refusal made while an upload sends is announced at once, in place of the upload's progress.
+  const status = notice ?? (pending ? `Uploading ${sending}` : (state.error ?? state.done ?? ''));
   return (
     <div className="upload-main">
       <form
@@ -133,10 +141,11 @@ export function UploadArea({ rows }: { rows: RecentRow[] }) {
           event.preventDefault();
           setOver(false);
           const file = event.dataTransfer.files[0];
-          if (input.current && file) {
-            input.current.files = event.dataTransfer.files;
-            void take(file);
-          }
+          if (!input.current || !file) return;
+          // A drop while an upload sends is refused: the disabled input would leave its file out of the form.
+          if (pending) return refuse(file.name, `Dropped while ${sending} was uploading. Drop it again.`);
+          input.current.files = event.dataTransfer.files;
+          void take(file);
         }}
       >
         <svg className="drop-icon" aria-hidden="true" viewBox="0 0 24 24" width="24" height="24">

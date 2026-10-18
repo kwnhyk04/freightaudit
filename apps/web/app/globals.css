@@ -559,14 +559,21 @@ td .reason {
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
 }
+/* The file name takes its own line when it and the controls don't fit side by side, as on a phone. */
 .doc-name {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.doc-bar > .row {
+  flex-wrap: nowrap;
+  margin-left: auto;
+}
 .doc-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -648,16 +655,22 @@ td .reason {
   border-color: color-mix(in srgb, var(--bad) 45%, var(--rule));
   box-shadow: inset 3px 0 0 var(--bad);
 }
-/* A finding: its overcharge in a narrow column, then its title, pill, evidence and decision. */
+/* A finding: its overcharge on the left; its title, pill, text and decision on the right, read before the amount. */
 .findings article {
   display: grid;
   grid-template-columns: 84px minmax(0, 1fr);
-  gap: 12px;
+  gap: 6px 12px;
 }
 .findings article > .num {
+  grid-column: 1;
+  grid-row: 1;
   text-align: left;
   font-weight: 600;
   line-height: 22px;
+}
+.findings article > :not(.num) {
+  grid-column: 2;
+  min-width: 0;
 }
 .finding-body {
   display: grid;
