@@ -19,6 +19,32 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-19: After C4: docs/todo.md checked against git log and the code, the hold rule item, the next three items (docs only, not committed)
+
+- **Request:** C4 is complete; plan only, no code. Tidy docs/todo.md against git log and the code, add an item for the web's `holdOf`, propose the next three items, and mind the Gemini key's Google project, which Triage Copilot shares. The user approved the plan with two changes: the key's move to its own project, with the public demo's calls (docs/memory.md, Constraints), and option (c) for the needs_review duplicate check, with the order of the next items (docs/memory.md, Decisions).
+- **Checks, all read-only:**
+  - `git log`: UI round 1 and C1 to C4 merged as `e61f28c` (#23), `2676576` (#24), `a2f046e` (#25), `dfcdaab` (#26), `62a0cba` (#27), `e9ef0ba` (#28), `2a81e61` (#29), `2753b95` (#30) and `25f1627` (#31). A grep on main found each PR's key change: `decideInvoice`, `firstParams`, `InvoiceBrief`, `EXTRACT_CONCURRENCY`, migrations 0014 and 0015, `ready_to_approve`, `invoicesHeld`, `discrepancyId` in the invoice operation, `NEXT = 0` and `reference.ts` in `ci.yml`.
+  - `packages/contracts/oasdiff-ignore.txt` still holds its 6 accepted lines, and main has every change they accept.
+  - `pnpm-lock.yaml`: braces 3.0.3, `@graphql-tools/utils` 10.11.0 and fastify-openapi-glue 4.11.5, as before.
+  - `evals/reports`: no compare or full run since 2026-10-15.
+  - `approveInvoice` (`apps/api/src/review.ts`) still checks findings only, which a needs_review invoice lacks. `needsReview` (`apps/worker/src/extract.ts`) saves no number for an invalid reading, and the status trigger (0015) has no move from needs_review to reconciled.
+  - The hold rule lives in the api's `held` (`graphql.ts`) and `hold` loader (`loaders.ts`), and in the web's `holdOf`.
+  - The demo proxy, by `docker ps` and `docker logs --since 60m` counts: 719 lines, 74 KB, one tunnel and no relay tunnel in the hour before 21:00 Taipei.
+- **Small events:**
+  - GateGuard asked for facts before the first Bash command, the plan file and each doc's first edit; each retry passed.
+  - `git log --oneline` came back with its subjects cut short, so the PR numbers were missing. Why: the shell's output condensing. What we did: reran it as `rtk proxy git log`, as RTK.md says for an unusable result.
+  - A third read of the proxy's log, grouping its other 718 lines by shape, was refused by Claude Code's auto-mode classifier as a production read. Why: it reads a production container's log content, beyond counts. What we did: kept the two earlier counts, read no content and tried no other way, so the kind of those lines stays not confirmed.
+- **docs/todo.md:**
+  - UI round 1 and C1 to C4 are one line per PR under Completed, each with its merge; their details stay in the entries below.
+  - The squid item is closed by the counts, and the accounts item moved to Completed. The oasdiff and PR #13 items are reworded, and the needs_review check and the `side-tab` choice moved to Pending.
+  - New: the hold rule parity item, the needs_review check with option (c), the key's move, and the Gemini window.
+  - The file went from 65 KB (26,343 tokens, over the 25,000-token read cap) to 45 KB.
+- **docs/context.md:** the C4a and C4d branch markers name their merges, Development Status says C4 is complete, and the oasdiff limitation says the lines can go.
+- **docs/memory.md:** Constraints (the shared Gemini project, the 2026-10-20 window, the key's move, the public demo's calls) and the user's decision on the next items.
+- Files: `docs/{todo,context,memory,activity-log}.md`.
+- Validation: docs only, so no tests ran. Every merge hash and PR number in docs/todo.md matches `git log`. No live model call and no `pnpm demo:up`.
+- Outstanding: the user moves the Gemini key and confirms. Next: the hold rule parity test with the oasdiff lines, then the needs_review duplicate check with option (c).
+
 ### 2026-10-19: C4d built: the web shows what holds an invoice and which finding each decision names, the charges table fits from 1280 px, the eval runs for charge code changes (branch c4d from main `2753b95`, not committed)
 
 - **Setup:** `git pull --ff-only` (up to date) and `git log` showed C4c as `2753b95` (#30). The user reported its Release and `pnpm demo:up` done. Then `git switch -c c4d`.

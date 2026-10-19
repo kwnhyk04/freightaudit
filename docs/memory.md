@@ -354,6 +354,12 @@ From the approved design doc:
   - The eval's path list gains only `packages/db/src/reference.ts`. `checkArithmetic` and `matchCarrier` (`packages/domain`) change eval results too, but they hold no schema or prompt text, which is what the user asked about.
   - Reason: the user's C4d request; each choice is the smallest that fits it.
 
+- 2026-10-19: Next items (user, approving the post-C4 plan).
+  - Order: the hold rule parity test first, then the duplicate check on approval from needs_review with option (c). The full-subset floors for rate-limit waits wait until the Gemini key has its own Google project.
+  - Option (c): "Approve as billed" from needs_review first runs the reconcile's duplicate lookup. If it finds an earlier invoice, the invoice is not approved: it gets the possible-duplicate finding and moves to reconciled, and the reviewer decides it as usual (Not a duplicate, then approve; Confirmed, then reject).
+  - Reason: option (a), refusing that approval, would block a legitimate repeated number with no way to approve it.
+  - The agent saw no blocker in (c) and named two costs: a migration for the move from needs_review to reconciled, and the web saying that such an invoice was never checked against the rate card (docs/todo.md).
+
 ## Preferences and Instructions
 
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).
@@ -634,7 +640,10 @@ From the approved design doc:
 
 ## Constraints
 
-None yet.
+- 2026-10-19 (user): FreightAudit's Gemini key shares its Google project with Triage Copilot (TC), so the two projects share that project's Gemini quotas. Gemini's free daily caps are per project and model: the real 429 of 2026-10-15 named `GenerateRequestsPerDayPerProjectPerModel-FreeTier`.
+  - On 2026-10-20, from 15:00 Taipei until TC's exam run ends, nothing with live Gemini calls runs: no `pnpm eval`, no recording with `LLM_RECORD=1`, and no shipping of a PR that changes the eval smoke's paths (`packages/llm`, `packages/db/src/reference.ts`, `apps/worker/src/extract.ts`, `packages/config/src/env.ts`, `evals/`), since its CI smoke calls Gemini. Tests and `pnpm e2e` never call a real provider, so they still run.
+  - The user is moving FA's key to its own Google project (pending; the user does it). Until the user confirms it is done, this window rule applies. Whether `.env.prod` and the repository secret `GEMINI_API_KEY` hold the shared key is not confirmed, so the rule treats them as if they do.
+  - Public demo uploads and sample taps call Gemini, and visitors cannot be stopped (user). From the code, to bound it: both need the reviewer password; only a golden PDF the demo has not seen calls a model, and an exact repeat answers 200 with none; a PDF with a page that has no text layer goes to Gemini, an all-text one to Groq; and once a UTC day's `DAILY_AI_TOKEN_BUDGET` (100,000 tokens on the demo) is spent, the worker delays extract jobs to the next UTC midnight.
 
 ## Unresolved Questions
 
