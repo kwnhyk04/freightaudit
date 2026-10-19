@@ -6,186 +6,54 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Pending
 
-- [ ] Relay probes through squid: 168 tunnels in the first 116 s after a start (2026-10-18), about 5,200 log lines and 27 MB an hour at that rate. Measure again after an hour. If the rate holds, squid's 30 MB of json-file logs cover about a day and a half, and a smaller DERP map in the tailnet policy would cut both (not confirmed).
-- [ ] PR #13's next eval smoke: read its Failed calls section (or the artifact's json) for the class, status and message of the Gemini failures that broke the failed-calls floor (6 against 1), then choose the fix from that cause. No floor changes until then.
-- [ ] Full-subset floors for rate-limit waits and wait time, which the 2026-10-15 baseline could not give (no waits recorded): set them from the next full run on fresh results, `pnpm eval --suite extraction --subset full --fresh --set-floors` (cached cases from before 0011 report no waits).
-- [ ] Golden set v2 dev case for a carrier name beside a title line (the remit layout's "<carrier> — Freight Bill"), then a prompt change tuned on the dev split only (user decision E, 2026-10-16).
+Next, in the user's order (2026-10-19): the hold rule parity test, then the duplicate check on approval from needs_review with option (c). The full-subset floors for rate-limit waits wait until the Gemini key has its own Google project. Until the user confirms that move, nothing with live Gemini calls runs on 2026-10-20 from 15:00 Taipei until Triage Copilot's exam run ends (docs/memory.md, Constraints); items marked "live Gemini" need such calls.
+
+- [ ] One hold rule, checked on both sides (user request, 2026-10-19). Production code holds the rule for what holds a checked invoice three times: the api's `held` filter (`apps/api/src/graphql.ts`, behind `hasOpenFindings` and `invoicesHeld`), its `hold` loader (`apps/api/src/loaders.ts`, `Invoice.hold`) and the web's `holdOf` (`apps/web/lib/labels.ts`, for the invoice page and the sample). The web keeps its copy because the invoice operation is at `MAX_COST` 83 and cannot also select `hold`. The smaller fix is a parity test:
+  - Move `holdOf` and its unit tests to `packages/contracts/src/hold.ts`, exported as `@freightaudit/contracts/hold` beside `./limits`; the web imports it from there.
+  - An api integration test seeds one reconciled invoice for each mix of findings (a charge and a possible duplicate, each absent, open, confirmed or dismissed) and a rejected invoice whose findings closed with it. It expects `Invoice.hold` to equal `holdOf`, `invoices(hasOpenFindings: true)` to list exactly the held ones and `invoicesHeld` to count them, in place of the SQL oracle in `decide.int.test.ts`. A mutation of each copy must fail it.
+  - The api's code does not change, so no Release or `pnpm demo:up`; Vercel redeploys the web with nothing visible changed. No live model calls, and no path the eval smoke watches. Size S.
+  - Not chosen, one source of truth: the web would select `hold`, which needs room under `MAX_COST`, so the limit and its test change and a Release follows; the sample, exported before the field, would still need `holdOf` unless exported again; and the api's SQL `held` stays either way, since lists filter and count in SQL.
+- [ ] Duplicate check on approval from needs_review, option (c) (found in C4a; the user's pick, 2026-10-19). `approveInvoice` (`apps/api/src/review.ts`) checks only an invoice's findings, and a needs_review invoice has none, since reconcile writes them. So an invoice approved as billed from needs_review is never compared with an earlier one of its carrier and number, and could be paid twice.
+  - (c): "Approve as billed" from needs_review first runs the reconcile's duplicate lookup. If it finds an earlier invoice, the invoice is not approved: it gets the `duplicate_invoice` finding and moves to reconciled, and the reviewer decides it as usual (Not a duplicate, then approve; Confirmed, then reject).
+  - The lookup is the query in `apps/worker/src/reconcile.ts` and `duplicateInvoice` (`packages/domain`), keyed here by the invoice's own carrier, since it has no shipment. The query moves into `packages/db` for both, so the rule is not copied again. It runs only where the reading saved a carrier and a number; an invalid reading saves neither.
+  - Costs, no blocker: the status trigger has no move from needs_review to reconciled (0015 allows approved, extracted and rejected), so migration 0016 adds it (expand only; docs/migrations.md and the lifecycle table in docs/context.md). Such an invoice reaches reconciled with no shipment, lines or rate card version, and `Invoice.reviewReason` is null outside needs_review, so after "Not a duplicate" its row would read "Ready to approve" like an invoice checked against the rate card; the web must say otherwise, with the missing shipment as the sign. The approval answers with the invoice reconciled, not approved, so the web says why.
+  - The hold rule does not change (only reconciled invoices are held), so the parity test above covers it.
+  - Not chosen: (a) refusing the approval blocks a legitimate repeated number with no way to approve it (user); (b) raising the finding at needs_review needs decisions on needs_review invoices in api and web.
+  - Size M: migration, shared query, api and web, with migration, api and e2e tests; then a Release and `pnpm demo:up`. No live model calls.
+- [ ] (manual, user) FreightAudit's Gemini key moves to its own Google project (user, 2026-10-19). Until the user confirms it is done, the 2026-10-20 window rule stands (docs/memory.md, Constraints). The key is read from `.env` (local runs), `.env.prod` (the demo's worker, at its next `pnpm demo:up`) and the repository secret `GEMINI_API_KEY` (`ci.yml`'s eval smoke and `nightly-eval.yml`). Once the user confirms, the full-subset floors below can run.
+- [ ] Full-subset floors for rate-limit waits and wait time (live Gemini; after the key's move, user 2026-10-19), which the 2026-10-15 baseline could not give (no waits recorded): set them from the next full run on fresh results, `pnpm eval --suite extraction --subset full --fresh --set-floors` (cached cases from before 0011 report no waits). Without them the weekly full eval cannot flag a wait regression. Size S, plus one long run of 90 cases. Its PR changes `evals/thresholds.json`, so its CI eval smoke calls Gemini too.
+- [ ] Delete the 6 accepted lines of `packages/contracts/oasdiff-ignore.txt` and keep its header, with the parity test's PR. Main has every change they accept: step 9's `rejected` and upload media type since `2819dfd` (#14), C3's `duplicate_invoice` since `62a0cba` (#27) and C4a's `closed` since `e9ef0ba` (#28). So oasdiff's base already holds them, and the lines do nothing.
+- [ ] The design hook's approved `side-tab` exception does not apply when the session's working directory is `apps/web` (found in C2). The user chooses between two options:
+  - Keep the shell at the repo root. During C2b and C3 the shell stayed there, and the hook flagged nothing; C4d's one `cd apps/web` was an agent mistake (activity log).
+  - Add `apps/web/.impeccable/config.json`.
+- [ ] If an eval smoke breaks the failed-calls floor again: read its Failed calls section (or the artifact's json) for each failure's class, status and message, then choose the fix from that cause. No floor changes until then. PR #13 (merged as `564c993`) never showed that breakdown: its 6 Gemini failures on `d230b19` came before the section existed, and its later smoke on `4fbb550` had 1 failed call, within the floor.
+- [ ] Golden set v2 dev case for a carrier name beside a title line (the remit layout's "<carrier> — Freight Bill"), then a prompt change tuned on the dev split only (user decision E, 2026-10-16). Its eval runs are live Gemini.
 - [ ] Multi-currency support (user request): rate cards per currency, or FX at the invoice date. Until then an invoice in any currency but USD ends needs_review with `unsupported_currency`.
 - [ ] Golden set v2 (a new version, never v1 edited): harder layouts, real-world noise, more adversarial cases, and dev cases for the 6b test-split findings (a title line beside the carrier, as in remit; a repeated scanned page), so a prompt fix for them is tuned on dev, not test.
-- [ ] The api logs two false warnings at startup, "ContentTypeParser for 'application/pdf' not found" and the same for 'application/problem+json'. fastify-openapi-glue (4.11.5, the latest on 2026-10-17) checks every media type in the spec, responses included, for a request parser; these two appear only in responses. Registering parsers for them would make the api accept request bodies it now refuses with 415, so they stay until openapi-glue checks request bodies only (an upstream issue or PR); then drop this item.
-- [ ] Drop the `auditConfig.ignoreGhsas` entries in `pnpm-workspace.yaml` once a fixed version reaches their dependents: braces (via @graphql-codegen/cli) and @graphql-tools/utils 12.0.1+ (via @graphql-eslint/eslint-plugin).
-- [x] (manual) Tailscale and Vercel accounts created (2026-10-18).
+- [ ] The api logs two false warnings at startup, "ContentTypeParser for 'application/pdf' not found" and the same for 'application/problem+json'. fastify-openapi-glue (4.11.5, the latest on 2026-10-17) checks every media type in the spec, responses included, for a request parser; these two appear only in responses. Registering parsers for them would make the api accept request bodies it now refuses with 415, so they stay until openapi-glue checks request bodies only (an upstream issue or PR); then drop this item. The lockfile still had 4.11.5 on 2026-10-19.
+- [ ] Drop the `auditConfig.ignoreGhsas` entries in `pnpm-workspace.yaml` once a fixed version reaches their dependents: braces (via @graphql-codegen/cli) and @graphql-tools/utils 12.0.1+ (via @graphql-eslint/eslint-plugin). On 2026-10-19 the lockfile still had braces 3.0.3 and @graphql-tools/utils 10.11.0 (via @graphql-eslint/eslint-plugin 4.4.1); upstream releases were not checked.
 - [ ] Contract for 0007, in a later release once every rate card version has terms and every shipment has miles: `VALIDATE` the `NOT VALID` checks, `SET NOT NULL` through a validated check (as in 0003a), and delete the flat `LINEHAUL` and `FUEL` rates nothing reads.
-- [ ] After `gemini-3.8-flash`'s daily quota resets: `pnpm eval --suite extraction --subset compare` to finish its 15th comparison case (the run resumes from the cache).
+- [ ] After `gemini-3.8-flash`'s daily quota resets (live Gemini; its 20 requests a day are per project, shared with Triage Copilot until the key moves): `pnpm eval --suite extraction --subset compare` to finish its 15th comparison case (the run resumes from the cache; both models stand at 14 of 15 in `evals/reports/2026-10-15-compare.md`).
 - [ ] Optional: check Vercel's `POST /login` rate-limit rule (set by the user on 2026-10-18, not tested). From the phone on mobile data, about 11 quick wrong sign-ins should meet Vercel's 429. The app's own limiter answers earlier with its form error, and the rule then blocks that IP for its window.
-- [ ] Once main has step 9: delete the lines of `packages/contracts/oasdiff-ignore.txt` (the `rejected` status and the upload media type), since oasdiff then diffs against a base that has them.
 - [ ] Step 10: the sign-in limiter counts per Vercel instance (user decision); move it to a hosted Redis such as Upstash if sign-in must lock across instances.
 
 ## In Progress
 
-- [ ] UI round 1 (plan approved 2026-10-18: `C:\Users\kwonhyuk\.claude\plans\pasted-content-id-aa61-start-ui-melodic-scroll.md`): the invoice list, invoice detail and upload screens as the approved pictures in `_design-reference/freightaudit/approved` (light, dark, phone), one-tap samples, and the two items moved here from Pending (offline 404, zoom). Two PRs, api first: Vercel deploys the web on every merge to main, while the demo api changes only with `pnpm demo:up`.
-  - [x] Phase A, api (branch `ui-round-1` from main `5fb695e`, merged as `e61f28c`, #23). It changes no operation, so the web deployed from its merge asks only for what the old api serves.
-    - [x] Domain: `overchargeCents`, `reviewAmounts` and `lineExpectedCents` with fast-check properties; coverage stays at 100% (36 tests).
-    - [x] Contract: `invoiceSummary`; `invoices(last, before, search)` with `totalCount` and `offset`; `decideInvoice` with `InvoiceDecision`, `SeenDiscrepancy` and `Discrepancy.version`; codegen. The user applied the two lines in the protected `packages/contracts/eslint.config.js` (line 28's `strict-id-in-types` exceptions, line 19's comment); both are in `e61f28c`.
-    - [x] Api: backward keyset paging and counts, search, the summary, `decideInvoice` (one transaction, the versions the reviewer saw, `decide:` keys in `idempotency_keys`), and `resolveDiscrepancy` locking the invoice first.
-    - [x] Tests: `graphql.int.test.ts` (summary, search, paging both ways); `decide.int.test.ts` (each decision, rollback part-way, "changed", retry, two at once, lock order). The old lock order and a removed version check each failed their test.
-    - [x] Checks (2026-10-18), run locally: typecheck 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 115/115, `pnpm contracts:check`, `pnpm contracts:breaking` (no changes), `pnpm e2e` 9/9. Lint was 11 of 12 locally, before the ESLint lines. The Release run for `e61f28c`, which reruns every ci.yml check, lint included, passed.
-    - [x] Docs: context, memory, activity log.
-    - [x] Live (read-only checks, 2026-10-18):
-      - [x] Release run `39074359381` for `e61f28c` succeeded (22:16:03 to 22:19:05 UTC).
-      - [x] GHCR has `sha-e61f28c` for api, worker, web and squid, each the same digest as `latest` (api `sha256:ba37ce5f…`, worker `sha256:cb788d0c…`).
-      - [x] After the user's `pnpm demo:up`, the demo api and worker run revision `e61f28cb…`, started 22:20 UTC, healthy. The api's image digest equals GHCR's `sha-e61f28c`.
-      - [x] Production `/login` answers 200 from a function (`x-vercel-id: sin1::hkg1::…`).
-      - [x] The api logs `POST /graphql` 200 when the production invoice list loads. The user loaded it twice: `GET /readyz` 200 then `POST /graphql` 200 at 22:26:26–27 and again at 22:26:38 UTC. Before that, the only request since the restart was demo:up's own `GET /v1/invoices` 401.
-  - [x] Phase B, web: branch `ui-round-1-web` from main `e61f28c`, merged as `2676576` (#24, 2026-10-18 07:57 UTC).
-    - [x] Shell: counts, skip link, stacked phone nav; the summary cached 10 s; the poller slows to 60 s after 2 minutes.
-    - [x] List: stat cards, tab counts, search, status reason lines, Billed, Expected and Difference, "Showing a to b of N" with Previous and Next.
-    - [x] Detail: bulk decisions through `decideInvoice`, findings, charges against the rate card, invoice details, the audit trail in plain words.
-    - [x] Document marks on digital PDFs (one place only; the ordinal rule for identical lines; carrier ignores case); pdf.js pinned to exactly 6.4.299, with the eval and sandbox guard tests.
-    - [x] Upload: dropzone, recent uploads, one-tap samples (g001, g067, and g062 in place of g071) through the same checks as a file; the sample PDFs traced into the upload function (`.next/server/app/(app)/upload/page.js.nft.json` lists all three).
-    - [x] Offline 404 (found 2026-10-18): an id the sample lacks goes to `/demo/invoices`; not-found pages inside the live and demo shells, and a root one.
-    - [x] Zoom (found 2026-10-18): each page keeps its drawn width in its own frame, and the panel scrolls both ways.
-    - [x] Tests: marks over the golden PDFs (73, three mutations caught), pdf.js guards (5, two mutations caught), labels and sample maths, e2e (upload, samples, bulk decision, "changed", search, paging, zoom, offline, not-found, marks), `pnpm e2e:screenshots` round-1 shots in `docs/screenshots/ui/round-1/` beside the approved pictures.
-    - [x] Docs and README screenshots (sample g056): context, memory, activity log, threat notes, README.
-    - [x] Checks (2026-10-18), run locally: `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm contracts:check`, `pnpm e2e` 18/18, `pnpm e2e:screenshots` 8/8, the `/upload` trace lists the three sample PDFs. A fresh review found no Critical or Important defect; two minors re-graded Important were fixed test first (activity log).
-    - [x] PR B merged as `2676576` (#24). No Release or `pnpm demo:up` was needed for it: phase B changed only operations and generated client types, and the api accepts any valid operation (activity log, 2026-10-18 live checks).
-    - [x] Live on the production domain (2026-10-18, 08:22 to 08:46 UTC; the user on the phone, the api log and read-only database counts):
-      - [x] List: cards, tabs, "Showing 1 to 25 of 512" and the sidebar matched the database (512 invoices, 86 open findings on 84 invoices, $29,249.24, 107 matched, 61 processing, 19 open dead letters).
-      - [x] Sample: g067's first tap answered 202 and made one Gemini call (1,616 tokens, $0); it reconciled in 3.7 s. The repeat answered 200 with no model call and no Postgres write.
-      - [x] Bulk decision: "Approve at rate card" on seeded invoice 05721816 (not golden). It approved the invoice and confirmed its finding, with two `reviewer` audit rows and one `decide:` key, all in one transaction.
-      - [x] Offline (`pnpm demo:down`, then `pnpm demo:up`): the twin page, the sample list for an unknown id and the sample not-found page, each under "Live backend offline, showing sample data". This passed on the second round; the first was read after `demo:up`.
-      - [x] Zoom on the phone: one document request for the view and none for the zooms; the page scrolls both ways, and zoom out works.
-  - [x] PR C1, the follow-ups (the user's OK 2026-10-18; branch `ui-c1-followups` from main `2676576`), merged as `a2f046e`. Web only: no api Release and no `pnpm demo:up`; Vercel deploys it on merge. Each item's test failed first (activity log).
-    - [x] Repeated URL parameter (production answered 500 for `/demo/invoices?q=a&q=b`): `firstParams()` in `lib/labels.ts`, used by the invoices, review queue, dead letters and demo pages. Tests: `lib/labels.test.ts`, and a repeated `q` and `status` in `e2e/demo.spec.ts` and `e2e/main.spec.ts`.
-    - [x] PDF fetched after leaving during pdf.js's load: `if (cancelled) return;` before `getDocument` (`components/viewer.tsx`). Test: `e2e/demo.spec.ts` holds the pdf.js chunks, leaves, opens another invoice and expects no request for the first one's PDF; with the guard removed it failed.
-    - [x] Drop during an upload: refused with a notice and a "Not accepted" row (user decision: no queue), and the first upload's own result follows the refusal (`components/client.tsx`). Test: `e2e/main.spec.ts`.
-    - [x] Session first in `upload` and `uploadSample` (`requireSession()`, `app/actions.ts`). With the cookie cleared, a tampered sample tap answered "Unknown sample." and an empty upload "Choose a file to upload.", so both actions ran without a session. Tests: two in `e2e/main.spec.ts`, behavior tests in place of the planned source guard.
-    - [x] Finding read order: title, text, amount, then the decision; CSS keeps the amount in the left column (`components/detail.tsx`, `app/globals.css`). Tests: `e2e/demo.spec.ts` and `e2e/main.spec.ts`.
-    - [x] Picture: "Duplicate charge" stays on one line (`.nowrap` in `components/detail.tsx`). Test: `e2e/demo.spec.ts` at 390 px.
-    - [x] Picture: the phone document bar keeps the whole file name, with the controls on one row (`app/globals.css`). Test: `e2e/demo.spec.ts` at 390 px.
-    - [x] Picture: finding text names the line as printed, not the charge code (`findingText()` in `lib/labels.ts`, for the detail page and the review queue). Tests: `lib/labels.test.ts`, `e2e/demo.spec.ts`.
-    - [x] Dropped: the "Back to the live invoices" banner link. Its premise was wrong: the sidebar already shows "Try live data" to a signed-in reviewer on the sample (memory, lesson).
-    - [x] The ESLint ignore for `playwright-report/` at `packages/config/eslint.js:6`, applied by the user.
-    - [x] Checks (2026-10-18, final code): `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 100 tests), `pnpm e2e` 29/29, `pnpm e2e:screenshots` 8/8. A fresh review's two Important findings and four Minor ones were fixed test first (activity log).
-    - [x] The user shipped C1 (`ship.ps1`). After the merge, production answers 200 for `/demo/invoices?q=a&q=b` and for `status` given twice; both answered 500 before (2026-10-18).
-  - [ ] PR C2 and after (the user's OK 2026-10-18). C2 merged as `dfcdaab` (#26), C2b and C3 as `62a0cba` (#27). C4 is planned first.
-    - C2, web only, with no api change, migration, Release or `demo:up`:
-      - [x] Status words: "Ready to approve", "Billing issues (N)", "Reading needs a check", "Reading" and "Checking" wherever a status shows, with one explanation line by the filter.
-      - [x] Exact duplicate upload: a 200 from the api shows "Already uploaded as invoice <number> on <date>. Nothing new was created." with a link, for a chosen file and a sample tap. It uses a new client operation `InvoiceBrief`; the schema is unchanged.
-      - [x] Seeded invoices labelled as example data, in the PDF panel, the details line and the trail. An invoice is example data only when no PDF is stored AND its trail holds only the synthetic Received entry (user condition), with a test that a real upload still waiting is not labelled.
-      - [x] Checks (2026-10-18, final code): `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 105 tests), `pnpm contracts:check`, `pnpm e2e` 32/32, `pnpm e2e:screenshots` 8/8.
-      - [x] Pre-ship tidy (2026-10-19, activity log):
-        - The branch is `a2f046e` with no commits of its own.
-        - The diff has no leftovers.
-        - AGENTS.md stays LF through `/AGENTS.md text eol=lf` in `.gitattributes`.
-        - `invoice-brief.graphql` is not ignored.
-        - Every check reran green.
-      - [ ] The design hook's approved `side-tab` exception does not apply when the session's working directory is `apps/web`. The user chooses between two options:
-        - Keep the shell at the repo root. During C2b and C3 the shell stayed there, and the hook flagged nothing.
-        - Add `apps/web/.impeccable/config.json`.
-      - [x] The user shipped C2, merged as `dfcdaab` (#26). Ship pushed `d6b3377` at 03:41 Taipei on 2026-10-19; `origin/main` still showed `a2f046e` at 03:44 and `dfcdaab` by 04:44.
-    - [ ] C2b and C3 on branch `c2b-c3` (the user's request 2026-10-19, built alone, not committed). The branch was cut from `d6b3377`, since C2 was not on main yet. Once C2 merged it moved onto main `dfcdaab` (`git reset`, identical tree).
-      - C2b, web:
-        - [x] Scrollbar left of the search box. Cause: `.tabs a { margin-bottom: -1px }` inside the `overflow-x: auto` tab strip made 1px of vertical overflow, which Windows draws as a scrollbar. The rule is now an inset shadow the current tab's underline covers from inside. Test: `e2e/main.spec.ts`, the toolbar and its tab strip at 1440 and 390 px (it failed first with 1 px).
-        - [x] Search button beside the box, the same form submit as Enter, focus ring from `:focus-visible`. Test: `e2e/main.spec.ts`.
-        - [x] List screenshots retaken (`pnpm e2e:screenshots`, 8/8): the tabs, box and button on one row at 1440 px, and the box and button sharing a row on a phone.
-      - C3, api and worker:
-        - [x] `EXTRACT_CONCURRENCY` (1 to 8, default 8; `"1"` in `infra/docker-compose.prod.yml` for the demo). Test: `apps/worker/src/main.int.test.ts` (failed first; a mutation back to 8 failed it).
-        - [x] GraphQL depth, cost and alias limits as one graphql-js validation rule (`apps/api/src/query-limits.ts`, registered through Yoga's `onValidate`): depth 7 and 82 fields, the largest client operations (`invoices` and `recent-uploads` nest 7; `invoice` selects 82); every alias refused. Tests: `query-limits.test.ts` (both edges, fragments, a doubling chain) and `graphql.int.test.ts` (refused with no database query and no mutation run; removing the plugin failed it).
-        - [x] `invoiceSummary(carrierId, from, to)`, additive: the carrier that bills, and the UTC days invoices were received, both included; from after to, a day that is not one, and a malformed carrier id are refused with BAD_USER_INPUT. With a filter, dead letters count through their invoice. Tests: `graphql.int.test.ts`, every filter on both sides and no arguments (failed first; a mutation failed them).
-        - [x] `invoices(hasOpenFindings: Boolean)` for the split tabs. Test: `graphql.int.test.ts` (failed first; swapping the branches failed it).
-        - [x] `duplicate_invoice` finding at reconcile with migration 0014 (enum value, expand only), invoice-level, no money, evidence naming the earliest other invoice that is not rejected; bulk decisions refused while it is open (approval already was). The web got two label entries so it compiles; its words come in C4. Tests: `packages/domain/src/reconcile.test.ts`, `apps/worker/src/reconcile.int.test.ts`, `apps/api/src/decide.int.test.ts`, each failed first and failed again under a mutation.
-        - [x] Contracts regenerated; `contracts:check` passes; `contracts:breaking` reports nothing breaking with one reviewed line in `packages/contracts/oasdiff-ignore.txt` (the new enum value in `GET /v1/discrepancies`).
-        - [x] Final checks (2026-10-19): `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (domain 38, api 12, web 105), `pnpm test:int` 123 in 23 suites, `pnpm contracts:check`, `pnpm contracts:breaking` (nothing breaking), `pnpm e2e` 34/34, `pnpm e2e:screenshots` 8/8. Diff audit clean (activity log).
-      - [x] The user shipped C2b and C3 (`ship.ps1`), merged as `62a0cba` (#27). On 2026-10-19 `main` and `origin/main` were both at `62a0cba`.
-      - [ ] After the merge: the Release publishes the api and worker images, then the user runs `pnpm demo:up`. Migration 0014 applies before the new api and worker start.
-    - [ ] C4, from the C2b and C3 report (the user's items, 2026-10-19), ships as two PRs (user decision, 2026-10-19). The first is C4a, the api, worker and migration. The second is C4b, the web, once C4a is released and running on the demo.
-      - [ ] C4a on branch `c4a` (renamed from `c4`, cut from main `62a0cba`), built 2026-10-19, not committed. Each change has a test that failed first. The needs-review check needed no change: its test passed on the code as it was.
-        - [x] Migration 0015:
-          - the move reconciled to rejected;
-          - rejection, like approval, refused while a discrepancy is open;
-          - the finding status `closed` and the audit action `discrepancy_closed`.
-          - Test: `packages/db/src/migrations.int.test.ts`. It failed first, and failed again with `rejected` dropped from the open-findings rule.
-        - [x] `rejectInvoice` takes a reconciled invoice, with a needs_review rejection's reason rules.
-          - Its open findings close in the same transaction. Each gets a `discrepancy_closed` audit row with the reason "the invoice was rejected", and the review queue's count drops by them.
-          - GraphQL has `DiscrepancyStatus.CLOSED` and `AuditAction.DISCREPANCY_CLOSED`; REST has `closed`.
-          - Test: `apps/api/src/decide.int.test.ts`. It failed first with "only an invoice that needs review can be rejected; this one is reconciled". Skipping the audit rows failed it again, and so did dropping the trail's mapping.
-        - [x] `approveInvoice` and every `decideInvoice` decision refuse an invoice whose possible duplicate is confirmed: "this invoice was confirmed as a duplicate of another one; reject it instead" (CONFLICT). Dismissing the finding lifts the refusal. Test: `decide.int.test.ts`. It failed first, since "Approve as billed" went through; removing the single approval's check failed it again.
-        - [x] The needs-review duplicate check, moved here from Known Limitations (user request). An invoice that a reviewer corrects goes back to extracted, and its next reconcile runs the same lookup, rejected invoices skipped. So no code changed. Test: `apps/worker/src/reconcile.int.test.ts`; it passed on the code as it was, and skipping the finding failed it. The Known Limitations line had overstated the gap (memory, lesson).
-        - [ ] Still unchecked: an invoice approved as billed from needs_review is never reconciled, so the check never runs for it. The user decides whether C4b or a later PR covers it.
-        - [x] Contracts regenerated. `contracts:check` passes, and `contracts:breaking` reports nothing breaking, with one reviewed line in `packages/contracts/oasdiff-ignore.txt` (`closed` in `GET /v1/discrepancies`).
-        - [x] The web compiles with labels for the new values ("Closed", "Finding closed"); nothing else in the web changed.
-        - [x] Checks (2026-10-19, activity log):
-          - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 127 in 23 suites;
-          - `pnpm contracts:check`, and `pnpm contracts:breaking`, which reports nothing breaking;
-          - `pnpm e2e` 34/34 on the second run, after one test failed in the first (see below);
-          - `pnpm e2e:screenshots` 8/8. Its pictures differed only by the run's dates, so they were restored.
-        - [x] The e2e test that failed once (user request to record it): `upload › a file dropped while another uploads is refused out loud, never sent without its bytes` (`apps/web/e2e/main.spec.ts:160`).
-          - Error: `expect(locator).toBeEnabled() failed`, Locator `getByLabel('Invoice file')`, Expected enabled, Received disabled, Timeout 5000ms, at `main.spec.ts:163`.
-          - The input stays disabled until the upload page hydrates. Why it took longer that once is not confirmed: the run's other upload tests hydrated, and the rerun passed (memory, pitfall).
-        - [x] The user shipped C4a, merged as `e9ef0ba` (#28), ran the Release, and the demo runs the new api after the user's `pnpm demo:up` (reported by the user, 2026-10-19).
-      - [ ] C4b on branch `c4b` from main `e9ef0ba`, built 2026-10-19, not committed. Each change has a test that failed first on the code as it was.
-        - [x] Bulk buttons: while a possible duplicate is open they are hidden, with "Decide the possible duplicate first." in their place. Once it is found not to be a duplicate, they show again while every charge is open (the api allows it). The api's refusal stays the real guard. Test: `e2e/main.spec.ts`, "while a possible duplicate is open …" (failed first on the missing line).
-        - [x] Reject on every checked invoice, beside its approval. Its dialog says how many open findings close with it. A confirmed duplicate shows "A confirmed duplicate cannot be approved; reject it.", no approval, and the header pill "Confirmed duplicate".
-          - Tests: `e2e/main.spec.ts`, "a checked invoice is rejected with a reason …" (the review queue's count drops by the closed findings) and "a confirmed duplicate offers only rejection …". Both failed first: no Reject, no "Confirm duplicate".
-        - [x] The possible duplicate's own words, in `lib/labels.ts`:
-          - buttons "Not a duplicate" and "Confirm duplicate" (`decideWords`);
-          - decided badges "Not a duplicate" and "Duplicate confirmed" (`decisionLabel`);
-          - trail entries "Marked not a duplicate" and "Duplicate confirmed".
-          - Its title stays "Possible duplicate invoice", and the placeholder `TITLE.DUPLICATE_INVOICE` is gone: `TITLE` covers only findings with a line.
-          - In plain words: a closed finding's badge reads "Closed with the invoice", and its trail entry "Finding closed" with "The invoice was rejected". Decision entries no longer print raw statuses such as "Status: open to confirmed"; a decision that replaced another says "Changed from …".
-          - The trail tells a duplicate's entries by time, since an audit entry carries no finding id. An entry it cannot tell apart, one a later decision replaced, reads "Finding confirmed" or "Finding dismissed".
-          - Tests: `lib/labels.test.ts` (three tests, failed first on the missing exports; mutations failed them again) and the e2e tests above.
-        - [x] Tabs fit at 1280 px and wider, all nine. The toolbar wraps: the search moves below the tabs when it does not fit beside them, and the tabs keep their own rule. Tab padding is 8 px a side, down from 10, in every tab strip. Scrollbars are not hidden. Test: the C2b overflow test now also checks 1280 px; it failed first with 118 px of overflow.
-        - [x] Split tabs: "Billing issues" (`?status=billing_issues`, `invoices(hasOpenFindings: true)`) and "Ready to approve" (`?status=ready_to_approve`, `false`) replace "Checked".
-          - Their counts come from `invoiceSummary`'s `invoicesWithOpenFindings`. The summary's carrier and date arguments are not used: no tab needs them, since the list has no carrier or date filter.
-          - An older `?status=reconciled` still lists every checked invoice, with no tab current. The sample filters the same way.
-          - Tests: `lib/labels.test.ts`, `lib/demo.test.ts`, and the e2e "checked invoices split …" tests in `main.spec.ts` and `demo.spec.ts` (failed first: no such tabs).
-        - [x] Checks (2026-10-19, activity log).
-        - [ ] The user ships C4b. It is web only: Vercel deploys it at the merge, and it needs no Release or `pnpm demo:up`.
-        - Not covered, for the user: the "Ready to approve" tab also lists a confirmed duplicate whose charges are all decided, since the api's filter counts open findings only. Its row there reads "Ready to approve" too: the list query has no finding type. The invoice's own page says "Confirmed duplicate" and offers only Reject. C4c fixes the tab in the api.
-        - [x] The user shipped C4b, merged as `2a81e61` (#29).
-      - [x] C4c, api and CI, on branch `c4c` from main `2a81e61`, built 2026-10-19, merged as `2753b95` (#30). The tests failed first: the new fields did not exist, and mutations failed them again.
-        - [x] `hasOpenFindings` goes by what holds an invoice: true keeps an open finding, or a checked invoice whose possible duplicate is confirmed, and false keeps neither. So today's web never lists such an invoice under Ready to approve, and Billing issues shows it.
-          - New fields: `Invoice.hold` (`CONFIRMED_DUPLICATE`, `POSSIBLE_DUPLICATE`, `OPEN_FINDINGS`, or null; one batched query a page) and `invoiceSummary.invoicesHeld`.
-          - Test: `apps/api/src/decide.int.test.ts`, "a checked invoice says what holds it …".
-        - [x] `AuditEntry.discrepancyId`, set on every decision and closing entry. Test: `decide.int.test.ts`, "each decision and closing in the trail names its discrepancy …".
-        - [x] `MAX_COST` 83: one field of room for C4d's `discrepancyId` in the invoice operation, since the api ships first. The limits test pins it as the measured largest plus `NEXT = 1`.
-        - [x] CI: a new job `eval-changes` diffs the pull request's merge commit against its base. `eval-smoke` runs only when `packages/llm`, `apps/worker/src/extract.ts`, `packages/config/src/env.ts` or `evals/` change. Skipped, it reports success, so a required check never blocks; the check name is unchanged. Checked locally: this branch gives `run=false`, and `564c993` (the floors) gives `run=true`.
-        - [x] Contracts regenerated; `contracts:check` passes; `contracts:breaking` reports no changes, so no ignore line was needed.
-        - [x] Checks (2026-10-19):
-          - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 129;
-          - `pnpm contracts:check` and `pnpm contracts:breaking`;
-          - `pnpm e2e` 39/39. Screenshots were not retaken, since the web did not change.
-        - [x] The user shipped C4c, merged as `2753b95` (#30), ran its Release and `pnpm demo:up`, so the demo runs it (reported by the user, 2026-10-19).
-      - [ ] C4d, the web, on branch `c4d` from main `2753b95`, built 2026-10-19, not committed (user request, 2026-10-19). Each change has a test that failed first on the code as it was.
-        - [x] `Invoice.hold` in the lists. A checked row's pill reads "Confirmed duplicate" for a confirmed duplicate, never "Ready to approve", and its reason line says why it is held: "Waits to be rejected", "Possible duplicate to decide" or "N open findings". The recent uploads say it too ("Billing issues (6), possible duplicate to decide").
-          - The invoice's own page and the sample read every finding, so `holdOf` in `lib/labels.ts` applies the api's rule there. The invoice operation cannot also select `hold`: it would be 84 fields against `MAX_COST` 83.
-          - Tests: `lib/labels.test.ts` (`holdOf`, `statusLabel`, `statusReason`, `uploadState`) and `lib/demo.test.ts`, all failed first. E2E `main.spec.ts`, "checked invoices split … a held one saying why": a confirmed duplicate with every charge decided reads "Confirmed duplicate" and "Waits to be rejected" under Billing issues, and Ready to approve does not list it. It failed first on that row's pill, "Ready to approve".
-        - [x] `invoiceSummary.invoicesHeld` gives the two split tabs' counts, so each count matches its list. Same e2e test: the old tab read 75 where 76 checked invoices were held.
-        - [x] `AuditEntry.discrepancyId` words each trail decision by the finding it names; the matching by time is gone.
-          - A decision a later one replaced now reads in its finding's words ("Duplicate confirmed", not "Finding confirmed").
-          - The sample's rows, exported before the field existed, name no finding. On an invoice without a possible duplicate, as every sample invoice is, they read as a charge's.
-          - Test: `lib/labels.test.ts`, failed first with "Finding confirmed".
-        - [x] `NEXT` back to 0 in `apps/api/src/query-limits.test.ts`. With `discrepancyId` the invoice operation selects 83 fields, so `MAX_COST` 83 is again the smallest limit every operation passes. The test failed first (82 against 83) and passes with the field. The comment on `MAX_COST` that kept the room is gone.
-        - [x] The charges table at 1440 px: Difference was cut by 18 px on the uploaded fixture.
-          - Cells keep 8 px a side (was 12), a charge code may break after its underscores, and below 1440 px the review grid gives the checks 55 % of the width. At 1440 px and wider the halves stay equal, as in the approved picture.
-          - Measured on the build: 0 px overflow at 1920, 1440, 1366 and 1280 px on three sample invoices and on the fixture. Each piece is needed: without the 55 % column the table overflows 5 to 7 px at 1280, without the code breaks 1 px.
-          - Phone: the page never scrolls sideways. The table keeps its six columns and scrolls inside its own frame, as before; Billed is now whole on screen, and Expected and Difference are a swipe away.
-          - Test: `main.spec.ts`, "the charges table shows every column … from 1280 px; on a phone only the table scrolls sideways". It failed first with 18 px at 1440.
-          - Not covered: from 1024 to 1279 px the two columns are too narrow for the table, which still scrolls inside its panel.
-        - [x] The eval's path list. The extraction schema and prompts live in `packages/llm/src/extract.ts`, which the list covers, but both carry the charge codes of `packages/db/src/reference.ts`, which it did not. That file is added to `eval-changes` in `ci.yml`.
-          - Test: `evals/harness/eval-changes.test.ts`, failed first naming that file.
-          - Left out: `checkArithmetic` and `matchCarrier` (`packages/domain`). They judge a reading but hold no schema or prompt text.
-        - [x] Screenshots retaken (`pnpm e2e:screenshots`, 8/8). 26 pictures changed, each with a C4d change (the charges table, a row's reason, a recent upload's result), so none was restored. The other six came out identical.
-        - [x] Checks (2026-10-19):
-          - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 109, api 12, evals 9), `pnpm test:int` 129 in 23 suites;
-          - `pnpm contracts:check`, and `pnpm contracts:breaking` ("No changes detected");
-          - `pnpm e2e` 40/40.
-          - No live model call and no `pnpm demo:up`.
-        - [ ] The user ships C4d. Vercel deploys the web at the merge. The api changes only in a comment and its limits test, so the demo needs no `pnpm demo:up`.
-
 ## Completed
+
+- [x] Relay probes through squid, measured again (2026-10-19, read-only counts). On 2026-10-18 squid logged 168 relay tunnels in the first 116 s after a start, about 5,200 lines and 27 MB an hour at that rate. In the hour before 21:00 Taipei on 2026-10-19 it logged 719 lines (74 KB): one tunnel, to `log.tailscale.com`, and no relay tunnel. The proxy container was created at 18:31 Taipei that day, and tailscale had run for 28 hours. So the relay burst did not continue past the start. At this rate the 30 MB of json-file logs (3 files of 10 MB) cover about 17 days, so no smaller DERP map is needed. The other 718 lines were not read (activity log).
+- [x] (manual) Tailscale and Vercel accounts created (2026-10-18).
+- [x] UI round 1 and C1 to C4, 2026-10-18 to 2026-10-19 (plan approved 2026-10-18: `C:\Users\kwonhyuk\.claude\plans\pasted-content-id-aa61-start-ui-melodic-scroll.md`). Each PR's tests, checks, live checks and choices are in the activity log and docs/memory.md. Checked against `git log` and main on 2026-10-19.
+  - [x] Phase A, the api: invoice summary, search, backward paging, atomic `decideInvoice`, lock-order fix. Merged as `e61f28c` (#23). Its Release published `sha-e61f28c`, the user's `pnpm demo:up` moved the demo to it, and the read-only live checks passed (2026-10-18).
+  - [x] Phase B, the web: list, detail and upload screens, one-tap samples, offline not-found pages, zoom fix. Merged as `2676576` (#24); it needed no Release. Its live checks on the production domain passed (2026-10-18).
+  - [x] C1, the follow-ups: repeated URL parameters no longer error, upload and viewer fixes, finding order and wording, phone layout. Merged as `a2f046e` (#25); production answers 200 for a repeated parameter, where it answered 500.
+  - [x] C2: plain status words, the duplicate upload notice, honest example-data labels. Merged as `dfcdaab` (#26), web only.
+  - [x] C2b and C3: toolbar scrollbar fix and Search button; possible duplicate invoices (migration 0014), open-findings and summary filters, GraphQL limits, `EXTRACT_CONCURRENCY`. Merged as `62a0cba` (#27). Its own Release and `pnpm demo:up` were never reported; C4a's brought it to the demo, migration 0014 before 0015.
+  - [x] C4a: a reconciled invoice can be rejected, and its open findings close with it (migration 0015); a confirmed duplicate is never approved. Merged as `e9ef0ba` (#28); the user ran its Release and `pnpm demo:up`.
+  - [x] C4b: split Billing issues and Ready to approve tabs, tabs that fit from 1280 px, Reject on checked invoices, a possible duplicate's own words and actions. Merged as `2a81e61` (#29), web only.
+  - [x] C4c: `Invoice.hold`, `invoiceSummary.invoicesHeld` and `AuditEntry.discrepancyId`; the eval smoke runs only when what it measures changes. Merged as `2753b95` (#30); the user ran its Release and `pnpm demo:up`.
+  - [x] C4d: the lists say what holds an invoice and the split tabs count `invoicesHeld`, trail decisions named by `discrepancyId`, `MAX_COST` back to the measured 83, the charges table fits from 1280 px, the eval smoke also runs for charge code changes. Merged as `25f1627` (#31). Its api change is a comment and the limits test, so it needs no Release or `pnpm demo:up`; Vercel deploys the web at the merge (not checked here).
+  - Left open, now in Pending: the duplicate check on approval from needs_review (found in C4a) and the design hook's `side-tab` choice (found in C2). Not covered, under Known Limitations in docs/context.md: the charges table from 1024 to 1279 px.
 
 - [x] Vercel builds main without the Ignored Build Step (branch `fix/vercel-production-builds` from main `dc6703b`, merged as #22, `5fb695e`). Closed 2026-10-18: #24 deployed to production by itself, with no manual redeploy (reported by the user), and production serves its pages.
   - [x] `apps/web/vercel.json`: `ignoreCommand` removed. `git.deploymentEnabled` is `{"**": false, "main": true}`, checked against Vercel's Git configuration docs: minimatch patterns, and a branch matching several rules deploys if one is `true`.
