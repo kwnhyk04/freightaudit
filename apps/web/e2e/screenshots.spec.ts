@@ -55,7 +55,7 @@ test.describe.configure({ mode: 'serial' });
 
 // The seed stores no PDFs, so one recorded fixture goes through the pipeline for the document beside its lines, then a
 // byte variant of it (a trailing comment, as the load test makes them): a new file whose every line bills again a charge
-// the first one billed, so the detail shows marks, open findings and the bulk decisions.
+// the first one billed, so the detail shows marks and open findings, the possible duplicate first among them.
 test('upload the digital fixture and a byte variant of it', async ({ page }) => {
   await page.goto('/upload');
   const file = page.getByLabel('Invoice file');

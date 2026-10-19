@@ -30,7 +30,7 @@ test('signed out, the sample is public and read-only, and live pages still need 
   } else {
     await expect(page.getByText('The sample is empty.')).toBeVisible();
   }
-  for (const name of ['Approve charge', 'Dispute', 'Replay', 'Re-run matching', 'Approve for payment', 'Approve at rate card', 'Upload invoice']) {
+  for (const name of ['Approve charge', 'Dispute', 'Reject', 'Replay', 'Re-run matching', 'Approve for payment', 'Approve at rate card', 'Upload invoice']) {
     await expect(page.getByRole('button', { name })).toHaveCount(0);
   }
   if (sample.invoices.edges.length > 0) {
@@ -96,11 +96,24 @@ test('signed in while the backend is down, the app shows the same sample under t
 });
 
 test('a repeated q or status in a pasted link still shows the sample list', async ({ page }) => {
-  await page.goto('/demo/invoices?q=a&q=b&status=reconciled&status=approved');
+  await page.goto('/demo/invoices?q=a&q=b&status=billing_issues&status=approved');
   await expect(page.getByRole('heading', { name: 'Invoices', level: 1 })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Checked/ })).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByText('Checked against the rate card: ready to approve, or billing issues to decide.')).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Billing issues/ })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByText('Checked against the rate card, with findings to decide before approval.')).toBeVisible();
   await expect(page.getByRole('searchbox', { name: 'Search invoices' })).toHaveValue('a');
+});
+
+test("the sample's checked invoices split into billing issues and ready to approve", async ({ page }) => {
+  test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
+  const checked = sample.invoices.edges.filter(({ node }) => node.status === 'RECONCILED');
+  const issues = checked.filter(({ node }) => node.openDiscrepancyCount > 0).length;
+  const tabs = page.getByRole('navigation', { name: 'Filter by status' });
+  await page.goto('/demo/invoices');
+  await tabs.getByRole('link', { name: `Billing issues ${issues} invoices` }).click();
+  await expect(page).toHaveURL(/\/demo\/invoices[?]status=billing_issues$/);
+  await expect(page.locator('tbody tr')).toHaveCount(issues);
+  await tabs.getByRole('link', { name: `Ready to approve ${checked.length - issues} invoices` }).click();
+  await expect(page.locator('tbody tr')).toHaveCount(checked.length - issues);
 });
 
 test('leaving an invoice while its viewer loads fetches no PDF', async ({ page }) => {

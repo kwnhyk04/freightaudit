@@ -118,19 +118,32 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
         - [x] Checks (2026-10-19, activity log):
           - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 127 in 23 suites;
           - `pnpm contracts:check`, and `pnpm contracts:breaking`, which reports nothing breaking;
-          - `pnpm e2e` 34/34 on the second run, after one upload test timed out waiting for hydration in the first;
+          - `pnpm e2e` 34/34 on the second run, after one test failed in the first (see below);
           - `pnpm e2e:screenshots` 8/8. Its pictures differed only by the run's dates, so they were restored.
-        - [ ] The user ships C4a. Then the Release publishes the api image, and the user's `pnpm demo:up` applies 0015 before the new api starts.
-      - [ ] C4b, the web, after C4a runs on the demo. Until then the web still shows the old buttons. A possible duplicate still shows the bulk buttons and "Approve for payment", which the api refuses, and a reconciled invoice shows no Reject.
-        - [ ] Bulk buttons: while a possible-duplicate finding is open, hide or disable "Approve as billed", "Dispute …" and "Approve at rate card, …" (`apps/web/components/detail.tsx:313-331`). The reviewer then never meets the api's refusal text as the first sign. The api's refusal (`apps/api/src/review.ts`, `decideInvoice`) stays the real guard. Each finding keeps its own decision row (`DecideForm`).
-        - [ ] Rejecting a confirmed duplicate: Reject where the page offers "Approve for payment" today (`detail.tsx:334`), using C4a's `rejectInvoice`. The C4b plan decides whether every reconciled invoice gets Reject.
-        - [ ] The possible-duplicate finding's real words. C3's two entries in `apps/web/lib/labels.ts` (`FINDING.DUPLICATE_INVOICE`, `TITLE.DUPLICATE_INVOICE`) are placeholders. C4b also replaces the charge wording the finding borrows:
-          - its buttons, "Approve charge" and "Dispute" (`components/client.tsx:370-375`);
-          - its decided badge, "Disputed" or "Charge approved" (`labels.ts:99-100`);
-          - its trail entries, "Overcharge disputed" or "Charge approved" (`labels.ts:189-190`).
-          - It also gives final words to C4a's "Closed" and "Finding closed", if they need any.
-        - [ ] Tabs at 1280 px: today they scroll sideways there (before C2b too). They must fit at 1280 px and wider, the split's extra tab included, without hiding scrollbars. The C2b overflow test (`apps/web/e2e/main.spec.ts:316-328`) keeps passing. It checks 1280 px as it checks 1440 px, the tab strip's sideways overflow included.
-        - [ ] Split tabs: the "Checked" tab (`lib/labels.ts:37`) lists every reconciled invoice today. Its split uses `invoices(hasOpenFindings)` and `invoiceSummary(carrierId, from, to)` where the tabs need them. The summary already gives `invoicesWithOpenFindings`.
+        - [x] The e2e test that failed once (user request to record it): `upload › a file dropped while another uploads is refused out loud, never sent without its bytes` (`apps/web/e2e/main.spec.ts:160`).
+          - Error: `expect(locator).toBeEnabled() failed`, Locator `getByLabel('Invoice file')`, Expected enabled, Received disabled, Timeout 5000ms, at `main.spec.ts:163`.
+          - The input stays disabled until the upload page hydrates. Why it took longer that once is not confirmed: the run's other upload tests hydrated, and the rerun passed (memory, pitfall).
+        - [x] The user shipped C4a, merged as `e9ef0ba` (#28), ran the Release, and the demo runs the new api after the user's `pnpm demo:up` (reported by the user, 2026-10-19).
+      - [ ] C4b on branch `c4b` from main `e9ef0ba`, built 2026-10-19, not committed. Each change has a test that failed first on the code as it was.
+        - [x] Bulk buttons: while a possible duplicate is open they are hidden, with "Decide the possible duplicate first." in their place. Once it is found not to be a duplicate, they show again while every charge is open (the api allows it). The api's refusal stays the real guard. Test: `e2e/main.spec.ts`, "while a possible duplicate is open …" (failed first on the missing line).
+        - [x] Reject on every checked invoice, beside its approval. Its dialog says how many open findings close with it. A confirmed duplicate shows "A confirmed duplicate cannot be approved; reject it.", no approval, and the header pill "Confirmed duplicate".
+          - Tests: `e2e/main.spec.ts`, "a checked invoice is rejected with a reason …" (the review queue's count drops by the closed findings) and "a confirmed duplicate offers only rejection …". Both failed first: no Reject, no "Confirm duplicate".
+        - [x] The possible duplicate's own words, in `lib/labels.ts`:
+          - buttons "Not a duplicate" and "Confirm duplicate" (`decideWords`);
+          - decided badges "Not a duplicate" and "Duplicate confirmed" (`decisionLabel`);
+          - trail entries "Marked not a duplicate" and "Duplicate confirmed".
+          - Its title stays "Possible duplicate invoice", and the placeholder `TITLE.DUPLICATE_INVOICE` is gone: `TITLE` covers only findings with a line.
+          - In plain words: a closed finding's badge reads "Closed with the invoice", and its trail entry "Finding closed" with "The invoice was rejected". Decision entries no longer print raw statuses such as "Status: open to confirmed"; a decision that replaced another says "Changed from …".
+          - The trail tells a duplicate's entries by time, since an audit entry carries no finding id. An entry it cannot tell apart, one a later decision replaced, reads "Finding confirmed" or "Finding dismissed".
+          - Tests: `lib/labels.test.ts` (three tests, failed first on the missing exports; mutations failed them again) and the e2e tests above.
+        - [x] Tabs fit at 1280 px and wider, all nine. The toolbar wraps: the search moves below the tabs when it does not fit beside them, and the tabs keep their own rule. Tab padding is 8 px a side, down from 10, in every tab strip. Scrollbars are not hidden. Test: the C2b overflow test now also checks 1280 px; it failed first with 118 px of overflow.
+        - [x] Split tabs: "Billing issues" (`?status=billing_issues`, `invoices(hasOpenFindings: true)`) and "Ready to approve" (`?status=ready_to_approve`, `false`) replace "Checked".
+          - Their counts come from `invoiceSummary`'s `invoicesWithOpenFindings`. The summary's carrier and date arguments are not used: no tab needs them, since the list has no carrier or date filter.
+          - An older `?status=reconciled` still lists every checked invoice, with no tab current. The sample filters the same way.
+          - Tests: `lib/labels.test.ts`, `lib/demo.test.ts`, and the e2e "checked invoices split …" tests in `main.spec.ts` and `demo.spec.ts` (failed first: no such tabs).
+        - [x] Checks (2026-10-19, activity log).
+        - [ ] The user ships C4b. It is web only: Vercel deploys it at the merge, and it needs no Release or `pnpm demo:up`.
+        - Not covered, for the user: the "Ready to approve" tab also lists a confirmed duplicate whose charges are all decided, since the api's filter counts open findings only. Its row there reads "Ready to approve" too: the list query has no finding type. The invoice's own page says "Confirmed duplicate" and offers only Reject.
 
 ## Completed
 

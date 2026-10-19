@@ -323,6 +323,17 @@ From the approved design doc:
     - A confirmed possible duplicate refuses every `decideInvoice` decision, DISPUTE included, and `approveInvoice`. Dismissing the finding lifts the refusal.
   - Reason: the user's C4a request; each choice is the smallest that fits it.
 
+- 2026-10-19: C4b decisions.
+  - The user confirmed the three C4a choices above: the `closed` status, the database guard that refuses a rejection while a finding is open, and refusing DISPUTE on a confirmed duplicate.
+  - The agent's, for the user to confirm at review:
+    - The split tabs' keys are `?status=billing_issues` and `?status=ready_to_approve`. An older `?status=reconciled` still lists every checked invoice, with no tab current.
+    - Every checked invoice offers Reject, beside its approval.
+    - A possible duplicate's words: "Not a duplicate" and "Confirm duplicate"; "Duplicate confirmed" and "Marked not a duplicate" in the trail; "Confirmed duplicate" on the invoice's pill. A closed finding reads "Closed with the invoice".
+    - The trail tells a duplicate's decision rows by time, since an audit entry has no finding id. That is exact for each finding's latest decision; a replaced decision reads "Finding confirmed" or "Finding dismissed".
+    - Every tab strip's padding went from 10 to 8 px a side, so nine tabs fit at 1280 px.
+    - The summary's carrier and date arguments stay unused: the list has no carrier or date filter for them.
+  - Reason: the user's C4b request; each choice is the smallest that fits it. An api field naming the finding would end the matching by time, but it needs an api change and a Release first.
+
 ## Preferences and Instructions
 
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).
@@ -540,6 +551,12 @@ From the approved design doc:
   - What we did: reran the suite. If it happens again, open the trace in `apps/web/test-results/` first.
 - 2026-10-19: `pnpm e2e:screenshots` rewrites every picture that shows a date or an age ("Received Oct 19", "the oldest waiting 2 days"). So a run with no UI change still changes about 19 files.
   - What we did (C4a, no UI change): `git restore -- docs/screenshots` after looking at two pairs, so `ship`'s `git add -A` commits no date-only pictures (agent's choice, for the user to confirm).
+- 2026-10-19: `next build` typechecks the test files, so a unit test that imports a function not written yet stops the e2e build.
+  - What happened: the C4b e2e RED run failed in `@freightaudit/web#build` with TS2305 on `lib/labels.test.ts`.
+  - What we did: `git stash push -- apps/web/lib/labels.test.ts`, built, ran the e2e RED, then `git stash pop`.
+- 2026-10-19: A column flex container with `flex-wrap: wrap` makes each column as wide as its widest item.
+  - What happened: on a phone, the wrapped toolbar's column took the tab strip's full width, and the toolbar overflowed by 620 px.
+  - What we did: the phone rule sets `flex-wrap: nowrap`, so the column keeps the container's width.
 
 ## Rejected Approaches
 

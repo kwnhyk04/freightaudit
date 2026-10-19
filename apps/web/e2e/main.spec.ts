@@ -16,12 +16,23 @@ async function db<Row>(sql: string) {
 }
 const badge = (page: Page, text: string) => page.locator('.badge', { hasText: text }).first();
 const digital = readFileSync(new URL('../../../packages/llm/fixtures/digital.pdf', import.meta.url));
-// Reconciled invoices whose findings are all open, so the bulk decisions show; first and last by id, one per test.
-const allOpen = (order: 'ASC' | 'DESC') =>
+// Reconciled invoices whose findings are all open charges, so the bulk decisions show; first and last by id, one per
+// test, and further in for the tests that add a possible duplicate.
+const allOpen = (order: 'ASC' | 'DESC', offset = 0) =>
   db<{ id: string; open: number }>(
     `SELECT i.id, count(*)::int AS open FROM invoices i JOIN discrepancies d ON d.invoice_id = i.id WHERE i.status = 'reconciled'
-     GROUP BY i.id HAVING bool_and(d.status = 'open') ORDER BY i.id ${order} LIMIT 1`,
+     GROUP BY i.id HAVING bool_and(d.status = 'open' AND d.type <> 'duplicate_invoice') ORDER BY i.id ${order} OFFSET ${offset} LIMIT 1`,
   );
+// Such an invoice with a possible duplicate added, as reconcile writes one.
+async function withDuplicate() {
+  const [row] = await allOpen('ASC', 1);
+  await db(
+    `INSERT INTO discrepancies (tenant_id, invoice_id, shipment_id, type, expected_cents, billed_cents, evidence)
+     SELECT tenant_id, id, shipment_id, 'duplicate_invoice', 0, 0, 'Possible duplicate: invoice ' || invoice_number || ' from this carrier was also received on 2026-10-01 as first-scan.pdf.'
+     FROM invoices WHERE id = '${row!.id}'`,
+  );
+  return row!;
+}
 const day = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
 // The warning an exact duplicate gets, from the invoice it already is: its number, or else its file name, and its day.
 async function duplicateOf(filename: string) {
@@ -231,8 +242,10 @@ test.describe('review', () => {
   });
 
   test('a reviewer disputes one finding, approves the other charges, then approves the invoice', async ({ page }) => {
+    // Charges only: a possible duplicate takes a decision of its own words.
     const [row] = await db<{ id: string }>(
-      "SELECT i.id FROM invoices i JOIN discrepancies d ON d.invoice_id = i.id WHERE i.status = 'reconciled' AND d.status = 'open' LIMIT 1",
+      `SELECT i.id FROM invoices i JOIN discrepancies d ON d.invoice_id = i.id WHERE i.status = 'reconciled' AND d.status = 'open'
+       AND NOT EXISTS (SELECT 1 FROM discrepancies x WHERE x.invoice_id = i.id AND x.type = 'duplicate_invoice') LIMIT 1`,
     );
     await page.goto(`/invoices/${row!.id}`);
     await page.getByLabel('Note', { exact: true }).first().fill('Contract rate applies');
@@ -275,6 +288,66 @@ test.describe('review', () => {
     await alert.getByRole('link', { name: 'Reload' }).click();
     await expect(page.getByRole('button', { name: /^Dispute / })).toHaveCount(0);
   });
+
+  test('while a possible duplicate is open, no decision on every finding is offered; once it is no duplicate, one is', async ({ page }) => {
+    const row = await withDuplicate();
+    await page.goto(`/invoices/${row.id}`);
+    const bulk = page.getByRole('button', { name: /^Approve at rate card, / });
+    await expect(page.getByText('Decide the possible duplicate first.')).toBeVisible();
+    for (const button of [bulk, page.getByRole('button', { name: 'Approve as billed' }), page.getByRole('button', { name: /^Dispute \$/ })]) await expect(button).toHaveCount(0);
+    // The duplicate is decided in its own words, here and in the review queue; the charges keep theirs.
+    const duplicate = page.locator('.findings article', { hasText: 'Possible duplicate invoice' });
+    await expect(duplicate.getByRole('button', { name: 'Approve charge' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Approve charge', exact: true })).toHaveCount(row.open);
+    await page.goto('/discrepancies');
+    const queued = page.getByRole('row').filter({ has: page.locator(`a[href="/invoices/${row.id}"]`) }).filter({ hasText: 'Possible duplicate invoice' });
+    await expect(queued.getByRole('button', { name: 'Confirm duplicate' })).toBeVisible();
+    await page.goto(`/invoices/${row.id}`);
+    await duplicate.getByRole('button', { name: 'Not a duplicate' }).click();
+    await expect(duplicate.locator('.badge')).toHaveText('Not a duplicate');
+    await expect(bulk).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Audit trail' }).getByText('Marked not a duplicate')).toBeVisible();
+  });
+
+  test('a checked invoice is rejected with a reason; its open findings close with it and leave the review queue', async ({ page }) => {
+    const [row] = await allOpen('DESC', 1);
+    await page.goto(`/invoices/${row!.id}`);
+    const queue = page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: /^Review queue/ });
+    const before = Number((await queue.getAttribute('aria-label'))?.match(/(\d+) open finding/)?.[1]);
+    await page.getByRole('button', { name: 'Reject', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Reject this invoice' });
+    await expect(dialog).toContainText(`Its ${row!.open} open finding${row!.open === 1 ? ' is' : 's are'} closed with it.`);
+    await dialog.getByLabel('Reason, kept in the audit trail').fill('Billed to the wrong customer');
+    await dialog.getByRole('button', { name: 'Reject invoice' }).click();
+    await expect(badge(page, 'Rejected')).toBeVisible();
+    await expect(page.locator('.findings .badge', { hasText: 'Closed with the invoice' })).toHaveCount(row!.open);
+    const trail = page.getByRole('region', { name: 'Audit trail' });
+    await expect(trail.getByText('Finding closed', { exact: true })).toHaveCount(row!.open);
+    await expect(trail.getByText('The invoice was rejected')).toHaveCount(row!.open);
+    await expect(trail.getByText('Billed to the wrong customer')).toBeVisible();
+    await expect(queue).toHaveAccessibleName(`Review queue, ${before - row!.open} open findings`);
+  });
+
+  test('a confirmed duplicate offers only rejection, in its own words from the buttons to the trail', async ({ page }) => {
+    const row = await withDuplicate();
+    await page.goto(`/invoices/${row.id}`);
+    const duplicate = page.locator('.findings article', { hasText: 'Possible duplicate invoice' });
+    await duplicate.getByRole('button', { name: 'Confirm duplicate' }).click();
+    await expect(duplicate.locator('.badge')).toHaveText('Duplicate confirmed');
+    await expect(badge(page, 'Confirmed duplicate')).toBeVisible();
+    await expect(page.getByText('A confirmed duplicate cannot be approved; reject it.')).toBeVisible();
+    for (const name of [/^Approve at rate card, /, 'Approve as billed', 'Approve for payment']) await expect(page.getByRole('button', { name })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Reject', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Reject this invoice' });
+    await dialog.getByLabel('Reason, kept in the audit trail').fill('Same invoice as first-scan.pdf');
+    await dialog.getByRole('button', { name: 'Reject invoice' }).click();
+    await expect(badge(page, 'Rejected')).toBeVisible();
+    await expect(duplicate.locator('.badge')).toHaveText('Duplicate confirmed');
+    const trail = page.getByRole('region', { name: 'Audit trail' });
+    await expect(trail.getByText('Duplicate confirmed', { exact: true })).toBeVisible();
+    await expect(trail.getByText('Overcharge disputed')).toHaveCount(0);
+    await expect(trail.getByText('Finding closed', { exact: true })).toHaveCount(row.open);
+  });
 });
 
 test.describe('list', () => {
@@ -305,16 +378,16 @@ test.describe('list', () => {
   });
 
   test('a repeated q or status in the address still shows the list', async ({ page }) => {
-    await page.goto('/invoices?q=a&q=b&status=reconciled&status=approved');
+    await page.goto('/invoices?q=a&q=b&status=billing_issues&status=approved');
     await expect(page.getByRole('heading', { name: 'Invoices', level: 1 })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Checked/ })).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Billing issues/ })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByRole('searchbox', { name: 'Search invoices' })).toHaveValue('a');
   });
 
   // Windows draws a scrollbar on a box that scrolls by a single pixel, and headless Chromium draws none, so the test
   // compares sizes. On a phone the tab strip scrolls sideways by design.
-  test('the toolbar never scrolls: it fits, and its tab strip has no vertical scroll at desktop and phone widths', async ({ page }) => {
-    for (const width of [1440, 390]) {
+  test('the toolbar never scrolls: its tab strip fits from 1280 px, and has no vertical scroll at any width', async ({ page }) => {
+    for (const width of [1440, 1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/invoices');
       // The list streams in; measured before it shows, every size reads 0.
@@ -323,7 +396,28 @@ test.describe('list', () => {
       expect(await overflow('.list-bar'), `the toolbar at ${width} px`).toEqual({ x: 0, y: 0 });
       const tabs = await overflow('.list-bar .tabs');
       expect(tabs.y, `the tab strip's height at ${width} px`).toBe(0);
-      if (width === 1440) expect(tabs.x, 'the tab strip fits at 1440 px').toBe(0);
+      if (width >= 1280) expect(tabs.x, `the tab strip fits at ${width} px`).toBe(0);
+    }
+  });
+
+  test('checked invoices split into billing issues and ready to approve, each tab with its count and only its invoices', async ({ page }) => {
+    const [split] = await db<{ issues: number; ready: number }>(
+      `SELECT count(*) FILTER (WHERE open)::int AS issues, count(*) FILTER (WHERE NOT open)::int AS ready FROM (SELECT EXISTS (
+         SELECT 1 FROM discrepancies d WHERE d.invoice_id = i.id AND d.status = 'open') AS open FROM invoices i WHERE i.status = 'reconciled') checked`,
+    );
+    const tabs = page.getByRole('navigation', { name: 'Filter by status' });
+    for (const [label, key, count, words] of [
+      ['Billing issues', 'billing_issues', split!.issues, /^Billing issues \(\d+\)$/],
+      ['Ready to approve', 'ready_to_approve', split!.ready, /^Ready to approve$/],
+    ] as const) {
+      await page.goto('/invoices');
+      await tabs.getByRole('link', { name: `${label} ${count} invoices` }).click();
+      await expect(page).toHaveURL(new RegExp(`[?]status=${key}$`));
+      await expect(tabs.getByRole('link', { name: new RegExp(`^${label}`) })).toHaveAttribute('aria-current', 'page');
+      await expect(page.getByRole('navigation', { name: 'Pages' })).toContainText(`of ${count}`);
+      const badges = page.locator('tbody td:first-child .badge');
+      await expect(badges.first()).toBeVisible();
+      for (const text of await badges.allTextContents()) expect(text).toMatch(words);
     }
   });
 

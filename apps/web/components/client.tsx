@@ -359,19 +359,19 @@ export function BulkDecision({
   );
 }
 
-// A finding's decision in one row: an optional note, then approve the charge or dispute it. The pressed button sends
-// its intent; describedBy names the finding the buttons act on.
-export function DecideForm({ id, describedBy }: { id: string; describedBy?: string }) {
+// A finding's decision in one row: an optional note, then let it go or uphold it, in the words of its kind (decideWords).
+// The pressed button sends its intent; describedBy names the finding the buttons act on.
+export function DecideForm({ id, describedBy, words }: { id: string; describedBy?: string; words: { dismiss: string; confirm: string } }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(review, {});
   return (
     <form action={action} className="row decide">
       <input type="hidden" name="id" value={id} />
       <input name="note" placeholder="Note (optional)" aria-label="Note" maxLength={1000} />
       <button className="button" name="intent" value="dismiss" disabled={pending} aria-describedby={describedBy}>
-        Approve charge
+        {words.dismiss}
       </button>
       <button className="button danger" name="intent" value="confirm" disabled={pending} aria-describedby={describedBy}>
-        Dispute
+        {words.confirm}
       </button>
       {state.error && (
         <p className="form-error" role="alert">

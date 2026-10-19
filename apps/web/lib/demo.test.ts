@@ -3,16 +3,18 @@ import { demoInvoices, demoSummary } from './demo.ts';
 
 const files = (data: InvoicesQuery) => data.invoices.edges.map(({ node }) => node.filename);
 
-test('the sample lists its invoices newest first, filtered by status and by a search like the api', () => {
+test('the sample lists its invoices newest first, filtered by status, open findings and a search like the api', () => {
   const all = demoInvoices();
   expect([all.invoices.totalCount, all.invoices.offset, all.invoices.pageInfo.hasNextPage, all.invoices.pageInfo.hasPreviousPage]).toEqual([11, 0, false, false]);
   expect(files(all).slice(0, 2)).toEqual(['g088.pdf', 'g003.pdf']);
-  expect(files(demoInvoices('RECONCILED'))).toEqual(['g087.pdf', 'g081.pdf', 'g066.pdf', 'g069.pdf', 'g056.pdf', 'g054.pdf', 'g002.pdf']);
+  expect(files(demoInvoices({ status: 'RECONCILED' }))).toEqual(['g087.pdf', 'g081.pdf', 'g066.pdf', 'g069.pdf', 'g056.pdf', 'g054.pdf', 'g002.pdf']);
+  expect(files(demoInvoices({ status: 'RECONCILED', open: true }))).toEqual(['g066.pdf', 'g069.pdf', 'g056.pdf']);
+  expect(files(demoInvoices({ status: 'RECONCILED', open: false }))).toEqual(['g087.pdf', 'g081.pdf', 'g054.pdf', 'g002.pdf']);
   // Invoice number, PRO number or carrier name, trimmed and ignoring case; a status narrows it further.
   expect(files(demoInvoices(undefined, '96079756'))).toEqual(['g069.pdf']);
   expect(files(demoInvoices(undefined, '1036189830'))).toEqual(['g087.pdf']);
   expect(files(demoInvoices(undefined, '  TERN '))).toEqual(['g069.pdf']);
-  expect(files(demoInvoices('NEEDS_REVIEW', 'quarry'))).toEqual(['g088.pdf']);
+  expect(files(demoInvoices({ status: 'NEEDS_REVIEW' }, 'quarry'))).toEqual(['g088.pdf']);
   expect(demoInvoices(undefined, '%').invoices.totalCount).toBe(0);
   // A row carries what the list needs from the snapshot's detail: findings' amounts, the rate card, the reasons.
   const g069 = all.invoices.edges.find(({ node }) => node.filename === 'g069.pdf')!.node;

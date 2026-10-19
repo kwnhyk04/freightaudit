@@ -11,7 +11,7 @@ import type {
 import deadLetters from '../public/demo/dead-letters.json';
 import discrepancies from '../public/demo/discrepancies.json';
 import details from '../public/demo/invoice-details.json';
-import { invoiceAmounts, STATUS } from './labels.ts';
+import { type Filter, invoiceAmounts, STATUS } from './labels.ts';
 
 // The public sample: synthetic golden invoices that scripts/export-demo.ts saved in the shapes the live queries return.
 // Read from these files only, never from the API, and filtered and counted in memory (there are eleven).
@@ -46,12 +46,15 @@ const row = (invoice: Detail): InvoicesQuery['invoices']['edges'][number]['node'
   },
 });
 
-// The api's search: invoice number, PRO number or carrier name containing the words, ignoring case.
-export function demoInvoices(status?: InvoiceStatus, search?: string): InvoicesQuery {
+// The api's filters: a status, whether a finding is open, and invoice number, PRO number or carrier name containing the
+// words, ignoring case.
+export function demoInvoices({ status, open }: Pick<Filter, 'status' | 'open'> = {}, search?: string): InvoicesQuery {
   const words = search?.trim().slice(0, 100).toLowerCase();
   const rows = invoices.filter(
     (invoice) =>
-      (!status || invoice.status === status) && (!words || [invoice.number, invoice.proNumber, invoice.carrier].some((value) => value?.toLowerCase().includes(words))),
+      (!status || invoice.status === status) &&
+      (open === undefined || invoice.openDiscrepancyCount > 0 === open) &&
+      (!words || [invoice.number, invoice.proNumber, invoice.carrier].some((value) => value?.toLowerCase().includes(words))),
   );
   // ponytail: the sample fits one page of 25; page it by offset if an export ever holds more.
   return {

@@ -176,6 +176,7 @@ export type InvoicesQueryVariables = Exact<{
   last?: number | null | undefined;
   before?: string | null | undefined;
   status?: InvoiceStatus | null | undefined;
+  hasOpenFindings?: boolean | null | undefined;
   search?: string | null | undefined;
 }>;
 
@@ -449,13 +450,14 @@ export const InvoiceDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<InvoiceQuery, InvoiceQueryVariables>;
 export const InvoicesDocument = new TypedDocumentString(`
-    query Invoices($first: Int, $after: String, $last: Int, $before: String, $status: InvoiceStatus, $search: String) {
+    query Invoices($first: Int, $after: String, $last: Int, $before: String, $status: InvoiceStatus, $hasOpenFindings: Boolean, $search: String) {
   invoices(
     first: $first
     after: $after
     last: $last
     before: $before
     status: $status
+    hasOpenFindings: $hasOpenFindings
     search: $search
   ) {
     totalCount

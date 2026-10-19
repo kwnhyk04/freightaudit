@@ -1,5 +1,5 @@
-query Invoices($first: Int, $after: String, $last: Int, $before: String, $status: InvoiceStatus, $search: String) {
-  invoices(first: $first, after: $after, last: $last, before: $before, status: $status, search: $search) {
+query Invoices($first: Int, $after: String, $last: Int, $before: String, $status: InvoiceStatus, $hasOpenFindings: Boolean, $search: String) {
+  invoices(first: $first, after: $after, last: $last, before: $before, status: $status, hasOpenFindings: $hasOpenFindings, search: $search) {
     totalCount
     offset
     edges {

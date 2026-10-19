@@ -3,7 +3,8 @@ import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import type { MarkValues } from '../lib/marks.ts';
 import {
-  DECISION,
+  decideWords,
+  decisionLabel,
   decisionQuestion,
   FINDING,
   findingText,
@@ -42,6 +43,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
   const priced = Boolean(invoice.rateCardVersion);
   const money = priced && invoice.totalCents !== null ? invoiceAmounts(invoice.totalCents, findings) : undefined;
   const open = invoice.openDiscrepancyCount;
+  const duplicate = findings.some((finding) => finding.type === 'DUPLICATE_INVOICE' && finding.status === 'CONFIRMED');
   const carrier = invoice.carrier ?? extraction?.carrierRead;
   // Before extraction, or when it failed, the file is all there is: the facts shrink to it.
   const unread = !extraction && !invoice.number;
@@ -76,7 +78,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
           <div className="row title">
             <h1 className="id">{invoice.number ?? invoice.filename}</h1>
             {carrier && <span className="muted">{carrier}</span>}
-            <StatusBadge status={invoice.status} open={open} />
+            <StatusBadge status={invoice.status} open={open} duplicate={duplicate} />
           </div>
           <p className="muted">
             Received <Moment value={invoice.createdAt} />
@@ -145,19 +147,20 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                 {findings.map((finding) => {
                   const line = finding.lineItem && lines.find((each) => each.lineNumber === finding.lineItem!.lineNumber);
                   const title = `finding-${finding.id}`;
+                  const decision = decisionLabel(finding.status, finding.type);
                   return (
                     <article key={finding.id} aria-labelledby={title}>
                       {/* Read as title, text, amount, then the decision; CSS keeps the amount in the left column. */}
                       <div className="finding-body">
                         <div className="row">
                           <h3 id={title}>{findingTitle(finding.type, line?.description)}</h3>
-                          <Badge tone={DECISION[finding.status].tone}>{DECISION[finding.status].label}</Badge>
+                          <Badge tone={decision.tone}>{decision.label}</Badge>
                         </div>
                         <p className="muted">{findingText(finding, line, invoice.rateCardVersion?.version, invoice.currency)}</p>
                         {finding.note && <p className="faint">Note: {finding.note}</p>}
                       </div>
                       <Difference cents={overcharge(finding)} currency={invoice.currency} />
-                      {!readOnly && finding.status === 'OPEN' && invoice.status === 'RECONCILED' && <DecideForm id={finding.id} describedBy={title} />}
+                      {!readOnly && finding.status === 'OPEN' && invoice.status === 'RECONCILED' && <DecideForm id={finding.id} describedBy={title} words={decideWords(finding.type)} />}
                     </article>
                   );
                 })}
@@ -267,7 +270,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
           <section className="panel" aria-labelledby="trail-title">
             <h2 id="trail-title">Audit trail</h2>
             <ol className="trail">
-              {trailRows(invoice, findings.length, example).map((row) => (
+              {trailRows(invoice, findings, example).map((row) => (
                 <li key={row.id}>
                   <Moment value={row.at} />
                   <div>
@@ -289,28 +292,49 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
   );
 }
 
-// The decisions an invoice offers in its state. While every finding is open, three buttons decide them all at once;
-// once a reviewer has decided any alone, "as billed" is no longer true for all, so the findings are decided one by one.
+// The decisions an invoice offers in its state. One that needs review or is checked can be rejected with a reason; a
+// checked one's open findings close with it.
 function InvoiceActions({ invoice, findings, money }: { invoice: Detail; findings: Finding[]; money?: Amounts }) {
+  const open = invoice.openDiscrepancyCount;
+  const reject = (
+    <DialogAction label="Reject" title="Reject this invoice">
+      {open > 0 && <p className="faint">Its {plural(open, 'open finding')} {open === 1 ? 'is' : 'are'} closed with it.</p>}
+      <ActionForm hidden={{ intent: 'reject', id: invoice.id }} submit="Reject invoice" tone="danger">
+        <label style={{ width: '100%' }}>
+          Reason, kept in the audit trail
+          <textarea name="reason" required maxLength={1000} rows={3} />
+        </label>
+      </ActionForm>
+    </DialogAction>
+  );
   if (invoice.status === 'NEEDS_REVIEW') {
     return (
       <div className="row">
-        <DialogAction label="Reject" title="Reject this invoice">
-          <ActionForm hidden={{ intent: 'reject', id: invoice.id }} submit="Reject invoice" tone="danger">
-            <label style={{ width: '100%' }}>
-              Reason, kept in the audit trail
-              <textarea name="reason" required maxLength={1000} rows={3} />
-            </label>
-          </ActionForm>
-        </DialogAction>
+        {reject}
         <ActionForm hidden={{ intent: 'approve', id: invoice.id }} submit="Approve as billed" confirm="Approve without a matched shipment? The carrier is paid what it billed." />
       </div>
     );
   }
   if (invoice.status === 'FAILED' && invoice.deadLetter) return <ActionForm hidden={{ intent: 'replay', id: invoice.deadLetter.id }} submit="Replay" />;
   if (invoice.status !== 'RECONCILED') return null;
+  return (
+    <div className="row">
+      {reject}
+      {approval(invoice, findings, money)}
+    </div>
+  );
+}
+
+// How a checked invoice comes to approval. A possible duplicate is decided on its own first, and once confirmed the
+// invoice can only be rejected. While every charge is open, three buttons decide them all at once; once a reviewer has
+// decided any alone, "as billed" is no longer true for all, so the charges are decided one by one.
+function approval(invoice: Detail, findings: Finding[], money?: Amounts) {
   const open = invoice.openDiscrepancyCount;
-  if (money && invoice.totalCents !== null && open > 0 && open === findings.length && findings.length < MAX_BULK) {
+  const duplicate = findings.find((finding) => finding.type === 'DUPLICATE_INVOICE' && (finding.status === 'OPEN' || finding.status === 'CONFIRMED'));
+  if (duplicate?.status === 'CONFIRMED') return <p className="faint">A confirmed duplicate cannot be approved; reject it.</p>;
+  if (duplicate) return <p className="faint">Decide the possible duplicate first.</p>;
+  const charges = findings.filter((finding) => finding.type !== 'DUPLICATE_INVOICE');
+  if (money && invoice.totalCents !== null && open > 0 && charges.every((finding) => finding.status === 'OPEN') && findings.length < MAX_BULK) {
     const ask = (decision: 'APPROVE_AS_BILLED' | 'DISPUTE' | 'APPROVE_AT_RATE_CARD') => decisionQuestion(decision, open, invoice.totalCents!, money, invoice.currency);
     return (
       <BulkDecision
