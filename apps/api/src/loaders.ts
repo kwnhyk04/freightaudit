@@ -15,7 +15,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { after, cursorAt } from './keyset.ts';
 import { invoiceColumns } from './service.ts';
 
-export type DiscrepancyArgs = { invoiceId: string; status?: 'open' | 'confirmed' | 'dismissed'; first: number; after?: string | null };
+export type DiscrepancyArgs = { invoiceId: string; status?: 'open' | 'confirmed' | 'dismissed' | 'closed'; first: number; after?: string | null };
 
 // Invoices as GraphQL shows them: the REST columns plus the PRO number matching uses.
 export const graphqlInvoiceColumns = { ...invoiceColumns, proNumber: invoices.proNumber };

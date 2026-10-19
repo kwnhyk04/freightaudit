@@ -106,6 +106,29 @@ test('a reviewer may send a needs_review invoice back to matching or reject it, 
     await expect(client.query('DELETE FROM audit_events')).rejects.toMatchObject({ code: '23514' });
   }));
 
+test('a reviewer may reject a reconciled invoice once no finding is open; a finding closed with it is audited (0015)', () =>
+  withDatabase(async (client, url) => {
+    await migrate(url, { log: quiet });
+    const { rows: tenants } = await client.query("INSERT INTO tenants (name) VALUES ('Test tenant') RETURNING id");
+    const { rows: invoices } = await client.query(
+      "INSERT INTO invoices (tenant_id, filename, content_sha256, status) VALUES ($1, 'a.pdf', repeat('a', 64), 'reconciled') RETURNING id",
+      [tenants[0].id],
+    );
+    const { rows: findings } = await client.query(
+      "INSERT INTO discrepancies (tenant_id, invoice_id, type, expected_cents, billed_cents, evidence) VALUES ($1, $2, 'duplicate_invoice', 0, 0, 'Possible duplicate.') RETURNING id",
+      [tenants[0].id, invoices[0].id],
+    );
+    const reject = () => client.query("UPDATE invoices SET status = 'rejected' WHERE id = $1", [invoices[0].id]);
+    // An open finding would stay in the review queue, and nothing decides a finding of a rejected invoice.
+    await expect(reject()).rejects.toMatchObject({ code: '23514', message: expect.stringContaining('open discrepancies') });
+    await client.query("UPDATE discrepancies SET status = 'closed', resolved_at = now() WHERE id = $1", [findings[0].id]);
+    await client.query(
+      "INSERT INTO audit_events (tenant_id, invoice_id, discrepancy_id, actor, action, reason) VALUES ($1, $2, $3, 'reviewer', 'discrepancy_closed', 'Closed with the invoice.')",
+      [tenants[0].id, invoices[0].id, findings[0].id],
+    );
+    await reject();
+  }));
+
 test('migrations apply cleanly from empty, re-run as a no-op, and match the Drizzle schema', () =>
   withDatabase(async (client, url) => {
     await migrate(url, { log: quiet });
@@ -127,6 +150,7 @@ test('migrations apply cleanly from empty, re-run as a no-op, and match the Driz
       '0012_llm_call_errors',
       '0013_audit_and_rejection',
       '0014_duplicate_invoice',
+      '0015_reject_reconciled',
     ]);
 
     const tables = Object.values(schema as Record<string, unknown>).filter((value): value is PgTable => is(value, PgTable));
@@ -217,5 +241,5 @@ test('db:reset refuses a database off this machine or NODE_ENV=production, and o
     await resetDatabase(url, { nodeEnv: 'development', log: quiet });
     expect((await client.query('SELECT name FROM tenants')).rows).toEqual([{ name: 'Larkspur Outdoor Supply' }]);
     expect(await count(client, 'SELECT count(*) FROM invoices')).toBe(500);
-    expect(await count(client, 'SELECT count(*) FROM schema_migrations')).toBe(15);
+    expect(await count(client, 'SELECT count(*) FROM schema_migrations')).toBe(16);
   }));

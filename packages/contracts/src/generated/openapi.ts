@@ -204,7 +204,7 @@ export interface components {
         /** @enum {string} */
         DiscrepancyType: "rate_mismatch" | "uncontracted_charge" | "duplicate_charge" | "duplicate_invoice" | "weight_mismatch" | "arithmetic_error";
         /** @enum {string} */
-        DiscrepancyStatus: "open" | "confirmed" | "dismissed";
+        DiscrepancyStatus: "open" | "confirmed" | "dismissed" | "closed";
         Discrepancy: {
             /** Format: uuid */
             id: string;

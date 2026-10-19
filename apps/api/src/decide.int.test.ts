@@ -33,7 +33,9 @@ beforeAll(async () => {
   const tenantId: string = (await pool.query('SELECT id FROM tenants')).rows[0].id;
   redis = new Redis(testEnv('REDIS_URL'), { maxRetriesPerRequest: 1 });
   queues = createQueues(redis, `test-${randomBytes(4).toString('hex')}`);
-  app = buildApp(serverOptions('silent'), { apiKeys: [apiKey], storage: createMemoryStorage(), graphql: { db, queues, tenantId } });
+  // The file sends more than the default 60 requests a minute on its one key.
+  const rateLimits = { general: 1_000, upload: 1_000 };
+  app = buildApp(serverOptions('silent'), { apiKeys: [apiKey], storage: createMemoryStorage(), graphql: { db, queues, tenantId }, rateLimits });
   const { rows } = await pool.query(
     "SELECT d.invoice_id FROM discrepancies d JOIN invoices i ON i.id = d.invoice_id WHERE i.status = 'reconciled' GROUP BY d.invoice_id HAVING bool_and(d.status = 'open') ORDER BY d.invoice_id",
   );
@@ -47,8 +49,9 @@ afterAll(async () => {
   await database.drop();
 });
 
-type Result = { data?: Record<string, { status: string; openDiscrepancyCount?: number }> | null; errors?: { message: string; extensions?: { code?: string } }[] };
-async function gql(query: string, variables: Record<string, unknown> = {}): Promise<Result> {
+type Data = Record<string, { status: string; openDiscrepancyCount?: number }>;
+type Result<T = Data> = { data?: T | null; errors?: { message: string; extensions?: { code?: string } }[] };
+async function gql<T = Data>(query: string, variables: Record<string, unknown> = {}): Promise<Result<T>> {
   const response = await app.inject({ method: 'POST', url: '/graphql', headers: { 'x-api-key': apiKey, 'x-actor': 'reviewer' }, payload: { query, variables } });
   return response.json();
 }
@@ -57,6 +60,10 @@ const DECIDE = `mutation ($id: ID!, $decision: InvoiceDecision!, $seen: [SeenDis
 type Seen = { id: string; version: string }[];
 const decideInvoice = (id: string, decision: string, seen: Seen, requestId: string = randomUUID()) => gql(DECIDE, { id, decision, seen, requestId });
 const resolve = (id: string, decision: 'CONFIRM' | 'DISMISS') => gql(`mutation ($id: ID!) { resolveDiscrepancy(id: $id, decision: ${decision}) { status } }`, { id });
+const approveInvoice = (id: string) => gql('mutation ($id: ID!) { approveInvoice(id: $id) { status } }', { id });
+const rejectInvoice = (id: string, reason: string) => gql('mutation ($id: ID!, $reason: String!) { rejectInvoice(id: $id, reason: $reason) { status } }', { id, reason });
+// Findings waiting for a decision, as the review queue counts them.
+const queued = async () => (await gql<{ invoiceSummary: { openFindings: number } }>('{ invoiceSummary { openFindings } }')).data!.invoiceSummary.openFindings;
 // The invoice's findings with their versions, as a page shows them.
 async function seenOf(id: string): Promise<Seen> {
   const { rows } = await pool.query(
@@ -70,6 +77,14 @@ const addFinding = async (id: string) =>
   (
     await pool.query(
       "INSERT INTO discrepancies (tenant_id, invoice_id, shipment_id, type, expected_cents, billed_cents, evidence) SELECT tenant_id, id, shipment_id, 'uncontracted_charge', 0, 4200, 'test charge' FROM invoices WHERE id = $1 RETURNING id",
+      [id],
+    )
+  ).rows[0].id as string;
+// A possible duplicate of the whole invoice, as reconcile writes one.
+const addDuplicate = async (id: string) =>
+  (
+    await pool.query(
+      "INSERT INTO discrepancies (tenant_id, invoice_id, shipment_id, type, expected_cents, billed_cents, evidence) SELECT tenant_id, id, shipment_id, 'duplicate_invoice', 0, 0, 'Possible duplicate.' FROM invoices WHERE id = $1 RETURNING id",
       [id],
     )
   ).rows[0].id as string;
@@ -90,20 +105,69 @@ const shape = (row: typeof auditEvents.$inferSelect) => ({
 
 test('while a possible duplicate is open, no bulk decision and no approval goes through; decided on its own, the rest can be', async () => {
   const id = fresh.shift()!;
-  const { rows } = await pool.query(
-    "INSERT INTO discrepancies (tenant_id, invoice_id, shipment_id, type, expected_cents, billed_cents, evidence) SELECT tenant_id, id, shipment_id, 'duplicate_invoice', 0, 0, 'Possible duplicate.' FROM invoices WHERE id = $1 RETURNING id",
-    [id],
-  );
-  const duplicate: string = rows[0].id;
+  const duplicate = await addDuplicate(id);
   for (const decision of ['APPROVE_AS_BILLED', 'APPROVE_AT_RATE_CARD', 'DISPUTE']) {
     const refused = (await decideInvoice(id, decision, await seenOf(id))).errors?.[0];
     expect([decision, refused?.message, refused?.extensions?.code]).toEqual([decision, 'this invoice may duplicate another one; decide that finding on its own first', 'CONFLICT']);
   }
-  expect((await gql('mutation ($id: ID!) { approveInvoice(id: $id) { status } }', { id })).errors?.[0]?.extensions?.code).toBe('CONFLICT');
+  expect((await approveInvoice(id)).errors?.[0]?.extensions?.code).toBe('CONFLICT');
   expect([await statusOf(id), (await findingsOf(id)).every((finding) => finding.status === 'open'), await keysOf(id)]).toEqual(['reconciled', true, []]);
   // Not a duplicate after all: dismissed on its own, the other findings take a bulk decision again.
   expect((await resolve(duplicate, 'DISMISS')).data!.resolveDiscrepancy).toEqual({ status: 'DISMISSED' });
   expect((await decideInvoice(id, 'APPROVE_AT_RATE_CARD', await seenOf(id))).data!.decideInvoice).toEqual({ status: 'APPROVED', openDiscrepancyCount: 0 });
+});
+
+test('a confirmed duplicate is never approved, by a bulk decision or on its own; dismissed after all, it is approved', async () => {
+  const id = fresh.shift()!;
+  const duplicate = await addDuplicate(id);
+  expect((await resolve(duplicate, 'CONFIRM')).data!.resolveDiscrepancy).toEqual({ status: 'CONFIRMED' });
+  const confirmed = 'this invoice was confirmed as a duplicate of another one; reject it instead';
+  for (const decision of ['APPROVE_AS_BILLED', 'APPROVE_AT_RATE_CARD', 'DISPUTE']) {
+    const refused = (await decideInvoice(id, decision, await seenOf(id))).errors?.[0];
+    expect([decision, refused?.message, refused?.extensions?.code]).toEqual([decision, confirmed, 'CONFLICT']);
+  }
+  // With every charge decided one by one, nothing is open, and the approval is still refused.
+  for (const finding of await findingsOf(id)) if (finding.status === 'open') await resolve(finding.id, 'DISMISS');
+  const approval = (await approveInvoice(id)).errors?.[0];
+  expect([approval?.message, approval?.extensions?.code]).toEqual([confirmed, 'CONFLICT']);
+  expect([await statusOf(id), await keysOf(id)]).toEqual(['reconciled', []]);
+  // Not a duplicate after all.
+  await resolve(duplicate, 'DISMISS');
+  expect((await approveInvoice(id)).data!.approveInvoice).toEqual({ status: 'APPROVED' });
+});
+
+test('a reconciled invoice is rejected with a reason; its open findings close with it, each audited, and leave the review queue', async () => {
+  const id = fresh.shift()!;
+  await addFinding(id);
+  const [decided, ...open] = await findingsOf(id);
+  await resolve(decided!.id, 'CONFIRM');
+  const before = await queued();
+  // The reason rules of a needs_review rejection.
+  for (const reason of ['  ', 'x'.repeat(1001)]) expect((await rejectInvoice(id, reason)).errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
+  expect(await rejectInvoice(id, 'Billed again as invoice 4471')).toEqual({ data: { rejectInvoice: { status: 'REJECTED' } } });
+
+  expect((await findingsOf(id)).map((finding) => [finding.id, finding.status, finding.resolvedAt !== null])).toEqual([
+    [decided!.id, 'confirmed', true],
+    ...open.map((finding) => [finding.id, 'closed', true]),
+  ]);
+  expect(await queued()).toBe(before - open.length);
+  const rows = await auditOf(id);
+  expect(rows.map((row) => row.action)).toEqual(['discrepancy_confirmed', ...open.map(() => 'discrepancy_closed'), 'rejected']);
+  const closings = rows.filter((row) => row.action === 'discrepancy_closed');
+  expect(new Set(closings.map((row) => row.discrepancyId))).toEqual(new Set(open.map((finding) => finding.id)));
+  for (const row of closings) expect([row.actor, row.changes, row.reason]).toEqual(['reviewer', [{ field: 'status', from: 'open', to: 'closed' }], 'the invoice was rejected']);
+  expect(shape(rows.at(-1)!)).toMatchObject({ actor: 'reviewer', changes: [{ field: 'status', from: 'reconciled', to: 'rejected' }], reason: 'Billed again as invoice 4471' });
+
+  // The api names the closed findings and their entries in the trail.
+  const read = await gql<{ invoice: { discrepancies: { edges: { node: { status: string } }[] }; auditTrail: { action: string; detail: string | null }[] } }>(
+    'query ($id: ID!) { invoice(id: $id) { discrepancies { edges { node { status } } } auditTrail { action detail } } }',
+    { id },
+  );
+  expect(read.data!.invoice.discrepancies.edges.map(({ node }) => node.status).sort()).toEqual(['CONFIRMED', ...open.map(() => 'CLOSED')].sort());
+  expect(read.data!.invoice.auditTrail.filter((entry) => entry.action === 'DISCREPANCY_CLOSED')).toEqual(open.map(() => ({ action: 'DISCREPANCY_CLOSED', detail: 'the invoice was rejected' })));
+  // Final, and a closed finding takes no decision.
+  expect((await rejectInvoice(id, 'again')).errors?.[0]?.extensions?.code).toBe('CONFLICT');
+  expect((await resolve(open[0]!.id, 'DISMISS')).errors?.[0]?.extensions?.code).toBe('CONFLICT');
 });
 
 test('approve at rate card disputes every open finding and approves, writing the audit rows a manual decision writes', async () => {

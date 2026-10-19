@@ -68,7 +68,7 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
     - [x] The ESLint ignore for `playwright-report/` at `packages/config/eslint.js:6`, applied by the user.
     - [x] Checks (2026-10-18, final code): `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 100 tests), `pnpm e2e` 29/29, `pnpm e2e:screenshots` 8/8. A fresh review's two Important findings and four Minor ones were fixed test first (activity log).
     - [x] The user shipped C1 (`ship.ps1`). After the merge, production answers 200 for `/demo/invoices?q=a&q=b` and for `status` given twice; both answered 500 before (2026-10-18).
-  - [ ] PR C2 and after (the user's OK 2026-10-18). C2 is in progress on branch `ui-c2-wording` from main `a2f046e`. C3 and C4 are each planned first.
+  - [ ] PR C2 and after (the user's OK 2026-10-18). C2 merged as `dfcdaab` (#26), C2b and C3 as `62a0cba` (#27). C4 is planned first.
     - C2, web only, with no api change, migration, Release or `demo:up`:
       - [x] Status words: "Ready to approve", "Billing issues (N)", "Reading needs a check", "Reading" and "Checking" wherever a status shows, with one explanation line by the filter.
       - [x] Exact duplicate upload: a 200 from the api shows "Already uploaded as invoice <number> on <date>. Nothing new was created." with a link, for a chosen file and a sample tap. It uses a new client operation `InvoiceBrief`; the schema is unchanged.
@@ -97,9 +97,40 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
         - [x] `duplicate_invoice` finding at reconcile with migration 0014 (enum value, expand only), invoice-level, no money, evidence naming the earliest other invoice that is not rejected; bulk decisions refused while it is open (approval already was). The web got two label entries so it compiles; its words come in C4. Tests: `packages/domain/src/reconcile.test.ts`, `apps/worker/src/reconcile.int.test.ts`, `apps/api/src/decide.int.test.ts`, each failed first and failed again under a mutation.
         - [x] Contracts regenerated; `contracts:check` passes; `contracts:breaking` reports nothing breaking with one reviewed line in `packages/contracts/oasdiff-ignore.txt` (the new enum value in `GET /v1/discrepancies`).
         - [x] Final checks (2026-10-19): `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (domain 38, api 12, web 105), `pnpm test:int` 123 in 23 suites, `pnpm contracts:check`, `pnpm contracts:breaking` (nothing breaking), `pnpm e2e` 34/34, `pnpm e2e:screenshots` 8/8. Diff audit clean (activity log).
-      - [ ] The user ships C2b and C3 (`ship.ps1`). CI's eval smoke calls Gemini and Groq live for the pull request (about 36,000 tokens, free tiers).
+      - [x] The user shipped C2b and C3 (`ship.ps1`), merged as `62a0cba` (#27). On 2026-10-19 `main` and `origin/main` were both at `62a0cba`.
       - [ ] After the merge: the Release publishes the api and worker images, then the user runs `pnpm demo:up`. Migration 0014 applies before the new api and worker start.
-    - C4, the web, once C3 runs on the demo: the split tabs (`hasOpenFindings`), the near-duplicate finding's words, and hiding the bulk buttons while a possible duplicate is open. Not started (it needs C3's Release and `pnpm demo:up`); planned first.
+    - [ ] C4, from the C2b and C3 report (the user's items, 2026-10-19), ships as two PRs (user decision, 2026-10-19). The first is C4a, the api, worker and migration. The second is C4b, the web, once C4a is released and running on the demo.
+      - [ ] C4a on branch `c4a` (renamed from `c4`, cut from main `62a0cba`), built 2026-10-19, not committed. Each change has a test that failed first. The needs-review check needed no change: its test passed on the code as it was.
+        - [x] Migration 0015:
+          - the move reconciled to rejected;
+          - rejection, like approval, refused while a discrepancy is open;
+          - the finding status `closed` and the audit action `discrepancy_closed`.
+          - Test: `packages/db/src/migrations.int.test.ts`. It failed first, and failed again with `rejected` dropped from the open-findings rule.
+        - [x] `rejectInvoice` takes a reconciled invoice, with a needs_review rejection's reason rules.
+          - Its open findings close in the same transaction. Each gets a `discrepancy_closed` audit row with the reason "the invoice was rejected", and the review queue's count drops by them.
+          - GraphQL has `DiscrepancyStatus.CLOSED` and `AuditAction.DISCREPANCY_CLOSED`; REST has `closed`.
+          - Test: `apps/api/src/decide.int.test.ts`. It failed first with "only an invoice that needs review can be rejected; this one is reconciled". Skipping the audit rows failed it again, and so did dropping the trail's mapping.
+        - [x] `approveInvoice` and every `decideInvoice` decision refuse an invoice whose possible duplicate is confirmed: "this invoice was confirmed as a duplicate of another one; reject it instead" (CONFLICT). Dismissing the finding lifts the refusal. Test: `decide.int.test.ts`. It failed first, since "Approve as billed" went through; removing the single approval's check failed it again.
+        - [x] The needs-review duplicate check, moved here from Known Limitations (user request). An invoice that a reviewer corrects goes back to extracted, and its next reconcile runs the same lookup, rejected invoices skipped. So no code changed. Test: `apps/worker/src/reconcile.int.test.ts`; it passed on the code as it was, and skipping the finding failed it. The Known Limitations line had overstated the gap (memory, lesson).
+        - [ ] Still unchecked: an invoice approved as billed from needs_review is never reconciled, so the check never runs for it. The user decides whether C4b or a later PR covers it.
+        - [x] Contracts regenerated. `contracts:check` passes, and `contracts:breaking` reports nothing breaking, with one reviewed line in `packages/contracts/oasdiff-ignore.txt` (`closed` in `GET /v1/discrepancies`).
+        - [x] The web compiles with labels for the new values ("Closed", "Finding closed"); nothing else in the web changed.
+        - [x] Checks (2026-10-19, activity log):
+          - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 127 in 23 suites;
+          - `pnpm contracts:check`, and `pnpm contracts:breaking`, which reports nothing breaking;
+          - `pnpm e2e` 34/34 on the second run, after one upload test timed out waiting for hydration in the first;
+          - `pnpm e2e:screenshots` 8/8. Its pictures differed only by the run's dates, so they were restored.
+        - [ ] The user ships C4a. Then the Release publishes the api image, and the user's `pnpm demo:up` applies 0015 before the new api starts.
+      - [ ] C4b, the web, after C4a runs on the demo. Until then the web still shows the old buttons. A possible duplicate still shows the bulk buttons and "Approve for payment", which the api refuses, and a reconciled invoice shows no Reject.
+        - [ ] Bulk buttons: while a possible-duplicate finding is open, hide or disable "Approve as billed", "Dispute …" and "Approve at rate card, …" (`apps/web/components/detail.tsx:313-331`). The reviewer then never meets the api's refusal text as the first sign. The api's refusal (`apps/api/src/review.ts`, `decideInvoice`) stays the real guard. Each finding keeps its own decision row (`DecideForm`).
+        - [ ] Rejecting a confirmed duplicate: Reject where the page offers "Approve for payment" today (`detail.tsx:334`), using C4a's `rejectInvoice`. The C4b plan decides whether every reconciled invoice gets Reject.
+        - [ ] The possible-duplicate finding's real words. C3's two entries in `apps/web/lib/labels.ts` (`FINDING.DUPLICATE_INVOICE`, `TITLE.DUPLICATE_INVOICE`) are placeholders. C4b also replaces the charge wording the finding borrows:
+          - its buttons, "Approve charge" and "Dispute" (`components/client.tsx:370-375`);
+          - its decided badge, "Disputed" or "Charge approved" (`labels.ts:99-100`);
+          - its trail entries, "Overcharge disputed" or "Charge approved" (`labels.ts:189-190`).
+          - It also gives final words to C4a's "Closed" and "Finding closed", if they need any.
+        - [ ] Tabs at 1280 px: today they scroll sideways there (before C2b too). They must fit at 1280 px and wider, the split's extra tab included, without hiding scrollbars. The C2b overflow test (`apps/web/e2e/main.spec.ts:316-328`) keeps passing. It checks 1280 px as it checks 1440 px, the tab strip's sideways overflow included.
+        - [ ] Split tabs: the "Checked" tab (`lib/labels.ts:37`) lists every reconciled invoice today. Its split uses `invoices(hasOpenFindings)` and `invoiceSummary(carrierId, from, to)` where the tabs need them. The summary already gives `invoicesWithOpenFindings`.
 
 ## Completed
 

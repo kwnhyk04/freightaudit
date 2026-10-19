@@ -67,7 +67,7 @@ type Mutation {
   resolveDiscrepancy(id: ID!, decision: DiscrepancyDecision!, note: String): Discrepancy!
 
   """
-  Approves an invoice for payment.
+  Approves an invoice for payment. Refused while a discrepancy is open, and once a possible duplicate is confirmed.
   """
   approveInvoice(id: ID!): Invoice!
 
@@ -75,7 +75,7 @@ type Mutation {
   Decides every open discrepancy of a reconciled invoice in one transaction (dismissed for APPROVE_AS_BILLED, confirmed
   otherwise), then approves the invoice unless the decision is DISPUTE. seen lists every discrepancy of the invoice with
   the version the reviewer saw: any difference refuses with CONFLICT and changes nothing. A repeated requestId returns
-  the invoice and changes nothing.
+  the invoice and changes nothing. Refused while a possible duplicate is open, and once it is confirmed.
   """
   decideInvoice(id: ID!, decision: InvoiceDecision!, seen: [SeenDiscrepancy!]!, requestId: ID!): Invoice!
 
@@ -86,7 +86,8 @@ type Mutation {
   correctInvoice(id: ID!, carrierId: ID, proNumber: String): Invoice!
 
   """
-  Rejects a NEEDS_REVIEW invoice for payment; the reason is kept in its audit trail. Final.
+  Rejects a NEEDS_REVIEW or RECONCILED invoice for payment; the reason is kept in its audit trail, and its open
+  discrepancies close with it. Final.
   """
   rejectInvoice(id: ID!, reason: String!): Invoice!
 
@@ -137,7 +138,7 @@ enum InvoiceStatus {
   """
   RECONCILING
   """
-  Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision.
+  Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision; a reviewer may reject the invoice instead.
   """
   RECONCILED
   """
@@ -329,6 +330,10 @@ enum AuditAction {
   """
   DISCREPANCY_DISMISSED
   """
+  A discrepancy closed undecided because a reviewer rejected its invoice.
+  """
+  DISCREPANCY_CLOSED
+  """
   A dead letter's job was run again.
   """
   REPLAYED
@@ -435,6 +440,7 @@ enum DiscrepancyType {
   """
   Another invoice from the same carrier has the same number: a possible duplicate of the whole invoice, with no line and
   no money. It is decided on its own; while it is open, the invoice takes no bulk decision and cannot be approved.
+  Confirmed, it keeps the invoice from approval by any decision, and a reviewer rejects the invoice instead.
   """
   DUPLICATE_INVOICE
   WEIGHT_MISMATCH
@@ -477,6 +483,10 @@ enum DiscrepancyStatus {
   OPEN
   CONFIRMED
   DISMISSED
+  """
+  Closed undecided when a reviewer rejected the invoice.
+  """
+  CLOSED
 }
 
 """
