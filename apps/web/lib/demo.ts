@@ -11,7 +11,7 @@ import type {
 import deadLetters from '../public/demo/dead-letters.json';
 import discrepancies from '../public/demo/discrepancies.json';
 import details from '../public/demo/invoice-details.json';
-import { type Filter, invoiceAmounts, STATUS } from './labels.ts';
+import { type Filter, holdOf, invoiceAmounts, STATUS } from './labels.ts';
 
 // The public sample: synthetic golden invoices that scripts/export-demo.ts saved in the shapes the live queries return.
 // Read from these files only, never from the API, and filtered and counted in memory (there are eleven).
@@ -25,6 +25,7 @@ type Detail = NonNullable<InvoiceQuery['invoice']>;
 const invoices = Object.values(sample.details)
   .flatMap(({ invoice }) => (invoice ? [invoice] : []))
   .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+const hold = (invoice: Detail) => holdOf(invoice.status, invoice.discrepancies.edges.map(({ node }) => node));
 
 // A list row from the snapshot's detail, which holds every field the list asks for.
 const row = (invoice: Detail): InvoicesQuery['invoices']['edges'][number]['node'] => ({
@@ -38,6 +39,7 @@ const row = (invoice: Detail): InvoicesQuery['invoices']['edges'][number]['node'
   totalCents: invoice.totalCents,
   createdAt: invoice.createdAt,
   openDiscrepancyCount: invoice.openDiscrepancyCount,
+  hold: hold(invoice),
   reviewReason: invoice.reviewReason,
   failureReason: invoice.failureReason,
   rateCardVersion: invoice.rateCardVersion && { id: invoice.rateCardVersion.id },
@@ -46,14 +48,14 @@ const row = (invoice: Detail): InvoicesQuery['invoices']['edges'][number]['node'
   },
 });
 
-// The api's filters: a status, whether a finding is open, and invoice number, PRO number or carrier name containing the
-// words, ignoring case.
+// The api's filters: a status, whether a reviewer holds the invoice, and invoice number, PRO number or carrier name
+// containing the words, ignoring case.
 export function demoInvoices({ status, open }: Pick<Filter, 'status' | 'open'> = {}, search?: string): InvoicesQuery {
   const words = search?.trim().slice(0, 100).toLowerCase();
   const rows = invoices.filter(
     (invoice) =>
       (!status || invoice.status === status) &&
-      (open === undefined || invoice.openDiscrepancyCount > 0 === open) &&
+      (open === undefined || (hold(invoice) !== null) === open) &&
       (!words || [invoice.number, invoice.proNumber, invoice.carrier].some((value) => value?.toLowerCase().includes(words))),
   );
   // ponytail: the sample fits one page of 25; page it by offset if an export ever holds more.
@@ -79,6 +81,7 @@ export function demoSummary(): InvoiceSummaryQuery['invoiceSummary'] {
     receivedLast7Days: invoices.filter((invoice) => Date.parse(invoice.createdAt) >= week).length,
     openFindings: findings.length,
     invoicesWithOpenFindings: open.length,
+    invoicesHeld: invoices.filter((invoice) => hold(invoice) !== null).length,
     oldestOpenFindingAt: open.map(found).filter((at) => at !== undefined).sort()[0] ?? null,
     openOverchargeCents: Number(invoiceAmounts(0, findings).openCents),
     matchedRateCard: invoices.filter((invoice) => invoice.status === 'RECONCILED' && invoice.discrepancies.edges.length === 0).length,

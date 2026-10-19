@@ -712,10 +712,16 @@ td .reason {
 .panel-head h2 {
   margin-bottom: 2px;
 }
+/* Charge cells keep 8 px a side, so every column, Difference included, fits beside the document from 1280 px. */
+table.charges th,
+table.charges td {
+  padding-left: 8px;
+  padding-right: 8px;
+}
 table.charges tfoot th,
 table.charges tfoot td {
   position: static;
-  padding: 7px 12px;
+  padding: 7px 8px;
   border-top: 1px solid var(--rule);
   background: none;
   color: var(--text);
@@ -954,6 +960,12 @@ td.wrap {
   gap: 14px;
 }
 
+/* Below 1440 px the checks take a little more of the width than the document, so the charges table keeps every column. */
+@media (max-width: 1439px) {
+  .review {
+    grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
+  }
+}
 @media (max-width: 1023px) {
   .review,
   .upload {

@@ -84,6 +84,7 @@ query Invoice($id: ID!) {
         from
         to
       }
+      discrepancyId
     }
     deadLetter {
       id

@@ -10,6 +10,7 @@ query RecentUploads {
         createdAt
         reviewReason
         failureReason
+        hold
         discrepancies(first: 100) {
           edges {
             node {

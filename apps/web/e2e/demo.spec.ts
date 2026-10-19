@@ -99,7 +99,7 @@ test('a repeated q or status in a pasted link still shows the sample list', asyn
   await page.goto('/demo/invoices?q=a&q=b&status=billing_issues&status=approved');
   await expect(page.getByRole('heading', { name: 'Invoices', level: 1 })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Billing issues/ })).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByText('Checked against the rate card, with findings to decide before approval.')).toBeVisible();
+  await expect(page.getByText('Checked against the rate card, with findings to decide or a confirmed duplicate to reject.')).toBeVisible();
   await expect(page.getByRole('searchbox', { name: 'Search invoices' })).toHaveValue('a');
 });
 

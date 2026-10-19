@@ -10,6 +10,7 @@ import {
   findingText,
   findingTitle,
   firstParams,
+  holdOf,
   invoiceAmounts,
   listFilter,
   isExampleData,
@@ -63,42 +64,45 @@ test("a decision reads in its finding's words: a charge is disputed or approved,
   expect(decisionLabel('CLOSED', 'DUPLICATE_INVOICE')).toEqual({ label: 'Closed with the invoice', tone: 'neutral' });
 });
 
-test("the trail names each decision in its finding's words, found by the moment it was made, and a closed finding plainly", () => {
-  const decided = (seconds: number, action: string, from: string, to: string, detail: string | null = null) => ({
+test("the trail names each decision in the words of the finding it names, a replaced one included, and a closed finding plainly", () => {
+  const decided = (seconds: number, action: string, from: string, to: string, discrepancyId: string | null, detail: string | null = null) => ({
     id: `d${seconds}`,
     at: at(seconds),
     actor: 'reviewer',
     action,
     detail,
     changes: [{ field: 'status', from, to }],
+    discrepancyId,
   });
   // A charge disputed; the duplicate confirmed, then found not to be one; the invoice rejected with an open charge.
   const invoice = {
     status: 'REJECTED',
     auditTrail: [
-      decided(10, 'DISCREPANCY_CONFIRMED', 'open', 'confirmed'),
-      decided(20, 'DISCREPANCY_CONFIRMED', 'open', 'confirmed'),
-      decided(30, 'DISCREPANCY_DISMISSED', 'confirmed', 'dismissed'),
-      decided(40, 'DISCREPANCY_CLOSED', 'open', 'closed', 'the invoice was rejected'),
-      { ...decided(40, 'REJECTED', 'reconciled', 'rejected', 'Same invoice as first-scan.pdf'), id: 'r' },
+      decided(10, 'DISCREPANCY_CONFIRMED', 'open', 'confirmed', 'rate'),
+      decided(20, 'DISCREPANCY_CONFIRMED', 'open', 'confirmed', 'duplicate'),
+      decided(30, 'DISCREPANCY_DISMISSED', 'confirmed', 'dismissed', 'duplicate'),
+      decided(40, 'DISCREPANCY_CLOSED', 'open', 'closed', 'twice', 'the invoice was rejected'),
+      { ...decided(40, 'REJECTED', 'reconciled', 'rejected', null, 'Same invoice as first-scan.pdf'), id: 'r' },
     ],
   } as unknown as Detail;
   const findings = [
-    { type: 'RATE_MISMATCH' as const, resolvedAt: at(10) },
-    { type: 'DUPLICATE_INVOICE' as const, resolvedAt: at(30) },
-    { type: 'DUPLICATE_CHARGE' as const, resolvedAt: at(40) },
+    { id: 'rate', type: 'RATE_MISMATCH' as const },
+    { id: 'duplicate', type: 'DUPLICATE_INVOICE' as const },
+    { id: 'twice', type: 'DUPLICATE_CHARGE' as const },
   ];
   const words = (rows: ReturnType<typeof trailRows>) => rows.map(({ verb, notes }) => [verb, notes]);
   expect(words(trailRows(invoice, findings))).toEqual([
     ['Overcharge disputed', []],
-    // A decision a later one replaced matches no finding's time, so it names no kind.
-    ['Finding confirmed', []],
+    ['Duplicate confirmed', []],
     ['Marked not a duplicate', ['Changed from Duplicate confirmed']],
     ['Finding closed', ['The invoice was rejected']],
     ['Rejected', ['Status: Checked to Rejected', 'Same invoice as first-scan.pdf']],
   ]);
-  // With no possible duplicate on the invoice, every decision is a charge's, matched or not.
-  expect(trailRows(invoice, [findings[0]!])[1]!.verb).toBe('Overcharge disputed');
+  // A row that names no finding, as the sample's exported before the api named them: a charge's where the invoice has no
+  // possible duplicate, else a finding's.
+  const unnamed = { ...invoice, auditTrail: invoice.auditTrail.map((entry) => ({ ...entry, discrepancyId: undefined })) } as unknown as Detail;
+  expect(trailRows(unnamed, [findings[0]!])[1]!.verb).toBe('Overcharge disputed');
+  expect(trailRows(unnamed, findings)[1]!.verb).toBe('Finding confirmed');
 });
 
 test('a finding names its line as the invoice prints it, not by its charge code', () => {
@@ -130,9 +134,12 @@ test('a review reason is a sentence on the invoice and a short phrase in a list 
   expect(reviewReason('lines[0].amount: expected number', true)).toBe('Reading failed its checks');
 });
 
-test('a list row explains its status: open findings, the review or failure reason, or the step in progress', () => {
-  const row = { openDiscrepancyCount: 0, reviewReason: null, failureReason: null, findings: 0 };
-  expect(statusReason({ ...row, status: 'RECONCILED', openDiscrepancyCount: 2, findings: 2 })).toBe('2 open findings');
+test('a list row explains its status: what holds a checked invoice, the review or failure reason, or the step in progress', () => {
+  const row = { openDiscrepancyCount: 0, reviewReason: null, failureReason: null, findings: 0, hold: null };
+  // A possible duplicate is decided before the charges, and a confirmed one only waits to be rejected.
+  expect(statusReason({ ...row, status: 'RECONCILED', hold: 'POSSIBLE_DUPLICATE', openDiscrepancyCount: 2, findings: 2 })).toBe('Possible duplicate to decide');
+  expect(statusReason({ ...row, status: 'RECONCILED', hold: 'CONFIRMED_DUPLICATE', findings: 3 })).toBe('Waits to be rejected');
+  expect(statusReason({ ...row, status: 'RECONCILED', hold: 'OPEN_FINDINGS', openDiscrepancyCount: 2, findings: 2 })).toBe('2 open findings');
   expect(statusReason({ ...row, status: 'RECONCILED', openDiscrepancyCount: 1, findings: 3 })).toBe('1 open finding');
   expect(statusReason({ ...row, status: 'RECONCILED', findings: 1 })).toBe('Findings decided');
   expect(statusReason({ ...row, status: 'RECONCILED' })).toBe('Matched the rate card');
@@ -145,14 +152,29 @@ test('a list row explains its status: open findings, the review or failure reaso
 });
 
 test('a status reads in plain words; a checked invoice says whether billing issues wait or it is ready to approve', () => {
-  expect(statusLabel('RECONCILED', 2)).toBe('Billing issues (2)');
-  expect(statusLabel('RECONCILED', 0)).toBe('Ready to approve');
-  // A confirmed duplicate is never approved, whatever else is open.
-  expect(statusLabel('RECONCILED', 2, true)).toBe('Confirmed duplicate');
+  expect(statusLabel('RECONCILED', 2, 'OPEN_FINDINGS')).toBe('Billing issues (2)');
+  expect(statusLabel('RECONCILED', 0, null)).toBe('Ready to approve');
+  // A possible duplicate is one of the billing issues; a confirmed one is never approved, whatever else is open.
+  expect(statusLabel('RECONCILED', 2, 'POSSIBLE_DUPLICATE')).toBe('Billing issues (2)');
+  expect(statusLabel('RECONCILED', 2, 'CONFIRMED_DUPLICATE')).toBe('Confirmed duplicate');
+  expect(statusLabel('RECONCILED', 0, 'CONFIRMED_DUPLICATE')).toBe('Confirmed duplicate');
   expect(statusLabel('EXTRACTING', 0)).toBe('Reading');
   expect(statusLabel('EXTRACTED', 0)).toBe('Checking');
   expect(statusLabel('RECONCILING', 0)).toBe('Checking');
   expect(statusLabel('NEEDS_REVIEW', 1)).toBe('Reading needs a check');
+});
+
+test('a checked invoice is held by a confirmed duplicate first, then a possible one, then any open finding, as the api says', () => {
+  const charge = { type: 'RATE_MISMATCH' as const, status: 'OPEN' as const };
+  const duplicate = (status: 'OPEN' | 'CONFIRMED' | 'DISMISSED') => ({ type: 'DUPLICATE_INVOICE' as const, status });
+  expect(holdOf('RECONCILED', [charge, duplicate('CONFIRMED')])).toBe('CONFIRMED_DUPLICATE');
+  expect(holdOf('RECONCILED', [{ ...charge, status: 'DISMISSED' }, duplicate('CONFIRMED')])).toBe('CONFIRMED_DUPLICATE');
+  expect(holdOf('RECONCILED', [charge, duplicate('OPEN')])).toBe('POSSIBLE_DUPLICATE');
+  expect(holdOf('RECONCILED', [charge, duplicate('DISMISSED')])).toBe('OPEN_FINDINGS');
+  expect(holdOf('RECONCILED', [{ ...charge, status: 'CONFIRMED' }, duplicate('DISMISSED')])).toBeNull();
+  expect(holdOf('RECONCILED', [])).toBeNull();
+  // Only a checked invoice waits on a reviewer: once rejected, its confirmed duplicate holds nothing.
+  expect(holdOf('REJECTED', [duplicate('CONFIRMED')])).toBeNull();
 });
 
 test('an exact duplicate upload names the invoice it already is, by its number or else its file name, on its day in UTC', () => {
@@ -191,7 +213,7 @@ test('status counts give every tab, the invoices waiting for a decision and thos
   expect(totals.count('APPROVED')).toBe(20);
 });
 
-test('a list filter is a tab by its key, any other status without a tab, or all; checked invoices split by open findings', () => {
+test('a list filter is a tab by its key, any other status without a tab, or all; checked invoices split by what holds them', () => {
   expect(listFilter('billing_issues')).toMatchObject({ status: 'RECONCILED', open: true, label: 'Billing issues' });
   expect(listFilter('READY_TO_APPROVE')).toMatchObject({ status: 'RECONCILED', open: false, label: 'Ready to approve' });
   expect(listFilter('needs_review')).toMatchObject({ key: 'needs_review', status: 'NEEDS_REVIEW' });
@@ -199,7 +221,7 @@ test('a list filter is a tab by its key, any other status without a tab, or all;
   expect(listFilter('reconciled')).toEqual({ key: 'reconciled', status: 'RECONCILED', label: 'Checked' });
   expect(listFilter('extracting')).toMatchObject({ key: 'extracting', status: 'EXTRACTING' });
   expect([listFilter('nonsense'), listFilter(undefined)]).toEqual([FILTERS[0], FILTERS[0]]);
-  // Findings are open only on checked invoices: those with one are billing issues, the rest are ready to approve.
+  // Of 8 checked invoices a reviewer holds 3 (an open finding, or a confirmed duplicate): billing issues; 5 are ready.
   const totals = statusTotals([
     { status: 'RECONCILED', count: 8 },
     { status: 'NEEDS_REVIEW', count: 4 },
@@ -283,11 +305,12 @@ test('the audit trail reads as plain words: who read it with which model and how
         action: 'DISCREPANCY_CONFIRMED' as const,
         detail: 'Contract rate applies',
         changes: [{ field: 'status', from: 'open', to: 'confirmed' }],
+        discrepancyId: 'fuel',
       },
     ],
   } as unknown as Detail;
   const words = (rows: ReturnType<typeof trailRows>) => rows.map(({ verb, rest, notes }) => [verb, rest, notes]);
-  expect(words(trailRows(invoice, [{ type: 'RATE_MISMATCH', resolvedAt: at(9) }]))).toEqual([
+  expect(words(trailRows(invoice, [{ id: 'fuel', type: 'RATE_MISMATCH' }]))).toEqual([
     ['Received', 'by the pipeline', ['g066.pdf']],
     ['Reading started', '', []],
     ['Read', 'by Gemini 3.5 Flash-Lite in 3.3 s', ['after 1 repair', 'Carrier read as “BRAMBLEWOOD EXPRESS”, matched Bramblewood Express after normalizing case and spacing']],
@@ -324,16 +347,28 @@ test('the audit trail reads as plain words: who read it with which model and how
 
 test('a recent upload shows its step while in flight, then how long it took and the result', () => {
   const now = Date.parse(at(1.4));
-  const base = { createdAt: at(0), currency: 'USD', totalCents: 173_180, reviewReason: null, failureReason: null, discrepancies: { edges: [] }, auditTrail: [] };
+  const base = { createdAt: at(0), currency: 'USD', totalCents: 173_180, reviewReason: null, failureReason: null, hold: null, discrepancies: { edges: [] }, auditTrail: [] };
   expect(uploadState({ ...base, status: 'EXTRACTING' }, now)).toEqual({ step: 1, result: 'Working, 1.4 s so far', tone: 'faint' });
   expect(uploadState({ ...base, status: 'RECEIVED' }, now).step).toBe(1);
   expect(uploadState({ ...base, status: 'RECONCILING' }, now).step).toBe(2);
   const settled = { ...base, auditTrail: [{ id: 'x', at: at(3.4), action: 'STATUS_CHANGED' as const, changes: [{ field: 'status', to: 'reconciled' }] }] };
   const finding = { node: { id: 'f', status: 'OPEN' as const, billedCents: 39_680, expectedCents: 25_220 } };
-  expect(uploadState({ ...settled, status: 'RECONCILED', discrepancies: { edges: [finding] } }, now)).toEqual({
+  expect(uploadState({ ...settled, status: 'RECONCILED', hold: 'OPEN_FINDINGS', discrepancies: { edges: [finding] } }, now)).toEqual({
     done: 'Done in 3.4 s',
     result: 'Billing issues (1), +$144.60 over the rate card',
     tone: 'accent',
+  });
+  // A possible duplicate bills nothing over the rate card, and still holds the invoice back; a confirmed one only waits
+  // to be rejected.
+  const duplicate = { node: { id: 'd', status: 'OPEN' as const, billedCents: 0, expectedCents: 0 } };
+  expect(uploadState({ ...settled, status: 'RECONCILED', hold: 'POSSIBLE_DUPLICATE', discrepancies: { edges: [duplicate] } }, now)).toMatchObject({
+    result: 'Billing issues (1), possible duplicate to decide',
+    tone: 'accent',
+  });
+  const confirmed = { node: { ...duplicate.node, status: 'CONFIRMED' as const } };
+  expect(uploadState({ ...settled, status: 'RECONCILED', hold: 'CONFIRMED_DUPLICATE', discrepancies: { edges: [confirmed] } }, now)).toMatchObject({
+    result: 'Confirmed duplicate, waits to be rejected',
+    tone: 'warn',
   });
   // A disputed finding still stands over the rate card, but no billing issue is left open.
   const disputed = { node: { ...finding.node, status: 'CONFIRMED' as const } };

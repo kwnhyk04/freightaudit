@@ -1,4 +1,4 @@
-import type { AuditAction, DiscrepancyStatus, DiscrepancyType, InvoiceDecision, InvoiceQuery, InvoiceStatus, RecentUploadsQuery } from '@freightaudit/contracts/graphql';
+import type { AuditAction, DiscrepancyStatus, DiscrepancyType, InvoiceDecision, InvoiceHold, InvoiceQuery, InvoiceStatus, RecentUploadsQuery } from '@freightaudit/contracts/graphql';
 import { type FindingStatus, formatMoney, lineExpectedCents, overchargeCents, reviewAmounts } from '@freightaudit/domain';
 
 // The words the UI uses for the API's codes. Color always comes with a word, never alone.
@@ -18,8 +18,19 @@ export const STATUS: Record<InvoiceStatus, { label: string; tone: Tone; reason?:
 };
 // A status pill's words; a checked invoice says whether it is a confirmed duplicate, which is never approved, billing
 // issues wait for a decision, or it is ready to approve.
-export const statusLabel = (status: InvoiceStatus, open: number, duplicate = false) =>
-  status !== 'RECONCILED' ? STATUS[status].label : duplicate ? 'Confirmed duplicate' : open > 0 ? `Billing issues (${open})` : 'Ready to approve';
+export const statusLabel = (status: InvoiceStatus, open: number, hold: InvoiceHold | null = null) =>
+  status !== 'RECONCILED' ? STATUS[status].label : hold === 'CONFIRMED_DUPLICATE' ? 'Confirmed duplicate' : open > 0 ? `Billing issues (${open})` : 'Ready to approve';
+// What holds a checked invoice back from approval, most pressing first, by the api's rule for Invoice.hold: for the
+// pages that read every finding instead of that field, an invoice's own and the sample's.
+export function holdOf(status: InvoiceStatus, findings: readonly { type: DiscrepancyType; status: DiscrepancyStatus }[]): InvoiceHold | null {
+  if (status !== 'RECONCILED') return null;
+  const duplicate = (decision: DiscrepancyStatus) => findings.some((finding) => finding.type === 'DUPLICATE_INVOICE' && finding.status === decision);
+  if (duplicate('CONFIRMED')) return 'CONFIRMED_DUPLICATE';
+  if (duplicate('OPEN')) return 'POSSIBLE_DUPLICATE';
+  return findings.some((finding) => finding.status === 'OPEN') ? 'OPEN_FINDINGS' : null;
+}
+// Why a possible duplicate holds a checked invoice, in a list's words; open findings say how many instead.
+const HELD: Partial<Record<InvoiceHold, string>> = { CONFIRMED_DUPLICATE: 'Waits to be rejected', POSSIBLE_DUPLICATE: 'Possible duplicate to decide' };
 // A status from a URL parameter such as ?status=needs_review; anything else means all.
 export const statusParam = (raw: string | undefined) => {
   const upper = raw?.toUpperCase();
@@ -32,12 +43,13 @@ export const firstParams = async (params: Promise<Record<string, string | string
 export const IN_FLIGHT = new Set<InvoiceStatus>(['RECEIVED', 'EXTRACTING', 'EXTRACTED', 'RECONCILING']);
 
 // The list's filters, in the order a reviewer works through them: each tab's key in ?status=, the invoices it holds and
-// the line that says what they are. A checked invoice has billing issues while a finding is open, else it is ready.
+// the line that says what they are. A checked invoice has billing issues while a reviewer holds it (Invoice.hold), else
+// it is ready; open is the api's hasOpenFindings, which goes by that hold.
 export type Filter = { key: string; status?: InvoiceStatus; open?: boolean; label: string; note?: string };
 export const FILTERS: Filter[] = [
   { key: 'all', label: 'All', note: 'Every invoice, newest first.' },
   { key: 'needs_review', status: 'NEEDS_REVIEW', label: 'Reading needs a check', note: "The AI's reading matched no shipment or failed its checks; a reviewer corrects or rejects it." },
-  { key: 'billing_issues', status: 'RECONCILED', open: true, label: 'Billing issues', note: 'Checked against the rate card, with findings to decide before approval.' },
+  { key: 'billing_issues', status: 'RECONCILED', open: true, label: 'Billing issues', note: 'Checked against the rate card, with findings to decide or a confirmed duplicate to reject.' },
   { key: 'ready_to_approve', status: 'RECONCILED', open: false, label: 'Ready to approve', note: 'Checked against the rate card, with no finding left to decide.' },
   { key: 'failed', status: 'FAILED', label: 'Failed', note: 'Processing used up its retries; each invoice shows why.' },
   { key: 'approved', status: 'APPROVED', label: 'Approved', note: 'Approved for payment.' },
@@ -140,9 +152,19 @@ export function reviewReason(code: string | null | undefined, short = false) {
   return say("The model's reading failed validation.", 'Reading failed its checks');
 }
 
-// The line under a list row's status pill: open findings, the review or failure reason, or the step in progress.
-export function statusReason(row: { status: InvoiceStatus; openDiscrepancyCount: number; reviewReason: string | null; failureReason: string | null; findings: number }) {
+// The line under a list row's status pill: what holds a checked invoice, the review or failure reason, or the step in
+// progress.
+export function statusReason(row: {
+  status: InvoiceStatus;
+  openDiscrepancyCount: number;
+  reviewReason: string | null;
+  failureReason: string | null;
+  findings: number;
+  hold: InvoiceHold | null;
+}) {
   if (row.status === 'RECONCILED') {
+    const held = row.hold && HELD[row.hold];
+    if (held) return held;
     if (row.openDiscrepancyCount > 0) return plural(row.openDiscrepancyCount, 'open finding');
     return row.findings > 0 ? 'Findings decided' : 'Matched the rate card';
   }
@@ -157,13 +179,13 @@ export function statusTotals(counts: { status: InvoiceStatus; count: number }[])
   const sum = (statuses: Iterable<InvoiceStatus>) => [...statuses].reduce((total, status) => total + count(status), 0);
   return { count, all: sum(Object.keys(STATUS) as InvoiceStatus[]), waiting: sum(['RECONCILED', 'NEEDS_REVIEW']), processing: sum(IN_FLIGHT) };
 }
-// A tab's count: all invoices, or a status's. Findings are open only on checked invoices, so those with one are the
-// billing issues and the other checked invoices are ready to approve.
-export function filterCount(filter: Filter, totals: ReturnType<typeof statusTotals>, withOpenFindings: number) {
+// A tab's count: all invoices, or a status's. held is the checked invoices a reviewer holds (invoiceSummary's
+// invoicesHeld), the billing issues; the other checked invoices are ready to approve.
+export function filterCount(filter: Filter, totals: ReturnType<typeof statusTotals>, held: number) {
   if (!filter.status) return totals.all;
   const count = totals.count(filter.status);
   if (filter.open === undefined) return count;
-  return filter.open ? withOpenFindings : Math.max(0, count - withOpenFindings);
+  return filter.open ? held : Math.max(0, count - held);
 }
 
 const DAY = 86_400_000;
@@ -259,15 +281,13 @@ const DECIDED: Record<Kind, Record<'DISCREPANCY_CONFIRMED' | 'DISCREPANCY_DISMIS
   duplicate: { DISCREPANCY_CONFIRMED: 'Duplicate confirmed', DISCREPANCY_DISMISSED: 'Marked not a duplicate' },
   finding: { DISCREPANCY_CONFIRMED: 'Finding confirmed', DISCREPANCY_DISMISSED: 'Finding dismissed' },
 };
-type Decided = { type: DiscrepancyType; resolvedAt: string | null };
-// The api writes a finding's resolvedAt and its audit row in one transaction, so a row decided the finding last decided
-// at its moment. Without a possible duplicate every decision is a charge's; a row matching no finding, one a later
-// decision replaced, names no kind. ponytail: matched by time, as AuditEntry has no finding id; add one to the api if a
-// row must name its finding.
+type Decided = { id: string; type: DiscrepancyType };
+// A row names the finding it decided or closed (discrepancyId). One that names none, as the sample's rows exported
+// before the api named them, is a charge's on an invoice without a possible duplicate; otherwise it names no kind.
 function decidedKind(entry: Entry, findings: readonly Decided[]): Kind {
-  if (!findings.some((finding) => finding.type === 'DUPLICATE_INVOICE')) return 'charge';
-  const kinds = new Set(findings.filter((finding) => finding.resolvedAt === entry.at).map((finding): Kind => (finding.type === 'DUPLICATE_INVOICE' ? 'duplicate' : 'charge')));
-  return kinds.size === 1 ? [...kinds][0]! : 'finding';
+  const finding = findings.find((each) => each.id === entry.discrepancyId);
+  if (finding) return finding.type === 'DUPLICATE_INVOICE' ? 'duplicate' : 'charge';
+  return findings.some((each) => each.type === 'DUPLICATE_INVOICE') ? 'finding' : 'charge';
 }
 const decidedWord = (status: string, kind: Kind) =>
   kind === 'finding' ? capital(status) : decisionLabel(status.toUpperCase() as DiscrepancyStatus, kind === 'duplicate' ? 'DUPLICATE_INVOICE' : undefined).label;
@@ -343,8 +363,12 @@ export function uploadState(upload: Recent, now: number): UploadState {
     const findings = upload.discrepancies.edges.map(({ node }) => node);
     const { standingCents } = invoiceAmounts(upload.totalCents ?? 0, findings);
     const open = findings.filter((finding) => finding.status === 'OPEN').length;
+    const label = statusLabel('RECONCILED', open, upload.hold);
+    // A possible duplicate bills nothing over the rate card, so its hold says why it waits.
+    const held = upload.hold && HELD[upload.hold];
+    if (held) return { done, result: `${label}, ${held.toLowerCase()}`, tone: upload.hold === 'CONFIRMED_DUPLICATE' ? 'warn' : 'accent' };
     return standingCents > 0n
-      ? { done, result: `${statusLabel('RECONCILED', open)}, +${formatMoney(standingCents, upload.currency)} over the rate card`, tone: 'accent' }
+      ? { done, result: `${label}, +${formatMoney(standingCents, upload.currency)} over the rate card`, tone: 'accent' }
       : { done, result: 'Ready to approve, matched the rate card', tone: 'ok' };
   }
   if (upload.status === 'NEEDS_REVIEW') return { done, result: `${STATUS.NEEDS_REVIEW.label}: ${reviewReason(upload.reviewReason, true)}`, tone: 'warn' };

@@ -1,4 +1,4 @@
-import type { InvoiceStatus } from '@freightaudit/contracts/graphql';
+import type { InvoiceHold, InvoiceStatus } from '@freightaudit/contracts/graphql';
 import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -6,10 +6,10 @@ import { STATUS, statusLabel, type Tone } from '../lib/labels.ts';
 
 export const Badge = ({ tone, children }: { tone: Tone; children: ReactNode }) => <span className={`badge ${tone}`}>{children}</span>;
 
-// open is the invoice's open findings, which a checked invoice's pill counts.
-// duplicate: a checked invoice's possible duplicate is confirmed, so it waits to be rejected.
-export const StatusBadge = ({ status, open, duplicate = false }: { status: InvoiceStatus; open: number; duplicate?: boolean }) => (
-  <Badge tone={duplicate && status === 'RECONCILED' ? 'warn' : STATUS[status].tone}>{statusLabel(status, open, duplicate)}</Badge>
+// open is the invoice's open findings, which a checked invoice's pill counts; hold is what holds it back from approval,
+// and a confirmed duplicate only waits to be rejected.
+export const StatusBadge = ({ status, open, hold = null }: { status: InvoiceStatus; open: number; hold?: InvoiceHold | null }) => (
+  <Badge tone={hold === 'CONFIRMED_DUPLICATE' && status === 'RECONCILED' ? 'warn' : STATUS[status].tone}>{statusLabel(status, open, hold)}</Badge>
 );
 
 // Amounts arrive as integer cents, or as bigint from the domain's review helpers, and are only formatted here; the UI

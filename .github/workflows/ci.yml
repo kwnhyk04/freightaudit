@@ -184,7 +184,7 @@ jobs:
           diff <(schema fresh) <(schema upgraded)
 
   # The eval calls Gemini and Groq live, on quotas other projects share, so it runs only when a pull request changes
-  # what it measures: extraction code, prompts, model settings or eval cases.
+  # what it measures: extraction code, prompts and the charge codes they list, model settings or eval cases.
   eval-changes:
     name: eval needed
     # Fork and Dependabot PRs get no Actions secrets.
@@ -207,7 +207,7 @@ jobs:
       - name: Extraction code, prompts, model settings or eval cases changed
         id: paths
         run: |
-          changed=$(git diff --name-only HEAD^1 HEAD -- packages/llm apps/worker/src/extract.ts packages/config/src/env.ts evals)
+          changed=$(git diff --name-only HEAD^1 HEAD -- packages/llm packages/db/src/reference.ts apps/worker/src/extract.ts packages/config/src/env.ts evals)
           echo "${changed:-Nothing the eval measures changed.}"
           echo "run=$([ -n "$changed" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 

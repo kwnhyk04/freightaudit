@@ -44,6 +44,15 @@ async function duplicateOf(filename: string) {
 }
 const documentHead = (request: APIRequestContext, id: string) =>
   request.head(`http://127.0.0.1:${env.API_PORT}/v1/invoices/${id}/document`, { headers: { 'x-api-key': env.API_KEY! } });
+// Approves every open charge on the page, one at a time.
+async function approveCharges(page: Page) {
+  const approve = page.getByRole('button', { name: 'Approve charge', exact: true });
+  while ((await approve.count()) > 0) {
+    const left = await approve.count();
+    await approve.first().click();
+    await expect(approve).toHaveCount(left - 1);
+  }
+}
 
 test.describe('login', () => {
   test('pages need a session; the cookie is httpOnly, Secure and SameSite=Lax; the browser never calls the API; sign-out drops the cookie and the cache and refuses another site', async ({ browser }) => {
@@ -251,12 +260,7 @@ test.describe('review', () => {
     await page.getByLabel('Note', { exact: true }).first().fill('Contract rate applies');
     await page.getByRole('button', { name: 'Dispute', exact: true }).first().click();
     await expect(page.getByText('Note: Contract rate applies')).toBeVisible();
-    const approve = page.getByRole('button', { name: 'Approve charge', exact: true });
-    while ((await approve.count()) > 0) {
-      const left = await approve.count();
-      await approve.first().click();
-      await expect(approve).toHaveCount(left - 1);
-    }
+    await approveCharges(page);
     await page.getByRole('button', { name: 'Approve for payment' }).click();
     await expect(badge(page, 'Approved')).toBeVisible();
   });
@@ -400,18 +404,30 @@ test.describe('list', () => {
     }
   });
 
-  test('checked invoices split into billing issues and ready to approve, each tab with its count and only its invoices', async ({ page }) => {
+  test('checked invoices split into billing issues and ready to approve, each tab with its count and only its invoices, a held one saying why', async ({ page }) => {
+    // A confirmed duplicate with every charge decided has nothing open, and still waits to be rejected. Decided on its
+    // page, so the web's cached counts are forgotten as after any decision.
+    const held = await withDuplicate();
+    await page.goto(`/invoices/${held.id}`);
+    const duplicate = page.locator('.findings article', { hasText: 'Possible duplicate invoice' });
+    await duplicate.getByRole('button', { name: 'Confirm duplicate' }).click();
+    await expect(duplicate.locator('.badge')).toHaveText('Duplicate confirmed');
+    await approveCharges(page);
+    // A reviewer holds a checked invoice while a finding is open or its possible duplicate is confirmed.
     const [split] = await db<{ issues: number; ready: number }>(
-      `SELECT count(*) FILTER (WHERE open)::int AS issues, count(*) FILTER (WHERE NOT open)::int AS ready FROM (SELECT EXISTS (
-         SELECT 1 FROM discrepancies d WHERE d.invoice_id = i.id AND d.status = 'open') AS open FROM invoices i WHERE i.status = 'reconciled') checked`,
+      `SELECT count(*) FILTER (WHERE held)::int AS issues, count(*) FILTER (WHERE NOT held)::int AS ready FROM (SELECT EXISTS (
+         SELECT 1 FROM discrepancies d WHERE d.invoice_id = i.id AND (d.status = 'open' OR (d.type = 'duplicate_invoice' AND d.status = 'confirmed'))) AS held
+       FROM invoices i WHERE i.status = 'reconciled') checked`,
     );
     const tabs = page.getByRole('navigation', { name: 'Filter by status' });
     for (const [label, key, count, words] of [
-      ['Billing issues', 'billing_issues', split!.issues, /^Billing issues \(\d+\)$/],
+      ['Billing issues', 'billing_issues', split!.issues, /^(Billing issues \(\d+\)|Confirmed duplicate)$/],
       ['Ready to approve', 'ready_to_approve', split!.ready, /^Ready to approve$/],
     ] as const) {
       await page.goto('/invoices');
-      await tabs.getByRole('link', { name: `${label} ${count} invoices` }).click();
+      const tab = tabs.getByRole('link', { name: `${label} ${count} invoices` });
+      await expect(tab).toBeVisible();
+      await tab.click();
       await expect(page).toHaveURL(new RegExp(`[?]status=${key}$`));
       await expect(tabs.getByRole('link', { name: new RegExp(`^${label}`) })).toHaveAttribute('aria-current', 'page');
       await expect(page.getByRole('navigation', { name: 'Pages' })).toContainText(`of ${count}`);
@@ -419,6 +435,15 @@ test.describe('list', () => {
       await expect(badges.first()).toBeVisible();
       for (const text of await badges.allTextContents()) expect(text).toMatch(words);
     }
+    // The held duplicate's row says what it is and why it waits; Ready to approve never lists it.
+    const [invoice] = await db<{ number: string }>(`SELECT invoice_number AS number FROM invoices WHERE id = '${held.id}'`);
+    const row = page.getByRole('row').filter({ has: page.locator(`a[href="/invoices/${held.id}"]`) });
+    await page.goto(`/invoices?status=billing_issues&q=${invoice!.number}`);
+    await expect(row.locator('.badge')).toHaveText('Confirmed duplicate');
+    await expect(row.locator('.reason')).toHaveText('Waits to be rejected');
+    await page.goto(`/invoices?status=ready_to_approve&q=${invoice!.number}`);
+    await expect(page.getByRole('heading', { name: 'Invoices', level: 1 })).toBeVisible();
+    await expect(row).toHaveCount(0);
   });
 
   test('the Search button runs the same search as Enter, keeps the tab, and shows its focus', async ({ page }) => {
@@ -440,6 +465,19 @@ test.describe('list', () => {
 });
 
 test.describe('document', () => {
+  test('the charges table shows every column, Difference included, from 1280 px; on a phone only the table scrolls sideways', async ({ page }) => {
+    // The recorded fixture's charges are among the widest: INSIDE_DELIVERY, an uncontracted charge and a four-digit total.
+    const [invoice] = await db<{ id: string }>("SELECT id FROM invoices WHERE filename = 'digital.pdf' LIMIT 1");
+    const charges = page.locator('.table-wrap', { has: page.locator('table.charges') });
+    for (const width of [1440, 1280, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`/invoices/${invoice!.id}`);
+      await expect(charges).toBeVisible();
+      if (width >= 1280) expect(await charges.evaluate((box) => box.scrollWidth - box.clientWidth), `the charges table's overflow at ${width} px`).toBe(0);
+      else expect(await page.evaluate(() => document.documentElement.scrollWidth), `the page's width at ${width} px`).toBeLessThanOrEqual(width);
+    }
+  });
+
   test('zoom widens the page past the panel, which scrolls from its left edge, without fetching the document again', async ({ page }) => {
     const [invoice] = await db<{ id: string }>("SELECT id FROM invoices WHERE filename = 'digital.pdf' LIMIT 1");
     await page.goto(`/invoices/${invoice!.id}`);
