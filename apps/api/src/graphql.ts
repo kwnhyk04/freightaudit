@@ -144,7 +144,7 @@ async function auditTrail(id: string, loaders: Loaders): Promise<AuditEntry[]> {
   if (!invoice) return [];
   const read = extraction ? toExtraction(extraction) : undefined;
   const entries: AuditEntry[] = [
-    { id: `received-${id}`, at: invoice.createdAt.toISOString(), actor: null, action: 'RECEIVED', detail: invoice.filename, changes: [] },
+    { id: `received-${id}`, at: invoice.createdAt.toISOString(), actor: null, action: 'RECEIVED', detail: invoice.filename, changes: [], discrepancyId: null },
   ];
   for (const event of events) {
     const changes = (Array.isArray(event.changes) ? event.changes : []) as Change[];
@@ -159,7 +159,15 @@ async function auditTrail(id: string, loaders: Loaders): Promise<AuditEntry[]> {
       const queue = move.from === 'extracting' ? 'extract' : 'reconcile';
       detail = letters.find((letter) => letter.queue === queue && letter.createdAt <= event.createdAt)?.error ?? null;
     }
-    entries.push({ id: event.id, at: event.createdAt.toISOString(), actor: event.actor, action: ACTIONS[event.action] ?? 'STATUS_CHANGED', detail, changes });
+    entries.push({
+      id: event.id,
+      at: event.createdAt.toISOString(),
+      actor: event.actor,
+      action: ACTIONS[event.action] ?? 'STATUS_CHANGED',
+      detail,
+      changes,
+      discrepancyId: event.discrepancyId,
+    });
   }
   return entries;
 }
@@ -175,7 +183,10 @@ function searchFor(raw: string | null | undefined) {
 }
 
 // An invoice on which an open discrepancy waits for a decision.
-const waiting = sql`EXISTS (SELECT 1 FROM ${discrepancies} WHERE ${discrepancies.invoiceId} = ${invoices.id} AND ${discrepancies.status} = 'open')`;
+// A reviewer holds an invoice while a finding is open, or while a checked one's confirmed possible duplicate waits to be
+// rejected (Invoice.hold): the invoices filter hasOpenFindings and the summary's invoicesHeld go by it.
+const held = sql`EXISTS (SELECT 1 FROM ${discrepancies} WHERE ${discrepancies.invoiceId} = ${invoices.id} AND (${discrepancies.status} = 'open'
+  OR (${discrepancies.type} = 'duplicate_invoice' AND ${discrepancies.status} = 'confirmed' AND ${invoices.status} = 'reconciled')))`;
 
 // Midnight UTC of a YYYY-MM-DD day, refused unless it is a real one.
 function dayStart(value: string | null | undefined, name: string) {
@@ -223,7 +234,7 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
           eq(invoices.tenantId, tenantId),
           args.status ? eq(invoices.status, args.status.toLowerCase() as typeof invoices.$inferSelect.status) : undefined,
           searchFor(args.search),
-          args.hasOpenFindings == null ? undefined : args.hasOpenFindings ? waiting : not(waiting),
+          args.hasOpenFindings == null ? undefined : args.hasOpenFindings ? held : not(held),
         );
         const rows = await db
           .select(graphqlInvoiceColumns)
@@ -261,6 +272,7 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
               count: count(),
               recent: sql<number>`count(*) FILTER (WHERE ${invoices.createdAt} > now() - interval '7 days')`.mapWith(Number),
               clean: sql<number>`count(*) FILTER (WHERE ${reconciledClean})`.mapWith(Number),
+              held: sql<number>`count(*) FILTER (WHERE ${invoices.status} = 'reconciled' AND ${held})`.mapWith(Number),
             })
             .from(invoices)
             .where(and(eq(invoices.tenantId, tenantId), scope))
@@ -284,12 +296,13 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
             .where(and(eq(deadLetters.tenantId, tenantId), isNull(deadLetters.replayedAt), scope)),
         ]);
         const byStatus = new Map(statuses.map((row) => [row.status, row.count]));
-        const added = (field: 'recent' | 'clean') => statuses.reduce((total, row) => total + row[field], 0);
+        const added = (field: 'recent' | 'clean' | 'held') => statuses.reduce((total, row) => total + row[field], 0);
         return {
           statusCounts: invoiceStatus.enumValues.map((status) => ({ status: upper<InvoiceStatus>(status), count: byStatus.get(status) ?? 0 })),
           receivedLast7Days: added('recent'),
           openFindings: open!.count,
           invoicesWithOpenFindings: open!.invoices,
+          invoicesHeld: added('held'),
           oldestOpenFindingAt: iso(open!.oldest),
           openOverchargeCents: overchargeCents({ billedCents: BigInt(open!.billed ?? 0), expectedCents: BigInt(open!.expected ?? 0) }),
           matchedRateCard: added('clean'),
@@ -373,6 +386,7 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
         return connection(rows, first, toDiscrepancy);
       },
       openDiscrepancyCount: (parent, _, { loaders }) => loaders.openDiscrepancyCount.load(parent.id!),
+      hold: (parent, _, { loaders }) => (parent.status === 'RECONCILED' ? loaders.hold.load(parent.id!) : null),
       extraction: async (parent, _, { loaders }) => {
         const row = await loaders.extraction.load(parent.id!);
         return row && toExtraction(row);

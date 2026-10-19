@@ -50,6 +50,8 @@ export type AuditEntry = {
   changes: Array<FieldChange>;
   /** Text that goes with the entry: a reason, a note, a failure message, a review reason or how the carrier matched. */
   detail?: Maybe<Scalars['String']['output']>;
+  /** The discrepancy the entry decided or closed; null for every other entry. */
+  discrepancyId?: Maybe<Scalars['ID']['output']>;
   id: Scalars['ID']['output'];
 };
 
@@ -234,6 +236,8 @@ export type Invoice = Node & {
   failureReason?: Maybe<Scalars['String']['output']>;
   /** Original upload file name. */
   filename: Scalars['String']['output'];
+  /** What holds a checked invoice back from approval; null when nothing does, or when it is not checked. */
+  hold?: Maybe<InvoiceHold>;
   id: Scalars['ID']['output'];
   issuedOn?: Maybe<Scalars['Date']['output']>;
   /** Charge lines in invoice order. */
@@ -289,6 +293,15 @@ export type InvoiceEdge = {
   node: Invoice;
 };
 
+/** Why a checked invoice waits on a reviewer before approval, most pressing first. */
+export type InvoiceHold =
+  /** A possible duplicate was confirmed: the invoice is never approved and waits to be rejected. */
+  | 'CONFIRMED_DUPLICATE'
+  /** A discrepancy waits for a decision. */
+  | 'OPEN_FINDINGS'
+  /** A possible duplicate is open; it is decided on its own, before the charges. */
+  | 'POSSIBLE_DUPLICATE';
+
 /** Processing status of an invoice. */
 export type InvoiceStatus =
   /** Approved for payment. Final. */
@@ -320,6 +333,8 @@ export type InvoiceStatusCount = {
 /** Counts and totals across the tenant's invoices. */
 export type InvoiceSummary = {
   __typename?: 'InvoiceSummary';
+  /** Checked invoices a reviewer holds: an open discrepancy, or a possible duplicate confirmed and waiting to be rejected. */
+  invoicesHeld: Scalars['Int']['output'];
   /** Invoices with at least one open discrepancy. */
   invoicesWithOpenFindings: Scalars['Int']['output'];
   /** Reconciled invoices with no discrepancy at all: every line matched the rate card, and they wait for approval. */
@@ -459,7 +474,8 @@ export type Query = {
   /**
    * Invoices, newest first: a page going forward (first, after) or back (last, before), filtered by status, by search,
    * which matches the invoice number, PRO number or carrier name, ignoring case, and by hasOpenFindings: true keeps the
-   * invoices with an open discrepancy, false those with none.
+   * invoices a reviewer holds (an open discrepancy, or a checked invoice whose possible duplicate is confirmed and waits to
+   * be rejected; see Invoice.hold), false the others.
    */
   invoices: InvoiceConnection;
 };
@@ -649,6 +665,7 @@ export type ResolversTypes = {
   InvoiceConnection: ResolverTypeWrapper<Omit<InvoiceConnection, 'edges'> & { edges: Array<ResolversTypes['InvoiceEdge']> }>;
   InvoiceDecision: InvoiceDecision;
   InvoiceEdge: ResolverTypeWrapper<Omit<InvoiceEdge, 'node'> & { node: ResolversTypes['Invoice'] }>;
+  InvoiceHold: InvoiceHold;
   InvoiceStatus: InvoiceStatus;
   InvoiceStatusCount: ResolverTypeWrapper<InvoiceStatusCount>;
   InvoiceSummary: ResolverTypeWrapper<InvoiceSummary>;
@@ -705,6 +722,7 @@ export type AuditEntryResolvers<ContextType = any, ParentType extends ResolversP
   at?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   changes?: Resolver<Array<ResolversTypes['FieldChange']>, ParentType, ContextType>;
   detail?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  discrepancyId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
 };
 
@@ -810,6 +828,7 @@ export type InvoiceResolvers<ContextType = any, ParentType extends ResolversPare
   extraction?: Resolver<Maybe<ResolversTypes['Extraction']>, ParentType, ContextType>;
   failureReason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   filename?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  hold?: Resolver<Maybe<ResolversTypes['InvoiceHold']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   issuedOn?: Resolver<Maybe<ResolversTypes['Date']>, ParentType, ContextType>;
   lineItems?: Resolver<Array<ResolversTypes['LineItem']>, ParentType, ContextType>;
@@ -842,6 +861,7 @@ export type InvoiceStatusCountResolvers<ContextType = any, ParentType extends Re
 };
 
 export type InvoiceSummaryResolvers<ContextType = any, ParentType extends ResolversParentTypes['InvoiceSummary'] = ResolversParentTypes['InvoiceSummary']> = {
+  invoicesHeld?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   invoicesWithOpenFindings?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   matchedRateCard?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   oldestOpenFindingAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;

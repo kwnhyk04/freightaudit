@@ -334,6 +334,13 @@ From the approved design doc:
     - The summary's carrier and date arguments stay unused: the list has no carrier or date filter for them.
   - Reason: the user's C4b request; each choice is the smallest that fits it. An api field naming the finding would end the matching by time, but it needs an api change and a Release first.
 
+- 2026-10-19: C4c decisions (the agent's, for the user to confirm at review).
+  - `hasOpenFindings` now goes by what holds an invoice, an open finding or a checked invoice's confirmed duplicate, rather than adding a new argument. So today's web lists the invoice right with no web change. Billing issues shows such an invoice; Ready to approve never does.
+  - A third field, `invoiceSummary.invoicesHeld`, keeps the split tabs' counts equal to their lists once C4d reads it.
+  - `MAX_COST` keeps one field of room for the next web release, since the api ships first. The limits test pins it as the measured largest plus `NEXT`, so the room is visible and goes back to 0 in C4d.
+  - The eval smoke runs when `packages/llm`, `apps/worker/src/extract.ts`, `packages/config/src/env.ts` or `evals/` change, judged by a git diff in a small job, with no new action. A change to `ci.yml` alone does not run it.
+  - Reason: the user's C4c request; the api goes first, so nothing the web sends today changes.
+
 ## Preferences and Instructions
 
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).

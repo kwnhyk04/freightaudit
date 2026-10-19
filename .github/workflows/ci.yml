@@ -183,13 +183,40 @@ jobs:
           schema() { docker exec "$PG_CONTAINER" pg_dump -U ci --schema-only --no-owner --restrict-key=ci "$1"; }
           diff <(schema fresh) <(schema upgraded)
 
-  eval-smoke:
-    name: eval smoke (20 cases)
+  # The eval calls Gemini and Groq live, on quotas other projects share, so it runs only when a pull request changes
+  # what it measures: extraction code, prompts, model settings or eval cases.
+  eval-changes:
+    name: eval needed
     # Fork and Dependabot PRs get no Actions secrets.
     if: >-
       github.event_name == 'pull_request'
       && github.event.pull_request.head.repo.full_name == github.repository
       && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      run: ${{ steps.paths.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The pull request's merge commit and the base it merges into, its first parent.
+          fetch-depth: 2
+      - name: Extraction code, prompts, model settings or eval cases changed
+        id: paths
+        run: |
+          changed=$(git diff --name-only HEAD^1 HEAD -- packages/llm apps/worker/src/extract.ts packages/config/src/env.ts evals)
+          echo "${changed:-Nothing the eval measures changed.}"
+          echo "run=$([ -n "$changed" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  eval-smoke:
+    name: eval smoke (20 cases)
+    needs: eval-changes
+    # A job skipped by its condition reports success, so a required eval check never blocks a pull request that leaves
+    # all of it alone.
+    if: needs.eval-changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
