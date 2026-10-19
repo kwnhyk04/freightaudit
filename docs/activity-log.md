@@ -19,6 +19,38 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-19: One hold rule, checked on both sides: `holdOf` in contracts, the api parity test, the oasdiff lines deleted (branch hold-parity from main `3e96861`, not committed)
+
+- **Setup:** the docs PR merged as `3e96861` (#32), and local main matched `origin/main`. Then `git checkout -b hold-parity main`.
+- **Move:** `holdOf` and its unit test went from `apps/web/lib/labels.ts` and `labels.test.ts` to `packages/contracts/src/hold.ts` and `hold.test.ts`, exported as `@freightaudit/contracts/hold`. The body is the web's copy unchanged (checked with `diff` against main's `labels.ts`). `components/detail.tsx` and `lib/demo.ts` import it from there.
+- **Parity test** (`apps/api/src/hold.int.test.ts`, its own empty database through `createTestEnv`):
+  - Data: 16 checked invoices, one per mix of a charge and a possible duplicate, each absent, open, confirmed or dismissed; and one rejected through `rejectInvoice` with an open charge, which closed with it, and a confirmed duplicate.
+  - Checks: it reads each invoice's status, hold and findings through GraphQL. `Invoice.hold` must equal `holdOf` for each, `invoices(hasOpenFindings: true)` must list exactly the held ones, and `invoicesHeld` must count them. Then the mixes must reach every hold, and the rejected invoice must keep a closed and a confirmed finding.
+- **Mutations,** one per copy, each run alone and failing the test, each reverted with Edit:
+  - `held` (`graphql.ts`) without `AND invoices.status = 'reconciled'` in its confirmed-duplicate clause: the held list also had "rejected, charge closed, duplicate confirmed".
+  - The `hold` loader checking open findings before a possible duplicate: the four "duplicate open" mixes read `OPEN_FINDINGS` against `POSSIBLE_DUPLICATE`.
+  - `holdOf` without its confirmed-duplicate line, with contracts rebuilt, since the test loads its `dist/`: the four "duplicate confirmed" mixes differed, each named in the diff.
+  - Afterwards the api diff held only the two comments below, and the clean run passed.
+- **decide.int.test.ts:** the `counted` helper, which checked `invoicesHeld` against its own SQL copy of the rule, and its two calls are gone. The flow test around them stays.
+- **oasdiff-ignore.txt:** the 6 accepted lines and their 5 reason lines are deleted; the 2-line header stays.
+- **Comments:** the first line above `held` in `graphql.ts` still described the rule before C4c ("An invoice on which an open discrepancy waits for a decision"). It now names the parity test, and so does a new line above the `hold` loader. No api code changed.
+- **Small events:**
+  - GateGuard asked for facts before the first Bash command and before each file's first edit or creation; every retry passed.
+  - The test was reordered once, after the first two mutation runs: the per-invoice comparison now comes before the guard that every hold is reached. Why: with the guard first, the planned `holdOf` mutation would have failed on a set mismatch that names no mix (reasoned, not run). What we did: after `pnpm test:int` finished, ran the first two mutations again against the final file. Each failed again (the held list at line 68, the four mixes at line 65) and was reverted.
+  - `pnpm lint` printed only "ESLint output (JSON parse failed: EOF while parsing a value at line 1 column 0)". Why: the shell's output condensing could not read ESLint's output; the cause beyond that is not confirmed. What we did: reran `rtk proxy pnpm lint`: exit 0, 12 tasks. Recorded as a pitfall in docs/memory.md.
+  - The first `pnpm contracts:check` failed, and `gql.ts` and `graphql.ts` under `packages/contracts/src/generated/graphql-client/` showed as modified. Why: the CRLF pitfall of 2026-10-18 (docs/memory.md): the check compares raw text, checkout wrote CRLF, and codegen writes LF. What we did: ran it again ("Generated files are up to date.", exit 0). `git diff` shows no content change in either file, so they were left as they are.
+- Files:
+  - Contracts: `src/hold.ts` and `src/hold.test.ts` (new), `package.json` (the `./hold` export), `oasdiff-ignore.txt`; `src/generated/graphql-client/{gql,graphql}.ts` line endings only.
+  - Web: `lib/{labels,demo}.ts`, `lib/labels.test.ts`, `components/detail.tsx`.
+  - Api: `src/hold.int.test.ts` (new), `src/decide.int.test.ts`, `src/graphql.ts` and `src/loaders.ts` (comments).
+  - Docs: `docs/{activity-log,context,memory,todo}.md`.
+- Validation:
+  - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm test` 18 tasks with 13 from turbo's cache (contracts 4, web 108, api 12), `pnpm test:int` 130 in 24 suites;
+  - `pnpm contracts:check` (second run, above), `pnpm contracts:breaking` ("No changes detected");
+  - `pnpm e2e` 40/40. No `pnpm e2e:screenshots`: the web change moves an import only.
+  - No live model call and no `pnpm demo:up`.
+- Outstanding: the user ships `hold-parity`; it needs no Release or `pnpm demo:up`. Open for the user: the agent's choices (docs/memory.md). Next: the needs_review duplicate check with option (c).
+
 ### 2026-10-19: After C4: docs/todo.md checked against git log and the code, the hold rule item, the next three items (docs only, not committed)
 
 - **Request:** C4 is complete; plan only, no code. Tidy docs/todo.md against git log and the code, add an item for the web's `holdOf`, propose the next three items, and mind the Gemini key's Google project, which Triage Copilot shares. The user approved the plan with two changes: the key's move to its own project, with the public demo's calls (docs/memory.md, Constraints), and option (c) for the needs_review duplicate check, with the order of the next items (docs/memory.md, Decisions).

@@ -5,6 +5,7 @@
   "exports": {
     ".": "./dist/index.js",
     "./graphql": "./dist/generated/graphql-client/graphql.js",
+    "./hold": "./dist/hold.js",
     "./limits": "./dist/limits.js"
   },
   "scripts": {

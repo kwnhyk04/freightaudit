@@ -182,9 +182,9 @@ function searchFor(raw: string | null | undefined) {
   return or(ilike(invoices.invoiceNumber, pattern), ilike(invoices.proNumber, pattern), ilike(carriers.name, pattern));
 }
 
-// An invoice on which an open discrepancy waits for a decision.
 // A reviewer holds an invoice while a finding is open, or while a checked one's confirmed possible duplicate waits to be
-// rejected (Invoice.hold): the invoices filter hasOpenFindings and the summary's invoicesHeld go by it.
+// rejected (Invoice.hold): the invoices filter hasOpenFindings and the summary's invoicesHeld go by it. hold.int.test.ts
+// keeps this rule equal to the hold loader's and to holdOf (@freightaudit/contracts/hold), which the web runs.
 const held = sql`EXISTS (SELECT 1 FROM ${discrepancies} WHERE ${discrepancies.invoiceId} = ${invoices.id} AND (${discrepancies.status} = 'open'
   OR (${discrepancies.type} = 'duplicate_invoice' AND ${discrepancies.status} = 'confirmed' AND ${invoices.status} = 'reconciled')))`;
 

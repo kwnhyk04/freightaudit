@@ -1,4 +1,5 @@
 import type { InvoiceQuery } from '@freightaudit/contracts/graphql';
+import { holdOf } from '@freightaudit/contracts/hold';
 import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import type { MarkValues } from '../lib/marks.ts';
@@ -9,7 +10,6 @@ import {
   FINDING,
   findingText,
   findingTitle,
-  holdOf,
   IN_FLIGHT,
   invoiceAmounts,
   lineAmounts,

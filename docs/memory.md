@@ -360,6 +360,14 @@ From the approved design doc:
   - Reason: option (a), refusing that approval, would block a legitimate repeated number with no way to approve it.
   - The agent saw no blocker in (c) and named two costs: a migration for the move from needs_review to reconciled, and the web saying that such an invoice was never checked against the rate card (docs/todo.md).
 
+- 2026-10-19: Hold rule parity decisions (the agent's, for the user to confirm at review).
+  - The parity test has its own file and empty database (`createTestEnv`). So `invoicesHeld` and the held list cover only its 17 invoices and are compared whole, with no filter. `decide.int.test.ts` keeps its flow test from open findings to rejection, without the SQL oracle.
+  - It reads each invoice's findings back through GraphQL, as the web's pages do, and runs `holdOf` over them.
+  - It asserts that the mixes reach every hold and that the rejected invoice keeps its confirmed duplicate, so it cannot pass for want of a case.
+  - The oasdiff reason lines went with the 6 lines they explained; the 2-line header stays.
+  - The first comment line above `held` in `graphql.ts` still described the rule before C4c ("an open discrepancy waits"). It now names the parity test, and so does a new line above the `hold` loader.
+  - Reason: the user's request; each choice is the smallest that fits it.
+
 ## Preferences and Instructions
 
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).
@@ -587,6 +595,7 @@ From the approved design doc:
 - 2026-10-19: A column flex container with `flex-wrap: wrap` makes each column as wide as its widest item.
   - What happened: on a phone, the wrapped toolbar's column took the tab strip's full width, and the toolbar overflowed by 620 px.
   - What we did: the phone rule sets `flex-wrap: nowrap`, so the column keeps the container's width.
+- 2026-10-19: The shell's output condensing can turn `pnpm lint`'s output into "ESLint output (JSON parse failed: EOF while parsing a value at line 1 column 0)", which reads like a failure. `rtk proxy pnpm lint` shows the real result and exit code (that day: exit 0, 12 tasks).
 
 ## Rejected Approaches
 
