@@ -25,7 +25,8 @@ type Query {
   """
   Invoices, newest first: a page going forward (first, after) or back (last, before), filtered by status, by search,
   which matches the invoice number, PRO number or carrier name, ignoring case, and by hasOpenFindings: true keeps the
-  invoices with an open discrepancy, false those with none.
+  invoices a reviewer holds (an open discrepancy, or a checked invoice whose possible duplicate is confirmed and waits to
+  be rejected; see Invoice.hold), false the others.
   """
   invoices(first: Int = 25, after: String, last: Int, before: String, status: InvoiceStatus, search: String, hasOpenFindings: Boolean): InvoiceConnection!
 
@@ -218,6 +219,10 @@ type Invoice implements Node {
   """
   openDiscrepancyCount: Int!
   """
+  What holds a checked invoice back from approval; null when nothing does, or when it is not checked.
+  """
+  hold: InvoiceHold
+  """
   What the model read, before any correction; null until extraction ends.
   """
   extraction: Extraction
@@ -358,6 +363,10 @@ type AuditEntry {
   Fields the entry changed, with their old and new values.
   """
   changes: [FieldChange!]!
+  """
+  The discrepancy the entry decided or closed; null for every other entry.
+  """
+  discrepancyId: ID
 }
 
 """
@@ -477,6 +486,24 @@ input SeenDiscrepancy {
 }
 
 """
+Why a checked invoice waits on a reviewer before approval, most pressing first.
+"""
+enum InvoiceHold {
+  """
+  A possible duplicate was confirmed: the invoice is never approved and waits to be rejected.
+  """
+  CONFIRMED_DUPLICATE
+  """
+  A possible duplicate is open; it is decided on its own, before the charges.
+  """
+  POSSIBLE_DUPLICATE
+  """
+  A discrepancy waits for a decision.
+  """
+  OPEN_FINDINGS
+}
+
+"""
 Review state of a discrepancy.
 """
 enum DiscrepancyStatus {
@@ -582,6 +609,10 @@ type InvoiceSummary {
   Invoices with at least one open discrepancy.
   """
   invoicesWithOpenFindings: Int!
+  """
+  Checked invoices a reviewer holds: an open discrepancy, or a possible duplicate confirmed and waiting to be rejected.
+  """
+  invoicesHeld: Int!
   """
   When the oldest open discrepancy was found; null when none is open.
   """

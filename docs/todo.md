@@ -143,7 +143,28 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
           - Tests: `lib/labels.test.ts`, `lib/demo.test.ts`, and the e2e "checked invoices split …" tests in `main.spec.ts` and `demo.spec.ts` (failed first: no such tabs).
         - [x] Checks (2026-10-19, activity log).
         - [ ] The user ships C4b. It is web only: Vercel deploys it at the merge, and it needs no Release or `pnpm demo:up`.
-        - Not covered, for the user: the "Ready to approve" tab also lists a confirmed duplicate whose charges are all decided, since the api's filter counts open findings only. Its row there reads "Ready to approve" too: the list query has no finding type. The invoice's own page says "Confirmed duplicate" and offers only Reject.
+        - Not covered, for the user: the "Ready to approve" tab also lists a confirmed duplicate whose charges are all decided, since the api's filter counts open findings only. Its row there reads "Ready to approve" too: the list query has no finding type. The invoice's own page says "Confirmed duplicate" and offers only Reject. C4c fixes the tab in the api.
+        - [x] The user shipped C4b, merged as `2a81e61` (#29).
+      - [ ] C4c, api and CI, on branch `c4c` from main `2a81e61`, built 2026-10-19, not committed. The tests failed first: the new fields did not exist, and mutations failed them again.
+        - [x] `hasOpenFindings` goes by what holds an invoice: true keeps an open finding, or a checked invoice whose possible duplicate is confirmed, and false keeps neither. So today's web never lists such an invoice under Ready to approve, and Billing issues shows it.
+          - New fields: `Invoice.hold` (`CONFIRMED_DUPLICATE`, `POSSIBLE_DUPLICATE`, `OPEN_FINDINGS`, or null; one batched query a page) and `invoiceSummary.invoicesHeld`.
+          - Test: `apps/api/src/decide.int.test.ts`, "a checked invoice says what holds it …".
+        - [x] `AuditEntry.discrepancyId`, set on every decision and closing entry. Test: `decide.int.test.ts`, "each decision and closing in the trail names its discrepancy …".
+        - [x] `MAX_COST` 83: one field of room for C4d's `discrepancyId` in the invoice operation, since the api ships first. The limits test pins it as the measured largest plus `NEXT = 1`.
+        - [x] CI: a new job `eval-changes` diffs the pull request's merge commit against its base. `eval-smoke` runs only when `packages/llm`, `apps/worker/src/extract.ts`, `packages/config/src/env.ts` or `evals/` change. Skipped, it reports success, so a required check never blocks; the check name is unchanged. Checked locally: this branch gives `run=false`, and `564c993` (the floors) gives `run=true`.
+        - [x] Contracts regenerated; `contracts:check` passes; `contracts:breaking` reports no changes, so no ignore line was needed.
+        - [x] Checks (2026-10-19):
+          - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 129;
+          - `pnpm contracts:check` and `pnpm contracts:breaking`;
+          - `pnpm e2e` 39/39. Screenshots were not retaken, since the web did not change.
+        - [ ] The user ships C4c. Then the Release, then the user's `pnpm demo:up`. No migration.
+      - [ ] C4d, the web, after C4c runs on the demo (user request, 2026-10-19):
+        - [ ] Use the new fields:
+          - `Invoice.hold` for the list's pills and reasons (a confirmed duplicate reads as held, not "Ready to approve"), and for the detail's own pill if that is simpler;
+          - `invoiceSummary.invoicesHeld` for the two split tabs' counts;
+          - `AuditEntry.discrepancyId` to word every trail decision by its finding, in place of matching by time (`decidedKind` in `lib/labels.ts`).
+        - [ ] Adding `discrepancyId` to `operations/invoice.graphql` makes it 83 fields. Then set `NEXT` back to 0 in `apps/api/src/query-limits.test.ts`; `MAX_COST` stays 83.
+        - [ ] Fix the charges table cutting off the Difference column at 1440 px (the invoice page's charges panel; it was so before C4b).
 
 ## Completed
 

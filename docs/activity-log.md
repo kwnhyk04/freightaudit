@@ -19,6 +19,28 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-19: C4c built: what holds an invoice, each trail decision's finding, the eval only when it matters (branch c4c from main `2a81e61`, not committed)
+
+- **Setup:** `git pull --ff-only` (up to date) and `git log` showed C4b as `2a81e61` (#29). Then `git switch -c c4c`.
+- **Tests first:** two new tests in `apps/api/src/decide.int.test.ts` failed first, refused for asking for fields that did not exist. They pass with the change (14/14). Two mutations failed them again and were reverted:
+  - no confirmed-duplicate branch in the held condition;
+  - a trail without its link.
+- **Limits:** `MAX_COST` went from 82 to 83 for C4d's `discrepancyId`. The limits test now pins the measured largest plus `NEXT`, and "one field more" means one past the limit.
+- **CI:** `eval-changes` and the gated `eval-smoke`. `ci.yml` was parsed with the `yaml` package, and the path check was tried on this branch (false) and on `564c993` (true).
+- **Small events:** GateGuard asked for facts before each file's first edit. One batch applied a test edit that used `NEXT` while the edit defining it was blocked (TS2304), and the retry fixed it before any test ran.
+- **Low context:** the session's context passed 75% before the docs, so this entry is shorter than usual.
+- Files:
+  - `apps/api/src/{graphql,loaders,query-limits}.ts`, `apps/api/src/{decide.int,query-limits}.test.ts`;
+  - `packages/contracts/schema.graphql` and `src/generated/*`;
+  - `.github/workflows/ci.yml`;
+  - `docs/{activity-log,context,memory,todo}.md`.
+- Validation:
+  - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 129;
+  - `pnpm contracts:check`, `pnpm contracts:breaking` ("No changes detected");
+  - `pnpm e2e` 39/39.
+  - No screenshots (the web did not change), no live model call and no `pnpm demo:up`.
+- Outstanding: the user ships C4c, then the Release and `pnpm demo:up`. Then C4d (docs/todo.md).
+
 ### 2026-10-19: C4b built: split tabs, tabs that fit from 1280 px, Reject on checked invoices, a possible duplicate's own words (branch c4b from main `e9ef0ba`, not committed)
 
 - **Setup:** `git switch main`, `git pull --ff-only` (already up to date), and `git log` showed C4a as `e9ef0ba` (#28). Then `git switch -c c4b`. The user reported the Release and `pnpm demo:up` done.

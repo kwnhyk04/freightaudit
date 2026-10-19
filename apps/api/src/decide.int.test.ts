@@ -136,6 +136,59 @@ test('a confirmed duplicate is never approved, by a bulk decision or on its own;
   expect((await approveInvoice(id)).data!.approveInvoice).toEqual({ status: 'APPROVED' });
 });
 
+test('a checked invoice says what holds it, and one with a confirmed duplicate is held, never ready to approve, until rejected', async () => {
+  const id = fresh.shift()!;
+  const [{ number }] = (await pool.query('SELECT invoice_number AS number FROM invoices WHERE id = $1', [id])).rows;
+  const holdOf = async () => (await gql<{ invoice: { hold: string | null } }>('query ($id: ID!) { invoice(id: $id) { hold } }', { id })).data!.invoice.hold;
+  // Which list the invoice is in: held (hasOpenFindings true, the Billing issues tab) or not (Ready to approve).
+  const lists = async () => {
+    const one = (held: boolean) =>
+      gql<{ invoices: { edges: { node: { id: string } }[] } }>('query ($held: Boolean, $q: String) { invoices(status: RECONCILED, hasOpenFindings: $held, search: $q) { edges { node { id } } } }', {
+        held,
+        q: number,
+      });
+    const [held, ready] = await Promise.all([one(true), one(false)]);
+    return [held, ready].map((result) => result.data!.invoices.edges.some(({ node }) => node.id === id));
+  };
+  const counted = async () => {
+    const summary = (await gql<{ invoiceSummary: { invoicesHeld: number } }>('{ invoiceSummary { invoicesHeld } }')).data!.invoiceSummary.invoicesHeld;
+    const { rows } = await pool.query(`SELECT count(*)::int AS held FROM invoices i WHERE i.status = 'reconciled' AND EXISTS (SELECT 1 FROM discrepancies d
+      WHERE d.invoice_id = i.id AND (d.status = 'open' OR (d.type = 'duplicate_invoice' AND d.status = 'confirmed')))`);
+    expect(summary).toBe(rows[0].held);
+  };
+  expect([await holdOf(), await lists()]).toEqual(['OPEN_FINDINGS', [true, false]]);
+  const duplicate = await addDuplicate(id);
+  expect(await holdOf()).toBe('POSSIBLE_DUPLICATE');
+  // Confirmed, with every charge decided, nothing is open, and still it waits to be rejected.
+  await resolve(duplicate, 'CONFIRM');
+  for (const finding of await findingsOf(id)) if (finding.status === 'open') await resolve(finding.id, 'DISMISS');
+  expect([await holdOf(), await lists()]).toEqual(['CONFIRMED_DUPLICATE', [true, false]]);
+  await counted();
+  await rejectInvoice(id, 'Same invoice as first-scan.pdf');
+  expect([await holdOf(), await lists()]).toEqual([null, [false, false]]);
+  await counted();
+});
+
+test('each decision and closing in the trail names its discrepancy; every other entry names none', async () => {
+  const id = fresh.shift()!;
+  await addFinding(id);
+  const [decided, ...closed] = await findingsOf(id);
+  await resolve(decided!.id, 'CONFIRM');
+  await resolve(decided!.id, 'DISMISS');
+  await rejectInvoice(id, 'Billed to the wrong customer');
+  const trail = (await gql<{ invoice: { auditTrail: { action: string; discrepancyId: string | null }[] } }>('query ($id: ID!) { invoice(id: $id) { auditTrail { action discrepancyId } } }', { id }))
+    .data!.invoice.auditTrail;
+  expect(trail.filter(({ action }) => action !== 'DISCREPANCY_CLOSED')).toEqual([
+    { action: 'RECEIVED', discrepancyId: null },
+    { action: 'DISCREPANCY_CONFIRMED', discrepancyId: decided!.id },
+    { action: 'DISCREPANCY_DISMISSED', discrepancyId: decided!.id },
+    { action: 'REJECTED', discrepancyId: null },
+  ]);
+  const closings = trail.filter(({ action }) => action === 'DISCREPANCY_CLOSED').map(({ discrepancyId }) => discrepancyId);
+  expect(new Set(closings)).toEqual(new Set(closed.map((finding) => finding.id)));
+  expect(closings).toHaveLength(closed.length);
+});
+
 test('a reconciled invoice is rejected with a reason; its open findings close with it, each audited, and leave the review queue', async () => {
   const id = fresh.shift()!;
   await addFinding(id);

@@ -160,6 +160,24 @@ export function createLoaders(db: NodePgDatabase, tenantId: string) {
       return single(ids, rows, (row) => row.key).map((row) => row?.open ?? 0);
     }),
 
+    // What holds each checked invoice back from approval (Invoice.hold), most pressing first, in one query per page.
+    hold: new DataLoader(async (ids: readonly string[]) => {
+      const duplicate = sql`${discrepancies.type} = 'duplicate_invoice'`;
+      const rows = await db
+        .select({
+          key: discrepancies.invoiceId,
+          confirmed: sql<boolean>`bool_or(${duplicate} AND ${discrepancies.status} = 'confirmed')`,
+          possible: sql<boolean>`bool_or(${duplicate} AND ${discrepancies.status} = 'open')`,
+          open: sql<boolean>`bool_or(${discrepancies.status} = 'open')`,
+        })
+        .from(discrepancies)
+        .where(and(eq(discrepancies.tenantId, tenantId), inArray(discrepancies.invoiceId, [...ids])))
+        .groupBy(discrepancies.invoiceId);
+      return single(ids, rows, (row) => row.key).map((row) =>
+        row?.confirmed ? ('CONFIRMED_DUPLICATE' as const) : row?.possible ? ('POSSIBLE_DUPLICATE' as const) : row?.open ? ('OPEN_FINDINGS' as const) : null,
+      );
+    }),
+
     // An invoice's discrepancy connection. Keys of one list page share their arguments, so each distinct set of
     // arguments costs one query for all the invoices that asked.
     discrepancies: new DataLoader(

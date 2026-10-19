@@ -16,11 +16,18 @@ const size = (document: DocumentNode) => {
   return measure(operation.selectionSet, () => undefined);
 };
 
-test('every client operation passes, and the limits are the smallest that let them all through', () => {
+// Fields the next web release adds to the largest operation; the api, which goes first, already lets them through.
+// C4d adds the trail's discrepancyId to the invoice operation; then this goes back to 0 (docs/todo.md).
+const NEXT = 1;
+
+test('every client operation passes, and the limits are the smallest that let them all through, the next web release included', () => {
   expect(operations.length).toBeGreaterThan(10);
   for (const { name, document } of operations) expect([name, errors(document)]).toEqual([name, []]);
   const sizes = operations.map(({ document }) => size(document));
-  expect({ depth: MAX_DEPTH, cost: MAX_COST }).toEqual({ depth: Math.max(...sizes.map((each) => each.depth)), cost: Math.max(...sizes.map((each) => each.cost)) });
+  expect({ depth: MAX_DEPTH, cost: MAX_COST }).toEqual({
+    depth: Math.max(...sizes.map((each) => each.depth)),
+    cost: Math.max(...sizes.map((each) => each.cost)) + NEXT,
+  });
 });
 
 test('a query one field deeper than the limit is refused; one at the limit passes', () => {
@@ -28,10 +35,12 @@ test('a query one field deeper than the limit is refused; one at the limit passe
   expect(errors(deepQuery(MAX_DEPTH + 1))).toEqual([`The query nests ${MAX_DEPTH + 1} fields deep; the limit is ${MAX_DEPTH}.`]);
 });
 
-test('the largest client operation with one field more is refused', () => {
+test('the largest client operation with one field more than the limit is refused', () => {
   const largest = operations.reduce((top, each) => (size(each.document).cost > size(top.document).cost ? each : top));
   // The first brace opens the operation's selection: no client operation has an object in its variables.
-  expect(errors(print(largest.document).replace('{', '{ __typename'))).toEqual([`The query selects ${MAX_COST + 1} fields; the limit is ${MAX_COST}.`]);
+  const more = (fields: number) => print(largest.document).replace('{', `{ ${'__typename '.repeat(fields)}`);
+  expect(errors(more(NEXT))).toEqual([]);
+  expect(errors(more(NEXT + 1))).toEqual([`The query selects ${MAX_COST + 1} fields; the limit is ${MAX_COST}.`]);
 });
 
 test('aliases are refused, since no client operation uses one', () => {
