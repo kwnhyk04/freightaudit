@@ -341,6 +341,19 @@ From the approved design doc:
   - The eval smoke runs when `packages/llm`, `apps/worker/src/extract.ts`, `packages/config/src/env.ts` or `evals/` change, judged by a git diff in a small job, with no new action. A change to `ci.yml` alone does not run it.
   - Reason: the user's C4c request; the api goes first, so nothing the web sends today changes.
 
+- 2026-10-19: The user confirmed the C4c choices: the `Invoice.hold` field, `invoiceSummary.invoicesHeld`, and the temporary `MAX_COST` of 83.
+  - What happened: the user confirmed them when starting C4d, after C4c merged as `2753b95` (#30), its Release ran and `pnpm demo:up` moved the demo to it.
+  - What we did: C4d reads both fields and selects `discrepancyId` in the invoice operation, so `NEXT` is 0 again and 83 is the largest operation's own size.
+
+- 2026-10-19: C4d decisions (the agent's, for the user to confirm at review).
+  - The invoice page and the sample compute the hold with `holdOf` (`lib/labels.ts`), the api's rule over the findings they already read. The invoice operation cannot also select `hold`: 84 fields against `MAX_COST` 83, which the demo api would refuse.
+  - The upload page's recent uploads read the hold as well, since they share `statusLabel`. There a possible duplicate with no charge over the rate card read "Ready to approve, matched the rate card".
+  - Reason lines: "Waits to be rejected" for a confirmed duplicate, "Possible duplicate to decide" for an open one, else "N open findings". The Billing issues tab's note now names the confirmed duplicate it lists.
+  - A trail row without `discrepancyId`, as the sample's exported before the field, reads as a charge's on an invoice without a possible duplicate, else "Finding confirmed" or "Finding dismissed". The sample was not exported again, which needs live models.
+  - The charges table: 8 px cells, codes that may break after an underscore, and below 1440 px a review grid of 45 % document and 55 % checks. At 1440 px and wider the approved equal halves stay. From 1024 to 1279 px it still scrolls inside its panel.
+  - The eval's path list gains only `packages/db/src/reference.ts`. `checkArithmetic` and `matchCarrier` (`packages/domain`) change eval results too, but they hold no schema or prompt text, which is what the user asked about.
+  - Reason: the user's C4d request; each choice is the smallest that fits it.
+
 ## Preferences and Instructions
 
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).
@@ -561,6 +574,10 @@ From the approved design doc:
 - 2026-10-19: `next build` typechecks the test files, so a unit test that imports a function not written yet stops the e2e build.
   - What happened: the C4b e2e RED run failed in `@freightaudit/web#build` with TS2305 on `lib/labels.test.ts`.
   - What we did: `git stash push -- apps/web/lib/labels.test.ts`, built, ran the e2e RED, then `git stash pop`.
+- 2026-10-19: An e2e test that changes data through the api directly can read the web's cached counts for up to 10 s (agent mistake in a test).
+  - What happened: the first C4d RED run passed the Billing issues count on the old web. The test had decided its findings with GraphQL calls straight to the api, and the list showed a summary cached before them.
+  - Why: the web keeps `invoiceSummary` 10 s per instance, and only its own actions forget it.
+  - What we did: the test decides through the review screen's buttons, as a reviewer does. The rerun on the old web failed on the count, 75 against 76, as it should.
 - 2026-10-19: A column flex container with `flex-wrap: wrap` makes each column as wide as its widest item.
   - What happened: on a phone, the wrapped toolbar's column took the tab strip's full width, and the toolbar overflowed by 620 px.
   - What we did: the phone rule sets `flex-wrap: nowrap`, so the column keeps the container's width.

@@ -15,6 +15,7 @@ query Invoices($first: Int, $after: String, $last: Int, $before: String, $status
         totalCents
         createdAt
         openDiscrepancyCount
+        hold
         reviewReason
         failureReason
         rateCardVersion {

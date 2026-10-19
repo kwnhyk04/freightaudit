@@ -19,6 +19,39 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-19: C4d built: the web shows what holds an invoice and which finding each decision names, the charges table fits from 1280 px, the eval runs for charge code changes (branch c4d from main `2753b95`, not committed)
+
+- **Setup:** `git pull --ff-only` (up to date) and `git log` showed C4c as `2753b95` (#30). The user reported its Release and `pnpm demo:up` done. Then `git switch -c c4d`.
+- **Tests first,** each failing on the code as it was:
+  - Web unit: `holdOf`, `statusLabel`, `statusReason`, `uploadState` and the trail in `lib/labels.test.ts`; the rows' `hold` and `invoicesHeld` in `lib/demo.test.ts`. The labels suite could not load without `holdOf`, so a stub returning null went in for one run. Each of the five tests then failed on its value ("Finding confirmed", "2 open findings", "Confirmed duplicate", null, "Ready to approve, matched the rate card"). The real function replaced the stub.
+  - Api unit: `NEXT = 0` failed with 82 against 83. It passes once the invoice operation selects `discrepancyId`.
+  - Evals unit: `eval-changes.test.ts` failed naming `packages/db/src/reference.ts`.
+  - E2E: the split test failed on the held duplicate's pill, "Ready to approve", and with its setup on the review screen on the count, 75 against 76. The charges test failed with 18 px of overflow at 1440 px.
+- **Charges table:** a throwaway script in the scratchpad served the built web and measured the table on three sample invoices from 1920 to 390 px, with candidate CSS injected.
+  - What happened: 8 px cells fixed 1440 px. At 1280 px nothing inside equal halves fit: a four-digit total beside `APPOINTMENT` left the table 5 px over even with wrapped notes.
+  - What we did: below 1440 px the checks take 55 % of the width, and a code may break after an underscore. Taking either away overflowed again, by 5 to 7 px and by 1 px. Best because 1440 px keeps the approved equal halves and every finding note stays on one line.
+- **Small events:**
+  - Agent mistake: a Bash `cd apps/web` while reading files moved the session's working directory, the pitfall in docs/memory.md. Why: the `cd` was not inside a subshell. What we did: the next call moved it back to the root, before any edit; the design hook flagged nothing.
+  - Agent mistake: the first e2e RED run decided findings through the api directly, and the web's 10 s summary cache hid the count bug (memory, pitfall). What we did: the test decides on the review screen, and the rerun failed on the count.
+  - `next build` typechecks the unit tests, so `lib/labels.test.ts` and `lib/demo.test.ts` were stashed for both e2e RED runs (`git stash push -- …`, then `git stash pop`).
+  - The first GREEN `pnpm e2e` failed 1 of 40: the sample test asserted the Billing issues note word for word, and the note now names the confirmed duplicate. The assertion was updated; the rerun passed 40/40.
+  - Codegen rewrote `graphql-resolvers.ts` with LF line endings and no content change (memory, pitfall). Left as is.
+  - GateGuard asked for facts before each file's first edit and before each scratch script; every retry passed.
+- **Screenshots:** `pnpm e2e:screenshots` passed 8/8 and changed 26 pictures. A pixel diff against the committed ones found a band in the charges table, a row's reason or a recent upload's result in every one; two pairs were viewed. None differed only by date or timing, so none was restored.
+- Files:
+  - Web: `lib/{labels,demo}.ts`, `lib/{labels,demo}.test.ts`, `components/{detail,ui,views}.tsx`, `app/globals.css`, `e2e/{main,demo}.spec.ts`.
+  - Contracts: `operations/{invoice,invoices,invoice-summary,recent-uploads}.graphql` and `src/generated/graphql-client/*`.
+  - Api: `src/query-limits.ts` (a comment), `src/query-limits.test.ts`.
+  - CI and evals: `.github/workflows/ci.yml`, `evals/harness/eval-changes.test.ts` (new).
+  - Pictures: 26 under `docs/screenshots/ui/`.
+  - Docs: `docs/{activity-log,context,memory,todo}.md`.
+- Validation:
+  - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 109, api 12, evals 9), `pnpm test:int` 129 in 23 suites;
+  - `pnpm contracts:check`, `pnpm contracts:breaking` ("No changes detected");
+  - `pnpm e2e` 40/40, `pnpm e2e:screenshots` 8/8.
+  - No live model call and no `pnpm demo:up`.
+- Outstanding: the user ships C4d; the demo needs no `pnpm demo:up`. Open for the user: the agent's C4d choices (docs/memory.md) and the charges table from 1024 to 1279 px.
+
 ### 2026-10-19: C4c built: what holds an invoice, each trail decision's finding, the eval only when it matters (branch c4c from main `2a81e61`, not committed)
 
 - **Setup:** `git pull --ff-only` (up to date) and `git log` showed C4b as `2a81e61` (#29). Then `git switch -c c4c`.

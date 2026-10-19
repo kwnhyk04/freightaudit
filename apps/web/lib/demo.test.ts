@@ -16,20 +16,25 @@ test('the sample lists its invoices newest first, filtered by status, open findi
   expect(files(demoInvoices(undefined, '  TERN '))).toEqual(['g069.pdf']);
   expect(files(demoInvoices({ status: 'NEEDS_REVIEW' }, 'quarry'))).toEqual(['g088.pdf']);
   expect(demoInvoices(undefined, '%').invoices.totalCount).toBe(0);
-  // A row carries what the list needs from the snapshot's detail: findings' amounts, the rate card, the reasons.
-  const g069 = all.invoices.edges.find(({ node }) => node.filename === 'g069.pdf')!.node;
+  // A row carries what the list needs from the snapshot's detail: findings' amounts, the rate card, the reasons, and what
+  // holds a checked invoice, as the api's Invoice.hold says it.
+  const node = (file: string) => all.invoices.edges.find(({ node }) => node.filename === file)!.node;
+  const g069 = node('g069.pdf');
   expect(g069.discrepancies.edges.map(({ node }) => [node.status, node.billedCents, node.expectedCents])).toContainEqual(['OPEN', 9_778, 0]);
   expect(g069.rateCardVersion?.id).toEqual(expect.any(String));
-  expect(all.invoices.edges.find(({ node }) => node.filename === 'g088.pdf')!.node.reviewReason).toBe('no_shipment_match');
+  expect(node('g088.pdf').reviewReason).toBe('no_shipment_match');
+  expect(['g069.pdf', 'g054.pdf', 'g088.pdf'].map((file) => node(file).hold)).toEqual(['OPEN_FINDINGS', null, null]);
 });
 
-test('the sample summary counts statuses, open findings and their overcharge, matched invoices and open dead letters', () => {
+test('the sample summary counts statuses, open findings and their overcharge, held and matched invoices and open dead letters', () => {
   const summary = demoSummary();
   expect(summary).toEqual({
     statusCounts: expect.any(Array),
     receivedLast7Days: expect.any(Number),
     openFindings: 5,
     invoicesWithOpenFindings: 3,
+    // The sample has no possible duplicate, so the invoices held are those with an open finding.
+    invoicesHeld: 3,
     // Findings are written as an invoice reconciles: g066's move to reconciled is the oldest of the three.
     oldestOpenFindingAt: '2026-10-17T07:24:02.828Z',
     openOverchargeCents: 817_599,

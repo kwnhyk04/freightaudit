@@ -79,6 +79,15 @@ export type InvoiceDecision =
   /** Confirm every open discrepancy: the overcharges are disputed, and the invoice stays reconciled. */
   | 'DISPUTE';
 
+/** Why a checked invoice waits on a reviewer before approval, most pressing first. */
+export type InvoiceHold =
+  /** A possible duplicate was confirmed: the invoice is never approved and waits to be rejected. */
+  | 'CONFIRMED_DUPLICATE'
+  /** A discrepancy waits for a decision. */
+  | 'OPEN_FINDINGS'
+  /** A possible duplicate is open; it is decided on its own, before the charges. */
+  | 'POSSIBLE_DUPLICATE';
+
 /** Processing status of an invoice. */
 export type InvoiceStatus =
   /** Approved for payment. Final. */
@@ -161,14 +170,14 @@ export type InvoiceBriefQuery = { invoice: { id: string, number: string | null, 
 export type InvoiceSummaryQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type InvoiceSummaryQuery = { invoiceSummary: { receivedLast7Days: number, openFindings: number, invoicesWithOpenFindings: number, oldestOpenFindingAt: string | null, openOverchargeCents: number, matchedRateCard: number, openDeadLetters: number, statusCounts: Array<{ status: InvoiceStatus, count: number }> } };
+export type InvoiceSummaryQuery = { invoiceSummary: { receivedLast7Days: number, openFindings: number, invoicesWithOpenFindings: number, invoicesHeld: number, oldestOpenFindingAt: string | null, openOverchargeCents: number, matchedRateCard: number, openDeadLetters: number, statusCounts: Array<{ status: InvoiceStatus, count: number }> } };
 
 export type InvoiceQueryVariables = Exact<{
   id: string | number;
 }>;
 
 
-export type InvoiceQuery = { invoice: { id: string, status: InvoiceStatus, failureReason: string | null, reviewReason: string | null, filename: string, contentHash: string, carrier: string | null, number: string | null, proNumber: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number, lineItems: Array<{ id: string, lineNumber: number, description: string, chargeCode: string | null, amountCents: number }>, extraction: { id: string, model: string, step: string | null, carrierRead: string | null, carrierMatch: CarrierMatch | null, problems: Array<string>, extractedAt: string, lines: Array<{ lineNumber: number, description: string, chargeCode: string | null, amountCents: number }> } | null, shipment: { id: string, reference: string, carrier: string, origin: string, destination: string, shippedOn: string } | null, rateCardVersion: { id: string, version: number, effectiveFrom: string | null, effectiveTo: string | null } | null, discrepancies: { edges: Array<{ node: { id: string, type: DiscrepancyType, status: DiscrepancyStatus, expectedCents: number, billedCents: number, evidence: string, note: string | null, resolvedAt: string | null, version: string, lineItem: { id: string, lineNumber: number } | null } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }, auditTrail: Array<{ id: string, at: string, actor: string | null, action: AuditAction, detail: string | null, changes: Array<{ field: string, from: string | null, to: string | null }> }>, deadLetter: { id: string, queue: string, error: string, createdAt: string } | null } | null, carriers: Array<{ id: string, name: string }> };
+export type InvoiceQuery = { invoice: { id: string, status: InvoiceStatus, failureReason: string | null, reviewReason: string | null, filename: string, contentHash: string, carrier: string | null, number: string | null, proNumber: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number, lineItems: Array<{ id: string, lineNumber: number, description: string, chargeCode: string | null, amountCents: number }>, extraction: { id: string, model: string, step: string | null, carrierRead: string | null, carrierMatch: CarrierMatch | null, problems: Array<string>, extractedAt: string, lines: Array<{ lineNumber: number, description: string, chargeCode: string | null, amountCents: number }> } | null, shipment: { id: string, reference: string, carrier: string, origin: string, destination: string, shippedOn: string } | null, rateCardVersion: { id: string, version: number, effectiveFrom: string | null, effectiveTo: string | null } | null, discrepancies: { edges: Array<{ node: { id: string, type: DiscrepancyType, status: DiscrepancyStatus, expectedCents: number, billedCents: number, evidence: string, note: string | null, resolvedAt: string | null, version: string, lineItem: { id: string, lineNumber: number } | null } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }, auditTrail: Array<{ id: string, at: string, actor: string | null, action: AuditAction, detail: string | null, discrepancyId: string | null, changes: Array<{ field: string, from: string | null, to: string | null }> }>, deadLetter: { id: string, queue: string, error: string, createdAt: string } | null } | null, carriers: Array<{ id: string, name: string }> };
 
 export type InvoicesQueryVariables = Exact<{
   first?: number | null | undefined;
@@ -181,12 +190,12 @@ export type InvoicesQueryVariables = Exact<{
 }>;
 
 
-export type InvoicesQuery = { invoices: { totalCount: number, offset: number, edges: Array<{ cursor: string, node: { id: string, status: InvoiceStatus, filename: string, carrier: string | null, number: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number, reviewReason: string | null, failureReason: string | null, rateCardVersion: { id: string } | null, discrepancies: { edges: Array<{ node: { id: string, status: DiscrepancyStatus, expectedCents: number, billedCents: number } }> } } }>, pageInfo: { hasNextPage: boolean, hasPreviousPage: boolean, startCursor: string | null, endCursor: string | null } } };
+export type InvoicesQuery = { invoices: { totalCount: number, offset: number, edges: Array<{ cursor: string, node: { id: string, status: InvoiceStatus, filename: string, carrier: string | null, number: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number, hold: InvoiceHold | null, reviewReason: string | null, failureReason: string | null, rateCardVersion: { id: string } | null, discrepancies: { edges: Array<{ node: { id: string, status: DiscrepancyStatus, expectedCents: number, billedCents: number } }> } } }>, pageInfo: { hasNextPage: boolean, hasPreviousPage: boolean, startCursor: string | null, endCursor: string | null } } };
 
 export type RecentUploadsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type RecentUploadsQuery = { invoices: { edges: Array<{ node: { id: string, status: InvoiceStatus, filename: string, currency: string | null, totalCents: number | null, createdAt: string, reviewReason: string | null, failureReason: string | null, discrepancies: { edges: Array<{ node: { id: string, status: DiscrepancyStatus, expectedCents: number, billedCents: number } }> }, auditTrail: Array<{ id: string, at: string, action: AuditAction, changes: Array<{ field: string, to: string | null }> }> } }> } };
+export type RecentUploadsQuery = { invoices: { edges: Array<{ node: { id: string, status: InvoiceStatus, filename: string, currency: string | null, totalCents: number | null, createdAt: string, reviewReason: string | null, failureReason: string | null, hold: InvoiceHold | null, discrepancies: { edges: Array<{ node: { id: string, status: DiscrepancyStatus, expectedCents: number, billedCents: number } }> }, auditTrail: Array<{ id: string, at: string, action: AuditAction, changes: Array<{ field: string, to: string | null }> }> } }> } };
 
 export type RejectInvoiceMutationVariables = Exact<{
   id: string | number;
@@ -341,6 +350,7 @@ export const InvoiceSummaryDocument = new TypedDocumentString(`
     receivedLast7Days
     openFindings
     invoicesWithOpenFindings
+    invoicesHeld
     oldestOpenFindingAt
     openOverchargeCents
     matchedRateCard
@@ -435,6 +445,7 @@ export const InvoiceDocument = new TypedDocumentString(`
         from
         to
       }
+      discrepancyId
     }
     deadLetter {
       id
@@ -475,6 +486,7 @@ export const InvoicesDocument = new TypedDocumentString(`
         totalCents
         createdAt
         openDiscrepancyCount
+        hold
         reviewReason
         failureReason
         rateCardVersion {
@@ -514,6 +526,7 @@ export const RecentUploadsDocument = new TypedDocumentString(`
         createdAt
         reviewReason
         failureReason
+        hold
         discrepancies(first: 100) {
           edges {
             node {

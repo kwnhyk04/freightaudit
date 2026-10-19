@@ -40,7 +40,7 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
   const tabs = FILTERS.map((each) => ({
     key: each.key,
     label: each.label,
-    count: filterCount(each, totals, summary.invoicesWithOpenFindings),
+    count: filterCount(each, totals, summary.invoicesHeld),
     href: query(`${base}/invoices`, { status: filterKey(each) }),
   }));
   const showing = totalCount > 0 ? `Showing ${offset + 1} to ${offset + edges.length} of ${totalCount}` : undefined;
@@ -160,7 +160,7 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
                 return (
                   <tr key={node.id} className="link-row">
                     <td>
-                      <StatusBadge status={node.status} open={node.openDiscrepancyCount} />
+                      <StatusBadge status={node.status} open={node.openDiscrepancyCount} hold={node.hold} />
                       {reason && <div className="faint reason">{reason}</div>}
                     </td>
                     <td>

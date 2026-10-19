@@ -16,9 +16,9 @@ const size = (document: DocumentNode) => {
   return measure(operation.selectionSet, () => undefined);
 };
 
-// Fields the next web release adds to the largest operation; the api, which goes first, already lets them through.
-// C4d adds the trail's discrepancyId to the invoice operation; then this goes back to 0 (docs/todo.md).
-const NEXT = 1;
+// Fields the next web release adds to the largest operation, when the api goes first and already lets them through.
+// None now: C4d's invoice operation selects the trail's discrepancyId, the field C4c made room for.
+const NEXT = 0;
 
 test('every client operation passes, and the limits are the smallest that let them all through, the next web release included', () => {
   expect(operations.length).toBeGreaterThan(10);

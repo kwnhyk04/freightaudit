@@ -3,8 +3,6 @@ import { type ASTVisitor, type FragmentDefinitionNode, GraphQLError, Kind, type 
 // Only the web's server-only key reaches /graphql, so these bound what a leaked key could ask for. Each is the smallest
 // value every client operation in packages/contracts/operations passes; query-limits.test.ts pins both edges.
 export const MAX_DEPTH = 7;
-// The api ships before the web that reads its new fields, so the cost has room for one: C4d's invoice operation adds
-// the trail's discrepancyId (docs/todo.md). Back to the measured value once it is in the operation.
 export const MAX_COST = 83;
 
 type Size = { depth: number; cost: number };

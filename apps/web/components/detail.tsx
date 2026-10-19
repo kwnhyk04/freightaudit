@@ -9,6 +9,7 @@ import {
   FINDING,
   findingText,
   findingTitle,
+  holdOf,
   IN_FLIGHT,
   invoiceAmounts,
   lineAmounts,
@@ -29,6 +30,8 @@ type Finding = Detail['discrepancies']['edges'][number]['node'];
 type Amounts = ReturnType<typeof invoiceAmounts>;
 // The bulk decision sends every finding it saw; the page reads at most 100, so a longer list decides one by one.
 const MAX_BULK = 100;
+// A charge code may break after its underscores, so a narrow charges table keeps every column in view.
+const codeBreaks = (code: string) => code.split('_').flatMap((part, i, parts) => (i < parts.length - 1 ? [`${part}_`, <wbr key={i} />] : [part]));
 
 // One invoice: the document beside what was read from it, the findings to decide, every charge against the rate card,
 // the facts and the audit trail. base prefixes every link; readOnly (the sample) hides every action; example (the seed's
@@ -43,7 +46,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
   const priced = Boolean(invoice.rateCardVersion);
   const money = priced && invoice.totalCents !== null ? invoiceAmounts(invoice.totalCents, findings) : undefined;
   const open = invoice.openDiscrepancyCount;
-  const duplicate = findings.some((finding) => finding.type === 'DUPLICATE_INVOICE' && finding.status === 'CONFIRMED');
+  const hold = holdOf(invoice.status, findings);
   const carrier = invoice.carrier ?? extraction?.carrierRead;
   // Before extraction, or when it failed, the file is all there is: the facts shrink to it.
   const unread = !extraction && !invoice.number;
@@ -78,7 +81,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
           <div className="row title">
             <h1 className="id">{invoice.number ?? invoice.filename}</h1>
             {carrier && <span className="muted">{carrier}</span>}
-            <StatusBadge status={invoice.status} open={open} duplicate={duplicate} />
+            <StatusBadge status={invoice.status} open={open} hold={hold} />
           </div>
           <p className="muted">
             Received <Moment value={invoice.createdAt} />
@@ -93,7 +96,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
         </div>
         {!readOnly && <InvoiceActions invoice={invoice} findings={findings} money={money} />}
       </div>
-      <StatusPoller active={IN_FLIGHT.has(invoice.status)} label={statusLabel(invoice.status, open)} />
+      <StatusPoller active={IN_FLIGHT.has(invoice.status)} label={statusLabel(invoice.status, open, hold)} />
       <div className="review">
         {example ? (
           <section className="doc" aria-label="Invoice document">
@@ -222,7 +225,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                                 {lineLabel(line.description)}
                                 {finding && <div className="faint nowrap">{FINDING[finding.type]}</div>}
                               </td>
-                              <td className="id">{line.chargeCode ?? <span className="faint">None</span>}</td>
+                              <td className="id">{line.chargeCode ? codeBreaks(line.chargeCode) : <span className="faint">None</span>}</td>
                               <td className="num">
                                 <Money cents={line.amountCents} currency={invoice.currency} />
                               </td>

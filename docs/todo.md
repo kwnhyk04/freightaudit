@@ -145,7 +145,7 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
         - [ ] The user ships C4b. It is web only: Vercel deploys it at the merge, and it needs no Release or `pnpm demo:up`.
         - Not covered, for the user: the "Ready to approve" tab also lists a confirmed duplicate whose charges are all decided, since the api's filter counts open findings only. Its row there reads "Ready to approve" too: the list query has no finding type. The invoice's own page says "Confirmed duplicate" and offers only Reject. C4c fixes the tab in the api.
         - [x] The user shipped C4b, merged as `2a81e61` (#29).
-      - [ ] C4c, api and CI, on branch `c4c` from main `2a81e61`, built 2026-10-19, not committed. The tests failed first: the new fields did not exist, and mutations failed them again.
+      - [x] C4c, api and CI, on branch `c4c` from main `2a81e61`, built 2026-10-19, merged as `2753b95` (#30). The tests failed first: the new fields did not exist, and mutations failed them again.
         - [x] `hasOpenFindings` goes by what holds an invoice: true keeps an open finding, or a checked invoice whose possible duplicate is confirmed, and false keeps neither. So today's web never lists such an invoice under Ready to approve, and Billing issues shows it.
           - New fields: `Invoice.hold` (`CONFIRMED_DUPLICATE`, `POSSIBLE_DUPLICATE`, `OPEN_FINDINGS`, or null; one batched query a page) and `invoiceSummary.invoicesHeld`.
           - Test: `apps/api/src/decide.int.test.ts`, "a checked invoice says what holds it …".
@@ -157,14 +157,33 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
           - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 129;
           - `pnpm contracts:check` and `pnpm contracts:breaking`;
           - `pnpm e2e` 39/39. Screenshots were not retaken, since the web did not change.
-        - [ ] The user ships C4c. Then the Release, then the user's `pnpm demo:up`. No migration.
-      - [ ] C4d, the web, after C4c runs on the demo (user request, 2026-10-19):
-        - [ ] Use the new fields:
-          - `Invoice.hold` for the list's pills and reasons (a confirmed duplicate reads as held, not "Ready to approve"), and for the detail's own pill if that is simpler;
-          - `invoiceSummary.invoicesHeld` for the two split tabs' counts;
-          - `AuditEntry.discrepancyId` to word every trail decision by its finding, in place of matching by time (`decidedKind` in `lib/labels.ts`).
-        - [ ] Adding `discrepancyId` to `operations/invoice.graphql` makes it 83 fields. Then set `NEXT` back to 0 in `apps/api/src/query-limits.test.ts`; `MAX_COST` stays 83.
-        - [ ] Fix the charges table cutting off the Difference column at 1440 px (the invoice page's charges panel; it was so before C4b).
+        - [x] The user shipped C4c, merged as `2753b95` (#30), ran its Release and `pnpm demo:up`, so the demo runs it (reported by the user, 2026-10-19).
+      - [ ] C4d, the web, on branch `c4d` from main `2753b95`, built 2026-10-19, not committed (user request, 2026-10-19). Each change has a test that failed first on the code as it was.
+        - [x] `Invoice.hold` in the lists. A checked row's pill reads "Confirmed duplicate" for a confirmed duplicate, never "Ready to approve", and its reason line says why it is held: "Waits to be rejected", "Possible duplicate to decide" or "N open findings". The recent uploads say it too ("Billing issues (6), possible duplicate to decide").
+          - The invoice's own page and the sample read every finding, so `holdOf` in `lib/labels.ts` applies the api's rule there. The invoice operation cannot also select `hold`: it would be 84 fields against `MAX_COST` 83.
+          - Tests: `lib/labels.test.ts` (`holdOf`, `statusLabel`, `statusReason`, `uploadState`) and `lib/demo.test.ts`, all failed first. E2E `main.spec.ts`, "checked invoices split … a held one saying why": a confirmed duplicate with every charge decided reads "Confirmed duplicate" and "Waits to be rejected" under Billing issues, and Ready to approve does not list it. It failed first on that row's pill, "Ready to approve".
+        - [x] `invoiceSummary.invoicesHeld` gives the two split tabs' counts, so each count matches its list. Same e2e test: the old tab read 75 where 76 checked invoices were held.
+        - [x] `AuditEntry.discrepancyId` words each trail decision by the finding it names; the matching by time is gone.
+          - A decision a later one replaced now reads in its finding's words ("Duplicate confirmed", not "Finding confirmed").
+          - The sample's rows, exported before the field existed, name no finding. On an invoice without a possible duplicate, as every sample invoice is, they read as a charge's.
+          - Test: `lib/labels.test.ts`, failed first with "Finding confirmed".
+        - [x] `NEXT` back to 0 in `apps/api/src/query-limits.test.ts`. With `discrepancyId` the invoice operation selects 83 fields, so `MAX_COST` 83 is again the smallest limit every operation passes. The test failed first (82 against 83) and passes with the field. The comment on `MAX_COST` that kept the room is gone.
+        - [x] The charges table at 1440 px: Difference was cut by 18 px on the uploaded fixture.
+          - Cells keep 8 px a side (was 12), a charge code may break after its underscores, and below 1440 px the review grid gives the checks 55 % of the width. At 1440 px and wider the halves stay equal, as in the approved picture.
+          - Measured on the build: 0 px overflow at 1920, 1440, 1366 and 1280 px on three sample invoices and on the fixture. Each piece is needed: without the 55 % column the table overflows 5 to 7 px at 1280, without the code breaks 1 px.
+          - Phone: the page never scrolls sideways. The table keeps its six columns and scrolls inside its own frame, as before; Billed is now whole on screen, and Expected and Difference are a swipe away.
+          - Test: `main.spec.ts`, "the charges table shows every column … from 1280 px; on a phone only the table scrolls sideways". It failed first with 18 px at 1440.
+          - Not covered: from 1024 to 1279 px the two columns are too narrow for the table, which still scrolls inside its panel.
+        - [x] The eval's path list. The extraction schema and prompts live in `packages/llm/src/extract.ts`, which the list covers, but both carry the charge codes of `packages/db/src/reference.ts`, which it did not. That file is added to `eval-changes` in `ci.yml`.
+          - Test: `evals/harness/eval-changes.test.ts`, failed first naming that file.
+          - Left out: `checkArithmetic` and `matchCarrier` (`packages/domain`). They judge a reading but hold no schema or prompt text.
+        - [x] Screenshots retaken (`pnpm e2e:screenshots`, 8/8). 26 pictures changed, each with a C4d change (the charges table, a row's reason, a recent upload's result), so none was restored. The other six came out identical.
+        - [x] Checks (2026-10-19):
+          - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 109, api 12, evals 9), `pnpm test:int` 129 in 23 suites;
+          - `pnpm contracts:check`, and `pnpm contracts:breaking` ("No changes detected");
+          - `pnpm e2e` 40/40.
+          - No live model call and no `pnpm demo:up`.
+        - [ ] The user ships C4d. Vercel deploys the web at the merge. The api changes only in a comment and its limits test, so the demo needs no `pnpm demo:up`.
 
 ## Completed
 
