@@ -98,6 +98,7 @@ export const DECISION: Record<DiscrepancyStatus, { label: string; tone: Tone }> 
   OPEN: { label: 'Open', tone: 'bad' },
   CONFIRMED: { label: 'Disputed', tone: 'neutral' },
   DISMISSED: { label: 'Charge approved', tone: 'ok' },
+  CLOSED: { label: 'Closed', tone: 'neutral' },
 };
 
 export const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
@@ -187,6 +188,7 @@ export const ACTION: Record<AuditAction, string> = {
   APPROVED: 'Approved for payment',
   DISCREPANCY_CONFIRMED: 'Overcharge disputed',
   DISCREPANCY_DISMISSED: 'Charge approved',
+  DISCREPANCY_CLOSED: 'Finding closed',
   REPLAYED: 'Replayed',
 };
 

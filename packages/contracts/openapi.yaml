@@ -519,7 +519,7 @@ components:
       enum: [rate_mismatch, uncontracted_charge, duplicate_charge, duplicate_invoice, weight_mismatch, arithmetic_error]
     DiscrepancyStatus:
       type: string
-      enum: [open, confirmed, dismissed]
+      enum: [open, confirmed, dismissed, closed]
     Discrepancy:
       type: object
       required:

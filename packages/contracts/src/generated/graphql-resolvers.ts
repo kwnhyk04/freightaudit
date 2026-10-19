@@ -24,6 +24,8 @@ export type AuditAction =
   | 'APPROVED'
   /** A reviewer corrected the carrier or PRO number and matching ran again. */
   | 'CORRECTED'
+  /** A discrepancy closed undecided because a reviewer rejected its invoice. */
+  | 'DISCREPANCY_CLOSED'
   /** A reviewer confirmed a discrepancy: the overcharge is disputed. */
   | 'DISCREPANCY_CONFIRMED'
   /** A reviewer dismissed a discrepancy: the billed amount stands. */
@@ -153,6 +155,8 @@ export type DiscrepancyEdge = {
 
 /** Review state of a discrepancy. */
 export type DiscrepancyStatus =
+  /** Closed undecided when a reviewer rejected the invoice. */
+  | 'CLOSED'
   | 'CONFIRMED'
   | 'DISMISSED'
   | 'OPEN';
@@ -164,6 +168,7 @@ export type DiscrepancyType =
   /**
    * Another invoice from the same carrier has the same number: a possible duplicate of the whole invoice, with no line and
    * no money. It is decided on its own; while it is open, the invoice takes no bulk decision and cannot be approved.
+   * Confirmed, it keeps the invoice from approval by any decision, and a reviewer rejects the invoice instead.
    */
   | 'DUPLICATE_INVOICE'
   | 'RATE_MISMATCH'
@@ -298,7 +303,7 @@ export type InvoiceStatus =
   | 'NEEDS_REVIEW'
   /** Stored; waiting for extraction. */
   | 'RECEIVED'
-  /** Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision. */
+  /** Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision; a reviewer may reject the invoice instead. */
   | 'RECONCILED'
   /** Matching against the shipment and rate card is running. */
   | 'RECONCILING'
@@ -348,7 +353,7 @@ export type LineItem = {
 /** Reviewer actions. */
 export type Mutation = {
   __typename?: 'Mutation';
-  /** Approves an invoice for payment. */
+  /** Approves an invoice for payment. Refused while a discrepancy is open, and once a possible duplicate is confirmed. */
   approveInvoice: Invoice;
   /**
    * Corrects the carrier or PRO number that kept a NEEDS_REVIEW invoice from matching a shipment, then runs
@@ -359,10 +364,13 @@ export type Mutation = {
    * Decides every open discrepancy of a reconciled invoice in one transaction (dismissed for APPROVE_AS_BILLED, confirmed
    * otherwise), then approves the invoice unless the decision is DISPUTE. seen lists every discrepancy of the invoice with
    * the version the reviewer saw: any difference refuses with CONFLICT and changes nothing. A repeated requestId returns
-   * the invoice and changes nothing.
+   * the invoice and changes nothing. Refused while a possible duplicate is open, and once it is confirmed.
    */
   decideInvoice: Invoice;
-  /** Rejects a NEEDS_REVIEW invoice for payment; the reason is kept in its audit trail. Final. */
+  /**
+   * Rejects a NEEDS_REVIEW or RECONCILED invoice for payment; the reason is kept in its audit trail, and its open
+   * discrepancies close with it. Final.
+   */
   rejectInvoice: Invoice;
   /** Runs a dead letter's job again from the step that failed. */
   replayDeadLetter: DeadLetter;

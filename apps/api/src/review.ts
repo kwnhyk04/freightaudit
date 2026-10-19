@@ -1,6 +1,6 @@
 import { auditEvents, carriers, discrepancies, extractions, idempotencyKeys, invoices } from '@freightaudit/db';
 import { type Queues, replayDeadLetter, send } from '@freightaudit/pipeline';
-import { and, count, eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { GraphQLError } from 'graphql';
 import { cursorAt, UUID } from './keyset.ts';
@@ -40,6 +40,10 @@ async function lockInvoice(tx: Tx, tenantId: string, id: string) {
   return invoice;
 }
 
+// A possible duplicate a reviewer confirmed is never paid, by any decision: the invoice can only be rejected.
+const CONFIRMED_DUPLICATE = 'this invoice was confirmed as a duplicate of another one; reject it instead';
+const confirmedDuplicate = (finding: { type: string; status: string }) => finding.type === 'duplicate_invoice' && finding.status === 'confirmed';
+
 // The move to approved and its audit row; the reason says which decision approved it, when there was more than one.
 async function approve(tx: Tx, tenantId: string, actor: string, id: string, from: string, reason: string | null = null) {
   await tx.update(invoices).set({ status: 'approved' }).where(eq(invoices.id, id));
@@ -53,12 +57,10 @@ export async function approveInvoice(deps: ReviewDeps, actor: string, id: string
     if (invoice.status !== 'reconciled' && invoice.status !== 'needs_review') {
       throw refuse('CONFLICT', `only a reconciled invoice or one that needs review can be approved; this one is ${invoice.status}`);
     }
-    const [row] = await tx
-      .select({ open: count() })
-      .from(discrepancies)
-      .where(and(eq(discrepancies.invoiceId, id), eq(discrepancies.status, 'open')));
-    const open = row?.open ?? 0;
+    const findings = await tx.select({ type: discrepancies.type, status: discrepancies.status }).from(discrepancies).where(eq(discrepancies.invoiceId, id));
+    const open = findings.filter((finding) => finding.status === 'open').length;
     if (open > 0) throw refuse('CONFLICT', `decide the ${open} open discrepanc${open === 1 ? 'y' : 'ies'} first`);
+    if (findings.some(confirmedDuplicate)) throw refuse('CONFLICT', CONFIRMED_DUPLICATE);
     await approve(tx, deps.tenantId, actor, id, invoice.status);
   });
 }
@@ -128,6 +130,7 @@ export async function decideInvoice(
     if (saw.size !== seen.length || saw.size !== findings.length || findings.some((finding) => saw.get(finding.id) !== finding.version)) {
       throw refuse('CONFLICT', CHANGED);
     }
+    if (findings.some(confirmedDuplicate)) throw refuse('CONFLICT', CONFIRMED_DUPLICATE);
     const open = findings.filter((finding) => finding.status === 'open');
     if (open.length === 0) throw refuse('CONFLICT', 'no finding of this invoice is open');
     // A possible duplicate is decided on its own: a decision on every finding would pass it with the charges.
@@ -199,9 +202,22 @@ export async function rejectInvoice(deps: ReviewDeps, actor: string, id: string,
   if (!reason) throw refuse('BAD_USER_INPUT', 'give a reason for the rejection');
   await asReviewer(deps, actor, async (tx) => {
     const invoice = await lockInvoice(tx, deps.tenantId, id);
-    if (invoice.status !== 'needs_review') throw refuse('CONFLICT', `only an invoice that needs review can be rejected; this one is ${invoice.status}`);
+    if (invoice.status !== 'needs_review' && invoice.status !== 'reconciled') {
+      throw refuse('CONFLICT', `only a reconciled invoice or one that needs review can be rejected; this one is ${invoice.status}`);
+    }
+    // Its open findings close with it, undecided, so the review queue stops counting them; each audit row says why.
+    const closed = await tx
+      .update(discrepancies)
+      .set({ status: 'closed', resolvedAt: sql`now()` })
+      .where(and(eq(discrepancies.invoiceId, id), eq(discrepancies.status, 'open')))
+      .returning({ id: discrepancies.id });
+    if (closed.length > 0) {
+      const changes: Change[] = [{ field: 'status', from: 'open', to: 'closed' }];
+      const why = 'the invoice was rejected';
+      await tx.insert(auditEvents).values(closed.map((finding) => ({ tenantId: deps.tenantId, invoiceId: id, discrepancyId: finding.id, actor, action: 'discrepancy_closed', changes, reason: why })));
+    }
     await tx.update(invoices).set({ status: 'rejected' }).where(eq(invoices.id, id));
-    const changes: Change[] = [{ field: 'status', from: 'needs_review', to: 'rejected' }];
+    const changes: Change[] = [{ field: 'status', from: invoice.status, to: 'rejected' }];
     await tx.insert(auditEvents).values({ tenantId: deps.tenantId, invoiceId: id, actor, action: 'rejected', changes, reason });
   });
 }

@@ -10,6 +10,8 @@ export type AuditAction =
   | 'APPROVED'
   /** A reviewer corrected the carrier or PRO number and matching ran again. */
   | 'CORRECTED'
+  /** A discrepancy closed undecided because a reviewer rejected its invoice. */
+  | 'DISCREPANCY_CLOSED'
   /** A reviewer confirmed a discrepancy: the overcharge is disputed. */
   | 'DISCREPANCY_CONFIRMED'
   /** A reviewer dismissed a discrepancy: the billed amount stands. */
@@ -48,6 +50,8 @@ export type DiscrepancyDecision =
 
 /** Review state of a discrepancy. */
 export type DiscrepancyStatus =
+  /** Closed undecided when a reviewer rejected the invoice. */
+  | 'CLOSED'
   | 'CONFIRMED'
   | 'DISMISSED'
   | 'OPEN';
@@ -59,6 +63,7 @@ export type DiscrepancyType =
   /**
    * Another invoice from the same carrier has the same number: a possible duplicate of the whole invoice, with no line and
    * no money. It is decided on its own; while it is open, the invoice takes no bulk decision and cannot be approved.
+   * Confirmed, it keeps the invoice from approval by any decision, and a reviewer rejects the invoice instead.
    */
   | 'DUPLICATE_INVOICE'
   | 'RATE_MISMATCH'
@@ -88,7 +93,7 @@ export type InvoiceStatus =
   | 'NEEDS_REVIEW'
   /** Stored; waiting for extraction. */
   | 'RECEIVED'
-  /** Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision. */
+  /** Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision; a reviewer may reject the invoice instead. */
   | 'RECONCILED'
   /** Matching against the shipment and rate card is running. */
   | 'RECONCILING'

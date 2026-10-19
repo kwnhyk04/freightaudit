@@ -168,13 +168,21 @@ Migrate: apply 0013 before the api and worker of this release; the old code neve
 
 Migrate: apply 0014 before the api and worker of this release. The old api has no `DUPLICATE_INVOICE` in its GraphQL enum, and only the new worker writes the value. Contract: none needed.
 
+## 0015 rejecting a reconciled invoice (expand)
+
+- `discrepancy_status` gains `closed` (`ADD VALUE ... AFTER 'dismissed'`, in the file's transaction as 0005, 0013 and 0014 did; nothing in the file uses the new value). A finding is closed, undecided, when a reviewer rejects its invoice.
+- `audit_events_action_check` is dropped and added again with `discrepancy_closed`, the row each closed finding gets. The wider check is validated in the same statement; `audit_events` is small and append-only, so the scan under the lock is short.
+- `check_invoice_transition` allows reconciled to rejected, and it now refuses a move to rejected while a discrepancy is open, as it already refused approval. `rejectInvoice` closes the open findings first, in the same transaction, so the review queue stops counting them.
+
+Migrate: apply 0015 before the api of this release. The old api never rejects a reconciled invoice or writes `closed`, and a needs_review invoice has no findings, so the new rule changes nothing for it. Contract: none needed.
+
 ## Tests (`pnpm test:int`)
 
 Each test runs in a throwaway database on the Postgres container that `pnpm test:int` starts for the run.
 
 - Migrations apply from empty, a second run is a no-op, and the Drizzle schema matches the database, including enum labels.
 - The exclusion constraint rejects overlapping versions for one carrier (SQLSTATE `23P01`), and allows touching ranges and the same dates for another carrier.
-- The status trigger rejects moves the lifecycle does not list (SQLSTATE `23514`) and allows listed and repeated ones, extracting to needs_review included, and it rejects approving a reconciled invoice until its open discrepancy has a decision.
+- The status trigger rejects moves the lifecycle does not list (SQLSTATE `23514`) and allows listed and repeated ones, extracting to needs_review included, and it rejects approving a reconciled invoice until its open discrepancy has a decision. Since 0015 it allows rejecting a reconciled invoice once no discrepancy is open, with a closed finding and its `discrepancy_closed` row.
 - Expand, backfill and contract under the app (`apps/api/src/expand-contract.int.test.ts`): 0001 with the small seed in its flat-rate shape; 0002, after which the api's own list and detail handlers still read every invoice and discrepancy; the backfill, crashed after its first batch and resumed; 0003a and 0003b, after which every invoice line has a version of its own invoice's carrier, both columns are `NOT NULL`, the foreign keys are validated, both indexes are valid, and the api reads again with a version on every finding's line; then 0004 to 0006, leaving no `carrier_id`, and the api reads once more.
 - The small seed loads on the final schema with terms on every version and miles on every shipment, every line bills the version in force on its ship date, and every invoice's extraction, lines, shipment and discrepancies fit its status in the lifecycle.
 

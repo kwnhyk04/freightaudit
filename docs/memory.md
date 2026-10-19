@@ -304,6 +304,25 @@ From the approved design doc:
   - The setting is `EXTRACT_CONCURRENCY`, after the extract worker it sets. The demo's value is in `infra/docker-compose.prod.yml` beside `MOCK_TMS_URL`, where its non-secret worker settings live; `.env.prod` holds keys.
   - Reason: the user asked for the work done alone; each choice is the smallest that fits the request.
 
+- 2026-10-19: C4 scope and the C3 choices (user, on reading the C2b and C3 report).
+  - C4 adds:
+    - the bulk buttons hidden or disabled while a possible duplicate is open, with the api's refusal still the real guard;
+    - a confirmed duplicate rejectable and never approved;
+    - the finding's real words;
+    - tabs that fit at 1280 px and wider without hiding scrollbars;
+    - the split tabs on the new arguments (docs/todo.md).
+  - Kept: the summary range is by upload day in UTC with both ends included. Query cost counts the selected fields, with page size capped at 100. Both invoices get the finding when they are read at the same time. The setting is named `EXTRACT_CONCURRENCY`.
+  - Not mentioned, so still the agent's choices: with a filter, dead letters count through their invoice; a possible duplicate skips rejected invoices.
+  - Reason: the user's answer to the report.
+
+- 2026-10-19: C4a decisions.
+  - The user's: C4 ships as two PRs. C4a (api, worker, migration) goes first; C4b (web) follows once C4a is released and running on the demo. The user also confirmed the two C3 choices left above: with a filter, dead letters count through their invoice, and the duplicate check skips rejected invoices.
+  - The agent's, for the user to confirm at review:
+    - A rejected invoice's open findings take a new status, `closed`, with the audit action `discrepancy_closed` and the reason "the invoice was rejected". As dismissed, they would read "Charge approved"; as confirmed, "Disputed". Either way they would count as a reviewer's decision.
+    - The database refuses rejection while a finding is open, as it refuses approval, so no writer can leave one in the review queue.
+    - A confirmed possible duplicate refuses every `decideInvoice` decision, DISPUTE included, and `approveInvoice`. Dismissing the finding lifts the refusal.
+  - Reason: the user's C4a request; each choice is the smallest that fits it.
+
 ## Preferences and Instructions
 
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).
@@ -512,6 +531,15 @@ From the approved design doc:
 - 2026-10-19: A test that spawns a service and waits for a log line the old code never prints hangs past Jest's timeout, and the child keeps running.
   - What we did: the read ends at a line both versions print (`Server listening at`). A spawn that must exit has a `timeout`. The hung run was stopped with TaskStop, and no child was left.
 - 2026-10-19: The recorded-fixture model server answers every text-path call with digital.pdf's reading, so e2e uploads share one carrier and invoice number (98211354). Since C3, the later one carries a `duplicate_invoice` finding; the sample tap's row reads "Billing issues (6)" in the list picture.
+- 2026-10-19: An api integration test file that sends more than 60 requests a minute gets a 429 from the default rate limit, which reads as a missing error code.
+  - What happened: once two tests were added to `decide.int.test.ts`, its last test expected CONFLICT and received no code. The response was a 429 Problem Details.
+  - Why: `buildApp` allows 60 requests a minute per key by default, and the file uses one key.
+  - What we did: the file passes `rateLimits` of 1,000, as `pagination.int.test.ts` and `openapi.contract.test.ts` do.
+- 2026-10-19: `pnpm e2e` failed once in "a file dropped while another uploads is refused out loud": the file input stayed disabled past the 5 s wait for hydration (`disabled={!ready || pending}`, `components/client.tsx`).
+  - Why: not confirmed. The other upload tests in that run hydrated, and the rerun passed 34/34.
+  - What we did: reran the suite. If it happens again, open the trace in `apps/web/test-results/` first.
+- 2026-10-19: `pnpm e2e:screenshots` rewrites every picture that shows a date or an age ("Received Oct 19", "the oldest waiting 2 days"). So a run with no UI change still changes about 19 files.
+  - What we did (C4a, no UI change): `git restore -- docs/screenshots` after looking at two pairs, so `ship`'s `git add -A` commits no date-only pictures (agent's choice, for the user to confirm).
 
 ## Rejected Approaches
 
@@ -556,6 +584,12 @@ From the approved design doc:
   - What we did:
     - Ran `impeccable detect` and `impeccable ignores list` from the root and from `apps/web`.
     - Corrected the cause in the 2026-10-19 activity-log entry. The C2 entry stays as written.
+- 2026-10-19: Name the path that skips a check, not only a state it passes through (agent mistake).
+  - What happened: the C4 note under Known Limitations said that an invoice sent to needs_review gets no possible-duplicate finding. The user asked C4a to run the check when such an invoice reconciles. It already ran there: a corrected invoice goes back through the reconcile that checks.
+  - Why: the agent read where reconcile returns for needs_review and did not follow the invoice past the reviewer's correction.
+  - What we did:
+    - Added the test the user asked for. It passed on the code as it was, and skipping the finding failed it.
+    - Told the user, and named the path that is really unchecked: approval as billed from needs_review.
 
 ## Constraints
 

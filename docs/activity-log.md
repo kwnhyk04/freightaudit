@@ -19,6 +19,56 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-19: C4a built: a reconciled invoice can be rejected, a confirmed duplicate is never approved (branch c4a from main `62a0cba`, not committed)
+
+- **Setup:** `git branch -m c4 c4a` (user request). The C4 scope edits to the docs ride with C4a.
+- **Migration 0015** (docs/migrations.md):
+  - What changed: the move reconciled to rejected; rejection, like approval, refused while a discrepancy is open; `closed` and `discrepancy_closed`.
+  - The extended test failed first, on the 0014 schema's refusal of the move. It passed with 0015 (7/7). It failed again with `rejected` dropped from the open-findings rule ("Received promise resolved instead of rejected").
+- **`rejectInvoice` on a reconciled invoice:**
+  - What changed: the needs_review reason rules apply. The open findings close in the same transaction, each with a `discrepancy_closed` row, and the GraphQL trail maps the new action.
+  - The test failed first with "only an invoice that needs review can be rejected; this one is reconciled".
+  - Mutations that skipped the audit rows, and that dropped the trail's mapping, each failed it.
+- **A confirmed duplicate is never approved:** `approveInvoice` and every `decideInvoice` decision refuse it.
+  - The test failed first: "Approve as billed" went through on a confirmed duplicate.
+  - A mutation that removed the single approval's check failed it again.
+- **The needs-review duplicate check:** the test the user asked for passed on the code as it was. A corrected invoice goes back to extracted, and its next reconcile runs the lookup.
+  - What happened: the Known Limitations line written earlier today had overstated the gap (memory, lesson).
+  - What we did: kept the test as a pin. A mutation that skipped the finding failed it ("discrepancies": 0). The line moved into C4a in docs/todo.md, with the path that stays unchecked, approval as billed from needs_review, left to the user.
+- **Contracts:** codegen ran twice, once per schema edit. oasdiff reported one error, `closed` in `GET /v1/discrepancies`. It is ignored with its reason, and `contracts:breaking` then reported nothing breaking.
+- **Small events:**
+  - `decide.int.test.ts`: after the two new tests, its last test received no error code.
+    - Why: a 429 from the default limit of 60 requests a minute (memory, pitfall).
+    - What we did: the file now passes `rateLimits`.
+  - `pnpm e2e` failed once: "a file dropped while another uploads is refused out loud" timed out with the file input disabled, waiting for hydration. Why: not confirmed. What we did: the rerun passed 34/34 (memory, pitfall).
+  - `pnpm e2e:screenshots` passed 8/8 and rewrote 19 pictures, which differed only by the run's dates (two pairs viewed). What we did: restored them with `git restore -- docs/screenshots`, so the commit carries no date-only churn.
+  - GateGuard asked for facts before each file's first edit and before the restore, and every retry passed. One mutation edit was blocked, so that run tested unchanged code; the edit was retried and the run repeated.
+  - A Bash `cd packages/contracts`, made to run oasdiff directly, left the session there for one call. The next call moved it back to the root, before any edit. The design hook flagged nothing.
+- Files:
+  - Api: `src/review.ts`, `src/graphql.ts`, `src/loaders.ts`, `src/decide.int.test.ts`.
+  - Worker: `src/reconcile.int.test.ts` (test only).
+  - Packages: `db/migrations/0015_reject_reconciled.sql` (new), `db/src/schema.ts`, `db/src/migrations.int.test.ts`; `contracts/{schema.graphql,openapi.yaml,oasdiff-ignore.txt}` and `src/generated/*`.
+  - Web: `lib/labels.ts` (two labels so it compiles).
+  - Docs: `docs/{activity-log,context,memory,migrations,todo}.md`.
+- Validation: `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 127 in 23 suites, `pnpm contracts:check`, `pnpm contracts:breaking` (nothing breaking), `pnpm e2e` 34/34 (second run), `pnpm e2e:screenshots` 8/8. No live model call and no `pnpm demo:up`.
+- Outstanding: the user ships C4a, then the Release and the user's `pnpm demo:up` (0015 applies first). Then C4b, planned first. Open for the user: the needs-review approval path, and the agent's C4a choices (docs/memory.md).
+
+### 2026-10-19: C4 scope from the C2b and C3 report (branch c4 from main `62a0cba`, not committed)
+
+- **Base:** after `git fetch origin`, `git rev-parse main origin/main` gave `62a0cba` for both, "C2b and C3: … (#27)", with C2 (`dfcdaab`, #26) below it. `git switch -c c4` cut the branch there. No GitHub call was made (AGENTS.md).
+- **C4 items (docs/todo.md):** the user added five items from the report. Three of them widen items C4 already had: the bulk buttons, the finding's words and the split tabs.
+  - What happened: reading the code for the reject item showed that it needs an api change and a migration, not only the web.
+  - Why: `rejectInvoice` accepts only needs_review (`apps/api/src/review.ts:202`), and `check_invoice_transition()` allows no move from reconciled to rejected (`packages/db/migrations/0013_audit_and_rejection.sql:53-67`). `approveInvoice` and `decideInvoice` refuse only open findings (`review.ts:56-61`, `:134`), so a confirmed duplicate can be approved today.
+  - What we did: recorded both in the item, and left to the user how C4 ships, with a recommendation. No code changed. C4 is planned first, after C3's Release and `pnpm demo:up`.
+- **C3 choices:** the four the user kept were already in docs/memory.md (the 2026-10-19 entry, written as the agent's choices). A new entry records that the user kept them and that the other two were not mentioned. The past entry stays as written.
+- **Small event (agent mistake):** the C2b and C3 status update in docs/context.md had put its sentences between "PR C2 merged as `dfcdaab` (#26)." and "It brings the status words, …", so "It" read as C4.
+  - Why: the sentences were inserted without rereading the next one. `git show dfcdaab:docs/context.md` shows "It" following PR C2.
+  - What we did: moved that sentence back after PR C2's, and set the status to the merge. Lines that still called PR C1, PR C2 or `c2b-c3` not merged now name their merges.
+- **Found while reading:** reconcile looks for a duplicate only after a shipment matches (`apps/worker/src/reconcile.ts:68` returns before line 125). So an invoice sent to needs_review gets no possible-duplicate finding. It is recorded under Known Limitations in docs/context.md and not added to C4; the user decides.
+- Files: `docs/{activity-log,context,memory,todo}.md`.
+- Validation: docs only, so no check applies (`pnpm lint` is ESLint over code); `git diff --check` for whitespace.
+- Outstanding: C3's Release and the user's `pnpm demo:up`; the user's choice of how C4 ships; then the C4 plan.
+
 ### 2026-10-19: C2b and C3 built alone (branch c2b-c3 on main `dfcdaab`, not committed)
 
 Times are UTC; the user was away, and the work was done test first without them.

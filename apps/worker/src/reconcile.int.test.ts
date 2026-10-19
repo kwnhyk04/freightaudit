@@ -211,6 +211,26 @@ test('an invoice the carrier also billed under its number in another file gets o
   ]);
 });
 
+test('an invoice sent to needs_review, then corrected, gets the possible-duplicate check when it reconciles, rejected invoices still skipped', async () => {
+  const invoice = take(clean);
+  const { tenantId, carrierId, proNumber, invoiceNumber } = await invoiceOf(invoice.invoiceId);
+  const other = (filename: string, status: 'approved' | 'rejected', at: string) =>
+    db().insert(invoices).values({ tenantId, status, filename, contentSha256: randomBytes(32).toString('hex'), carrierId, invoiceNumber, createdAt: new Date(at), updatedAt: new Date(at) });
+  await other('bad-scan.pdf', 'rejected', '2026-09-01T10:00:00Z');
+  await other('first-scan.pdf', 'approved', '2026-09-05T10:00:00Z');
+  // The PRO number read wrong: no shipment matches, so the invoice waits for a reviewer with nothing written.
+  await db().update(invoices).set({ proNumber: '0000000000' }).where(eq(invoices.id, invoice.invoiceId));
+  expect(await run(invoice.invoiceId)).toMatchObject({ status: 'needs_review' });
+  expect(await countFindings(invoice.invoiceId)).toBe(0);
+  // The reviewer's correction, as correctInvoice writes it, sends it back to matching.
+  await db().update(invoices).set({ proNumber, status: 'extracted' }).where(eq(invoices.id, invoice.invoiceId));
+  expect(await run(invoice.invoiceId)).toMatchObject({ status: 'reconciled', discrepancies: 1 });
+  const saved = await db().select({ type: discrepancies.type, status: discrepancies.status, evidence: discrepancies.evidence }).from(discrepancies).where(eq(discrepancies.invoiceId, invoice.invoiceId));
+  expect(saved).toEqual([
+    { type: 'duplicate_invoice', status: 'open', evidence: `Possible duplicate: invoice ${invoiceNumber} from this carrier was also received on 2026-09-05 as first-scan.pdf.` },
+  ]);
+});
+
 // Through the worker, each in a database of its own: data the job cannot price dead-letters it, the invoice ends failed
 // with the reason on its dead letter (the api's failure_reason), and a replay after the fix reconciles it.
 describe('unpriceable data', () => {

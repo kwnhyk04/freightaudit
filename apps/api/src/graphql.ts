@@ -127,6 +127,7 @@ const ACTIONS: Record<string, AuditAction> = {
   corrected: 'CORRECTED',
   discrepancy_confirmed: 'DISCREPANCY_CONFIRMED',
   discrepancy_dismissed: 'DISCREPANCY_DISMISSED',
+  discrepancy_closed: 'DISCREPANCY_CLOSED',
   replayed: 'REPLAYED',
 };
 

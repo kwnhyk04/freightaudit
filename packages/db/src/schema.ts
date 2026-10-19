@@ -34,7 +34,7 @@ export const discrepancyType = pgEnum('discrepancy_type', [
   'weight_mismatch',
   'arithmetic_error',
 ]);
-export const discrepancyStatus = pgEnum('discrepancy_status', ['open', 'confirmed', 'dismissed']);
+export const discrepancyStatus = pgEnum('discrepancy_status', ['open', 'confirmed', 'dismissed', 'closed']);
 
 export const tenants = pgTable('tenants', { id: id(), name: text('name').notNull(), ...timestamps });
 
