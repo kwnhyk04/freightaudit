@@ -150,12 +150,6 @@ test('a checked invoice says what holds it, and one with a confirmed duplicate i
     const [held, ready] = await Promise.all([one(true), one(false)]);
     return [held, ready].map((result) => result.data!.invoices.edges.some(({ node }) => node.id === id));
   };
-  const counted = async () => {
-    const summary = (await gql<{ invoiceSummary: { invoicesHeld: number } }>('{ invoiceSummary { invoicesHeld } }')).data!.invoiceSummary.invoicesHeld;
-    const { rows } = await pool.query(`SELECT count(*)::int AS held FROM invoices i WHERE i.status = 'reconciled' AND EXISTS (SELECT 1 FROM discrepancies d
-      WHERE d.invoice_id = i.id AND (d.status = 'open' OR (d.type = 'duplicate_invoice' AND d.status = 'confirmed')))`);
-    expect(summary).toBe(rows[0].held);
-  };
   expect([await holdOf(), await lists()]).toEqual(['OPEN_FINDINGS', [true, false]]);
   const duplicate = await addDuplicate(id);
   expect(await holdOf()).toBe('POSSIBLE_DUPLICATE');
@@ -163,10 +157,8 @@ test('a checked invoice says what holds it, and one with a confirmed duplicate i
   await resolve(duplicate, 'CONFIRM');
   for (const finding of await findingsOf(id)) if (finding.status === 'open') await resolve(finding.id, 'DISMISS');
   expect([await holdOf(), await lists()]).toEqual(['CONFIRMED_DUPLICATE', [true, false]]);
-  await counted();
   await rejectInvoice(id, 'Same invoice as first-scan.pdf');
   expect([await holdOf(), await lists()]).toEqual([null, [false, false]]);
-  await counted();
 });
 
 test('each decision and closing in the trail names its discrepancy; every other entry names none', async () => {

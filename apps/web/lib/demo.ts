@@ -8,10 +8,11 @@ import type {
   InvoiceStatus,
   InvoiceSummaryQuery,
 } from '@freightaudit/contracts/graphql';
+import { holdOf } from '@freightaudit/contracts/hold';
 import deadLetters from '../public/demo/dead-letters.json';
 import discrepancies from '../public/demo/discrepancies.json';
 import details from '../public/demo/invoice-details.json';
-import { type Filter, holdOf, invoiceAmounts, STATUS } from './labels.ts';
+import { type Filter, invoiceAmounts, STATUS } from './labels.ts';
 
 // The public sample: synthetic golden invoices that scripts/export-demo.ts saved in the shapes the live queries return.
 // Read from these files only, never from the API, and filtered and counted in memory (there are eleven).

@@ -20,15 +20,6 @@ export const STATUS: Record<InvoiceStatus, { label: string; tone: Tone; reason?:
 // issues wait for a decision, or it is ready to approve.
 export const statusLabel = (status: InvoiceStatus, open: number, hold: InvoiceHold | null = null) =>
   status !== 'RECONCILED' ? STATUS[status].label : hold === 'CONFIRMED_DUPLICATE' ? 'Confirmed duplicate' : open > 0 ? `Billing issues (${open})` : 'Ready to approve';
-// What holds a checked invoice back from approval, most pressing first, by the api's rule for Invoice.hold: for the
-// pages that read every finding instead of that field, an invoice's own and the sample's.
-export function holdOf(status: InvoiceStatus, findings: readonly { type: DiscrepancyType; status: DiscrepancyStatus }[]): InvoiceHold | null {
-  if (status !== 'RECONCILED') return null;
-  const duplicate = (decision: DiscrepancyStatus) => findings.some((finding) => finding.type === 'DUPLICATE_INVOICE' && finding.status === decision);
-  if (duplicate('CONFIRMED')) return 'CONFIRMED_DUPLICATE';
-  if (duplicate('OPEN')) return 'POSSIBLE_DUPLICATE';
-  return findings.some((finding) => finding.status === 'OPEN') ? 'OPEN_FINDINGS' : null;
-}
 // Why a possible duplicate holds a checked invoice, in a list's words; open findings say how many instead.
 const HELD: Partial<Record<InvoiceHold, string>> = { CONFIRMED_DUPLICATE: 'Waits to be rejected', POSSIBLE_DUPLICATE: 'Possible duplicate to decide' };
 // A status from a URL parameter such as ?status=needs_review; anything else means all.

@@ -161,6 +161,7 @@ export function createLoaders(db: NodePgDatabase, tenantId: string) {
     }),
 
     // What holds each checked invoice back from approval (Invoice.hold), most pressing first, in one query per page.
+    // hold.int.test.ts keeps this rule equal to graphql.ts's held and to holdOf (@freightaudit/contracts/hold).
     hold: new DataLoader(async (ids: readonly string[]) => {
       const duplicate = sql`${discrepancies.type} = 'duplicate_invoice'`;
       const rows = await db
