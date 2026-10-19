@@ -88,6 +88,24 @@ const shape = (row: typeof auditEvents.$inferSelect) => ({
   reason: row.reason,
 });
 
+test('while a possible duplicate is open, no bulk decision and no approval goes through; decided on its own, the rest can be', async () => {
+  const id = fresh.shift()!;
+  const { rows } = await pool.query(
+    "INSERT INTO discrepancies (tenant_id, invoice_id, shipment_id, type, expected_cents, billed_cents, evidence) SELECT tenant_id, id, shipment_id, 'duplicate_invoice', 0, 0, 'Possible duplicate.' FROM invoices WHERE id = $1 RETURNING id",
+    [id],
+  );
+  const duplicate: string = rows[0].id;
+  for (const decision of ['APPROVE_AS_BILLED', 'APPROVE_AT_RATE_CARD', 'DISPUTE']) {
+    const refused = (await decideInvoice(id, decision, await seenOf(id))).errors?.[0];
+    expect([decision, refused?.message, refused?.extensions?.code]).toEqual([decision, 'this invoice may duplicate another one; decide that finding on its own first', 'CONFLICT']);
+  }
+  expect((await gql('mutation ($id: ID!) { approveInvoice(id: $id) { status } }', { id })).errors?.[0]?.extensions?.code).toBe('CONFLICT');
+  expect([await statusOf(id), (await findingsOf(id)).every((finding) => finding.status === 'open'), await keysOf(id)]).toEqual(['reconciled', true, []]);
+  // Not a duplicate after all: dismissed on its own, the other findings take a bulk decision again.
+  expect((await resolve(duplicate, 'DISMISS')).data!.resolveDiscrepancy).toEqual({ status: 'DISMISSED' });
+  expect((await decideInvoice(id, 'APPROVE_AT_RATE_CARD', await seenOf(id))).data!.decideInvoice).toEqual({ status: 'APPROVED', openDiscrepancyCount: 0 });
+});
+
 test('approve at rate card disputes every open finding and approves, writing the audit rows a manual decision writes', async () => {
   const [id, manual] = [fresh.shift()!, fresh.shift()!];
   await addFinding(id);

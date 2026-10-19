@@ -161,6 +161,11 @@ export type DiscrepancyStatus =
 export type DiscrepancyType =
   | 'ARITHMETIC_ERROR'
   | 'DUPLICATE_CHARGE'
+  /**
+   * Another invoice from the same carrier has the same number: a possible duplicate of the whole invoice, with no line and
+   * no money. It is decided on its own; while it is open, the invoice takes no bulk decision and cannot be approved.
+   */
+  | 'DUPLICATE_INVOICE'
   | 'RATE_MISMATCH'
   | 'UNCONTRACTED_CHARGE'
   | 'WEIGHT_MISMATCH';
@@ -437,11 +442,16 @@ export type Query = {
   health: Scalars['String']['output'];
   /** One invoice, or null when it does not exist. */
   invoice?: Maybe<Invoice>;
-  /** Counts and totals for the invoice list and the sidebar, read when asked. */
+  /**
+   * Counts and totals for the invoice list and the sidebar, read when asked. They may cover one carrier, the one that
+   * bills, and the invoices received from one UTC day to another, both included; from after to is refused. With any of
+   * them, openDeadLetters counts only the dead letters of the invoices kept.
+   */
   invoiceSummary: InvoiceSummary;
   /**
-   * Invoices, newest first: a page going forward (first, after) or back (last, before), filtered by status and by search,
-   * which matches the invoice number, PRO number or carrier name, ignoring case.
+   * Invoices, newest first: a page going forward (first, after) or back (last, before), filtered by status, by search,
+   * which matches the invoice number, PRO number or carrier name, ignoring case, and by hasOpenFindings: true keeps the
+   * invoices with an open discrepancy, false those with none.
    */
   invoices: InvoiceConnection;
 };
@@ -470,10 +480,19 @@ export type QueryInvoiceArgs = {
 
 
 /** Queries for the invoice review UI. */
+export type QueryInvoiceSummaryArgs = {
+  carrierId?: InputMaybe<Scalars['ID']['input']>;
+  from?: InputMaybe<Scalars['Date']['input']>;
+  to?: InputMaybe<Scalars['Date']['input']>;
+};
+
+
+/** Queries for the invoice review UI. */
 export type QueryInvoicesArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   before?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  hasOpenFindings?: InputMaybe<Scalars['Boolean']['input']>;
   last?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<InvoiceStatus>;
@@ -859,7 +878,7 @@ export type QueryResolvers<ContextType = any, ParentType extends ResolversParent
   discrepancies?: Resolver<ResolversTypes['DiscrepancyConnection'], ParentType, ContextType, RequireFields<QueryDiscrepanciesArgs, 'first'>>;
   health?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   invoice?: Resolver<Maybe<ResolversTypes['Invoice']>, ParentType, ContextType, RequireFields<QueryInvoiceArgs, 'id'>>;
-  invoiceSummary?: Resolver<ResolversTypes['InvoiceSummary'], ParentType, ContextType>;
+  invoiceSummary?: Resolver<ResolversTypes['InvoiceSummary'], ParentType, ContextType, Partial<QueryInvoiceSummaryArgs>>;
   invoices?: Resolver<ResolversTypes['InvoiceConnection'], ParentType, ContextType, RequireFields<QueryInvoicesArgs, 'first'>>;
 };
 

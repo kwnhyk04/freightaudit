@@ -25,6 +25,7 @@ const env = loadEnv([
   'LLM_TEXT_MIN_CHARS',
   'MOCK_TMS_URL',
   'JOB_LOCK_MS',
+  'EXTRACT_CONCURRENCY',
   ...LLM_SETTINGS,
 ]);
 // With AI off nothing is required: no model is built and extract jobs wait.
@@ -54,8 +55,10 @@ const workers = startWorkers(
     tmsUrl: env.MOCK_TMS_URL,
     log: app.log,
   },
-  { lockDuration: env.JOB_LOCK_MS },
+  { lockDuration: env.JOB_LOCK_MS, extractConcurrency: env.EXTRACT_CONCURRENCY },
 );
+// Read back from BullMQ, so the log shows what each worker takes at once.
+app.log.info({ concurrency: Object.fromEntries(workers.workers.map((worker) => [worker.name, worker.concurrency])) }, 'workers started');
 // An empty MOCK_TMS_URL (the public demo, which bills seeded shipments) turns the sync off.
 await (env.MOCK_TMS_URL ? scheduleTmsSync(queues, env.TENANT_ID) : unscheduleTmsSync(queues));
 

@@ -3,14 +3,15 @@ import { seed } from '@freightaudit/db/scripts/seed';
 import { createTestDatabase, testEnv } from '@freightaudit/db/testing';
 import { createMemoryStorage, createQueues, type Queues } from '@freightaudit/pipeline';
 import { serverOptions } from '@freightaudit/telemetry';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNotNull } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Redis } from 'ioredis';
 import { randomBytes } from 'node:crypto';
 import pg from 'pg';
 import { buildApp } from './app.ts';
+import { MAX_DEPTH } from './query-limits.ts';
 import { createService } from './service.ts';
-import { apiKey } from './testing.ts';
+import { apiKey, deepQuery } from './testing.ts';
 
 let database: Awaited<ReturnType<typeof createTestDatabase>>;
 let pool: pg.Pool;
@@ -145,30 +146,96 @@ test('search finds invoices by number, PRO or carrier, ignoring case, and takes 
   expect((await gql(`{ invoices(search: "${'7'.repeat(101)}") { totalCount } }`)).errors?.[0]?.message).toBe('search is longer than 100 characters');
 });
 
-test('the summary counts what the tables hold', async () => {
-  const { data, errors } = await gql(
-    '{ invoiceSummary { statusCounts { status count } receivedLast7Days openFindings invoicesWithOpenFindings oldestOpenFindingAt openOverchargeCents matchedRateCard openDeadLetters } }',
-  );
-  expect(errors).toBeUndefined();
-  const all = await db.select().from(invoices).where(eq(invoices.tenantId, tenantId));
-  const findings = await db.select().from(discrepancies).where(eq(discrepancies.tenantId, tenantId));
-  const letters = await db.select().from(deadLetters).where(eq(deadLetters.tenantId, tenantId));
+const SUMMARY = `query ($carrierId: ID, $from: Date, $to: Date) { invoiceSummary(carrierId: $carrierId, from: $from, to: $to) {
+  statusCounts { status count } receivedLast7Days openFindings invoicesWithOpenFindings oldestOpenFindingAt openOverchargeCents matchedRateCard
+  openDeadLetters } }`;
+type Invoice = typeof invoices.$inferSelect;
+// The summary read from the tables, of the invoices keep accepts; with no keep, of all of them and every dead letter.
+async function expectedSummary(keep?: (invoice: Invoice) => boolean) {
+  const all = (await db.select().from(invoices).where(eq(invoices.tenantId, tenantId))).filter(keep ?? (() => true));
+  const kept = new Set(all.map((invoice) => invoice.id));
+  const findings = (await db.select().from(discrepancies).where(eq(discrepancies.tenantId, tenantId))).filter((finding) => kept.has(finding.invoiceId));
+  const letters = (await db.select().from(deadLetters).where(eq(deadLetters.tenantId, tenantId))).filter((letter) => {
+    const invoiceId = (letter.payload as { invoiceId?: string }).invoiceId;
+    return invoiceId === undefined ? !keep : kept.has(invoiceId);
+  });
   const open = findings.filter((finding) => finding.status === 'open');
   const flagged = new Set(findings.map((finding) => finding.invoiceId));
   const weekAgo = Date.now() - 7 * 86_400_000;
-  const summary = data!.invoiceSummary;
-  expect(open.length).toBeGreaterThan(0);
-  expect(summary.statusCounts).toEqual(invoiceStatus.enumValues.map((status) => ({ status: status.toUpperCase(), count: all.filter((row) => row.status === status).length })));
-  expect(summary).toEqual({
-    statusCounts: summary.statusCounts,
+  return {
+    statusCounts: invoiceStatus.enumValues.map((status) => ({ status: status.toUpperCase(), count: all.filter((row) => row.status === status).length })),
     receivedLast7Days: all.filter((row) => row.createdAt.getTime() > weekAgo).length,
     openFindings: open.length,
     invoicesWithOpenFindings: new Set(open.map((finding) => finding.invoiceId)).size,
-    oldestOpenFindingAt: new Date(Math.min(...open.map((finding) => finding.createdAt.getTime()))).toISOString(),
+    oldestOpenFindingAt: open.length > 0 ? new Date(Math.min(...open.map((finding) => finding.createdAt.getTime()))).toISOString() : null,
     openOverchargeCents: Number(open.reduce((cents, finding) => cents + finding.billedCents - finding.expectedCents, 0n)),
     matchedRateCard: all.filter((row) => row.status === 'reconciled' && !flagged.has(row.id)).length,
     openDeadLetters: letters.filter((letter) => letter.replayedAt === null).length,
-  });
+  };
+}
+const summaryOf = async (variables: Record<string, unknown> = {}) => {
+  const { data, errors } = await gql(SUMMARY, variables);
+  expect(errors).toBeUndefined();
+  return data!.invoiceSummary;
+};
+
+test('the summary counts what the tables hold', async () => {
+  const want = await expectedSummary();
+  expect(want.openFindings).toBeGreaterThan(0);
+  expect(await summaryOf()).toEqual(want);
+});
+
+test('the summary narrows to the carrier that bills, to the UTC days invoices were received, or both', async () => {
+  const day = (date: Date) => date.toISOString().slice(0, 10);
+  // The middle invoice by received time, so every filter below leaves invoices out on each side.
+  const carried = await db.select().from(invoices).where(and(eq(invoices.tenantId, tenantId), isNotNull(invoices.carrierId))).orderBy(invoices.createdAt);
+  const sample = carried[Math.floor(carried.length / 2)];
+  const carrierId = sample!.carrierId!;
+  const from = day(sample!.createdAt);
+  const to = day(new Date(sample!.createdAt.getTime() + 3 * 86_400_000));
+  const billed = (invoice: Invoice) => invoice.carrierId === carrierId;
+  const received = (invoice: Invoice) => day(invoice.createdAt) >= from && day(invoice.createdAt) <= to;
+  const cases: [Record<string, string>, (invoice: Invoice) => boolean][] = [
+    [{ carrierId }, billed],
+    [{ from, to }, received],
+    [{ carrierId, from, to }, (invoice) => billed(invoice) && received(invoice)],
+    [{ from }, (invoice) => day(invoice.createdAt) >= from],
+    [{ to }, (invoice) => day(invoice.createdAt) <= to],
+    [{ from, to: from }, (invoice) => day(invoice.createdAt) === from],
+  ];
+  const everything = await expectedSummary();
+  for (const [variables, keep] of cases) {
+    const want = await expectedSummary(keep);
+    // Each filter keeps some invoices and leaves out others, so it is tested on both sides.
+    const total = (summary: typeof want) => summary.statusCounts.reduce((sum, { count }) => sum + count, 0);
+    expect([variables, total(want) > 0, total(want) < total(everything)]).toEqual([variables, true, true]);
+    expect([variables, await summaryOf(variables)]).toEqual([variables, want]);
+  }
+});
+
+test('the summary refuses a range whose from is after its to, a day that is not one, and a carrier id that is not one', async () => {
+  const refused = async (variables: Record<string, string>) => (await gql(SUMMARY, variables)).errors?.[0];
+  expect(await refused({ from: '2026-10-20', to: '2026-10-19' })).toMatchObject({ message: 'from (2026-10-20) is after to (2026-10-19)', extensions: { code: 'BAD_USER_INPUT' } });
+  expect(await refused({ from: '2026-02-30' })).toMatchObject({ message: 'from must be a day such as 2026-10-19', extensions: { code: 'BAD_USER_INPUT' } });
+  expect(await refused({ to: 'yesterday' })).toMatchObject({ message: 'to must be a day such as 2026-10-19', extensions: { code: 'BAD_USER_INPUT' } });
+  expect(await refused({ carrierId: 'acme' })).toMatchObject({ message: 'carrierId is not a carrier id', extensions: { code: 'BAD_USER_INPUT' } });
+});
+
+test('reconciled invoices filter by whether an open finding waits: billing issues, or ready to approve', async () => {
+  const listed = async (variables: Record<string, unknown>) => {
+    const query = 'query ($open: Boolean) { invoices(first: 100, status: RECONCILED, hasOpenFindings: $open) { totalCount edges { node { id openDiscrepancyCount } } } }';
+    const { data, errors } = await gql(query, variables);
+    expect(errors).toBeUndefined();
+    return data!.invoices as { totalCount: number; edges: { node: { id: string; openDiscrepancyCount: number } }[] };
+  };
+  const { rows } = await pool.query(
+    "SELECT count(*) FILTER (WHERE waits)::int AS waiting, count(*) FILTER (WHERE NOT waits)::int AS ready FROM (SELECT EXISTS (SELECT 1 FROM discrepancies d WHERE d.invoice_id = i.id AND d.status = 'open') AS waits FROM invoices i WHERE i.status = 'reconciled') t",
+  );
+  const [issues, ready, all] = [await listed({ open: true }), await listed({ open: false }), await listed({})];
+  expect([issues.totalCount, ready.totalCount, all.totalCount]).toEqual([rows[0].waiting, rows[0].ready, rows[0].waiting + rows[0].ready]);
+  expect([rows[0].waiting > 0, rows[0].ready > 0]).toEqual([true, true]);
+  expect(issues.edges.every(({ node }) => node.openDiscrepancyCount > 0)).toBe(true);
+  expect(ready.edges.every(({ node }) => node.openDiscrepancyCount === 0)).toBe(true);
 });
 
 test('a page of 25 discrepancies with invoice, line, shipment and rate card costs a fixed number of queries', async () => {
@@ -234,6 +301,21 @@ test('approval waits for every discrepancy decision; the decisions and the appro
   const actions = (await db.select().from(auditEvents).where(eq(auditEvents.invoiceId, id))).map((row) => row.action);
   expect(actions.at(-1)).toBe('approved');
   expect(actions.filter((action) => action === 'discrepancy_confirmed')).toHaveLength(open.data!.invoice.discrepancies.edges.length);
+});
+
+test('a document over the limits is refused before any resolver runs: no database query, and no mutation acts', async () => {
+  const { rows } = await pool.query("SELECT id FROM invoices i WHERE i.status = 'reconciled' AND NOT EXISTS (SELECT 1 FROM discrepancies d WHERE d.invoice_id = i.id) LIMIT 1");
+  const id: string = rows[0].id;
+  queries = 0;
+  const aliased = await gql('mutation ($id: ID!) { done: approveInvoice(id: $id) { status } }', { id }, 'reviewer');
+  const deep = await gql(deepQuery(MAX_DEPTH + 1));
+  const messages = (response: { errors?: { message: string }[] }) => response.errors?.map((error) => error.message);
+  expect([messages(aliased), messages(deep), queries]).toEqual([
+    ['Aliases are not accepted: done.'],
+    [`The query nests ${MAX_DEPTH + 1} fields deep; the limit is ${MAX_DEPTH}.`],
+    0,
+  ]);
+  expect(await statusOf(id)).toBe('reconciled');
 });
 
 test('dead letters list by status and replay with the actor recorded', async () => {

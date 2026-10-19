@@ -297,6 +297,13 @@ From the approved design doc:
   - C3 includes the GraphQL depth and cost limits.
   - Reason: the user's answers to the C2 plan.
 
+- 2026-10-19: C2b and C3 choices the agent made while the user was away, for the user to confirm at review.
+  - `invoiceSummary(carrierId, from, to)` ranges over the day an invoice was received (`created_at`, UTC days, both included), since every invoice has one and the invoice date exists only once read. With a filter, dead letters count through the invoice in their payload; with none, every open dead letter counts, a TMS sync's included.
+  - Query cost is the number of fields selected, each fragment counted where it is spread. It does not multiply by `first`, which `pageSize` already caps at 100.
+  - A possible duplicate skips rejected invoices, which are never paid, and names the earliest other one. Two invoices both read before either reconciles each carry the finding: no duplicate is missed, at the cost of one extra decision.
+  - The setting is `EXTRACT_CONCURRENCY`, after the extract worker it sets. The demo's value is in `infra/docker-compose.prod.yml` beside `MOCK_TMS_URL`, where its non-secret worker settings live; `.env.prod` holds keys.
+  - Reason: the user asked for the work done alone; each choice is the smallest that fits the request.
+
 ## Preferences and Instructions
 
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).
@@ -493,6 +500,18 @@ From the approved design doc:
   - What happened: the design hook flagged the approved `side-tab` borders in `apps/web/app/globals.css` during C2.
   - Why: a Bash `cd apps/web` moves the session's working directory, and from there the engine reads `apps/web/.impeccable/config.json`, which does not exist. Check with `impeccable ignores list` from each folder.
   - What we did: changed no hook setting. Keep the shell at the repo root: use absolute paths or `pnpm --filter`, or run a `cd` inside a subshell.
+- 2026-10-19: Jest's `--selectProjects` takes several names, so a test path after it is read as one and the whole project runs. Put the path first: `jest.js <path> --selectProjects integration`.
+- 2026-10-19: Services and integration tests load workspace packages from their built `dist/`.
+  - What happened: a worker spawned by a test failed with "Invalid element at key "EXTRACT_CONCURRENCY": expected a Zod schema".
+  - Why: `packages/config` was built before the new setting.
+  - What we did: `pnpm turbo run build --filter=./packages/*`, as `pnpm test:int` does first.
+- 2026-10-19: A streamed page measured too early reads every size as 0 (agent mistake in a test).
+  - What happened: the first toolbar test passed on the broken CSS.
+  - Why: React held the list in a hidden placeholder until it swapped in, and the locator found that copy.
+  - What we did: logged the sizes once and saw 0. The test now waits for the tab strip to be visible; it then failed with 1 px, as it should.
+- 2026-10-19: A test that spawns a service and waits for a log line the old code never prints hangs past Jest's timeout, and the child keeps running.
+  - What we did: the read ends at a line both versions print (`Server listening at`). A spawn that must exit has a `timeout`. The hung run was stopped with TaskStop, and no child was left.
+- 2026-10-19: The recorded-fixture model server answers every text-path call with digital.pdf's reading, so e2e uploads share one carrier and invoice number (98211354). Since C3, the later one carries a `duplicate_invoice` finding; the sample tap's row reads "Billing issues (6)" in the list picture.
 
 ## Rejected Approaches
 

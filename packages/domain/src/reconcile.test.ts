@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { type BilledLine, currencyReview, rateShipment, reconcileInvoice, type RateCardVersion, versionInForce } from './index.ts';
+import { type BilledLine, currencyReview, duplicateInvoice, rateShipment, reconcileInvoice, type RateCardVersion, versionInForce } from './index.ts';
 
 // A fixed seed: every run checks the same cases, and a failure prints the counterexample it shrank to.
 fc.configureGlobal({ seed: 42, numRuns: 1_000 });
@@ -173,4 +173,26 @@ test('refuses a ship date no version covers, overlapping versions and malformed 
   expect(() => reconcileInvoice([flat], { shippedOn: '2024-12-31', miles: 10, lines: [] })).toThrow('no rate card version in force on 2024-12-31');
   expect(() => versionInForce([flat, { ...flat, version: 2, from: '2025-06-01' }], '2025-07-01')).toThrow('rate card versions 1 and 2 overlap');
   expect(() => versionInForce([flat], '2025-7-1')).toThrow('YYYY-MM-DD');
+});
+
+test('another invoice the carrier billed under the same number is a possible duplicate: named, with no money', () => {
+  const others = [
+    { filename: 'digital.pdf', status: 'approved', receivedOn: '2026-10-17' },
+    { filename: 'scan.pdf', status: 'reconciled', receivedOn: '2026-10-18' },
+  ];
+  expect(duplicateInvoice('98211354', others)).toEqual({
+    type: 'duplicate_invoice',
+    expectedCents: 0n,
+    billedCents: 0n,
+    evidence: 'Possible duplicate: invoice 98211354 from this carrier was also received on 2026-10-17 as digital.pdf.',
+  });
+});
+
+test('a rejected invoice under the same number is no duplicate; the earliest other one is named, and with none there is no finding', () => {
+  const rejected = { filename: 'bad-scan.pdf', status: 'rejected', receivedOn: '2026-10-16' };
+  expect(duplicateInvoice('98211354', [rejected])).toBeUndefined();
+  expect(duplicateInvoice('98211354', [rejected, { filename: 'scan.pdf', status: 'failed', receivedOn: '2026-10-18' }])?.evidence).toBe(
+    'Possible duplicate: invoice 98211354 from this carrier was also received on 2026-10-18 as scan.pdf.',
+  );
+  expect(duplicateInvoice('98211354', [])).toBeUndefined();
 });

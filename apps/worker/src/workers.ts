@@ -44,6 +44,8 @@ export type WorkerOptions = {
   // How often workers look for stalled jobs; one check per interval runs across all workers. Half the lock by default.
   stalledInterval?: number;
   backoff?: { baseMs?: number; capMs?: number };
+  // Documents read at once (EXTRACT_CONCURRENCY).
+  extractConcurrency?: number;
 };
 
 // TMS sync every 5 minutes. Every worker upserts the same scheduler id, so there is one schedule however many run.
@@ -68,7 +70,7 @@ const SWEEP_MS = 5 * 60_000;
 
 export function startWorkers(
   deps: Deps,
-  { lockDuration = 60_000, stalledInterval = lockDuration / 2, backoff = {} }: WorkerOptions = {},
+  { lockDuration = 60_000, stalledInterval = lockDuration / 2, backoff = {}, extractConcurrency = 8 }: WorkerOptions = {},
 ): { workers: Worker[]; close(): Promise<void> } {
   const backoffStrategy = jitteredBackoff(backoff.baseMs, backoff.capMs);
   const common = {
@@ -86,7 +88,7 @@ export function startWorkers(
       'extract',
       (job: Job, token?: string) =>
         consume('extract', job, () => failFast(() => (job.name === 'collect' ? collect(deps, job) : extract(deps, job, token)))),
-      { ...common, concurrency: 8 },
+      { ...common, concurrency: extractConcurrency },
     ),
     new Worker('reconcile', (job: Job) => consume('reconcile', job, () => failFast(() => reconcile(deps, job))), { ...common, concurrency: 8 }),
     new Worker('tms-sync', (job: Job) => consume('tms-sync', job, () => failFast(() => syncShipments(deps, job, backoffStrategy))), common),

@@ -19,6 +19,51 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-19: C2b and C3 built alone (branch c2b-c3 on main `dfcdaab`, not committed)
+
+Times are UTC; the user was away, and the work was done test first without them.
+
+- **Setup:**
+  - What happened: after `git switch main && git pull`, main was still `a2f046e` at 19:44, while ship had pushed C2 as `d6b3377` on `ui-c2-wording` at 19:41.
+  - Why: ship waits for every check before it merges.
+  - What we did: cut `c2b-c3` from `d6b3377`, since C2b edits the toolbar C2 changed. At 20:44 C2 was on main as `dfcdaab` (#26) with the same tree, so `git reset origin/main` moved the branch there and left every change in place. No GitHub call was made (AGENTS.md).
+- **C2b, scrollbar:**
+  - What happened: a probe with the real `globals.css` showed the tab strip 35 px tall with its links ending at 36 px, at every width and DPR. With scrollbars shown, that pixel draws a 15 px vertical scrollbar at the strip's right edge, left of the search box. Playwright's headless Chromium hides scrollbars (0 px; 15 px without `--hide-scrollbars`), so the test compares sizes.
+  - Why: `.tabs a { margin-bottom: -1px }`, meant to lay the current tab's underline over the rule, sits inside the strip's `overflow-x: auto`, so the pixel scrolls instead.
+  - What we did: the rule is now an inset shadow the underline covers from inside, for `.tabs` and the toolbar alike. The probe then showed no vertical scrollbar anywhere. At 1280 px the eight tabs still scroll sideways, as before this change.
+  - Small event: the first RED passed on the broken CSS. It measured the streamed list's hidden copy, where every size is 0 (memory, pitfall). The test now waits for the strip to show, and it failed with "Expected: 0, Received: 1".
+- **C2b, Search button:** a submit button in the same form, so Enter and the button send the same query, the tab included; it takes the global focus ring. Test: Tab from the box focuses it, its box-shadow shows, and a click lands on `?status=…&q=…`.
+- **C3, `EXTRACT_CONCURRENCY`:** 1 to 8, default 8, read at startup; `"1"` in `infra/docker-compose.prod.yml` beside the demo's other non-secret worker settings, so no `.env.prod` line is needed. The worker logs "workers started" with each worker's concurrency read back from BullMQ.
+  - Small events: the first RED hung on a log line the old worker never prints and was stopped with TaskStop, with no child left. A test path after `--selectProjects` ran the whole integration project. The spawned worker read a stale `dist/` of `@freightaudit/config` until the packages were rebuilt (memory, pitfalls).
+- **C3, GraphQL limits:** `apps/api/src/query-limits.ts` refuses at validation a document deeper than 7 fields, with more than 82, or with any alias.
+  - Measured over the 13 client operations: `invoices` and `recent-uploads` nest 7, and `invoice` selects 82. No client operation uses an alias or a fragment.
+  - Fragments are measured once each, so a chain of 30 that each spread the next twice ends at once.
+  - Refused documents ran no database query, and an aliased `approveInvoice` left its invoice reconciled. Yoga gives these errors the code `GRAPHQL_VALIDATION_FAILED`.
+- **C3, summary filters and open-findings filter:** see docs/context.md. The existing summary test now builds its expectation with the same helper as the filter cases.
+- **C3, possible duplicate invoice:** migration 0014, a pure rule (`duplicateInvoice`), the worker's lookup, and `decideInvoice`'s refusal (docs/migrations.md).
+  - oasdiff reported one error, the new enum value in `GET /v1/discrepancies`; it is ignored with its reason in `packages/contracts/oasdiff-ignore.txt`.
+  - In e2e, the fixture models read the sample tap as digital.pdf's invoice, so that invoice now carries the finding, as it should (memory, pitfall).
+- **Tests first:** every new test failed first, and a deliberate mutation failed it again before being reverted:
+  - the concurrency back to 8;
+  - the plugin removed;
+  - the filter branches swapped and the scope dropped;
+  - the push and the refusal skipped, and rejected invoices counted.
+  - A grep for the markers found none left.
+- **GateGuard:** it asked for facts before each first edit (denials #7 to #37), and every retry passed. In one batch, `graphql.ts` got its plugin line while its import was blocked; the import was added with the next call, before any run.
+- **Design hook:** the shell stayed at the repo root, and the hook flagged nothing.
+- Files:
+  - Web: `app/globals.css`, `components/views.tsx`, `lib/labels.ts`, `e2e/main.spec.ts`; `docs/screenshots/ui/` (retaken).
+  - Api: `src/{graphql,review,testing,query-limits}.ts` (query-limits new), `src/query-limits.test.ts` (new), `src/{graphql,decide}.int.test.ts`.
+  - Worker: `src/{main,workers,reconcile}.ts`, `src/{main,reconcile}.int.test.ts`.
+  - Packages:
+    - `config/src/env.ts`;
+    - `contracts/{schema.graphql,openapi.yaml,oasdiff-ignore.txt}` and `src/generated/*`;
+    - `db/migrations/0014_duplicate_invoice.sql` (new), `db/src/{schema,migrations.int.test}.ts`;
+    - `domain/src/{reconcile,reconcile.test,index}.ts`.
+  - Other: `.env.example`, `infra/docker-compose.prod.yml`; `docs/{activity-log,context,deploy,memory,migrations,todo}.md`.
+- Validation: `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 123 in 23 suites, `pnpm contracts:check`, `pnpm contracts:breaking` (nothing breaking), `pnpm e2e` 34/34, `pnpm e2e:screenshots` 8/8. No live model call and no `pnpm demo:up`.
+- Outstanding: the user ships C2b and C3. Then the Release, then the user's `pnpm demo:up` (0014 applies first). Then C4, planned first.
+
 ### 2026-10-19: C2 pre-ship tidy (branch ui-c2-wording, not committed)
 
 - **Base:**

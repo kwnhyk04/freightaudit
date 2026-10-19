@@ -14,6 +14,13 @@ import { createService } from './service.ts';
 
 export const apiKey = 'k'.repeat(40);
 
+// A query n fields deep through the schema's own cycle, Invoice.discrepancies > edges > node > Discrepancy.invoice,
+// ending in __typename, which every object type has.
+export function deepQuery(n: number) {
+  const path = Array.from({ length: n - 1 }, (_, i) => (i === 0 ? 'invoice(id: "00000000-0000-0000-0000-000000000000")' : ['discrepancies', 'edges', 'node', 'invoice'][(i - 1) % 4]));
+  return `{ ${path.map((field) => `${field} { `).join('')}__typename${' }'.repeat(path.length)} }`;
+}
+
 // A valid PDF; the label goes into its metadata, so each label gives different bytes and a different hash.
 export async function pdf(label: string = randomUUID(), pages = 1) {
   const doc = await PDFDocument.create({ updateMetadata: false });

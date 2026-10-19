@@ -2,7 +2,7 @@ import { carriers, deadLetters, discrepancies, extractions, invoiceLines, invoic
 import { seed, type Truth } from '@freightaudit/db/scripts/seed';
 import { createTestDatabase } from '@freightaudit/db/testing';
 import { replayDeadLetter } from '@freightaudit/pipeline';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { randomBytes } from 'node:crypto';
 import pg from 'pg';
@@ -177,6 +177,37 @@ test('of two invoices billing one charge for a shipment, reconciled at once, the
   const found = (await Promise.all(ids.map((id) => findingsOf(id)))).flat();
   expect(found).toEqual([
     { lineNumber: 1, type: 'duplicate_charge', status: 'open', expectedCents: 0n, billedCents: BigInt(amount), evidence: 'LINEHAUL is billed twice.', shipmentId },
+  ]);
+});
+
+test('an invoice the carrier also billed under its number in another file gets one possible-duplicate finding, naming the earliest', async () => {
+  const invoice = take(clean);
+  const { tenantId, carrierId, invoiceNumber } = await invoiceOf(invoice.invoiceId);
+  const [elsewhere] = await db().select({ id: carriers.id }).from(carriers).where(and(eq(carriers.tenantId, tenantId), ne(carriers.id, carrierId!))).limit(1);
+  const other = (filename: string, status: 'approved' | 'rejected', at: string, carrier = carrierId) =>
+    db().insert(invoices).values({ tenantId, status, filename, contentSha256: randomBytes(32).toString('hex'), carrierId: carrier, invoiceNumber, createdAt: new Date(at), updatedAt: new Date(at) });
+  // Rejected, an invoice is no duplicate; under another carrier the number is someone else's.
+  await other('bad-scan.pdf', 'rejected', '2026-09-01T10:00:00Z');
+  await other('another-carrier.pdf', 'approved', '2026-09-02T10:00:00Z', elsewhere!.id);
+  // 23:30 UTC is already the next day in Taipei; the finding gives the UTC day.
+  await other('first-scan.pdf', 'approved', '2026-09-03T23:30:00Z');
+  await other('second-scan.pdf', 'approved', '2026-09-04T10:00:00Z');
+  expect(await run(invoice.invoiceId)).toMatchObject({ status: 'reconciled', discrepancies: 1 });
+  const { shipmentId } = await invoiceOf(invoice.invoiceId);
+  const saved = await db()
+    .select({ type: discrepancies.type, status: discrepancies.status, invoiceLineId: discrepancies.invoiceLineId, expectedCents: discrepancies.expectedCents, billedCents: discrepancies.billedCents, evidence: discrepancies.evidence, shipmentId: discrepancies.shipmentId })
+    .from(discrepancies)
+    .where(eq(discrepancies.invoiceId, invoice.invoiceId));
+  expect(saved).toEqual([
+    {
+      type: 'duplicate_invoice',
+      status: 'open',
+      invoiceLineId: null,
+      expectedCents: 0n,
+      billedCents: 0n,
+      evidence: `Possible duplicate: invoice ${invoiceNumber} from this carrier was also received on 2026-09-03 as first-scan.pdf.`,
+      shipmentId,
+    },
   ]);
 });
 

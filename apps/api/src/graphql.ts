@@ -3,15 +3,16 @@ import { typeDefs } from '@freightaudit/contracts';
 import { carriers, deadLetters, discrepancies, invoices, invoiceStatus } from '@freightaudit/db';
 import { matchCarrier, overchargeCents } from '@freightaudit/domain';
 import type { Queues } from '@freightaudit/pipeline';
-import { and, asc, count, countDistinct, desc, eq, ilike, isNotNull, isNull, min, or, sql, sum } from 'drizzle-orm';
+import { and, asc, count, countDistinct, desc, eq, gte, ilike, isNotNull, isNull, lt, min, not, or, sql, sum } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { FastifyBaseLogger, FastifyReply, FastifyRequest } from 'fastify';
 import { GraphQLError, GraphQLScalarType, Kind } from 'graphql';
-import { createSchema, createYoga } from 'graphql-yoga';
+import { createSchema, createYoga, type Plugin } from 'graphql-yoga';
 import { actorOf } from './actor.ts';
 import { after, before, connection, cursorAt, pageSize, UUID } from './keyset.ts';
 import { createLoaders, discrepancyColumns, graphqlInvoiceColumns, type Loaders } from './loaders.ts';
 import { fail } from './problem.ts';
+import { queryLimits } from './query-limits.ts';
 import * as review from './review.ts';
 
 export type GraphqlDeps = { db: NodePgDatabase; queues: Queues; tenantId: string };
@@ -172,6 +173,32 @@ function searchFor(raw: string | null | undefined) {
   return or(ilike(invoices.invoiceNumber, pattern), ilike(invoices.proNumber, pattern), ilike(carriers.name, pattern));
 }
 
+// An invoice on which an open discrepancy waits for a decision.
+const waiting = sql`EXISTS (SELECT 1 FROM ${discrepancies} WHERE ${discrepancies.invoiceId} = ${invoices.id} AND ${discrepancies.status} = 'open')`;
+
+// Midnight UTC of a YYYY-MM-DD day, refused unless it is a real one.
+function dayStart(value: string | null | undefined, name: string) {
+  if (value == null) return undefined;
+  const time = Date.parse(`${value}T00:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(time) || new Date(time).toISOString().slice(0, 10) !== value) {
+    throw fail(400, `${name} must be a day such as 2026-10-19`);
+  }
+  return new Date(time);
+}
+
+// The invoices a summary covers: one carrier's, received from one UTC day to another, both included.
+function summaryScope({ carrierId, from, to }: { carrierId?: string | null; from?: string | null; to?: string | null }) {
+  if (carrierId != null && !UUID.test(carrierId)) throw fail(400, 'carrierId is not a carrier id');
+  const start = dayStart(from, 'from');
+  const end = dayStart(to, 'to');
+  if (start && end && start > end) throw fail(400, `from (${from}) is after to (${to})`);
+  return and(
+    carrierId != null ? eq(invoices.carrierId, carrierId) : undefined,
+    start ? gte(invoices.createdAt, start) : undefined,
+    end ? lt(invoices.createdAt, new Date(end.getTime() + 86_400_000)) : undefined,
+  );
+}
+
 function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Context> {
   const deps = { db, queues, tenantId };
   const invoiceById = async (loaders: Loaders, id: string) => {
@@ -195,6 +222,7 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
           eq(invoices.tenantId, tenantId),
           args.status ? eq(invoices.status, args.status.toLowerCase() as typeof invoices.$inferSelect.status) : undefined,
           searchFor(args.search),
+          args.hasOpenFindings == null ? undefined : args.hasOpenFindings ? waiting : not(waiting),
         );
         const rows = await db
           .select(graphqlInvoiceColumns)
@@ -222,7 +250,8 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
           : { hasNextPage: rows.length > size, hasPreviousPage: offset > 0 };
         return { ...connection(page, page.length, toInvoice, flags), totalCount, offset };
       },
-      async invoiceSummary() {
+      async invoiceSummary(_, args) {
+        const scope = summaryScope(args);
         const reconciledClean = sql`${invoices.status} = 'reconciled' AND NOT EXISTS (SELECT 1 FROM ${discrepancies} WHERE ${discrepancies.invoiceId} = ${invoices.id})`;
         const [statuses, [open], [letters]] = await Promise.all([
           db
@@ -233,7 +262,7 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
               clean: sql<number>`count(*) FILTER (WHERE ${reconciledClean})`.mapWith(Number),
             })
             .from(invoices)
-            .where(eq(invoices.tenantId, tenantId))
+            .where(and(eq(invoices.tenantId, tenantId), scope))
             .groupBy(invoices.status),
           db
             .select({
@@ -244,8 +273,14 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
               expected: sum(discrepancies.expectedCents),
             })
             .from(discrepancies)
-            .where(and(eq(discrepancies.tenantId, tenantId), eq(discrepancies.status, 'open'))),
-          db.select({ count: count() }).from(deadLetters).where(and(eq(deadLetters.tenantId, tenantId), isNull(deadLetters.replayedAt))),
+            .innerJoin(invoices, eq(invoices.id, discrepancies.invoiceId))
+            .where(and(eq(discrepancies.tenantId, tenantId), eq(discrepancies.status, 'open'), scope)),
+          // A dead letter's invoice is in its payload; one without an invoice (a TMS sync) counts only with no filter.
+          db
+            .select({ count: count() })
+            .from(deadLetters)
+            .leftJoin(invoices, sql`${invoices.id}::text = ${deadLetters.payload} ->> 'invoiceId'`)
+            .where(and(eq(deadLetters.tenantId, tenantId), isNull(deadLetters.replayedAt), scope)),
         ]);
         const byStatus = new Map(statuses.map((row) => [row.status, row.count]));
         const added = (field: 'recent' | 'clean') => statuses.reduce((total, row) => total + row[field], 0);
@@ -403,5 +438,6 @@ export function createGraphql(log: FastifyBaseLogger, deps?: GraphqlDeps) {
     // No browser calls the api, so it sends no CORS headers.
     cors: false,
     maskedErrors: { maskError: (error, message) => maskError(log, error, message) },
+    plugins: [{ onValidate: ({ addValidationRule }) => addValidationRule(queryLimits) } satisfies Plugin],
   });
 }

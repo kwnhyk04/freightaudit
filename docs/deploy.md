@@ -150,7 +150,7 @@ Nothing to add. The release workflow publishes the images; nothing deploys from 
 | `TS_HOSTNAME` | `.env.prod`, default `freightaudit` | First label of the public URL | Changing it changes `API_URL` |
 | `IMAGE_REPO`, `IMAGE_TAG` | `.env.prod` | Which CI-built images run; `latest` or `sha-<7 hex>` | Edit, `pnpm demo:up` |
 | `TENANT_ID`, `LOG_LEVEL` | `.env.prod` | The seeded tenant; log level | None |
-| `UPLOAD_ALLOWLIST`, `MOCK_TMS_URL`, `OTEL_SDK_DISABLED` | set by `infra/docker-compose.prod.yml` | Golden-only uploads; no TMS sync; no telemetry | Change the compose file |
+| `UPLOAD_ALLOWLIST`, `MOCK_TMS_URL`, `OTEL_SDK_DISABLED`, `EXTRACT_CONCURRENCY` | set by `infra/docker-compose.prod.yml` | Golden-only uploads; no TMS sync; no telemetry; one document read at a time (`1`) | Change the compose file |
 
 Never on the PC's demo or Vercel: `ANTHROPIC_API_KEY`, `LLM_CLAUDE_MODEL` (the demo runs on free tiers only), and any
 `NEXT_PUBLIC_` variable.
