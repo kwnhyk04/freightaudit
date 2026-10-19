@@ -7,7 +7,10 @@ import { STATUS, statusLabel, type Tone } from '../lib/labels.ts';
 export const Badge = ({ tone, children }: { tone: Tone; children: ReactNode }) => <span className={`badge ${tone}`}>{children}</span>;
 
 // open is the invoice's open findings, which a checked invoice's pill counts.
-export const StatusBadge = ({ status, open }: { status: InvoiceStatus; open: number }) => <Badge tone={STATUS[status].tone}>{statusLabel(status, open)}</Badge>;
+// duplicate: a checked invoice's possible duplicate is confirmed, so it waits to be rejected.
+export const StatusBadge = ({ status, open, duplicate = false }: { status: InvoiceStatus; open: number; duplicate?: boolean }) => (
+  <Badge tone={duplicate && status === 'RECONCILED' ? 'warn' : STATUS[status].tone}>{statusLabel(status, open, duplicate)}</Badge>
+);
 
 // Amounts arrive as integer cents, or as bigint from the domain's review helpers, and are only formatted here; the UI
 // never adds or subtracts them.

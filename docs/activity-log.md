@@ -19,6 +19,36 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-19: C4b built: split tabs, tabs that fit from 1280 px, Reject on checked invoices, a possible duplicate's own words (branch c4b from main `e9ef0ba`, not committed)
+
+- **Setup:** `git switch main`, `git pull --ff-only` (already up to date), and `git log` showed C4a as `e9ef0ba` (#28). Then `git switch -c c4b`. The user reported the Release and `pnpm demo:up` done.
+- **Tests first:**
+  - Three unit tests in `lib/labels.test.ts` failed first on missing exports; `lib/demo.test.ts` moved to the new filter argument.
+  - Five new e2e tests failed on the old build, each for its own reason: no duplicate line, no Reject, no "Confirm duplicate", no split tab, 118 px of tab overflow at 1280. So did the two changed "repeated q or status" tests.
+  - Three mutations, each failing its own unit test, were reverted. A grep found no marker left.
+- **Small events:**
+  - The e2e RED build failed with TS2305: `next build` typechecks test files.
+    - What we did: stashed `lib/labels.test.ts` for that run and popped it after (memory, pitfall).
+  - `page.getByRole('row', { has })` is not a Playwright option (TS2353). What we did: used `.filter({ has })`.
+  - After the toolbar wrapped, the tab strip still overflowed by 6 px at 1280. What we did: tab padding went to 8 px a side.
+  - The phone toolbar then overflowed by 620 px: a wrapped column flex line takes its widest item's width. What we did: `flex-wrap: nowrap` on the phone (memory, pitfall).
+  - The first screenshots showed the duplicate's "Confirm duplicate" wrapped under its note box. What we did: the note box now gives way (`flex: 1 1 120px; max-width: 180px`), and the screenshots were retaken.
+  - Screenshots: 28 pictures changed. The five upload pictures differed only by run timing ("Done in 0.6 s" against "0.7 s", two pairs viewed) and were restored with `git restore`. The other 23 show the new tabs, Reject, the duplicate states or the tighter tab padding, so they stay.
+  - Two existing e2e selectors (`allOpen`, and "a reviewer disputes one finding …") now skip invoices with a possible duplicate, since such an invoice no longer takes the charge-only flow.
+  - GateGuard asked for facts before each file's first edit, before the stash and before each restore; every retry passed.
+- **Seen, not changed:** at 1440 px the charges table on an invoice page scrolls inside its panel, cutting the Difference column. The committed picture shows the same, so it predates C4b.
+- Files:
+  - Web: `lib/{labels,demo}.ts`, `lib/{labels,demo}.test.ts`, `components/{detail,views,client,ui}.tsx`, `app/(app)/invoices/page.tsx`, `app/demo/[[...path]]/page.tsx`, `app/globals.css`, `e2e/{main,demo,screenshots}.spec.ts`.
+  - Contracts: `operations/invoices.graphql` (the `$hasOpenFindings` variable, no new field) and `src/generated/graphql-client/*`.
+  - Pictures: 23 under `docs/screenshots/ui/`.
+  - Docs: `docs/{activity-log,context,memory,todo}.md`.
+- Validation:
+  - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 108);
+  - `pnpm test:int` 127 in 23 suites, `pnpm contracts:check`, `pnpm contracts:breaking` ("No changes detected");
+  - `pnpm e2e` 39/39 on the final code, and `pnpm e2e:screenshots` 8/8.
+  - No live model call and no `pnpm demo:up`.
+- Outstanding: the user ships C4b, web only, with no Release. Open for the user: the "Ready to approve" tab with a confirmed duplicate, and the agent's C4b choices (docs/memory.md).
+
 ### 2026-10-19: C4a built: a reconciled invoice can be rejected, a confirmed duplicate is never approved (branch c4a from main `62a0cba`, not committed)
 
 - **Setup:** `git branch -m c4 c4a` (user request). The C4 scope edits to the docs ride with C4a.

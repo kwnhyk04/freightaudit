@@ -1,6 +1,23 @@
-import type { DeadLettersQuery, DiscrepanciesQuery, DiscrepancyStatus, InvoicesQuery, InvoiceStatus, InvoiceSummaryQuery } from '@freightaudit/contracts/graphql';
+import type { DeadLettersQuery, DiscrepanciesQuery, DiscrepancyStatus, InvoicesQuery, InvoiceSummaryQuery } from '@freightaudit/contracts/graphql';
 import Link from 'next/link';
-import { DECISION, FILTERS, FINDING, findingText, IN_FLIGHT, invoiceAmounts, lineLabel, openFindingsNote, QUEUE, STATUS, statusReason, statusTotals } from '../lib/labels.ts';
+import {
+  DECISION,
+  decideWords,
+  decisionLabel,
+  type Filter,
+  FILTERS,
+  filterCount,
+  filterKey,
+  FINDING,
+  findingText,
+  IN_FLIGHT,
+  invoiceAmounts,
+  lineLabel,
+  openFindingsNote,
+  QUEUE,
+  statusReason,
+  statusTotals,
+} from '../lib/labels.ts';
 import { ActionForm, DecideForm } from './client.tsx';
 import { Badge, Day, Difference, Empty, Moment, Money, Pager, StatusBadge, Tabs } from './ui.tsx';
 
@@ -16,22 +33,22 @@ type Summary = InvoiceSummaryQuery['invoiceSummary'];
 
 // The invoices page: what waits for a decision in four cards, the status tabs with their counts, a search, and the
 // list, 25 a page newest first, each row with why it has its status and what it bills against the rate card.
-export function InvoiceList({ data, summary, status, search, base, readOnly }: Where & { data: InvoicesQuery; summary: Summary; status?: InvoiceStatus; search?: string }) {
+export function InvoiceList({ data, summary, filter, search, base, readOnly }: Where & { data: InvoicesQuery; summary: Summary; filter: Filter; search?: string }) {
   const { edges, pageInfo, totalCount, offset } = data.invoices;
   const totals = statusTotals(summary.statusCounts);
-  const list = (params: Record<string, string | undefined>) => query(`${base}/invoices`, { status: status?.toLowerCase(), q: search, ...params });
-  const tabs = FILTERS.map((filter) => ({
-    key: filter.status ?? 'ALL',
-    label: filter.label,
-    count: filter.status ? totals.count(filter.status) : totals.all,
-    href: query(`${base}/invoices`, { status: filter.status?.toLowerCase() }),
+  const list = (params: Record<string, string | undefined>) => query(`${base}/invoices`, { status: filterKey(filter), q: search, ...params });
+  const tabs = FILTERS.map((each) => ({
+    key: each.key,
+    label: each.label,
+    count: filterCount(each, totals, summary.invoicesWithOpenFindings),
+    href: query(`${base}/invoices`, { status: filterKey(each) }),
   }));
   const showing = totalCount > 0 ? `Showing ${offset + 1} to ${offset + edges.length} of ${totalCount}` : undefined;
   // Back to the plain first page once within a page of it, so invoices uploaded since never leave a short first page.
   const previous = !pageInfo.hasPreviousPage || !pageInfo.startCursor ? null : offset <= PAGE_SIZE ? list({}) : list({ before: pageInfo.startCursor });
   const next = pageInfo.hasNextPage && pageInfo.endCursor ? list({ after: pageInfo.endCursor }) : null;
-  const where = status ? ` ${STATUS[status].label.toLowerCase()}` : '';
-  const note = FILTERS.find((filter) => filter.status === status)?.note;
+  const where = filter.status ? ` ${filter.label.toLowerCase()}` : '';
+  const { status, note } = filter;
   const hint = readOnly
     ? 'The sample holds a few invoices from the golden set, frozen after review.'
     : status === 'NEEDS_REVIEW'
@@ -77,9 +94,9 @@ export function InvoiceList({ data, summary, status, search, base, readOnly }: W
         </div>
       </dl>
       <div className="list-bar">
-        <Tabs items={tabs} current={status ?? 'ALL'} label="Filter by status" unit="invoices" />
+        <Tabs items={tabs} current={filter.key} label="Filter by status" unit="invoices" />
         <form role="search" className="search" action={`${base}/invoices`}>
-          {status && <input type="hidden" name="status" value={status.toLowerCase()} />}
+          {status && <input type="hidden" name="status" value={filter.key} />}
           <label className="visually-hidden" htmlFor="invoice-search">
             Search invoices
           </label>
@@ -220,7 +237,13 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
                   <td className="muted" style={{ maxWidth: 360 }}>
                     {findingText(node, node.lineItem, undefined, node.invoice.currency)}
                   </td>
-                  <td>{!readOnly && node.status === 'OPEN' && node.invoice.status === 'RECONCILED' ? <DecideForm id={node.id} /> : <Badge tone={DECISION[node.status].tone}>{DECISION[node.status].label}</Badge>}</td>
+                  <td>
+                    {!readOnly && node.status === 'OPEN' && node.invoice.status === 'RECONCILED' ? (
+                      <DecideForm id={node.id} words={decideWords(node.type)} />
+                    ) : (
+                      <Badge tone={decisionLabel(node.status, node.type).tone}>{decisionLabel(node.status, node.type).label}</Badge>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

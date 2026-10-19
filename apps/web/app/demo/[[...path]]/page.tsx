@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { InvoiceDetail } from '../../../components/detail.tsx';
 import { DeadLetterList, DiscrepancyList, InvoiceList } from '../../../components/views.tsx';
 import { demoDeadLetters, demoDiscrepancies, demoInvoice, demoInvoices, demoSummary } from '../../../lib/demo.ts';
-import { firstParams, statusParam } from '../../../lib/labels.ts';
+import { firstParams, listFilter } from '../../../lib/labels.ts';
 
 // Every sample page: the same views as the live ones, from the snapshot files only, with no actions.
 export default async function DemoPage({ params, searchParams }: { params: Promise<{ path?: string[] }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -15,9 +15,9 @@ export default async function DemoPage({ params, searchParams }: { params: Promi
   );
   if (!section) redirect('/demo/invoices');
   if (section === 'invoices' && !id) {
-    const status = statusParam(raw);
+    const filter = listFilter(raw);
     const search = q?.trim().slice(0, 100) || undefined;
-    return <InvoiceList data={demoInvoices(status, search)} summary={demoSummary()} status={status} search={search} base="/demo" readOnly />;
+    return <InvoiceList data={demoInvoices(filter, search)} summary={demoSummary()} filter={filter} search={search} base="/demo" readOnly />;
   }
   if (section === 'invoices' && id) {
     const data = demoInvoice(id);

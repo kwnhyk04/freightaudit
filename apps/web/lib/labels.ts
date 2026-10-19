@@ -16,9 +16,10 @@ export const STATUS: Record<InvoiceStatus, { label: string; tone: Tone; reason?:
   REJECTED: { label: 'Rejected', tone: 'neutral', reason: 'Rejected by a reviewer' },
   FAILED: { label: 'Failed', tone: 'bad' },
 };
-// A status pill's words; a checked invoice says whether billing issues wait for a decision or it is ready to approve.
-export const statusLabel = (status: InvoiceStatus, open: number) =>
-  status !== 'RECONCILED' ? STATUS[status].label : open > 0 ? `Billing issues (${open})` : 'Ready to approve';
+// A status pill's words; a checked invoice says whether it is a confirmed duplicate, which is never approved, billing
+// issues wait for a decision, or it is ready to approve.
+export const statusLabel = (status: InvoiceStatus, open: number, duplicate = false) =>
+  status !== 'RECONCILED' ? STATUS[status].label : duplicate ? 'Confirmed duplicate' : open > 0 ? `Billing issues (${open})` : 'Ready to approve';
 // A status from a URL parameter such as ?status=needs_review; anything else means all.
 export const statusParam = (raw: string | undefined) => {
   const upper = raw?.toUpperCase();
@@ -30,17 +31,28 @@ export const firstParams = async (params: Promise<Record<string, string | string
 // Statuses the pipeline is still moving through; a page showing one refreshes until it settles.
 export const IN_FLIGHT = new Set<InvoiceStatus>(['RECEIVED', 'EXTRACTING', 'EXTRACTED', 'RECONCILING']);
 
-// The list's filters, in the order a reviewer works through them, each with the line that says what it holds.
-export const FILTERS: { status?: InvoiceStatus; label: string; note: string }[] = [
-  { label: 'All', note: 'Every invoice, newest first.' },
-  { status: 'NEEDS_REVIEW', label: 'Reading needs a check', note: "The AI's reading matched no shipment or failed its checks; a reviewer corrects or rejects it." },
-  { status: 'RECONCILED', label: 'Checked', note: 'Checked against the rate card: ready to approve, or billing issues to decide.' },
-  { status: 'FAILED', label: 'Failed', note: 'Processing used up its retries; each invoice shows why.' },
-  { status: 'APPROVED', label: 'Approved', note: 'Approved for payment.' },
-  { status: 'REJECTED', label: 'Rejected', note: 'Rejected by a reviewer, with a reason.' },
-  { status: 'RECEIVED', label: 'Received', note: 'Uploaded, waiting to be read.' },
-  { status: 'EXTRACTED', label: 'Checking', note: 'Read, waiting to be checked against the rate card.' },
+// The list's filters, in the order a reviewer works through them: each tab's key in ?status=, the invoices it holds and
+// the line that says what they are. A checked invoice has billing issues while a finding is open, else it is ready.
+export type Filter = { key: string; status?: InvoiceStatus; open?: boolean; label: string; note?: string };
+export const FILTERS: Filter[] = [
+  { key: 'all', label: 'All', note: 'Every invoice, newest first.' },
+  { key: 'needs_review', status: 'NEEDS_REVIEW', label: 'Reading needs a check', note: "The AI's reading matched no shipment or failed its checks; a reviewer corrects or rejects it." },
+  { key: 'billing_issues', status: 'RECONCILED', open: true, label: 'Billing issues', note: 'Checked against the rate card, with findings to decide before approval.' },
+  { key: 'ready_to_approve', status: 'RECONCILED', open: false, label: 'Ready to approve', note: 'Checked against the rate card, with no finding left to decide.' },
+  { key: 'failed', status: 'FAILED', label: 'Failed', note: 'Processing used up its retries; each invoice shows why.' },
+  { key: 'approved', status: 'APPROVED', label: 'Approved', note: 'Approved for payment.' },
+  { key: 'rejected', status: 'REJECTED', label: 'Rejected', note: 'Rejected by a reviewer, with a reason.' },
+  { key: 'received', status: 'RECEIVED', label: 'Received', note: 'Uploaded, waiting to be read.' },
+  { key: 'extracted', status: 'EXTRACTED', label: 'Checking', note: 'Read, waiting to be checked against the rate card.' },
 ];
+// The filter a ?status= value names: a tab's key, or any other status, listed without a tab; anything else is all.
+export function listFilter(raw: string | undefined): Filter {
+  const key = raw?.toLowerCase();
+  const status = statusParam(raw);
+  return FILTERS.find((filter) => filter.key === key) ?? (status ? { key: status.toLowerCase(), status, label: STATUS[status].label } : FILTERS[0]!);
+}
+// A filter's value in the address; all needs none.
+export const filterKey = (filter: Filter) => (filter.status ? filter.key : undefined);
 
 const uploadDay = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
 type Brief = { number: string | null; filename: string; createdAt: string };
@@ -64,17 +76,17 @@ export const FINDING: Record<DiscrepancyType, string> = {
   ARITHMETIC_ERROR: 'Arithmetic error',
 };
 
-// A finding's title from its line: what is wrong with which charge.
-const TITLE: Record<DiscrepancyType, (line: string) => string> = {
+// A finding's title from its line: what is wrong with which charge. A possible duplicate is of the whole invoice, with
+// no line, so its type is its title.
+const TITLE: Record<Exclude<DiscrepancyType, 'DUPLICATE_INVOICE'>, (line: string) => string> = {
   RATE_MISMATCH: (line) => `${line} above the rate card`,
   UNCONTRACTED_CHARGE: (line) => `${line} charged, but not on the rate card`,
   DUPLICATE_CHARGE: (line) => `${line} billed twice`,
-  // The finding has no line, so this title never shows; C4 gives it its words.
-  DUPLICATE_INVOICE: () => FINDING.DUPLICATE_INVOICE,
   WEIGHT_MISMATCH: (line) => `${line} billed for another weight`,
   ARITHMETIC_ERROR: (line) => `${line} does not add up`,
 };
-export const findingTitle = (type: DiscrepancyType, description?: string) => (description ? TITLE[type](lineLabel(description)) : FINDING[type]);
+export const findingTitle = (type: DiscrepancyType, description?: string) =>
+  type !== 'DUPLICATE_INVOICE' && description ? TITLE[type](lineLabel(description)) : FINDING[type];
 // A finding's sentence naming its line as printed; the stored evidence, which names the code in capitals, stands only without a line.
 export function findingText(
   finding: { type: DiscrepancyType; evidence: string; expectedCents: number; billedCents: number },
@@ -94,12 +106,22 @@ export function findingText(
 // A description printed in capitals, as some layouts print every line, reads in sentence case; any other stays as read.
 export const lineLabel = (text: string) => (/[a-z]/.test(text) ? text : `${text.charAt(0)}${text.slice(1).toLowerCase()}`);
 
+// A finding's decision in a charge's words. One closed with its rejected invoice was never decided, whatever its type.
 export const DECISION: Record<DiscrepancyStatus, { label: string; tone: Tone }> = {
   OPEN: { label: 'Open', tone: 'bad' },
   CONFIRMED: { label: 'Disputed', tone: 'neutral' },
   DISMISSED: { label: 'Charge approved', tone: 'ok' },
-  CLOSED: { label: 'Closed', tone: 'neutral' },
+  CLOSED: { label: 'Closed with the invoice', tone: 'neutral' },
 };
+// A possible duplicate's decisions in its own words.
+const DUPLICATE_DECISION: Partial<Record<DiscrepancyStatus, { label: string; tone: Tone }>> = {
+  CONFIRMED: { label: 'Duplicate confirmed', tone: 'warn' },
+  DISMISSED: { label: 'Not a duplicate', tone: 'ok' },
+};
+export const decisionLabel = (status: DiscrepancyStatus, type?: DiscrepancyType) => (type === 'DUPLICATE_INVOICE' && DUPLICATE_DECISION[status]) || DECISION[status];
+// The buttons that decide one finding: dismiss lets it go, confirm upholds it.
+export const decideWords = (type: DiscrepancyType) =>
+  type === 'DUPLICATE_INVOICE' ? { dismiss: 'Not a duplicate', confirm: 'Confirm duplicate' } : { dismiss: 'Approve charge', confirm: 'Dispute' };
 
 export const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 const capital = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
@@ -134,6 +156,14 @@ export function statusTotals(counts: { status: InvoiceStatus; count: number }[])
   const count = (status: InvoiceStatus) => counts.find((each) => each.status === status)?.count ?? 0;
   const sum = (statuses: Iterable<InvoiceStatus>) => [...statuses].reduce((total, status) => total + count(status), 0);
   return { count, all: sum(Object.keys(STATUS) as InvoiceStatus[]), waiting: sum(['RECONCILED', 'NEEDS_REVIEW']), processing: sum(IN_FLIGHT) };
+}
+// A tab's count: all invoices, or a status's. Findings are open only on checked invoices, so those with one are the
+// billing issues and the other checked invoices are ready to approve.
+export function filterCount(filter: Filter, totals: ReturnType<typeof statusTotals>, withOpenFindings: number) {
+  if (!filter.status) return totals.all;
+  const count = totals.count(filter.status);
+  if (filter.open === undefined) return count;
+  return filter.open ? withOpenFindings : Math.max(0, count - withOpenFindings);
 }
 
 const DAY = 86_400_000;
@@ -222,10 +252,34 @@ function changeText(entry: Entry, { field, from, to }: Entry['changes'][number])
   return `${FIELD[field] ?? field}: ${from ?? 'none'} to ${to ?? 'none'}`;
 }
 
+// A decision row's words by the kind of finding it decided: a charge, a possible duplicate, or one it cannot tell.
+type Kind = 'charge' | 'duplicate' | 'finding';
+const DECIDED: Record<Kind, Record<'DISCREPANCY_CONFIRMED' | 'DISCREPANCY_DISMISSED', string>> = {
+  charge: { DISCREPANCY_CONFIRMED: ACTION.DISCREPANCY_CONFIRMED, DISCREPANCY_DISMISSED: ACTION.DISCREPANCY_DISMISSED },
+  duplicate: { DISCREPANCY_CONFIRMED: 'Duplicate confirmed', DISCREPANCY_DISMISSED: 'Marked not a duplicate' },
+  finding: { DISCREPANCY_CONFIRMED: 'Finding confirmed', DISCREPANCY_DISMISSED: 'Finding dismissed' },
+};
+type Decided = { type: DiscrepancyType; resolvedAt: string | null };
+// The api writes a finding's resolvedAt and its audit row in one transaction, so a row decided the finding last decided
+// at its moment. Without a possible duplicate every decision is a charge's; a row matching no finding, one a later
+// decision replaced, names no kind. ponytail: matched by time, as AuditEntry has no finding id; add one to the api if a
+// row must name its finding.
+function decidedKind(entry: Entry, findings: readonly Decided[]): Kind {
+  if (!findings.some((finding) => finding.type === 'DUPLICATE_INVOICE')) return 'charge';
+  const kinds = new Set(findings.filter((finding) => finding.resolvedAt === entry.at).map((finding): Kind => (finding.type === 'DUPLICATE_INVOICE' ? 'duplicate' : 'charge')));
+  return kinds.size === 1 ? [...kinds][0]! : 'finding';
+}
+const decidedWord = (status: string, kind: Kind) =>
+  kind === 'finding' ? capital(status) : decisionLabel(status.toUpperCase() as DiscrepancyStatus, kind === 'duplicate' ? 'DUPLICATE_INVOICE' : undefined).label;
+
 export type TrailRow = { id: string; at: string; verb: string; rest: string; notes: string[] };
-// The audit trail in plain words: each pipeline move says what happened, reviewer rows say who did what. findings is the
-// number the reconcile run wrote; example data's Received entry says the seed, not a record, set its status.
-export function trailRows(invoice: Pick<Detail, 'auditTrail' | 'extraction' | 'shipment' | 'carrier' | 'rateCardVersion' | 'status'>, findings: number, example = false): TrailRow[] {
+// The audit trail in plain words: each pipeline move says what happened, reviewer rows say who did what. findings are
+// the ones the reconcile run wrote; example data's Received entry says the seed, not a record, set its status.
+export function trailRows(
+  invoice: Pick<Detail, 'auditTrail' | 'extraction' | 'shipment' | 'carrier' | 'rateCardVersion' | 'status'>,
+  findings: readonly Decided[],
+  example = false,
+): TrailRow[] {
   const seeded = invoice.status === 'APPROVED' ? 'Approved in the example data; no reviewer decision is recorded.' : 'Example data: the seed set this status; no pipeline or reviewer record exists.';
   let readingFrom: string | undefined;
   return invoice.auditTrail.map((entry) => {
@@ -233,6 +287,13 @@ export function trailRows(invoice: Pick<Detail, 'auditTrail' | 'extraction' | 's
     const by = entry.actor ? `by ${entry.actor}` : 'by the pipeline';
     const status = entry.changes.find((change) => change.field === 'status');
     if (entry.action === 'RECEIVED') return row('Received', 'by the pipeline', [...(entry.detail ? [entry.detail] : []), ...(example ? [seeded] : [])]);
+    if (entry.action === 'DISCREPANCY_CONFIRMED' || entry.action === 'DISCREPANCY_DISMISSED' || entry.action === 'DISCREPANCY_CLOSED') {
+      const kind = decidedKind(entry, findings);
+      const verb = entry.action === 'DISCREPANCY_CLOSED' ? ACTION.DISCREPANCY_CLOSED : DECIDED[kind][entry.action];
+      // The move from open is the verb itself; a decision that replaced another says which.
+      const changed = status && status.from && status.from !== 'open' ? [`Changed from ${decidedWord(status.from, kind)}`] : [];
+      return row(verb, by, entry.detail ? [...changed, reasonText(entry.detail)] : changed);
+    }
     if (entry.action !== 'STATUS_CHANGED' || !status || entry.actor) {
       const carrier = entry.changes.some((change) => change.field === 'carrier');
       const notes = entry.changes.map((change) => changeText(entry, change));
@@ -255,7 +316,7 @@ export function trailRows(invoice: Pick<Detail, 'auditTrail' | 'extraction' | 's
       const shipment = invoice.shipment ? `shipment ${invoice.shipment.reference}` : 'its shipment';
       const carrier = invoice.carrier ? ` and ${invoice.carrier}` : '';
       const card = invoice.rateCardVersion ? `rate card version ${invoice.rateCardVersion.version}` : 'the rate card';
-      const next = findings > 0 ? `${plural(findings, 'finding')}, so it waits for a reviewer` : 'No findings, so it waits only for approval';
+      const next = findings.length > 0 ? `${plural(findings.length, 'finding')}, so it waits for a reviewer` : 'No findings, so it waits only for approval';
       return row('Matched', `to ${shipment}${carrier}, checked against ${card} by rules in code`, [next]);
     }
     if (to === 'needs_review') return row('Sent to review', by, [reviewReason(entry.detail)]);

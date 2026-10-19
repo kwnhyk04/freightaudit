@@ -1,12 +1,17 @@
 import type { InvoiceQuery } from '@freightaudit/contracts/graphql';
 import {
+  decideWords,
+  decisionLabel,
   decisionQuestion,
   duplicateNote,
   duration,
+  FILTERS,
+  filterCount,
   findingText,
   findingTitle,
   firstParams,
   invoiceAmounts,
+  listFilter,
   isExampleData,
   lineAmounts,
   lineLabel,
@@ -42,6 +47,58 @@ test('a finding title names the line and what is wrong with it, or the type alon
   expect(findingTitle('UNCONTRACTED_CHARGE', 'Residential delivery')).toBe('Residential delivery charged, but not on the rate card');
   expect(findingTitle('DUPLICATE_CHARGE', 'Fuel surcharge')).toBe('Fuel surcharge billed twice');
   expect(findingTitle('RATE_MISMATCH')).toBe('Rate mismatch');
+  expect(findingTitle('DUPLICATE_INVOICE')).toBe('Possible duplicate invoice');
+});
+
+test("a decision reads in its finding's words: a charge is disputed or approved, a possible duplicate confirmed or not", () => {
+  expect(decideWords('UNCONTRACTED_CHARGE')).toEqual({ dismiss: 'Approve charge', confirm: 'Dispute' });
+  expect(decideWords('DUPLICATE_INVOICE')).toEqual({ dismiss: 'Not a duplicate', confirm: 'Confirm duplicate' });
+  expect(decisionLabel('CONFIRMED', 'DUPLICATE_CHARGE')).toEqual({ label: 'Disputed', tone: 'neutral' });
+  expect(decisionLabel('DISMISSED', 'RATE_MISMATCH')).toEqual({ label: 'Charge approved', tone: 'ok' });
+  expect(decisionLabel('CONFIRMED', 'DUPLICATE_INVOICE')).toEqual({ label: 'Duplicate confirmed', tone: 'warn' });
+  expect(decisionLabel('DISMISSED', 'DUPLICATE_INVOICE')).toEqual({ label: 'Not a duplicate', tone: 'ok' });
+  expect(decisionLabel('OPEN', 'DUPLICATE_INVOICE')).toEqual({ label: 'Open', tone: 'bad' });
+  // A finding closed with its rejected invoice was never decided, whatever its type.
+  expect(decisionLabel('CLOSED', 'DUPLICATE_CHARGE')).toEqual({ label: 'Closed with the invoice', tone: 'neutral' });
+  expect(decisionLabel('CLOSED', 'DUPLICATE_INVOICE')).toEqual({ label: 'Closed with the invoice', tone: 'neutral' });
+});
+
+test("the trail names each decision in its finding's words, found by the moment it was made, and a closed finding plainly", () => {
+  const decided = (seconds: number, action: string, from: string, to: string, detail: string | null = null) => ({
+    id: `d${seconds}`,
+    at: at(seconds),
+    actor: 'reviewer',
+    action,
+    detail,
+    changes: [{ field: 'status', from, to }],
+  });
+  // A charge disputed; the duplicate confirmed, then found not to be one; the invoice rejected with an open charge.
+  const invoice = {
+    status: 'REJECTED',
+    auditTrail: [
+      decided(10, 'DISCREPANCY_CONFIRMED', 'open', 'confirmed'),
+      decided(20, 'DISCREPANCY_CONFIRMED', 'open', 'confirmed'),
+      decided(30, 'DISCREPANCY_DISMISSED', 'confirmed', 'dismissed'),
+      decided(40, 'DISCREPANCY_CLOSED', 'open', 'closed', 'the invoice was rejected'),
+      { ...decided(40, 'REJECTED', 'reconciled', 'rejected', 'Same invoice as first-scan.pdf'), id: 'r' },
+    ],
+  } as unknown as Detail;
+  const findings = [
+    { type: 'RATE_MISMATCH' as const, resolvedAt: at(10) },
+    { type: 'DUPLICATE_INVOICE' as const, resolvedAt: at(30) },
+    { type: 'DUPLICATE_CHARGE' as const, resolvedAt: at(40) },
+  ];
+  const words = (rows: ReturnType<typeof trailRows>) => rows.map(({ verb, notes }) => [verb, notes]);
+  expect(words(trailRows(invoice, findings))).toEqual([
+    ['Overcharge disputed', []],
+    // A decision a later one replaced matches no finding's time, so it names no kind.
+    ['Finding confirmed', []],
+    ['Marked not a duplicate', ['Changed from Duplicate confirmed']],
+    ['Finding closed', ['The invoice was rejected']],
+    ['Rejected', ['Status: Checked to Rejected', 'Same invoice as first-scan.pdf']],
+  ]);
+  // With no possible duplicate on the invoice, every decision is a charge's, matched or not.
+  expect(trailRows(invoice, [findings[0]!])[1]!.verb).toBe('Overcharge disputed');
 });
 
 test('a finding names its line as the invoice prints it, not by its charge code', () => {
@@ -90,6 +147,8 @@ test('a list row explains its status: open findings, the review or failure reaso
 test('a status reads in plain words; a checked invoice says whether billing issues wait or it is ready to approve', () => {
   expect(statusLabel('RECONCILED', 2)).toBe('Billing issues (2)');
   expect(statusLabel('RECONCILED', 0)).toBe('Ready to approve');
+  // A confirmed duplicate is never approved, whatever else is open.
+  expect(statusLabel('RECONCILED', 2, true)).toBe('Confirmed duplicate');
   expect(statusLabel('EXTRACTING', 0)).toBe('Reading');
   expect(statusLabel('EXTRACTED', 0)).toBe('Checking');
   expect(statusLabel('RECONCILING', 0)).toBe('Checking');
@@ -130,6 +189,34 @@ test('status counts give every tab, the invoices waiting for a decision and thos
   expect(totals).toMatchObject({ all: 35, waiting: 12, processing: 3 });
   expect(totals.count('FAILED')).toBe(0);
   expect(totals.count('APPROVED')).toBe(20);
+});
+
+test('a list filter is a tab by its key, any other status without a tab, or all; checked invoices split by open findings', () => {
+  expect(listFilter('billing_issues')).toMatchObject({ status: 'RECONCILED', open: true, label: 'Billing issues' });
+  expect(listFilter('READY_TO_APPROVE')).toMatchObject({ status: 'RECONCILED', open: false, label: 'Ready to approve' });
+  expect(listFilter('needs_review')).toMatchObject({ key: 'needs_review', status: 'NEEDS_REVIEW' });
+  // A status with no tab of its own, such as an older link to every checked invoice, still filters.
+  expect(listFilter('reconciled')).toEqual({ key: 'reconciled', status: 'RECONCILED', label: 'Checked' });
+  expect(listFilter('extracting')).toMatchObject({ key: 'extracting', status: 'EXTRACTING' });
+  expect([listFilter('nonsense'), listFilter(undefined)]).toEqual([FILTERS[0], FILTERS[0]]);
+  // Findings are open only on checked invoices: those with one are billing issues, the rest are ready to approve.
+  const totals = statusTotals([
+    { status: 'RECONCILED', count: 8 },
+    { status: 'NEEDS_REVIEW', count: 4 },
+    { status: 'APPROVED', count: 20 },
+  ]);
+  expect(FILTERS.map((filter) => [filter.label, filterCount(filter, totals, 3)])).toEqual([
+    ['All', 32],
+    ['Reading needs a check', 4],
+    ['Billing issues', 3],
+    ['Ready to approve', 5],
+    ['Failed', 0],
+    ['Approved', 20],
+    ['Rejected', 0],
+    ['Received', 0],
+    ['Checking', 0],
+  ]);
+  expect(filterCount(listFilter('reconciled'), totals, 3)).toBe(8);
 });
 
 test('the open findings card says how many invoices wait and for how long', () => {
@@ -200,13 +287,13 @@ test('the audit trail reads as plain words: who read it with which model and how
     ],
   } as unknown as Detail;
   const words = (rows: ReturnType<typeof trailRows>) => rows.map(({ verb, rest, notes }) => [verb, rest, notes]);
-  expect(words(trailRows(invoice, 1))).toEqual([
+  expect(words(trailRows(invoice, [{ type: 'RATE_MISMATCH', resolvedAt: at(9) }]))).toEqual([
     ['Received', 'by the pipeline', ['g066.pdf']],
     ['Reading started', '', []],
     ['Read', 'by Gemini 3.5 Flash-Lite in 3.3 s', ['after 1 repair', 'Carrier read as “BRAMBLEWOOD EXPRESS”, matched Bramblewood Express after normalizing case and spacing']],
     ['Checking started', '', []],
     ['Matched', 'to shipment SHP-000413 and Bramblewood Express, checked against rate card version 2 by rules in code', ['1 finding, so it waits for a reviewer']],
-    ['Overcharge disputed', 'by reviewer', ['Status: open to confirmed', 'Contract rate applies']],
+    ['Overcharge disputed', 'by reviewer', ['Contract rate applies']],
   ]);
   const review = {
     ...invoice,
@@ -219,7 +306,7 @@ test('the audit trail reads as plain words: who read it with which model and how
       move(9, 'failed', 'received', null, 'reviewer'),
     ],
   } as unknown as Detail;
-  expect(words(trailRows(review, 0))).toEqual([
+  expect(words(trailRows(review, []))).toEqual([
     ['Reading started', '', []],
     ['Read', 'by Qwen3.8 27B in 1.0 s', ['on the fallback model']],
     ['Checking started', '', []],
@@ -227,11 +314,11 @@ test('the audit trail reads as plain words: who read it with which model and how
     ['Status changed', 'by reviewer', ['Failed to Received']],
   ]);
   const clean = { ...invoice, auditTrail: [move(6, 'reconciling', 'reconciled')] } as unknown as Detail;
-  expect(trailRows(clean, 0)[0]!.notes).toEqual(['No findings, so it waits only for approval']);
+  expect(trailRows(clean, [])[0]!.notes).toEqual(['No findings, so it waits only for approval']);
   // Example data has only its Received entry, whose note says the seed set the status and no one decided it.
   const seeded = { ...invoice, status: 'APPROVED', auditTrail: invoice.auditTrail.slice(0, 1) } as unknown as Detail;
-  expect(trailRows(seeded, 0, true)[0]!.notes).toEqual(['g066.pdf', 'Approved in the example data; no reviewer decision is recorded.']);
-  expect(trailRows({ ...seeded, status: 'RECONCILED' }, 0, true)[0]!.notes).toEqual(['g066.pdf', 'Example data: the seed set this status; no pipeline or reviewer record exists.']);
+  expect(trailRows(seeded, [], true)[0]!.notes).toEqual(['g066.pdf', 'Approved in the example data; no reviewer decision is recorded.']);
+  expect(trailRows({ ...seeded, status: 'RECONCILED' }, [], true)[0]!.notes).toEqual(['g066.pdf', 'Example data: the seed set this status; no pipeline or reviewer record exists.']);
   expect(modelName('someone/new-model')).toBe('someone/new-model');
 });
 

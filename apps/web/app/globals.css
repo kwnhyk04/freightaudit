@@ -298,14 +298,17 @@ label {
   color: var(--bad);
   font-size: 13px;
 }
+/* The note gives way before a decision's buttons wrap. */
 .decide input {
-  width: 180px;
+  flex: 1 1 120px;
+  max-width: 180px;
 }
 /* In the queue a decision stays on one line; the evidence column gives way. */
 td .decide {
   flex-wrap: nowrap;
 }
 td .decide input {
+  flex: 0 1 auto;
   width: 150px;
 }
 
@@ -368,7 +371,7 @@ td .decide input {
   overflow-x: auto;
 }
 .tabs a {
-  padding: 8px 10px;
+  padding: 8px;
   color: var(--text-2);
   border-bottom: 2px solid transparent;
   white-space: nowrap;
@@ -496,15 +499,15 @@ td .reason {
 .stats dd.stat .num {
   text-align: left;
 }
+/* The tabs keep their own rule and their full width: where the search does not fit beside them, it wraps below. */
 .list-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: end;
   gap: 8px 16px;
   margin-bottom: 12px;
-  box-shadow: inset 0 -1px var(--rule);
 }
 .list-bar .tabs {
-  box-shadow: none;
   margin-bottom: 0;
   flex: 1 1 auto;
   min-width: 0;
@@ -517,6 +520,7 @@ td .reason {
   display: flex;
   gap: 8px;
   flex: 0 0 auto;
+  margin-left: auto;
   padding-bottom: 6px;
 }
 .search input {
@@ -987,9 +991,14 @@ td.wrap {
   .stats > div + div {
     border-left: 0;
   }
+  /* One column: wrapped, a column is as wide as the whole tab strip and the page scrolls. */
   .list-bar {
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: stretch;
+  }
+  .search {
+    margin-left: 0;
   }
   .search input {
     flex: 1;
@@ -1006,6 +1015,7 @@ td.wrap {
   }
   .decide input {
     flex: 1 1 100%;
+    max-width: none;
   }
   td .decide input {
     flex: none;
