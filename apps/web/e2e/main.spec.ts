@@ -310,6 +310,39 @@ test.describe('list', () => {
     await expect(page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Checked/ })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByRole('searchbox', { name: 'Search invoices' })).toHaveValue('a');
   });
+
+  // Windows draws a scrollbar on a box that scrolls by a single pixel, and headless Chromium draws none, so the test
+  // compares sizes. On a phone the tab strip scrolls sideways by design.
+  test('the toolbar never scrolls: it fits, and its tab strip has no vertical scroll at desktop and phone widths', async ({ page }) => {
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/invoices');
+      // The list streams in; measured before it shows, every size reads 0.
+      await expect(page.getByRole('navigation', { name: 'Filter by status' })).toBeVisible();
+      const overflow = (css: string) => page.locator(css).evaluate((box) => ({ x: box.scrollWidth - box.clientWidth, y: box.scrollHeight - box.clientHeight }));
+      expect(await overflow('.list-bar'), `the toolbar at ${width} px`).toEqual({ x: 0, y: 0 });
+      const tabs = await overflow('.list-bar .tabs');
+      expect(tabs.y, `the tab strip's height at ${width} px`).toBe(0);
+      if (width === 1440) expect(tabs.x, 'the tab strip fits at 1440 px').toBe(0);
+    }
+  });
+
+  test('the Search button runs the same search as Enter, keeps the tab, and shows its focus', async ({ page }) => {
+    const [invoice] = await db<{ id: string; pro_number: string; status: string }>(
+      'SELECT id, pro_number, status FROM invoices WHERE pro_number IS NOT NULL ORDER BY id DESC LIMIT 1',
+    );
+    await page.goto(`/invoices?status=${invoice!.status}`);
+    const box = page.getByRole('searchbox', { name: 'Search invoices' });
+    await box.fill(invoice!.pro_number);
+    await box.press('Tab');
+    const button = page.getByRole('button', { name: 'Search', exact: true });
+    await expect(button).toBeFocused();
+    expect(await button.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe('none');
+    await button.click();
+    await expect(page).toHaveURL(new RegExp(`[?]status=${invoice!.status}&q=${invoice!.pro_number}$`));
+    await expect(page.locator(`a[href="/invoices/${invoice!.id}"]`)).toBeVisible();
+    await expect(box).toHaveValue(invoice!.pro_number);
+  });
 });
 
 test.describe('document', () => {

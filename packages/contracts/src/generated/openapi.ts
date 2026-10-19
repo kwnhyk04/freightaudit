@@ -202,7 +202,7 @@ export interface components {
             next_cursor: string | null;
         };
         /** @enum {string} */
-        DiscrepancyType: "rate_mismatch" | "uncontracted_charge" | "duplicate_charge" | "weight_mismatch" | "arithmetic_error";
+        DiscrepancyType: "rate_mismatch" | "uncontracted_charge" | "duplicate_charge" | "duplicate_invoice" | "weight_mismatch" | "arithmetic_error";
         /** @enum {string} */
         DiscrepancyStatus: "open" | "confirmed" | "dismissed";
         Discrepancy: {

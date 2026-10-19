@@ -160,6 +160,14 @@ Migrate: the worker writes them from this release. Contract: none needed.
 
 Migrate: apply 0013 before the api and worker of this release; the old code never writes `rejected` or `audit_events`. Contract: none needed.
 
+## 0014 possible duplicate invoice (expand)
+
+- `discrepancy_type` gains `duplicate_invoice` (`ADD VALUE ... AFTER 'duplicate_charge'`, in the file's transaction as 0005 and 0013 did; nothing in the file uses the new value).
+- The worker raises it at reconcile when another invoice of the same carrier, not rejected, has the same invoice number. Two invoices never share a file, since `(tenant_id, content_sha256)` is unique. The finding has no line (`invoice_line_id` null), `expected_cents` = `billed_cents` = 0, and evidence naming the earliest such invoice by file and UTC day.
+- While it is open, the existing trigger refuses approval (an open discrepancy), and `decideInvoice` refuses every bulk decision, so a reviewer decides it on its own first.
+
+Migrate: apply 0014 before the api and worker of this release. The old api has no `DUPLICATE_INVOICE` in its GraphQL enum, and only the new worker writes the value. Contract: none needed.
+
 ## Tests (`pnpm test:int`)
 
 Each test runs in a throwaway database on the Postgres container that `pnpm test:int` starts for the run.

@@ -30,6 +30,7 @@ export const discrepancyType = pgEnum('discrepancy_type', [
   'rate_mismatch',
   'uncontracted_charge',
   'duplicate_charge',
+  'duplicate_invoice',
   'weight_mismatch',
   'arithmetic_error',
 ]);

@@ -73,3 +73,13 @@ export function reconcileInvoice<V extends RateCardVersion>(
   }
   return { version, discrepancies };
 }
+
+// A possible duplicate: another invoice the carrier billed under the same number (the worker reads them, earliest
+// first) that was not rejected; the finding names the earliest. Their files differ, since one file is one invoice. It
+// belongs to the invoice, not a line, and carries no money, so no total counts it.
+export function duplicateInvoice(number: string, others: readonly { filename: string; status: string; receivedOn: string }[]) {
+  const other = others.find((each) => each.status !== 'rejected');
+  if (!other) return undefined;
+  const evidence = `Possible duplicate: invoice ${number} from this carrier was also received on ${other.receivedOn} as ${other.filename}.`;
+  return { type: 'duplicate_invoice' as const, expectedCents: 0n, billedCents: 0n, evidence };
+}

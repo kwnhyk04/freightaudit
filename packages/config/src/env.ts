@@ -98,6 +98,8 @@ export const settings = {
     ),
   // How long a worker owns a job before another may recover it; the lock renews at half this while the job runs.
   JOB_LOCK_MS: integer(60_000),
+  // Documents the worker reads at once; the public demo reads one at a time.
+  EXTRACT_CONCURRENCY: z.string().regex(/^\d+$/).transform(Number).pipe(z.int().min(1).max(8)).default(8),
   // production on a machine whose database must survive; dev tools such as pnpm db:reset refuse to run there.
   NODE_ENV: z.string().optional(),
   // mock-tms fault injection: share of requests that fail with 500, and delay added to each response.

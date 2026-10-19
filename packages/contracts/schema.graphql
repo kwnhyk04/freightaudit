@@ -23,15 +23,18 @@ type Query {
   health: String!
 
   """
-  Invoices, newest first: a page going forward (first, after) or back (last, before), filtered by status and by search,
-  which matches the invoice number, PRO number or carrier name, ignoring case.
+  Invoices, newest first: a page going forward (first, after) or back (last, before), filtered by status, by search,
+  which matches the invoice number, PRO number or carrier name, ignoring case, and by hasOpenFindings: true keeps the
+  invoices with an open discrepancy, false those with none.
   """
-  invoices(first: Int = 25, after: String, last: Int, before: String, status: InvoiceStatus, search: String): InvoiceConnection!
+  invoices(first: Int = 25, after: String, last: Int, before: String, status: InvoiceStatus, search: String, hasOpenFindings: Boolean): InvoiceConnection!
 
   """
-  Counts and totals for the invoice list and the sidebar, read when asked.
+  Counts and totals for the invoice list and the sidebar, read when asked. They may cover one carrier, the one that
+  bills, and the invoices received from one UTC day to another, both included; from after to is refused. With any of
+  them, openDeadLetters counts only the dead letters of the invoices kept.
   """
-  invoiceSummary: InvoiceSummary!
+  invoiceSummary(carrierId: ID, from: Date, to: Date): InvoiceSummary!
 
   """
   One invoice, or null when it does not exist.
@@ -429,6 +432,11 @@ enum DiscrepancyType {
   RATE_MISMATCH
   UNCONTRACTED_CHARGE
   DUPLICATE_CHARGE
+  """
+  Another invoice from the same carrier has the same number: a possible duplicate of the whole invoice, with no line and
+  no money. It is decided on its own; while it is open, the invoice takes no bulk decision and cannot be approved.
+  """
+  DUPLICATE_INVOICE
   WEIGHT_MISMATCH
   ARITHMETIC_ERROR
 }

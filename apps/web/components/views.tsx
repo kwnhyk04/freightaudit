@@ -84,6 +84,9 @@ export function InvoiceList({ data, summary, status, search, base, readOnly }: W
             Search invoices
           </label>
           <input id="invoice-search" type="search" name="q" defaultValue={search} maxLength={100} placeholder="Invoice, PRO or carrier" />
+          <button type="submit" className="button">
+            Search
+          </button>
         </form>
       </div>
       {note && (

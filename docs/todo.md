@@ -81,11 +81,25 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
         - `invoice-brief.graphql` is not ignored.
         - Every check reran green.
       - [ ] The design hook's approved `side-tab` exception does not apply when the session's working directory is `apps/web`. The user chooses between two options:
-        - Keep the shell at the repo root.
+        - Keep the shell at the repo root. During C2b and C3 the shell stayed there, and the hook flagged nothing.
         - Add `apps/web/.impeccable/config.json`.
-      - [ ] The user ships C2.
-    - C3, api first, then a Release and `pnpm demo:up`: a `duplicate_invoice` finding for a near duplicate (migration 0014, expand only), an open-findings filter on `invoices` for split tabs, and GraphQL depth and cost limits (included, user decision).
-    - C4, the web, once C3 runs on the demo: the split tabs and the near-duplicate finding's words.
+      - [x] The user shipped C2, merged as `dfcdaab` (#26). Ship pushed `d6b3377` at 03:41 Taipei on 2026-10-19; `origin/main` still showed `a2f046e` at 03:44 and `dfcdaab` by 04:44.
+    - [ ] C2b and C3 on branch `c2b-c3` (the user's request 2026-10-19, built alone, not committed). The branch was cut from `d6b3377`, since C2 was not on main yet. Once C2 merged it moved onto main `dfcdaab` (`git reset`, identical tree).
+      - C2b, web:
+        - [x] Scrollbar left of the search box. Cause: `.tabs a { margin-bottom: -1px }` inside the `overflow-x: auto` tab strip made 1px of vertical overflow, which Windows draws as a scrollbar. The rule is now an inset shadow the current tab's underline covers from inside. Test: `e2e/main.spec.ts`, the toolbar and its tab strip at 1440 and 390 px (it failed first with 1 px).
+        - [x] Search button beside the box, the same form submit as Enter, focus ring from `:focus-visible`. Test: `e2e/main.spec.ts`.
+        - [x] List screenshots retaken (`pnpm e2e:screenshots`, 8/8): the tabs, box and button on one row at 1440 px, and the box and button sharing a row on a phone.
+      - C3, api and worker:
+        - [x] `EXTRACT_CONCURRENCY` (1 to 8, default 8; `"1"` in `infra/docker-compose.prod.yml` for the demo). Test: `apps/worker/src/main.int.test.ts` (failed first; a mutation back to 8 failed it).
+        - [x] GraphQL depth, cost and alias limits as one graphql-js validation rule (`apps/api/src/query-limits.ts`, registered through Yoga's `onValidate`): depth 7 and 82 fields, the largest client operations (`invoices` and `recent-uploads` nest 7; `invoice` selects 82); every alias refused. Tests: `query-limits.test.ts` (both edges, fragments, a doubling chain) and `graphql.int.test.ts` (refused with no database query and no mutation run; removing the plugin failed it).
+        - [x] `invoiceSummary(carrierId, from, to)`, additive: the carrier that bills, and the UTC days invoices were received, both included; from after to, a day that is not one, and a malformed carrier id are refused with BAD_USER_INPUT. With a filter, dead letters count through their invoice. Tests: `graphql.int.test.ts`, every filter on both sides and no arguments (failed first; a mutation failed them).
+        - [x] `invoices(hasOpenFindings: Boolean)` for the split tabs. Test: `graphql.int.test.ts` (failed first; swapping the branches failed it).
+        - [x] `duplicate_invoice` finding at reconcile with migration 0014 (enum value, expand only), invoice-level, no money, evidence naming the earliest other invoice that is not rejected; bulk decisions refused while it is open (approval already was). The web got two label entries so it compiles; its words come in C4. Tests: `packages/domain/src/reconcile.test.ts`, `apps/worker/src/reconcile.int.test.ts`, `apps/api/src/decide.int.test.ts`, each failed first and failed again under a mutation.
+        - [x] Contracts regenerated; `contracts:check` passes; `contracts:breaking` reports nothing breaking with one reviewed line in `packages/contracts/oasdiff-ignore.txt` (the new enum value in `GET /v1/discrepancies`).
+        - [x] Final checks (2026-10-19): `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (domain 38, api 12, web 105), `pnpm test:int` 123 in 23 suites, `pnpm contracts:check`, `pnpm contracts:breaking` (nothing breaking), `pnpm e2e` 34/34, `pnpm e2e:screenshots` 8/8. Diff audit clean (activity log).
+      - [ ] The user ships C2b and C3 (`ship.ps1`). CI's eval smoke calls Gemini and Groq live for the pull request (about 36,000 tokens, free tiers).
+      - [ ] After the merge: the Release publishes the api and worker images, then the user runs `pnpm demo:up`. Migration 0014 applies before the new api and worker start.
+    - C4, the web, once C3 runs on the demo: the split tabs (`hasOpenFindings`), the near-duplicate finding's words, and hiding the bulk buttons while a possible duplicate is open. Not started (it needs C3's Release and `pnpm demo:up`); planned first.
 
 ## Completed
 

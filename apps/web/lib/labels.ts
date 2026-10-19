@@ -59,6 +59,7 @@ export const FINDING: Record<DiscrepancyType, string> = {
   RATE_MISMATCH: 'Rate mismatch',
   UNCONTRACTED_CHARGE: 'Uncontracted charge',
   DUPLICATE_CHARGE: 'Duplicate charge',
+  DUPLICATE_INVOICE: 'Possible duplicate invoice',
   WEIGHT_MISMATCH: 'Weight mismatch',
   ARITHMETIC_ERROR: 'Arithmetic error',
 };
@@ -68,6 +69,8 @@ const TITLE: Record<DiscrepancyType, (line: string) => string> = {
   RATE_MISMATCH: (line) => `${line} above the rate card`,
   UNCONTRACTED_CHARGE: (line) => `${line} charged, but not on the rate card`,
   DUPLICATE_CHARGE: (line) => `${line} billed twice`,
+  // The finding has no line, so this title never shows; C4 gives it its words.
+  DUPLICATE_INVOICE: () => FINDING.DUPLICATE_INVOICE,
   WEIGHT_MISMATCH: (line) => `${line} billed for another weight`,
   ARITHMETIC_ERROR: (line) => `${line} does not add up`,
 };

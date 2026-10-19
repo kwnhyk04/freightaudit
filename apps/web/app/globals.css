@@ -358,11 +358,12 @@ td .decide input {
 
 /* Tabs as links: the filter lives in the URL. */
 /* Scrollers are positioned, so the visually hidden text inside them is clipped with them instead of widening the page. */
+/* The rule is an inset shadow the current tab's underline covers from inside: a pixel outside would scroll, and Windows draws a scrollbar for it. */
 .tabs {
   position: relative;
   display: flex;
   gap: 2px;
-  border-bottom: 1px solid var(--rule);
+  box-shadow: inset 0 -1px var(--rule);
   margin-bottom: 12px;
   overflow-x: auto;
 }
@@ -370,7 +371,6 @@ td .decide input {
   padding: 8px 10px;
   color: var(--text-2);
   border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
   white-space: nowrap;
 }
 .tabs a:hover {
@@ -501,10 +501,10 @@ td .reason {
   align-items: end;
   gap: 8px 16px;
   margin-bottom: 12px;
-  border-bottom: 1px solid var(--rule);
+  box-shadow: inset 0 -1px var(--rule);
 }
 .list-bar .tabs {
-  border-bottom: 0;
+  box-shadow: none;
   margin-bottom: 0;
   flex: 1 1 auto;
   min-width: 0;
@@ -514,11 +514,14 @@ td .reason {
   font-variant-numeric: tabular-nums;
 }
 .search {
-  flex: 0 0 240px;
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
   padding-bottom: 6px;
 }
 .search input {
-  width: 100%;
+  width: 200px;
+  min-width: 0;
 }
 
 /* Empty and error states say what will appear and what to do next. */
@@ -988,8 +991,8 @@ td.wrap {
     flex-direction: column;
     align-items: stretch;
   }
-  .search {
-    flex-basis: auto;
+  .search input {
+    flex: 1;
   }
   .trail li {
     grid-template-columns: 1fr;

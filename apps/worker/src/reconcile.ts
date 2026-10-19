@@ -1,5 +1,5 @@
 import { discrepancies, extractions, invoiceLines, invoices, rateCardBands, rateCards, rateCardVersions, shipments } from '@freightaudit/db';
-import { currencyReview, reconcileInvoice, versionInForce } from '@freightaudit/domain';
+import { currencyReview, duplicateInvoice, reconcileInvoice, versionInForce } from '@freightaudit/domain';
 import { type ExtractedInvoice, PermanentError, TransientError } from '@freightaudit/llm';
 import type { InvoiceJob } from '@freightaudit/pipeline';
 import { invoicesNeedsReview } from '@freightaudit/telemetry';
@@ -112,27 +112,36 @@ async function check(tx: Tx, invoiceId: string) {
   const { discrepancies: found } = priced(() =>
     reconcileInvoice([terms], { shippedOn, miles, lines, billedBefore: earlier.map((line) => line.chargeCode) }),
   );
+  // The carrier's other invoices under this number, earliest first; the domain decides which is a possible duplicate.
+  // ponytail: scans the tenant's invoices; an index on (tenant_id, carrier_id, invoice_number) past about 100k.
+  const number = invoice.invoiceNumber;
+  const sameNumber = number
+    ? await tx
+        .select({ filename: invoices.filename, status: invoices.status, receivedOn: sql<string>`to_char(${invoices.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')` })
+        .from(invoices)
+        .where(and(eq(invoices.tenantId, tenantId), eq(invoices.carrierId, shipment.carrierId), eq(invoices.invoiceNumber, number), ne(invoices.id, invoiceId)))
+        .orderBy(asc(invoices.createdAt), asc(invoices.id))
+    : [];
+  const duplicate = number ? duplicateInvoice(number, sameNumber) : undefined;
 
   const saved = await tx
     .insert(invoiceLines)
     .values(lines.map((line, i) => ({ tenantId, invoiceId, ...line, description: items[i]!.description, rateCardVersionId: version.id })))
     .returning({ id: invoiceLines.id, lineNumber: invoiceLines.lineNumber });
   const lineIds = new Map(saved.map((line) => [line.lineNumber, line.id]));
-  if (found.length > 0) {
-    await tx.insert(discrepancies).values(
-      found.map(({ lineNumber, type, expectedCents, billedCents, evidence }) => ({
-        tenantId,
-        invoiceId,
-        invoiceLineId: lineIds.get(lineNumber),
-        shipmentId: shipment.id,
-        type,
-        expectedCents,
-        billedCents,
-        evidence,
-      })),
-    );
-  }
+  const findings: (typeof discrepancies.$inferInsert)[] = found.map(({ lineNumber, type, expectedCents, billedCents, evidence }) => ({
+    tenantId,
+    invoiceId,
+    invoiceLineId: lineIds.get(lineNumber),
+    shipmentId: shipment.id,
+    type,
+    expectedCents,
+    billedCents,
+    evidence,
+  }));
+  if (duplicate) findings.push({ tenantId, invoiceId, invoiceLineId: null, shipmentId: shipment.id, ...duplicate });
+  if (findings.length > 0) await tx.insert(discrepancies).values(findings);
   // Findings leave the invoice reconciled; they wait as open discrepancies in the review queue.
   await tx.update(invoices).set({ status: 'reconciled', shipmentId: shipment.id }).where(eq(invoices.id, invoiceId));
-  return { invoiceId, status: 'reconciled' as const, discrepancies: found.length };
+  return { invoiceId, status: 'reconciled' as const, discrepancies: findings.length };
 }

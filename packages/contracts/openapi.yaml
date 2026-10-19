@@ -516,7 +516,7 @@ components:
           description: Cursor for the next page; null on the last page.
     DiscrepancyType:
       type: string
-      enum: [rate_mismatch, uncontracted_charge, duplicate_charge, weight_mismatch, arithmetic_error]
+      enum: [rate_mismatch, uncontracted_charge, duplicate_charge, duplicate_invoice, weight_mismatch, arithmetic_error]
     DiscrepancyStatus:
       type: string
       enum: [open, confirmed, dismissed]

@@ -56,6 +56,11 @@ export type DiscrepancyStatus =
 export type DiscrepancyType =
   | 'ARITHMETIC_ERROR'
   | 'DUPLICATE_CHARGE'
+  /**
+   * Another invoice from the same carrier has the same number: a possible duplicate of the whole invoice, with no line and
+   * no money. It is decided on its own; while it is open, the invoice takes no bulk decision and cannot be approved.
+   */
+  | 'DUPLICATE_INVOICE'
   | 'RATE_MISMATCH'
   | 'UNCONTRACTED_CHARGE'
   | 'WEIGHT_MISMATCH';

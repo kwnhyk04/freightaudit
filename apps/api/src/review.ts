@@ -121,7 +121,7 @@ export async function decideInvoice(
     if (used) return;
     if (invoice.status !== 'reconciled') throw refuse('CONFLICT', `only a reconciled invoice can be decided; this one is ${invoice.status}`);
     const findings = await tx
-      .select({ id: discrepancies.id, status: discrepancies.status, version: cursorAt(discrepancies.updatedAt) })
+      .select({ id: discrepancies.id, type: discrepancies.type, status: discrepancies.status, version: cursorAt(discrepancies.updatedAt) })
       .from(discrepancies)
       .where(and(eq(discrepancies.tenantId, deps.tenantId), eq(discrepancies.invoiceId, id)));
     const saw = new Map(seen.map((finding) => [finding.id, finding.version]));
@@ -130,6 +130,8 @@ export async function decideInvoice(
     }
     const open = findings.filter((finding) => finding.status === 'open');
     if (open.length === 0) throw refuse('CONFLICT', 'no finding of this invoice is open');
+    // A possible duplicate is decided on its own: a decision on every finding would pass it with the charges.
+    if (open.some((finding) => finding.type === 'duplicate_invoice')) throw refuse('CONFLICT', 'this invoice may duplicate another one; decide that finding on its own first');
     for (const finding of open) {
       await decide(tx, deps.tenantId, actor, { ...finding, invoiceId: id }, decision === 'APPROVE_AS_BILLED' ? 'dismissed' : 'confirmed', null);
     }

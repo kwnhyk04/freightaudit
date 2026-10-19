@@ -59,3 +59,35 @@ test('with AI_ENABLED=true it exits 1, naming every missing key and a fallback o
   expect(stderr).not.toContain('LLM_TEXT_PROVIDER');
   expect(stderr).not.toContain('groq-secret-value');
 });
+
+test('EXTRACT_CONCURRENCY sets how many documents the extract worker reads at once, 8 when unset', async () => {
+  for (const [value, expected] of [[undefined, 8], ['1', 1]] as const) {
+    const child = spawn(process.execPath, [main], { env: { ...settings(), EXTRACT_CONCURRENCY: value }, stdio: ['ignore', 'pipe', 'inherit'] });
+    try {
+      // The workers start before the server listens, so the search ends there either way.
+      let concurrency: Record<string, number> | undefined;
+      for await (const line of createInterface({ input: child.stdout! })) {
+        const entry = (line.startsWith('{') ? JSON.parse(line) : {}) as { msg?: string; concurrency?: Record<string, number> };
+        if (entry.msg === 'workers started') concurrency = entry.concurrency;
+        if (entry.msg === 'workers started' || entry.msg?.startsWith('Server listening at ')) break;
+      }
+      child.stdout!.resume();
+      expect([value, concurrency?.extract]).toEqual([value, expected]);
+    } finally {
+      child.kill();
+      await once(child, 'exit');
+    }
+  }
+});
+
+test('EXTRACT_CONCURRENCY outside 1 to 8, or not a whole number, stops the worker at startup', async () => {
+  for (const value of ['0', '9', '1.5', 'two']) {
+    // A worker that accepted the value would run on; the timeout ends it, and the exit code shows it was not refused.
+    const child = spawn(process.execPath, [main], { env: { ...settings(), EXTRACT_CONCURRENCY: value }, stdio: ['ignore', 'ignore', 'pipe'], timeout: 20_000 });
+    let stderr = '';
+    child.stderr!.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
+    const [code] = await once(child, 'close');
+    expect([value, code]).toEqual([value, 1]);
+    expect(stderr).toContain('EXTRACT_CONCURRENCY');
+  }
+});
