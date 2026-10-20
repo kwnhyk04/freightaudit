@@ -125,7 +125,7 @@ The web app (`apps/web`, Next.js) is where accounts-payable staff review invoice
   - Review queue: approve a charge or dispute it, with an optional note.
   - Dead letters: replay a failed job.
   - Upload: a chosen or dropped file is checked in the browser and then uploads by itself; recent uploads show their progress and result. Three golden-set samples upload in one tap.
-- **Out of needs review:** correct the carrier or PRO number and re-run matching, reject the invoice with a reason (a final status), or approve it as billed. The audit trail records every action with who, when and what changed, and every pipeline move, including how the carrier name matched and why a step failed.
+- **Out of needs review:** correct the carrier or PRO number and re-run matching, reject the invoice with a reason (a final status), or approve it as billed. If its carrier billed its number before, approving it holds it instead, with the possible duplicate to decide: not a duplicate, then approve it as billed; confirmed, then reject it. The audit trail records every action with who, when and what changed, and every pipeline move, including how the carrier name matched and why a step failed.
 - **Backend for frontend:** the browser talks only to the Next.js server, which calls the api with `API_KEY`; the key never reaches the browser. Every page, route handler and action checks the session first.
 - **Sign-in:** one reviewer, recorded as `reviewer` in the audit trail. The password is checked against `DEMO_PASSWORD_HASH` (argon2id). The session cookie is httpOnly, Secure and SameSite=Lax and lasts 8 hours. Five failed attempts in 15 minutes lock sign-in; the count lives in each server instance's memory.
 - **Threats and mitigations:** `docs/threat-notes.md`.

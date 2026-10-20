@@ -1,4 +1,4 @@
-import { auditEvents, carriers, discrepancies, extractions, idempotencyKeys, invoices } from '@freightaudit/db';
+import { auditEvents, carriers, discrepancies, extractions, idempotencyKeys, invoices, possibleDuplicate } from '@freightaudit/db';
 import { type Queues, replayDeadLetter, send } from '@freightaudit/pipeline';
 import { and, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -32,7 +32,7 @@ function asReviewer<T>({ db }: ReviewDeps, actor: string, work: (tx: Tx) => Prom
 async function lockInvoice(tx: Tx, tenantId: string, id: string) {
   if (!UUID.test(id)) throw refuse('NOT_FOUND', `invoice ${id} not found`);
   const [invoice] = await tx
-    .select({ status: invoices.status, carrierId: invoices.carrierId, proNumber: invoices.proNumber, contentSha256: invoices.contentSha256 })
+    .select({ status: invoices.status, carrierId: invoices.carrierId, invoiceNumber: invoices.invoiceNumber, proNumber: invoices.proNumber, contentSha256: invoices.contentSha256 })
     .from(invoices)
     .where(and(eq(invoices.tenantId, tenantId), eq(invoices.id, id)))
     .for('update');
@@ -51,11 +51,27 @@ async function approve(tx: Tx, tenantId: string, actor: string, id: string, from
   await tx.insert(auditEvents).values({ tenantId, invoiceId: id, actor, action: 'approved', changes, reason });
 }
 
+// Why an approval from review stopped short, kept on the move it made instead.
+const HELD = 'not approved: another invoice from this carrier has the same number';
+
 export async function approveInvoice(deps: ReviewDeps, actor: string, id: string) {
   await asReviewer(deps, actor, async (tx) => {
     const invoice = await lockInvoice(tx, deps.tenantId, id);
     if (invoice.status !== 'reconciled' && invoice.status !== 'needs_review') {
       throw refuse('CONFLICT', `only a reconciled invoice or one that needs review can be approved; this one is ${invoice.status}`);
+    }
+    // Reconcile writes the findings, so one that needs review has none: the reconcile's duplicate lookup runs first, by
+    // the carrier and number it was read with. A hit holds it unapproved in reconciled with the possible duplicate, which
+    // a reviewer decides as on any checked invoice.
+    if (invoice.status === 'needs_review') {
+      const duplicate = await possibleDuplicate(tx, { tenantId: deps.tenantId, invoiceId: id, carrierId: invoice.carrierId, invoiceNumber: invoice.invoiceNumber });
+      if (duplicate) {
+        await tx.insert(discrepancies).values({ tenantId: deps.tenantId, invoiceId: id, ...duplicate });
+        await tx.update(invoices).set({ status: 'reconciled' }).where(eq(invoices.id, id));
+        const changes: Change[] = [{ field: 'status', from: 'needs_review', to: 'reconciled' }];
+        await tx.insert(auditEvents).values({ tenantId: deps.tenantId, invoiceId: id, actor, action: 'status', changes, reason: HELD });
+        return;
+      }
     }
     const findings = await tx.select({ type: discrepancies.type, status: discrepancies.status }).from(discrepancies).where(eq(discrepancies.invoiceId, id));
     const open = findings.filter((finding) => finding.status === 'open').length;

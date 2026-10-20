@@ -129,6 +129,23 @@ test('a reviewer may reject a reconciled invoice once no finding is open; a find
     await reject();
   }));
 
+test('approving a needs_review invoice may hold it in reconciled for a possible duplicate, which approval then waits on (0016)', () =>
+  withDatabase(async (client, url) => {
+    await migrate(url, { log: quiet });
+    const { rows: tenants } = await client.query("INSERT INTO tenants (name) VALUES ('Test tenant') RETURNING id");
+    const { rows: invoices } = await client.query(
+      "INSERT INTO invoices (tenant_id, filename, content_sha256, status) VALUES ($1, 'a.pdf', repeat('a', 64), 'needs_review') RETURNING id",
+      [tenants[0].id],
+    );
+    await client.query(
+      "INSERT INTO discrepancies (tenant_id, invoice_id, type, expected_cents, billed_cents, evidence) VALUES ($1, $2, 'duplicate_invoice', 0, 0, 'Possible duplicate.')",
+      [tenants[0].id, invoices[0].id],
+    );
+    const move = (status: string) => client.query('UPDATE invoices SET status = $1 WHERE id = $2', [status, invoices[0].id]);
+    await move('reconciled');
+    await expect(move('approved')).rejects.toMatchObject({ code: '23514', message: expect.stringContaining('open discrepancies') });
+  }));
+
 test('migrations apply cleanly from empty, re-run as a no-op, and match the Drizzle schema', () =>
   withDatabase(async (client, url) => {
     await migrate(url, { log: quiet });
@@ -151,6 +168,7 @@ test('migrations apply cleanly from empty, re-run as a no-op, and match the Driz
       '0013_audit_and_rejection',
       '0014_duplicate_invoice',
       '0015_reject_reconciled',
+      '0016_needs_review_to_reconciled',
     ]);
 
     const tables = Object.values(schema as Record<string, unknown>).filter((value): value is PgTable => is(value, PgTable));
@@ -241,5 +259,5 @@ test('db:reset refuses a database off this machine or NODE_ENV=production, and o
     await resetDatabase(url, { nodeEnv: 'development', log: quiet });
     expect((await client.query('SELECT name FROM tenants')).rows).toEqual([{ name: 'Larkspur Outdoor Supply' }]);
     expect(await count(client, 'SELECT count(*) FROM invoices')).toBe(500);
-    expect(await count(client, 'SELECT count(*) FROM schema_migrations')).toBe(16);
+    expect(await count(client, 'SELECT count(*) FROM schema_migrations')).toBe(17);
   }));

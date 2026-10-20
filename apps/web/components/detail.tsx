@@ -19,6 +19,7 @@ import {
   reviewReason,
   statusLabel,
   trailRows,
+  unmatchedNote,
 } from '../lib/labels.ts';
 import { ActionForm, BulkDecision, DecideForm, DialogAction, StatusPoller } from './client.tsx';
 import { Badge, Day, Difference, Moment, Money, StatusBadge } from './ui.tsx';
@@ -30,6 +31,8 @@ type Finding = Detail['discrepancies']['edges'][number]['node'];
 type Amounts = ReturnType<typeof invoiceAmounts>;
 // The bulk decision sends every finding it saw; the page reads at most 100, so a longer list decides one by one.
 const MAX_BULK = 100;
+// The question before approving an invoice with no matched shipment: one in review, or one held for a possible duplicate.
+const AS_BILLED = 'Approve without a matched shipment? The carrier is paid what it billed.';
 // A charge code may break after its underscores, so a narrow charges table keeps every column in view.
 const codeBreaks = (code: string) => code.split('_').flatMap((part, i, parts) => (i < parts.length - 1 ? [`${part}_`, <wbr key={i} />] : [part]));
 
@@ -47,6 +50,9 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
   const money = priced && invoice.totalCents !== null ? invoiceAmounts(invoice.totalCents, findings) : undefined;
   const open = invoice.openDiscrepancyCount;
   const hold = holdOf(invoice.status, findings);
+  // A checked invoice without its shipment was held at its approval from review: it says why, and what follows.
+  const matched = invoice.shipment !== null;
+  const unmatched = invoice.status === 'RECONCILED' && !matched ? unmatchedNote(findings) : undefined;
   const carrier = invoice.carrier ?? extraction?.carrierRead;
   // Before extraction, or when it failed, the file is all there is: the facts shrink to it.
   const unread = !extraction && !invoice.number;
@@ -81,7 +87,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
           <div className="row title">
             <h1 className="id">{invoice.number ?? invoice.filename}</h1>
             {carrier && <span className="muted">{carrier}</span>}
-            <StatusBadge status={invoice.status} open={open} hold={hold} />
+            <StatusBadge status={invoice.status} open={open} hold={hold} matched={matched} />
           </div>
           <p className="muted">
             Received <Moment value={invoice.createdAt} />
@@ -96,7 +102,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
         </div>
         {!readOnly && <InvoiceActions invoice={invoice} findings={findings} money={money} />}
       </div>
-      <StatusPoller active={IN_FLIGHT.has(invoice.status)} label={statusLabel(invoice.status, open, hold)} />
+      <StatusPoller active={IN_FLIGHT.has(invoice.status)} label={statusLabel(invoice.status, open, hold, matched)} />
       <div className="review">
         {example ? (
           <section className="doc" aria-label="Invoice document">
@@ -133,6 +139,12 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                   )}
                 </div>
               )}
+            </section>
+          )}
+          {unmatched && (
+            <section className="panel attention" aria-labelledby="unmatched-title">
+              <h2 id="unmatched-title">{unmatched.title}</h2>
+              <p>{unmatched.text}</p>
             </section>
           )}
           {invoice.status === 'FAILED' && (
@@ -314,7 +326,7 @@ function InvoiceActions({ invoice, findings, money }: { invoice: Detail; finding
     return (
       <div className="row">
         {reject}
-        <ActionForm hidden={{ intent: 'approve', id: invoice.id }} submit="Approve as billed" confirm="Approve without a matched shipment? The carrier is paid what it billed." />
+        <ActionForm hidden={{ intent: 'approve', id: invoice.id }} submit="Approve as billed" confirm={AS_BILLED} />
       </div>
     );
   }
@@ -358,6 +370,8 @@ function approval(invoice: Detail, findings: Finding[], money?: Amounts) {
     );
   }
   if (open > 0) return <p className="faint">Decide the {plural(open, 'open finding')} to approve.</p>;
+  // With no shipment nothing was checked against the rate card, so it is approved as billed, as from review.
+  if (!invoice.shipment) return <ActionForm hidden={{ intent: 'approve', id: invoice.id }} submit="Approve as billed" confirm={AS_BILLED} />;
   return <ActionForm hidden={{ intent: 'approve', id: invoice.id }} submit="Approve for payment" tone="primary" />;
 }
 

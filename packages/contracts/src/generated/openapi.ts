@@ -163,7 +163,7 @@ export interface components {
             };
         };
         /**
-         * @description Processing status of an invoice. It moves through received, extracting, extracted and reconciling to reconciled, where each finding waits as an open discrepancy, and ends at approved once every discrepancy has a decision. needs_review means the extraction could not be trusted, such as a carrier or PRO number that matches no shipment; a reviewer then corrects them and matching runs again, approves the invoice, or rejects it. rejected is final. failed means a step used up its retries; replaying its dead letter restarts that step.
+         * @description Processing status of an invoice. It moves through received, extracting, extracted and reconciling to reconciled, where each finding waits as an open discrepancy, and ends at approved once every discrepancy has a decision. needs_review means the extraction could not be trusted, such as a carrier or PRO number that matches no shipment; a reviewer then corrects them and matching runs again, approves the invoice, or rejects it. An approval of one whose carrier billed its number before moves it to reconciled instead, with no shipment and the possible duplicate to decide. rejected is final. failed means a step used up its retries; replaying its dead letter restarts that step.
          * @enum {string}
          */
         InvoiceStatus: "received" | "extracting" | "extracted" | "reconciling" | "reconciled" | "needs_review" | "approved" | "rejected" | "failed";

@@ -368,6 +368,20 @@ From the approved design doc:
   - The first comment line above `held` in `graphql.ts` still described the rule before C4c ("an open discrepancy waits"). It now names the parity test, and so does a new line above the `hold` loader.
   - Reason: the user's request; each choice is the smallest that fits it.
 
+- 2026-10-20: Duplicate check on approval from review, option (c), decisions (the agent's, for the user to confirm at review).
+  - One PR, by the user's rule: the web reads only `Invoice.shipment`, which the api has served since step 9.
+  - `possibleDuplicate(db, { tenantId, invoiceId, carrierId, invoiceNumber })` (`packages/db/src/duplicate.ts`) holds the query, and the domain's `duplicateInvoice` still decides. Its guard, nothing to compare without a carrier and a number, sits inside it, so worker and api share that rule too. The worker passes the shipment's carrier, which equals the invoice's.
+  - A hold writes the finding with no line and no shipment and moves the invoice to reconciled. The move's audit row is action `status` by the reviewer, reason "not approved: another invoice from this carrier has the same number". There is no new audit action, so no CHECK or GraphQL enum changed.
+  - The answer is the invoice, not an error: its status RECONCILED and hold POSSIBLE_DUPLICATE say why.
+  - 0016 only allows the move, as asked. It does not require an open possible duplicate for it.
+  - Web words:
+    - Once nothing holds such an invoice, its pill reads "Ready to approve as billed" and its list reason "Not checked against the rate card".
+    - Its panel reads "Not approved: possible duplicate", with what to do next, while the duplicate is open, then "Not checked against the rate card".
+    - Its trail row reads "Held for a possible duplicate when reviewer approved it as billed". Its button is "Approve as billed", with the needs-review question.
+    - The Ready to approve tab's note names both kinds. The Billing issues note stays, since the demo spec reads it word for word.
+  - Left as they are: the final approval row reads "Status: Checked to Approved", as on any checked invoice; a held invoice can no longer be corrected; `e2e:screenshots` was not run.
+  - Reason: the user's request; each choice is the smallest that fits it.
+
 ## Preferences and Instructions
 
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).
@@ -596,6 +610,8 @@ From the approved design doc:
   - What happened: on a phone, the wrapped toolbar's column took the tab strip's full width, and the toolbar overflowed by 620 px.
   - What we did: the phone rule sets `flex-wrap: nowrap`, so the column keeps the container's width.
 - 2026-10-19: The shell's output condensing can turn `pnpm lint`'s output into "ESLint output (JSON parse failed: EOF while parsing a value at line 1 column 0)", which reads like a failure. `rtk proxy pnpm lint` shows the real result and exit code (that day: exit 0, 12 tasks).
+- 2026-10-20: A grep through the shell's output condensing can come back empty although the file has matches. What happened: a grep over `apps/web/e2e/screenshots.spec.ts` printed nothing. Why: the condensing; why it dropped every line is not confirmed. What we did: `rtk proxy grep` showed the matches. Rerun an empty grep that way before saying a file has none.
+- 2026-10-20: `pnpm --filter @freightaudit/web e2e -- -g "<words>"` runs every test of the script's projects, not only the matching ones. What happened: a RED run meant for two tests ran the whole main suite (about a minute). Why: not confirmed; the arguments after `--` did not act as Playwright's filter. What we did: ran the full suites; a filtered run is not set up (none tried).
 
 ## Rejected Approaches
 

@@ -1,9 +1,9 @@
-import { auditEvents, discrepancies, idempotencyKeys, invoices } from '@freightaudit/db';
+import { auditEvents, carriers, discrepancies, idempotencyKeys, invoices } from '@freightaudit/db';
 import { seed } from '@freightaudit/db/scripts/seed';
 import { createTestDatabase, testEnv } from '@freightaudit/db/testing';
 import { createMemoryStorage, createQueues, type Queues } from '@freightaudit/pipeline';
 import { serverOptions } from '@freightaudit/telemetry';
-import { and, asc, eq, like } from 'drizzle-orm';
+import { and, asc, eq, like, ne } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Redis } from 'ioredis';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -12,7 +12,7 @@ import { buildApp } from './app.ts';
 import { CHANGED } from './review.ts';
 import { apiKey } from './testing.ts';
 
-// decideInvoice on its own database, since one test adds a trigger that makes approvals fail.
+// decideInvoice and approvals on their own database, since one test adds a trigger that makes approvals fail.
 let database: Awaited<ReturnType<typeof createTestDatabase>>;
 let pool: pg.Pool;
 let db: NodePgDatabase;
@@ -21,6 +21,9 @@ let queues: Queues;
 let app: ReturnType<typeof buildApp>;
 // Reconciled invoices whose seeded findings are all open; each test takes its own.
 const fresh: string[] = [];
+// Needs-review invoices whose reading saved a carrier and a number that no other invoice of the carrier has; each test
+// takes its own.
+const reviewed: string[] = [];
 
 beforeAll(async () => {
   database = await createTestDatabase();
@@ -40,6 +43,11 @@ beforeAll(async () => {
     "SELECT d.invoice_id FROM discrepancies d JOIN invoices i ON i.id = d.invoice_id WHERE i.status = 'reconciled' GROUP BY d.invoice_id HAVING bool_and(d.status = 'open') ORDER BY d.invoice_id",
   );
   fresh.push(...rows.map((row) => row.invoice_id as string));
+  const { rows: needs } = await pool.query(
+    `SELECT i.id FROM invoices i WHERE i.status = 'needs_review' AND i.carrier_id IS NOT NULL AND i.invoice_number IS NOT NULL AND NOT EXISTS (
+       SELECT 1 FROM invoices o WHERE o.carrier_id = i.carrier_id AND o.invoice_number = i.invoice_number AND o.id <> i.id) ORDER BY i.id`,
+  );
+  reviewed.push(...needs.map((row) => row.id as string));
 });
 afterAll(async () => {
   await app.close();
@@ -89,6 +97,14 @@ const addDuplicate = async (id: string) =>
     )
   ).rows[0].id as string;
 const findingsOf = (id: string) => db.select().from(discrepancies).where(eq(discrepancies.invoiceId, id)).orderBy(asc(discrepancies.id));
+const invoiceOf = async (id: string) => (await db.select().from(invoices).where(eq(invoices.id, id)))[0]!;
+// Another file with the invoice's number, from its carrier unless another is given, as an earlier upload left it.
+async function billedBefore(id: string, filename: string, status: 'approved' | 'rejected', at: string, carrierId?: string) {
+  const invoice = await invoiceOf(id);
+  const contentSha256 = randomBytes(32).toString('hex');
+  const when = new Date(at);
+  await db.insert(invoices).values({ tenantId: invoice.tenantId, status, filename, contentSha256, carrierId: carrierId ?? invoice.carrierId, invoiceNumber: invoice.invoiceNumber, createdAt: when, updatedAt: when });
+}
 const auditOf = (id: string) => db.select().from(auditEvents).where(eq(auditEvents.invoiceId, id)).orderBy(asc(auditEvents.createdAt), asc(auditEvents.id));
 const statusOf = async (id: string) => (await db.select({ status: invoices.status }).from(invoices).where(eq(invoices.id, id)))[0]!.status;
 // Decision keys only: the seed gives most invoices an upload key too.
@@ -159,6 +175,48 @@ test('a checked invoice says what holds it, and one with a confirmed duplicate i
   expect([await holdOf(), await lists()]).toEqual(['CONFIRMED_DUPLICATE', [true, false]]);
   await rejectInvoice(id, 'Same invoice as first-scan.pdf');
   expect([await holdOf(), await lists()]).toEqual([null, [false, false]]);
+});
+
+test('approved as billed from review, an invoice its carrier billed before under its number is not approved but held with the possible duplicate, and the answer says so', async () => {
+  const id = reviewed.shift()!;
+  await billedBefore(id, 'first-scan.pdf', 'approved', '2026-10-01T10:00:00Z');
+  const { carrierId, invoiceNumber } = await invoiceOf(id);
+  const held = await gql<{ approveInvoice: unknown }>('mutation ($id: ID!) { approveInvoice(id: $id) { status hold shipment { id } discrepancies { edges { node { type status evidence } } } } }', { id });
+  const evidence = `Possible duplicate: invoice ${invoiceNumber} from this carrier was also received on 2026-10-01 as first-scan.pdf.`;
+  expect(held.data!.approveInvoice).toEqual({ status: 'RECONCILED', hold: 'POSSIBLE_DUPLICATE', shipment: null, discrepancies: { edges: [{ node: { type: 'DUPLICATE_INVOICE', status: 'OPEN', evidence } }] } });
+  // The finding as reconcile writes one, with no line, shipment or money, and the move in the trail as the reviewer's.
+  expect((await findingsOf(id)).map(({ type, invoiceLineId, shipmentId, expectedCents, billedCents }) => ({ type, invoiceLineId, shipmentId, expectedCents, billedCents }))).toEqual([
+    { type: 'duplicate_invoice', invoiceLineId: null, shipmentId: null, expectedCents: 0n, billedCents: 0n },
+  ]);
+  expect((await auditOf(id)).map((row) => [row.actor, row.action, row.changes, row.reason])).toEqual([
+    ['reviewer', 'status', [{ field: 'status', from: 'needs_review', to: 'reconciled' }], 'not approved: another invoice from this carrier has the same number'],
+  ]);
+  // Then decided as usual: no approval while it is open; not a duplicate, approved.
+  expect((await approveInvoice(id)).errors?.[0]?.extensions?.code).toBe('CONFLICT');
+  await resolve((await findingsOf(id))[0]!.id, 'DISMISS');
+  expect((await approveInvoice(id)).data!.approveInvoice).toEqual({ status: 'APPROVED' });
+  // Another one under the number: confirmed, it is never approved, and rejected.
+  const again = reviewed.shift()!;
+  await db.update(invoices).set({ carrierId, invoiceNumber }).where(eq(invoices.id, again));
+  expect((await approveInvoice(again)).data!.approveInvoice).toEqual({ status: 'RECONCILED' });
+  await resolve((await findingsOf(again))[0]!.id, 'CONFIRM');
+  expect((await approveInvoice(again)).errors?.[0]?.message).toBe('this invoice was confirmed as a duplicate of another one; reject it instead');
+  expect((await rejectInvoice(again, 'Same invoice as first-scan.pdf')).data!.rejectInvoice).toEqual({ status: 'REJECTED' });
+});
+
+test("approved as billed from review with no such invoice, it is approved as before: a rejected one or another carrier's is none, and a reading without a carrier or a number has nothing to compare", async () => {
+  const id = reviewed.shift()!;
+  const [other] = await db.select({ id: carriers.id }).from(carriers).where(ne(carriers.id, (await invoiceOf(id)).carrierId!)).limit(1);
+  await billedBefore(id, 'bad-scan.pdf', 'rejected', '2026-10-01T10:00:00Z');
+  await billedBefore(id, 'another-carrier.pdf', 'approved', '2026-10-02T10:00:00Z', other!.id);
+  // An invalid reading saves neither.
+  const unread = reviewed.shift()!;
+  await db.update(invoices).set({ carrierId: null, invoiceNumber: null }).where(eq(invoices.id, unread));
+  for (const each of [id, unread]) {
+    expect((await approveInvoice(each)).data!.approveInvoice).toEqual({ status: 'APPROVED' });
+    expect(await findingsOf(each)).toEqual([]);
+    expect((await auditOf(each)).map((row) => [row.actor, row.action, row.changes, row.reason])).toEqual([['reviewer', 'approved', [{ field: 'status', from: 'needs_review', to: 'approved' }], null]]);
+  }
 });
 
 test('each decision and closing in the trail names its discrepancy; every other entry names none', async () => {

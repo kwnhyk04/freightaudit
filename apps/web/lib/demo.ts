@@ -43,6 +43,7 @@ const row = (invoice: Detail): InvoicesQuery['invoices']['edges'][number]['node'
   hold: hold(invoice),
   reviewReason: invoice.reviewReason,
   failureReason: invoice.failureReason,
+  shipment: invoice.shipment && { id: invoice.shipment.id },
   rateCardVersion: invoice.rateCardVersion && { id: invoice.rateCardVersion.id },
   discrepancies: {
     edges: invoice.discrepancies.edges.map(({ node }) => ({ node: { id: node.id, status: node.status, expectedCents: node.expectedCents, billedCents: node.billedCents } })),
