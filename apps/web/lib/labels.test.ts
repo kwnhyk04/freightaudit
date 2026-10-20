@@ -17,6 +17,7 @@ import {
   lineLabel,
   modelName,
   openFindingsNote,
+  refusal,
   reviewReason,
   statusLabel,
   statusReason,
@@ -62,6 +63,11 @@ test("a decision reads in its finding's words: a charge is disputed or approved,
   // A finding closed with its rejected invoice was never decided, whatever its type.
   expect(decisionLabel('CLOSED', 'DUPLICATE_CHARGE')).toEqual({ label: 'Closed with the invoice', tone: 'neutral' });
   expect(decisionLabel('CLOSED', 'DUPLICATE_INVOICE')).toEqual({ label: 'Closed with the invoice', tone: 'neutral' });
+});
+
+test('a possible duplicate closed because its corrected reading matches no other invoice reads so, by its closing row', () => {
+  expect(decisionLabel('CLOSED', 'DUPLICATE_INVOICE', 'the corrected reading matches no other invoice')).toEqual({ label: 'Closed: reading corrected', tone: 'ok' });
+  expect(decisionLabel('CLOSED', 'DUPLICATE_INVOICE', 'the invoice was rejected')).toEqual({ label: 'Closed with the invoice', tone: 'neutral' });
 });
 
 test("the trail names each decision in the words of the finding it names, a replaced one included, and a closed finding plainly", () => {
@@ -359,11 +365,40 @@ test('an approval as billed, with no shipment, says so in the trail; one checked
   expect(words({ shipment: { reference: 'SHP-000413' }, auditTrail: [approval('reconciled')] })).toEqual([['Approved for payment', 'by reviewer', ['Status: Checked to Approved']]]);
 });
 
-test('an invoice held at its approval from review says why it was not approved and what to do next, by its possible duplicate', () => {
-  const duplicate = (status: 'OPEN' | 'CONFIRMED' | 'DISMISSED') => [{ type: 'DUPLICATE_INVOICE' as const, status }];
+test('a held invoice whose corrected reading matches no other invoice shows the correction, then why its possible duplicate closed', () => {
+  const invoice = {
+    shipment: null,
+    auditTrail: [
+      { id: 'c', at: at(10), actor: 'reviewer', action: 'CORRECTED' as const, detail: null, changes: [{ field: 'invoiceNumber', from: '98211354', to: '98211355' }] },
+      {
+        id: 'x',
+        at: at(10),
+        actor: 'reviewer',
+        action: 'DISCREPANCY_CLOSED' as const,
+        detail: 'the corrected reading matches no other invoice',
+        changes: [{ field: 'status', from: 'open', to: 'closed' }],
+        discrepancyId: 'duplicate',
+      },
+    ],
+  } as unknown as Detail;
+  expect(trailRows(invoice, [{ id: 'duplicate', type: 'DUPLICATE_INVOICE' }]).map(({ verb, rest, notes }) => [verb, rest, notes])).toEqual([
+    ['Corrected', 'by reviewer', ['Invoice number: 98211354 to 98211355']],
+    ['Finding closed', 'by reviewer', ['The corrected reading matches no other invoice']],
+  ]);
+});
+
+test('an invoice held at its approval from review says why it was not approved, what it matches and what to do next, by its possible duplicate', () => {
+  const evidence = 'Possible duplicate: invoice 98211354 from this carrier was also received on 2026-10-17 as digital.pdf.';
+  const duplicate = (status: 'OPEN' | 'CONFIRMED' | 'DISMISSED' | 'CLOSED') => [{ type: 'DUPLICATE_INVOICE' as const, status, evidence }];
+  // The evidence names the invoice it matches now: the api rewrites it on each check of a corrected reading.
   expect(unmatchedNote(duplicate('OPEN'))).toEqual({
     title: 'Not approved: possible duplicate',
-    text: 'Another invoice from this carrier has the same number, so this one was not approved. Decide the possible duplicate below: Not a duplicate, then approve it as billed; Confirm duplicate, then reject it.',
+    text: 'Another invoice from this carrier has the same number, so this one was not approved. Decide the possible duplicate below: Not a duplicate, then approve it as billed; Confirm duplicate, then reject it. If its carrier or invoice number was misread, correct it and check again.',
+    match: evidence,
+  });
+  expect(unmatchedNote(duplicate('CLOSED'))).toEqual({
+    title: 'Not checked against the rate card',
+    text: 'It came from review with no matched shipment, and its corrected reading matches no other invoice. Approve it as billed, or reject it.',
   });
   expect(unmatchedNote(duplicate('DISMISSED'))).toEqual({
     title: 'Not checked against the rate card',
@@ -373,6 +408,17 @@ test('an invoice held at its approval from review says why it was not approved a
     title: 'Not checked against the rate card',
     text: 'It came from review with no matched shipment and is a confirmed duplicate. Reject it.',
   });
+});
+
+test("the api's refusals read as sentences, and the two a page out of date meets on correcting a held invoice in plain words", () => {
+  expect(refusal('give the carrier, the PRO number or the invoice number')).toBe('Give the carrier, the PRO number or the invoice number.');
+  expect(refusal('Sample data is read-only.')).toBe('Sample data is read-only.');
+  expect(refusal('its possible duplicate is already decided, so its reading stays as it is')).toBe(
+    'Its possible duplicate was decided after this page loaded, so its carrier and invoice number can no longer be corrected. Reload the page to see the decision.',
+  );
+  expect(refusal('a held invoice is not matched to a shipment again, so its PRO number stays as read')).toBe(
+    'It was held for a possible duplicate after this page loaded, so it is not matched to a shipment again and its PRO number cannot be corrected. Reload the page to correct its carrier or invoice number instead.',
+  );
 });
 
 test('a recent upload shows its step while in flight, then how long it took and the result', () => {

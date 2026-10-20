@@ -19,6 +19,34 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-21: Follow-up C built: correcting a held invoice's reading on the web (branch correct-held-web from main `3fb206d`, not committed)
+
+- **Setup:** B merged as `3fb206d` (#36). `git switch -c correct-held-web` from main `3fb206d`, clean tree.
+- **The demo had not moved yet:**
+  - What happened: the request said B was released and ran on the demo. The first read-only check found the demo api and worker on revision `40bae9f` (started 15:52:23 UTC on 2026-10-20), and `docker buildx imagetools inspect ghcr.io/kwnhyk04/freightaudit-api:sha-3fb206d` answered "not found".
+  - Why: not confirmed; most likely `pnpm demo:up` pulled `:latest` before B's Release had published.
+  - What we did: wrote no code and told the user, since C's operation sends `number`, which that api refuses as an unknown argument, and the same operation serves the needs-review "Re-run matching". The user sent the request again. The second check found both on `3fb206d` (started 16:57:50 UTC on 2026-10-20) and the tag present, so C went ahead.
+- **Tests first,** each failing on the code as it was:
+  - Unit (`apps/web/lib/labels.test.ts`): `decisionLabel` with the closing row's reason, a trail of a correction and its closing row, `unmatchedNote` naming the match while open and its words once closed, and `refusal`. The first run failed the whole suite ("does not provide an export named 'refusal'", ESM), so no test ran. The sentence rule then moved from `app/actions.ts` to `refusal` in `lib/labels.ts`, unchanged, and the 4 failed on their values: "Closed with the invoice", "invoiceNumber: 98211354 to 98211355", the panel with no `match`, and the api's own wording of the refusal; 23 passed.
+  - E2e (`apps/web/e2e/main.spec.ts`, one test): held, number corrected, "Check again", the duplicate closed, approved as billed. It failed at the held panel, which named no match; setup passed.
+- **Change, web only:** the operation `CorrectInvoice` takes `$number` (codegen changed `graphql-client/{gql,graphql}.ts` only, and `contracts:check` passed on its first run); the `review` action sends `number` and passes every api message through `refusal`; `labels.ts` gains `refusal`, the reason-based "Closed: reading corrected", the evidence as the panel's `match`, the closed panel's words and `FIELD.invoiceNumber`; `detail.tsx` gets the held panel's form, the match line and the closing reasons for the badges. Then 27/27 unit and the e2e passed.
+- **Mutations,** each built (`pnpm turbo run build --filter=@freightaudit/web...`), run with the filtered e2e and reverted with Edit. The e2e first gained "Check again" absent once the duplicate closed.
+  - The badge without its closing row's reason failed at "Closed: reading corrected".
+  - The action without `number` failed there too, with "Open".
+  - The form shown whatever the hold failed at the "Check again" count, 1 against 0.
+- **Screenshots:** none retaken, since none can change. No captured page shows a held invoice, a duplicate closed by correction, a corrected invoice number or a changed refusal. The copy invoice's duplicate has a shipment, so it gets no panel, and its badge stays "Open". The needs-review page's form renders the same fields.
+- **Small events:**
+  - GateGuard asked for facts before the first Bash command and before the first edit of each of 10 files; each retry with the facts passed.
+  - Agent mistake: the first unit RED run used `cd apps/web` outside a subshell and moved the session's working directory. The next call moved it back to the root; every later run used `(cd apps/web && …)`.
+  - A filtered e2e run worked with Playwright called directly (docs/memory.md, 2026-10-21), so RED, GREEN and the mutations each ran one test.
+- Files:
+  - `packages/contracts/operations/correct-invoice.graphql` and `src/generated/graphql-client/{gql,graphql}.ts`;
+  - `apps/web/app/actions.ts`, `apps/web/components/detail.tsx`;
+  - `apps/web/lib/{labels.ts,labels.test.ts}`, `apps/web/e2e/main.spec.ts`;
+  - `docs/{activity-log,context,memory,todo}.md`.
+- Validation: `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 114), `pnpm test:int` 137 in 25 suites, `pnpm contracts:check` (first run), `OASDIFF_BASE_REF=main pnpm contracts:breaking` ("No changes detected"), `pnpm e2e` 43/43. No live model call and no `pnpm demo:up`.
+- Outstanding: the user ships C; it needs no Release or `pnpm demo:up` (web only, Vercel deploys at the merge). The two plain-words refusals are unit-tested through `refusal` only; no e2e opens a page out of date in two tabs. Open for the user: the agent's choices (docs/memory.md, 2026-10-21).
+
 ### 2026-10-20: Follow-up B built: correcting a held invoice's reading, and LF for the generated contract files (branch correct-held from main `40bae9f`, not committed)
 
 - **Setup:** A merged as `40bae9f` (#35). `git pull --ff-only` (up to date), then `git switch -c correct-held`.
