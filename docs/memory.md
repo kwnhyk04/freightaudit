@@ -382,6 +382,11 @@ From the approved design doc:
   - Left as they are: the final approval row reads "Status: Checked to Approved", as on any checked invoice; a held invoice can no longer be corrected; `e2e:screenshots` was not run.
   - Reason: the user's request; each choice is the smallest that fits it.
 
+- 2026-10-20: Follow-ups from #34 (user, approving the plan in docs/todo.md with its wording).
+  - Order: A alone (an approval with no shipment reads "Approved as billed"), then B (the api's correction of a held invoice's carrier or number), then C (its web), once B is released and runs on the demo.
+  - Wording as proposed: "Approved as billed", "Closed: reading corrected", "Check again".
+  - Reason: the user's answer to the plan; A needs no api change, while C needs B's new `number` argument.
+
 ## Preferences and Instructions
 
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).
@@ -611,6 +616,7 @@ From the approved design doc:
   - What we did: the phone rule sets `flex-wrap: nowrap`, so the column keeps the container's width.
 - 2026-10-19: The shell's output condensing can turn `pnpm lint`'s output into "ESLint output (JSON parse failed: EOF while parsing a value at line 1 column 0)", which reads like a failure. `rtk proxy pnpm lint` shows the real result and exit code (that day: exit 0, 12 tasks).
 - 2026-10-20: A grep through the shell's output condensing can come back empty although the file has matches. What happened: a grep over `apps/web/e2e/screenshots.spec.ts` printed nothing. Why: the condensing; why it dropped every line is not confirmed. What we did: `rtk proxy grep` showed the matches. Rerun an empty grep that way before saying a file has none.
+- 2026-10-20: After `pnpm demo:up`, `docker inspect freightaudit-prod-migrate-1` answers "no such object", so the migrate container cannot show what ran. Why: not confirmed (how `scripts/demo.ts` runs it was not read). What we did: read the applied migrations from the demo database, read-only and printing no credentials: `docker exec freightaudit-prod-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT max(name) FROM schema_migrations"'`.
 - 2026-10-20: `pnpm --filter @freightaudit/web e2e -- -g "<words>"` runs every test of the script's projects, not only the matching ones. What happened: a RED run meant for two tests ran the whole main suite (about a minute). Why: not confirmed; the arguments after `--` did not act as Playwright's filter. What we did: ran the full suites; a filtered run is not set up (none tried).
 
 ## Rejected Approaches

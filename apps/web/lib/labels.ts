@@ -18,8 +18,9 @@ export const STATUS: Record<InvoiceStatus, { label: string; tone: Tone; reason?:
 };
 // A status pill's words; a checked invoice says whether it is a confirmed duplicate, which is never approved, billing
 // issues wait for a decision, or it is ready to approve, as billed when it matched no shipment (held at its approval
-// from review, it was never checked against the rate card).
+// from review, it was never checked against the rate card); approved with no shipment, it was approved as billed.
 export const statusLabel = (status: InvoiceStatus, open: number, hold: InvoiceHold | null = null, matched = true) => {
+  if (status === 'APPROVED' && !matched) return 'Approved as billed';
   if (status !== 'RECONCILED') return STATUS[status].label;
   if (hold === 'CONFIRMED_DUPLICATE') return 'Confirmed duplicate';
   if (open > 0) return `Billing issues (${open})`;
@@ -174,6 +175,7 @@ export function statusReason(row: {
   }
   if (row.status === 'NEEDS_REVIEW') return reviewReason(row.reviewReason, true);
   if (row.status === 'FAILED') return row.failureReason ? capital(row.failureReason) : 'Used up its retries';
+  if (row.status === 'APPROVED' && !row.matched) return 'Not checked against the rate card';
   return STATUS[row.status].reason ?? null;
 }
 
@@ -337,6 +339,10 @@ export function trailRows(
     if (entry.action === 'STATUS_CHANGED' && status?.from === 'needs_review' && status.to === 'reconciled') {
       return row('Held for a possible duplicate', `when ${entry.actor ?? 'a reviewer'} approved it as billed`, entry.detail ? [reasonText(entry.detail)] : []);
     }
+    // With no shipment nothing was checked against the rate card, so the approval was as billed.
+    if (entry.action === 'APPROVED' && !invoice.shipment) {
+      return row('Approved as billed', by, ['Not checked against the rate card', ...(entry.detail ? [reasonText(entry.detail)] : [])]);
+    }
     if (entry.action !== 'STATUS_CHANGED' || !status || entry.actor) {
       const carrier = entry.changes.some((change) => change.field === 'carrier');
       const notes = entry.changes.map((change) => changeText(entry, change));
@@ -397,5 +403,5 @@ export function uploadState(upload: Recent, now: number): UploadState {
   }
   if (upload.status === 'NEEDS_REVIEW') return { done, result: `${STATUS.NEEDS_REVIEW.label}: ${reviewReason(upload.reviewReason, true)}`, tone: 'warn' };
   if (upload.status === 'FAILED') return { done, result: `Failed: ${upload.failureReason ? capital(upload.failureReason) : 'Used up its retries'}`, tone: 'bad' };
-  return { done, result: STATUS[upload.status].label, tone: upload.status === 'APPROVED' ? 'ok' : 'faint' };
+  return { done, result: statusLabel(upload.status, 0, null, upload.shipment !== null), tone: upload.status === 'APPROVED' ? 'ok' : 'faint' };
 }

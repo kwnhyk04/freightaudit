@@ -19,6 +19,37 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-20: Follow-up A built: an approval with no shipment reads as billed (branch approved-as-billed from main `6b3f24b`, not committed)
+
+- **Setup:** the user approved the plan and its wording; order A, then B, then C. `git pull --ff-only` (up to date), then `git switch -c approved-as-billed`, which carried the uncommitted planning docs from main.
+- **Tests first,** each failing on the code as it was:
+  - Unit (`apps/web/lib/labels.test.ts`): `statusLabel` ("Approved" against "Approved as billed"), `statusReason` (null against "Not checked against the rate card"), `uploadState`, and a new trail test for an approval with no shipment, from review and after a hold. A checked invoice's approval keeps "Approved for payment" and "Status: Checked to Approved". 4 failed, 20 passed.
+  - E2e (`apps/web/e2e/main.spec.ts`): both approvals from review now read the exact pill, the trail's last row and its note, and find no "Status: … to Approved". Both failed at the pill; 39 passed and lockout did not run.
+- **Change:** `apps/web/lib/labels.ts` only. `statusLabel` and `statusReason` take the missing shipment for an approved invoice, `uploadState`'s last result goes through `statusLabel`, and `trailRows` gives an approval with no shipment its own row. The pages already passed `matched` (#34), so no component changed.
+- **Screenshots:** none retaken, since none can change. The screenshot spec only opens pages (no approve, dialog or click). The sample's one approved invoice has a shipment (checked with node over `public/demo/invoice-details.json`). Seeded approved invoices always have one (the seed's lifecycle check in `migrations.int.test.ts`).
+- **Small events:**
+  - The first `pnpm contracts:check` failed ("Generated files were stale. They are regenerated now") and listed the 4 generated files as modified. Why: the CRLF pitfall (docs/memory.md, 2026-10-18 and 2026-10-19): checkout wrote CRLF after the pull, codegen writes LF, and the check compares raw text. What we did: ran it again ("Generated files are up to date."). `git diff --quiet` and `git diff --ignore-cr-at-eol --quiet` both found no change, so the files were left as they are; staging them adds nothing.
+  - The unit RED run went through `(cd apps/web && …)`, a subshell, so the session stayed at the root.
+- Files: `apps/web/lib/{labels.ts,labels.test.ts}`, `apps/web/e2e/main.spec.ts`; `docs/{activity-log,context,memory,todo}.md` (with the planning edits from main).
+- Validation: `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 111), `pnpm test:int` 134 in 25 suites, `pnpm contracts:check` (second run), `OASDIFF_BASE_REF=main pnpm contracts:breaking` ("No changes detected"), `pnpm e2e` 42/42. No live model call and no `pnpm demo:up`.
+- Outstanding: the user ships A; it needs no Release or `pnpm demo:up` (web only, Vercel deploys at the merge). Then B on request.
+
+### 2026-10-20: Follow-ups from #34 planned (read-only, docs only, not committed)
+
+- **Request:** #34 is merged, released and on the demo (user). Plan two follow-ups and wait for the user's OK: an approval as billed worded so, and correcting the reading of an invoice held at its approval.
+- **Checks, all read-only:**
+  - `git pull --ff-only` (up to date): main at `6b3f24b` (#34).
+  - `docker inspect`: the demo api and worker run `ghcr.io/kwnhyk04/freightaudit-{api,worker}:latest` with revision `6b3f24b…`, started 14:15 UTC.
+  - The demo database's latest migration is `0016_needs_review_to_reconciled` (`SELECT max(name) FROM schema_migrations`, through `docker exec` into its Postgres container).
+  - Code read for the plan: `correctInvoice` refuses any status but needs_review and extracted (`apps/api/src/review.ts:184`); the web offers its form only for needs_review with `no_shipment_match` (`components/detail.tsx:59`); a closed finding reads "Closed with the invoice" (`lib/labels.ts:128`); the trail's approval row takes the generic branch (`lib/labels.ts:343`), whose status change reads "Status: Checked to Approved"; the upload page's result for an approved invoice is its status label (`lib/labels.ts:400`). The REST `DiscrepancyStatus` has no description to update.
+- **Small events:**
+  - `docker inspect freightaudit-prod-migrate-1` answered "no such object". Why: not confirmed; no container by that name exists after its run, and how `scripts/demo.ts` runs it was not read. What we did: read the applied migrations from the demo database instead, read-only, which prints no credentials (memory, pitfall).
+  - A grep with `-o` and 60 characters of context came back empty through the output condensing. What we did: `rtk proxy grep -c` counted the mentions (9 in docs/context.md), then a shorter pattern listed them.
+- **Docs:** todo (#34 under Completed with the checks, the plan under In Progress), context (the merge in place of the branch name in nine places, Development Status).
+- Files: `docs/{activity-log,context,memory,todo}.md`.
+- Validation: docs only, so no tests ran. No live model call and no `pnpm demo:up`.
+- Outstanding: the user's OK on the plan (docs/todo.md, In Progress). These doc changes sit uncommitted on main and go with the first follow-up's branch.
+
 ### 2026-10-20: Duplicate check on approval from needs_review, option (c) (branch dup-on-approve from main `9d0a2d6`, not committed)
 
 - **Setup:** hold parity merged as `9d0a2d6` (#33). `git pull --ff-only` (up to date), then `git switch -c dup-on-approve`.
