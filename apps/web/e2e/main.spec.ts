@@ -549,13 +549,22 @@ test.describe('needs review', () => {
   // Seeded invoices in review, from the end, so the test above keeps its two; the seed's numbers are 8 random digits.
   const inReview = (offset: number) =>
     db<{ id: string; number: string }>(`SELECT id, invoice_number AS number FROM invoices WHERE status = 'needs_review' ORDER BY id DESC OFFSET ${offset} LIMIT 1`);
+  // With no shipment the approval was as billed: the pill and the trail's last row say so, and no status change from a
+  // checked invoice shows.
+  async function approvedAsBilled(page: Page) {
+    await expect(page.locator('.detail-head .badge')).toHaveText('Approved as billed');
+    const last = page.getByRole('region', { name: 'Audit trail' }).locator('li').last();
+    await expect(last).toContainText('Approved as billed');
+    await expect(last).toContainText('Not checked against the rate card');
+    await expect(page.getByText(/Status: .* to Approved/)).toHaveCount(0);
+  }
 
   test('approved as billed from review with no earlier invoice of its carrier under its number, it is approved', async ({ page }) => {
     const [invoice] = await inReview(1);
     await page.goto(`/invoices/${invoice!.id}`);
     page.once('dialog', (dialog) => void dialog.accept());
     await page.getByRole('button', { name: 'Approve as billed' }).click();
-    await expect(badge(page, 'Approved')).toBeVisible();
+    await approvedAsBilled(page);
   });
 
   test('approved as billed from review, one its carrier billed before under its number is held, says why and what next, and once no duplicate reads and approves as billed', async ({ page }) => {
@@ -585,7 +594,7 @@ test.describe('needs review', () => {
     await page.goto(`/invoices/${invoice!.id}`);
     page.once('dialog', (dialog) => void dialog.accept());
     await page.getByRole('button', { name: 'Approve as billed' }).click();
-    await expect(badge(page, 'Approved')).toBeVisible();
+    await approvedAsBilled(page);
   });
 });
 

@@ -152,6 +152,7 @@ test('a list row explains its status: what holds a checked invoice, the review o
   expect(statusReason({ ...row, status: 'EXTRACTED' })).toBe('Waiting to be checked');
   expect(statusReason({ ...row, status: 'REJECTED' })).toBe('Rejected by a reviewer');
   expect(statusReason({ ...row, status: 'APPROVED' })).toBeNull();
+  expect(statusReason({ ...row, status: 'APPROVED', matched: false })).toBe('Not checked against the rate card');
 });
 
 test('a status reads in plain words; a checked invoice says whether billing issues wait or it is ready to approve', () => {
@@ -164,6 +165,9 @@ test('a status reads in plain words; a checked invoice says whether billing issu
   // With no matched shipment, as when held at its approval from review, it is approved as billed once nothing holds it.
   expect(statusLabel('RECONCILED', 0, null, false)).toBe('Ready to approve as billed');
   expect(statusLabel('RECONCILED', 1, 'POSSIBLE_DUPLICATE', false)).toBe('Billing issues (1)');
+  // Approved with no shipment, from review or after a hold, it was approved as billed.
+  expect(statusLabel('APPROVED', 0, null, false)).toBe('Approved as billed');
+  expect(statusLabel('APPROVED', 0)).toBe('Approved');
   expect(statusLabel('EXTRACTING', 0)).toBe('Reading');
   expect(statusLabel('EXTRACTED', 0)).toBe('Checking');
   expect(statusLabel('RECONCILING', 0)).toBe('Checking');
@@ -345,6 +349,16 @@ test('an approval from review held for a possible duplicate reads as held, not a
   ]);
 });
 
+test('an approval as billed, with no shipment, says so in the trail; one checked against the rate card keeps its status change', () => {
+  const approval = (from: string) => ({ ...move(20, from, 'approved', null, 'reviewer'), action: 'APPROVED' as const });
+  const words = (invoice: unknown) => trailRows(invoice as Detail, []).map(({ verb, rest, notes }) => [verb, rest, notes]);
+  // Straight from review, and after a hold for a possible duplicate.
+  for (const from of ['needs_review', 'reconciled']) {
+    expect(words({ shipment: null, auditTrail: [approval(from)] })).toEqual([['Approved as billed', 'by reviewer', ['Not checked against the rate card']]]);
+  }
+  expect(words({ shipment: { reference: 'SHP-000413' }, auditTrail: [approval('reconciled')] })).toEqual([['Approved for payment', 'by reviewer', ['Status: Checked to Approved']]]);
+});
+
 test('an invoice held at its approval from review says why it was not approved and what to do next, by its possible duplicate', () => {
   const duplicate = (status: 'OPEN' | 'CONFIRMED' | 'DISMISSED') => [{ type: 'DUPLICATE_INVOICE' as const, status }];
   expect(unmatchedNote(duplicate('OPEN'))).toEqual({
@@ -402,5 +416,6 @@ test('a recent upload shows its step while in flight, then how long it took and 
   });
   expect(uploadState({ ...base, status: 'FAILED', failureReason: 'shipment has no miles' }, now)).toEqual({ done: 'Done', result: 'Failed: Shipment has no miles', tone: 'bad' });
   expect(uploadState({ ...settled, status: 'APPROVED' }, now)).toMatchObject({ result: 'Approved', tone: 'ok' });
+  expect(uploadState({ ...settled, status: 'APPROVED', shipment: null }, now)).toMatchObject({ result: 'Approved as billed', tone: 'ok' });
   expect(uploadState({ ...settled, status: 'REJECTED' }, now)).toMatchObject({ result: 'Rejected', tone: 'faint' });
 });
