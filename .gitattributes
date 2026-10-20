@@ -2,3 +2,5 @@
 .githooks/* text eol=lf
 # turbo rewrites its block in AGENTS.md with LF endings, so the file keeps LF on every platform.
 /AGENTS.md text eol=lf
+# Codegen writes LF and contracts:check compares raw text, so the generated contract files keep LF on every platform.
+/packages/contracts/src/generated/** text eol=lf

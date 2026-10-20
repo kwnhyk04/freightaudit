@@ -32,7 +32,14 @@ function asReviewer<T>({ db }: ReviewDeps, actor: string, work: (tx: Tx) => Prom
 async function lockInvoice(tx: Tx, tenantId: string, id: string) {
   if (!UUID.test(id)) throw refuse('NOT_FOUND', `invoice ${id} not found`);
   const [invoice] = await tx
-    .select({ status: invoices.status, carrierId: invoices.carrierId, invoiceNumber: invoices.invoiceNumber, proNumber: invoices.proNumber, contentSha256: invoices.contentSha256 })
+    .select({
+      status: invoices.status,
+      carrierId: invoices.carrierId,
+      invoiceNumber: invoices.invoiceNumber,
+      proNumber: invoices.proNumber,
+      shipmentId: invoices.shipmentId,
+      contentSha256: invoices.contentSha256,
+    })
     .from(invoices)
     .where(and(eq(invoices.tenantId, tenantId), eq(invoices.id, id)))
     .for('update');
@@ -160,13 +167,46 @@ export async function decideInvoice(
   });
 }
 
+// Why a held invoice's possible duplicate closed when its reading was corrected.
+const NO_MATCH = 'the corrected reading matches no other invoice';
+
+// A held invoice (reconciled at its approval from review, with no shipment) takes a corrected carrier or invoice number
+// while its possible duplicate is open, and nothing is matched again: the duplicate lookup runs on the corrected values,
+// and no other invoice under them closes the finding, while one still there keeps it, named as the earliest now.
+async function correctHeld(tx: Tx, tenantId: string, actor: string, id: string, read: { carrierId: string | null; invoiceNumber: string | null }, changes: Change[]) {
+  const [finding] = await tx
+    .select({ id: discrepancies.id, evidence: discrepancies.evidence })
+    .from(discrepancies)
+    .where(and(eq(discrepancies.invoiceId, id), eq(discrepancies.type, 'duplicate_invoice'), eq(discrepancies.status, 'open')));
+  if (!finding) throw refuse('CONFLICT', 'its possible duplicate is already decided, so its reading stays as it is');
+  await tx.update(invoices).set(read).where(eq(invoices.id, id));
+  if (changes.length > 0) await tx.insert(auditEvents).values({ tenantId, invoiceId: id, actor, action: 'corrected', changes });
+  const duplicate = await possibleDuplicate(tx, { tenantId, invoiceId: id, ...read });
+  if (!duplicate) {
+    await tx.update(discrepancies).set({ status: 'closed', resolvedAt: sql`now()` }).where(eq(discrepancies.id, finding.id));
+    const closed: Change[] = [{ field: 'status', from: 'open', to: 'closed' }];
+    await tx.insert(auditEvents).values({ tenantId, invoiceId: id, discrepancyId: finding.id, actor, action: 'discrepancy_closed', changes: closed, reason: NO_MATCH });
+  } else if (duplicate.evidence !== finding.evidence) {
+    await tx.update(discrepancies).set({ evidence: duplicate.evidence }).where(eq(discrepancies.id, finding.id));
+  }
+}
+
 // The way out of needs_review when the reading matched no shipment: the reviewer corrects the carrier, the PRO number or
 // both, and matching runs again (reconcile reads invoices.carrier_id and pro_number; the extraction keeps the reading).
-// On an invoice already extracted, nothing changes but matching is queued again.
-export async function correctInvoice(deps: ReviewDeps, actor: string, id: string, carrierId?: string | null, proNumber?: string | null) {
+// On an invoice already extracted, nothing changes but matching is queued again. A held invoice goes to correctHeld.
+export async function correctInvoice(
+  deps: ReviewDeps,
+  actor: string,
+  id: string,
+  carrierId?: string | null,
+  proNumber?: string | null,
+  invoiceNumber?: string | null,
+) {
   const pro = text(proNumber, 'PRO number');
-  if (!carrierId && !pro) throw refuse('BAD_USER_INPUT', 'give the carrier, the PRO number or both');
+  const number = text(invoiceNumber, 'invoice number');
+  if (!carrierId && !pro && !number) throw refuse('BAD_USER_INPUT', 'give the carrier, the PRO number or the invoice number');
   if (pro && pro.length > 64) throw refuse('BAD_USER_INPUT', 'PRO number is longer than 64 characters');
+  if (number && number.length > 64) throw refuse('BAD_USER_INPUT', 'invoice number is longer than 64 characters');
   if (carrierId && !UUID.test(carrierId)) throw refuse('BAD_USER_INPUT', 'carrier is not one of yours');
   const contentSha256 = await asReviewer(deps, actor, async (tx) => {
     const invoice = await lockInvoice(tx, deps.tenantId, id);
@@ -177,13 +217,16 @@ export async function correctInvoice(deps: ReviewDeps, actor: string, id: string
     if (extraction && typeof extraction.result === 'object' && extraction.result !== null && 'parts' in extraction.result) {
       throw refuse('CONFLICT', 'this upload holds several invoices; correct each part instead');
     }
+    const held = invoice.status === 'reconciled' && invoice.shipmentId === null;
     if (invoice.status === 'needs_review' && extraction?.reviewReason !== 'no_shipment_match') {
       const reason = extraction?.reviewReason ?? 'the extraction failed validation';
       throw refuse('CONFLICT', `correcting the carrier or PRO number cannot help here (${reason}); approve or reject the invoice`);
     }
-    if (invoice.status !== 'needs_review' && invoice.status !== 'extracted') {
-      throw refuse('CONFLICT', `only an invoice that needs review can be corrected; this one is ${invoice.status}`);
+    if (!held && invoice.status !== 'needs_review' && invoice.status !== 'extracted') {
+      throw refuse('CONFLICT', `only an invoice that needs review, or one held for a possible duplicate, can be corrected; this one is ${invoice.status}`);
     }
+    if (held && pro) throw refuse('BAD_USER_INPUT', 'a held invoice is not matched to a shipment again, so its PRO number stays as read');
+    if (!held && number) throw refuse('BAD_USER_INPUT', 'only an invoice held for a possible duplicate takes a corrected invoice number');
     const changes: Change[] = [];
     const nameOf = async (carrier: string) =>
       (await tx.select({ name: carriers.name }).from(carriers).where(and(eq(carriers.tenantId, deps.tenantId), eq(carriers.id, carrier))))[0]?.name;
@@ -191,6 +234,11 @@ export async function correctInvoice(deps: ReviewDeps, actor: string, id: string
       const next = await nameOf(carrierId);
       if (!next) throw refuse('BAD_USER_INPUT', 'carrier is not one of yours');
       changes.push({ field: 'carrier', from: (invoice.carrierId && (await nameOf(invoice.carrierId))) || null, to: next });
+    }
+    if (held) {
+      if (number && number !== invoice.invoiceNumber) changes.push({ field: 'invoiceNumber', from: invoice.invoiceNumber, to: number });
+      await correctHeld(tx, deps.tenantId, actor, id, { carrierId: carrierId ?? invoice.carrierId, invoiceNumber: number ?? invoice.invoiceNumber }, changes);
+      return null;
     }
     if (pro && pro !== invoice.proNumber) changes.push({ field: 'proNumber', from: invoice.proNumber, to: pro });
     if (invoice.status === 'needs_review') changes.push({ field: 'status', from: 'needs_review', to: 'extracted' });
@@ -201,6 +249,7 @@ export async function correctInvoice(deps: ReviewDeps, actor: string, id: string
     if (changes.length > 0) await tx.insert(auditEvents).values({ tenantId: deps.tenantId, invoiceId: id, actor, action: 'corrected', changes });
     return invoice.contentSha256;
   });
+  if (!contentSha256) return;
   // After the commit, since reconcile skips an invoice that still needs review. The finished job holds the content hash
   // as its id, and adding a job with a taken id is a no-op, so it goes first, as replayDeadLetter does.
   try {

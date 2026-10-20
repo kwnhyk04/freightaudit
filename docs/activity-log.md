@@ -19,6 +19,29 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-20: Follow-up B built: correcting a held invoice's reading, and LF for the generated contract files (branch correct-held from main `40bae9f`, not committed)
+
+- **Setup:** A merged as `40bae9f` (#35). `git pull --ff-only` (up to date), then `git switch -c correct-held`.
+- **CRLF at the source** (user request):
+  - What happened: the 4 generated files were LF, left by the last codegen. To reproduce a fresh checkout, they were removed and checked out again from HEAD; checkout wrote CRLF (104 lines in `gql.ts`), and `pnpm contracts:check` failed on its first run ("Generated files were stale").
+  - Why: `core.autocrlf=true` writes CRLF on checkout, codegen writes LF, and the check compares raw text (docs/memory.md, 2026-10-18).
+  - What we did: added `/packages/contracts/src/generated/** text eol=lf` to `.gitattributes`, with its reason, then removed and checked out the 4 files again. Checkout wrote LF (0 CRLF lines), and `contracts:check` passed on its first run. Only `.gitattributes` showed as changed, since the blobs were already LF. The rule is the one docs/memory.md named on 2026-10-18; no file of another project was read (AGENTS.md, Context Isolation).
+  - GateGuard asked for the files, a rollback (`git checkout -- packages/contracts/src/generated`) and the instruction before each removal; both retries passed.
+- **Tests first,** each failing on the code as it was:
+  - `apps/api/src/decide.int.test.ts`, three new tests: a corrected number that matches no other invoice closes the duplicate, with both audit rows, queues nothing, and the invoice is then approved; a corrected carrier under which another invoice has the number stays held, its evidence naming that one; and the refusals (a PRO number on a held invoice, a held one whose duplicate was decided, a checked invoice with a shipment, a number on a needs_review invoice).
+  - `apps/api/src/hold.int.test.ts`: a fourth held invoice, its number corrected to one no other invoice has (hold null in all three copies).
+  - All four failed with `Unknown argument "number" on field "Mutation.correctInvoice"`; 16 passed. With the change, 20/20.
+- **Change:** `correctInvoice(..., number)` in `schema.graphql`, with the descriptions of `correctInvoice`, `CLOSED` and `DISCREPANCY_CLOSED`. The resolver passes it on, and `review.ts` gains `correctHeld`, while `lockInvoice` also reads `shipment_id`. Codegen changed content in `graphql-client/graphql.ts` and `graphql-resolvers.ts`. No status move and no migration. The web compiles unchanged, since `number` is optional.
+- **Mutations,** each run alone and reverted with Edit: the close without its audit row failed the closing test, and a close without the lookup failed the still-matching test. A grep then found no marker.
+- **Contracts:** `contracts:check` passed on its first run, and `contracts:breaking` reported "No changes detected", since OpenAPI did not change and oasdiff reads OpenAPI only. `oasdiff-ignore.txt` holds only its 2-line header, so there was no ignore line to review.
+- Files:
+  - `.gitattributes`;
+  - `apps/api/src/{review,graphql}.ts` and `src/{decide,hold}.int.test.ts`;
+  - `packages/contracts/schema.graphql` and `src/generated/{graphql-client/graphql,graphql-resolvers}.ts`;
+  - `docs/{activity-log,context,memory,todo}.md`.
+- Validation: lint 12/12, typecheck 21/21, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 137 in 25 suites, `pnpm contracts:check` (first run), `OASDIFF_BASE_REF=main pnpm contracts:breaking`, `pnpm e2e` 42/42. No live model call and no `pnpm demo:up`.
+- Outstanding: the user ships B, runs its Release and `pnpm demo:up` (no migration). Then C, the web. Open for the user: the agent's choices (docs/memory.md).
+
 ### 2026-10-20: Follow-up A built: an approval with no shipment reads as billed (branch approved-as-billed from main `6b3f24b`, not committed)
 
 - **Setup:** the user approved the plan and its wording; order A, then B, then C. `git pull --ff-only` (up to date), then `git switch -c approved-as-billed`, which carried the uncommitted planning docs from main.

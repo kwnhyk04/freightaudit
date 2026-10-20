@@ -387,6 +387,17 @@ From the approved design doc:
   - Wording as proposed: "Approved as billed", "Closed: reading corrected", "Check again".
   - Reason: the user's answer to the plan; A needs no api change, while C needs B's new `number` argument.
 
+- 2026-10-20: Follow-up B decisions (the agent's, for the user to confirm at review).
+  - `number` is taken only on a held invoice. A needs_review invoice gets BAD_USER_INPUT for it, since it is matched again instead.
+  - The refusals, in this order:
+    - a checked invoice with a shipment: CONFLICT, "only an invoice that needs review, or one held for a possible duplicate, can be corrected";
+    - a PRO number on a held invoice: BAD_USER_INPUT, "a held invoice is not matched to a shipment again, so its PRO number stays as read";
+    - a held invoice whose duplicate is decided: CONFLICT, "its possible duplicate is already decided, so its reading stays as it is".
+  - The number is at most 64 characters, as the PRO number. The `corrected` row names its field `invoiceNumber`.
+  - A match that changed rewrites the open finding's evidence in place, with no audit row of its own; the `corrected` row records the cause. No reconcile job is queued.
+  - Reason: the user's B request; each choice is the smallest that fits it.
+- 2026-10-20: The generated contract files keep LF on every platform: `/packages/contracts/src/generated/** text eol=lf` in `.gitattributes` (user request, branch `correct-held`). What happened: every fresh checkout wrote CRLF, and `contracts:check` failed on its first run (pitfalls of 2026-10-18 and 2026-10-20). Why: `core.autocrlf=true` against codegen's LF and a raw-text compare. What we did: added the rule and checked out the 4 files again; the first run then passed. Best because the fix sits where the endings are chosen, and the blobs were already LF, so nothing else changed.
+
 ## Preferences and Instructions
 
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).

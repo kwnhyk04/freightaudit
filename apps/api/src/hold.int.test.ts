@@ -58,7 +58,8 @@ test('every mix of a charge and a possible duplicate, and each invoice held at i
   const rejected = await checked('open', 'confirmed', 'rejected, charge closed, duplicate confirmed');
   await gql('mutation ($id: ID!) { rejectInvoice(id: $id, reason: "Same invoice as an earlier one") { status } }', { id: rejected });
   // Approved as billed from review while its carrier billed the number before (0016): held in reconciled, with no
-  // shipment and an open possible duplicate, which a reviewer then leaves open, confirms or dismisses.
+  // shipment and an open possible duplicate, which a reviewer then leaves open, confirms or dismisses, or closes by
+  // correcting the number to one no other invoice has.
   const [carrier] = await env.db.insert(carriers).values({ tenantId: env.tenantId, name: 'Test carrier' }).returning();
   const read = async (filename: string, status: 'approved' | 'needs_review') => {
     const contentSha256 = createHash('sha256').update(filename).digest('hex');
@@ -66,19 +67,20 @@ test('every mix of a charge and a possible duplicate, and each invoice held at i
     return invoice!.id;
   };
   await read('first scan, approved', 'approved');
-  for (const decision of ['open', 'confirmed', 'dismissed'] as const) {
+  for (const decision of ['open', 'confirmed', 'dismissed', 'corrected'] as const) {
     const id = await read(`held at approval, duplicate ${decision}`, 'needs_review');
     const answer = await gql<{ approveInvoice: unknown }>('mutation ($id: ID!) { approveInvoice(id: $id) { status hold } }', { id });
     expect(answer.approveInvoice).toEqual({ status: 'RECONCILED', hold: 'POSSIBLE_DUPLICATE' });
     const [finding] = await env.db.select({ id: discrepancies.id }).from(discrepancies).where(eq(discrepancies.invoiceId, id));
-    if (decision !== 'open') await gql(`mutation ($id: ID!) { resolveDiscrepancy(id: $id, decision: ${decision === 'confirmed' ? 'CONFIRM' : 'DISMISS'}) { status } }`, { id: finding!.id });
+    if (decision === 'corrected') await gql('mutation ($id: ID!) { correctInvoice(id: $id, number: "98211355") { status } }', { id });
+    else if (decision !== 'open') await gql(`mutation ($id: ID!) { resolveDiscrepancy(id: $id, decision: ${decision === 'confirmed' ? 'CONFIRM' : 'DISMISS'}) { status } }`, { id: finding!.id });
   }
 
   const all = await gql<{ invoices: { edges: { node: Row }[] } }>(
     '{ invoices(first: 100) { edges { node { id filename status hold discrepancies { edges { node { type status } } } } } } }',
   );
   const rows = all.invoices.edges.map(({ node }) => ({ ...node, expected: holdOf(node.status, node.discrepancies.edges.map((edge) => edge.node)) }));
-  expect(rows).toHaveLength(21);
+  expect(rows).toHaveLength(22);
   expect(rows.map((row) => [row.filename, row.hold])).toEqual(rows.map((row) => [row.filename, row.expected]));
   const held = rows.filter((row) => row.expected !== null).map((row) => row.filename);
   const listed = await gql<{ invoices: { edges: { node: { filename: string } }[] } }>('{ invoices(first: 100, hasOpenFindings: true) { edges { node { filename } } } }');
@@ -96,5 +98,6 @@ test('every mix of a charge and a possible duplicate, and each invoice held at i
     'held at approval, duplicate open': 'POSSIBLE_DUPLICATE',
     'held at approval, duplicate confirmed': 'CONFIRMED_DUPLICATE',
     'held at approval, duplicate dismissed': null,
+    'held at approval, duplicate corrected': null,
   });
 });
