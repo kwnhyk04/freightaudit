@@ -102,7 +102,7 @@ export type InvoiceStatus =
   | 'NEEDS_REVIEW'
   /** Stored; waiting for extraction. */
   | 'RECEIVED'
-  /** Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision; a reviewer may reject the invoice instead. */
+  /** Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision; a reviewer may reject the invoice instead. An invoice approved as billed from NEEDS_REVIEW that may duplicate another one waits here too, with no shipment, never checked against the rate card. */
   | 'RECONCILED'
   /** Matching against the shipment and rate card is running. */
   | 'RECONCILING'
@@ -190,12 +190,12 @@ export type InvoicesQueryVariables = Exact<{
 }>;
 
 
-export type InvoicesQuery = { invoices: { totalCount: number, offset: number, edges: Array<{ cursor: string, node: { id: string, status: InvoiceStatus, filename: string, carrier: string | null, number: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number, hold: InvoiceHold | null, reviewReason: string | null, failureReason: string | null, rateCardVersion: { id: string } | null, discrepancies: { edges: Array<{ node: { id: string, status: DiscrepancyStatus, expectedCents: number, billedCents: number } }> } } }>, pageInfo: { hasNextPage: boolean, hasPreviousPage: boolean, startCursor: string | null, endCursor: string | null } } };
+export type InvoicesQuery = { invoices: { totalCount: number, offset: number, edges: Array<{ cursor: string, node: { id: string, status: InvoiceStatus, filename: string, carrier: string | null, number: string | null, issuedOn: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number, hold: InvoiceHold | null, reviewReason: string | null, failureReason: string | null, shipment: { id: string } | null, rateCardVersion: { id: string } | null, discrepancies: { edges: Array<{ node: { id: string, status: DiscrepancyStatus, expectedCents: number, billedCents: number } }> } } }>, pageInfo: { hasNextPage: boolean, hasPreviousPage: boolean, startCursor: string | null, endCursor: string | null } } };
 
 export type RecentUploadsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type RecentUploadsQuery = { invoices: { edges: Array<{ node: { id: string, status: InvoiceStatus, filename: string, currency: string | null, totalCents: number | null, createdAt: string, reviewReason: string | null, failureReason: string | null, hold: InvoiceHold | null, discrepancies: { edges: Array<{ node: { id: string, status: DiscrepancyStatus, expectedCents: number, billedCents: number } }> }, auditTrail: Array<{ id: string, at: string, action: AuditAction, changes: Array<{ field: string, to: string | null }> }> } }> } };
+export type RecentUploadsQuery = { invoices: { edges: Array<{ node: { id: string, status: InvoiceStatus, filename: string, currency: string | null, totalCents: number | null, createdAt: string, reviewReason: string | null, failureReason: string | null, hold: InvoiceHold | null, shipment: { id: string } | null, discrepancies: { edges: Array<{ node: { id: string, status: DiscrepancyStatus, expectedCents: number, billedCents: number } }> }, auditTrail: Array<{ id: string, at: string, action: AuditAction, changes: Array<{ field: string, to: string | null }> }> } }> } };
 
 export type RejectInvoiceMutationVariables = Exact<{
   id: string | number;
@@ -489,6 +489,9 @@ export const InvoicesDocument = new TypedDocumentString(`
         hold
         reviewReason
         failureReason
+        shipment {
+          id
+        }
         rateCardVersion {
           id
         }
@@ -527,6 +530,9 @@ export const RecentUploadsDocument = new TypedDocumentString(`
         reviewReason
         failureReason
         hold
+        shipment {
+          id
+        }
         discrepancies(first: 100) {
           edges {
             node {

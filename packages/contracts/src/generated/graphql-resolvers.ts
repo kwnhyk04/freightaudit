@@ -252,7 +252,7 @@ export type Invoice = Node & {
   rateCardVersion?: Maybe<RateCardVersion>;
   /** Why the invoice needs review, such as no_shipment_match or unsupported_currency: CAD; null unless status is NEEDS_REVIEW. */
   reviewReason?: Maybe<Scalars['String']['output']>;
-  /** Shipment the invoice was matched to. */
+  /** Shipment the invoice was matched to; a RECONCILED invoice without one was held at its approval from NEEDS_REVIEW. */
   shipment?: Maybe<Shipment>;
   status: InvoiceStatus;
   totalCents?: Maybe<Scalars['Cents']['output']>;
@@ -316,7 +316,7 @@ export type InvoiceStatus =
   | 'NEEDS_REVIEW'
   /** Stored; waiting for extraction. */
   | 'RECEIVED'
-  /** Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision; a reviewer may reject the invoice instead. */
+  /** Checked against the shipment and rate card; each finding waits as an open discrepancy. Approval follows once every discrepancy has a decision; a reviewer may reject the invoice instead. An invoice approved as billed from NEEDS_REVIEW that may duplicate another one waits here too, with no shipment, never checked against the rate card. */
   | 'RECONCILED'
   /** Matching against the shipment and rate card is running. */
   | 'RECONCILING'
@@ -368,7 +368,12 @@ export type LineItem = {
 /** Reviewer actions. */
 export type Mutation = {
   __typename?: 'Mutation';
-  /** Approves an invoice for payment. Refused while a discrepancy is open, and once a possible duplicate is confirmed. */
+  /**
+   * Approves an invoice for payment. Refused while a discrepancy is open, and once a possible duplicate is confirmed. A
+   * NEEDS_REVIEW invoice whose reading saved a carrier and a number is first compared with that carrier's other invoices:
+   * if one has the number and was not rejected, it is not approved but moves to RECONCILED with no shipment and an open
+   * DUPLICATE_INVOICE discrepancy, as the answer's status and hold say.
+   */
   approveInvoice: Invoice;
   /**
    * Corrects the carrier or PRO number that kept a NEEDS_REVIEW invoice from matching a shipment, then runs

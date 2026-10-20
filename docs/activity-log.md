@@ -19,6 +19,40 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-20: Duplicate check on approval from needs_review, option (c) (branch dup-on-approve from main `9d0a2d6`, not committed)
+
+- **Setup:** hold parity merged as `9d0a2d6` (#33). `git pull --ff-only` (up to date), then `git switch -c dup-on-approve`.
+- **One PR, not two:** the web reads only `Invoice.shipment`, which the api has served since step 9, in the invoices and recent-uploads operations. The api's limits test passed with both, and `MAX_COST` stays 83, since the invoice operation did not change. Until the user's `pnpm demo:up`, the new web on the old api approves from review as before.
+- **Tests first, each failing on the code as it was:**
+  - Migration: the new 0016 test failed with "cannot move from needs_review to reconciled", and the applied list and the reset's count (16 against 17) failed too. With `0016_needs_review_to_reconciled.sql` all 8 passed. Its function differs from 0015's by the one pair (checked with `diff`).
+  - Lookup: `packages/db/src/duplicate.int.test.ts` failed on its hit case against a stub returning undefined. It passed once the worker's query moved into `possibleDuplicate` (`src/duplicate.ts`, the domain's `duplicateInvoice` still decides). The worker's reconcile suite then passed 16/16 on the shared copy.
+  - Api: the held approval in `decide.int.test.ts` and the parity test's new invoices failed with `APPROVED`, hold null. Both pass with `approveInvoice`'s lookup (17/17). The "approved as before" test passed on the old code by design: it pins "without a hit, as today".
+  - Web: five unit tests failed on their values ("Findings decided", "Ready to approve", the trail row, the panel's words, the upload's result), with a stub for `unmatchedNote` so the suite could load. Two e2e tests: the held one failed with no "Not approved: possible duplicate" region, and the plain approval passed, as today.
+- **Mutations,** each run alone and reverted with Edit:
+  - The shared lookup without its carrier condition failed the lookup test and the worker's duplicate test, so the worker runs the shared copy. Rebuilt into `dist/`, it also failed the api's "approved as before" test, so the api runs it too.
+  - The hold without its audit row failed the held approval test at the audit assertion.
+  - The list treating every row as matched failed the e2e at the row's badge ("Ready to approve" against "Ready to approve as billed").
+  - Afterwards `grep` found no marker, and `dist/duplicate.js` has the carrier condition again.
+- **Small events:**
+  - GateGuard asked for facts before the first Bash command and before each file's first edit or creation. When first edits came in one batch, it blocked each of them; one retry per file passed.
+  - Agent mistake: a Bash `cd apps/api`, made to run the api's limits test, left the session in `apps/api` for one call (the pitfall in docs/memory.md). Why: the `cd` was not inside a subshell. What we did: the next call moved back to the root, before any edit; the design hook flagged nothing.
+  - `pnpm --filter @freightaudit/web e2e -- -g "from review"` ran the whole main suite. Why: not confirmed; the arguments after `--` did not reach Playwright as a filter. What we did: read the whole run, which served as the RED run (40 passed, the held test failed, lockout did not run), and ran the full `pnpm e2e` from then on.
+  - A grep over `apps/web/e2e/screenshots.spec.ts` came back empty though the file has matches. Why: the shell's output condensing. What we did: reran it as `rtk proxy grep` (RTK.md). It showed that the screenshots never open the Ready to approve tab, so `pnpm e2e:screenshots` was not run: the user did not ask for it, and no picture shows what changed.
+  - The e2e mutation run left a Playwright trace, which would fail `pnpm lint` (docs/memory.md). Lint ran after the final green e2e run, 12/12.
+- **Contracts:** descriptions only: `approveInvoice`, `RECONCILED` and `Invoice.shipment` in `schema.graphql`, `InvoiceStatus` in `openapi.yaml`. Codegen changed content in 4 generated files (24 lines in, 13 out). `contracts:breaking`: "No breaking changes to report, but the specs are different."
+- Files:
+  - Db: `migrations/0016_needs_review_to_reconciled.sql`, `src/duplicate.ts` and `src/duplicate.int.test.ts` (new), `src/index.ts`, `src/migrations.int.test.ts`.
+  - Worker: `src/reconcile.ts`. Api: `src/review.ts`, `src/decide.int.test.ts`, `src/hold.int.test.ts`.
+  - Contracts: `schema.graphql`, `openapi.yaml`, `operations/{invoices,recent-uploads}.graphql`, `src/generated/*`.
+  - Web: `lib/{labels,demo}.ts`, `lib/labels.test.ts`, `components/{detail,ui,views}.tsx`, `e2e/main.spec.ts`.
+  - Docs: `README.md`, `docs/{activity-log,context,memory,migrations,todo}.md`.
+- Validation:
+  - `pnpm lint` 12/12, `pnpm typecheck` 21/21, `pnpm turbo run test --force` 18 tasks (web 110, contracts 4, api 12), `pnpm test:int` 134 in 25 suites;
+  - `pnpm contracts:check` ("Generated files are up to date."), `OASDIFF_BASE_REF=main pnpm contracts:breaking` (nothing breaking);
+  - `pnpm e2e` 42/42.
+  - No live model call and no `pnpm demo:up`. No path the eval smoke watches changed, so the PR's CI makes no Gemini call.
+- Outstanding: the user ships `dup-on-approve`, then its Release and `pnpm demo:up` (0016 before the api). Open for the user: the agent's choices (docs/memory.md).
+
 ### 2026-10-19: One hold rule, checked on both sides: `holdOf` in contracts, the api parity test, the oasdiff lines deleted (branch hold-parity from main `3e96861`, not committed)
 
 - **Setup:** the docs PR merged as `3e96861` (#32), and local main matched `origin/main`. Then `git checkout -b hold-parity main`.

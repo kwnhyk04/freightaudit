@@ -11,6 +11,9 @@ query RecentUploads {
         reviewReason
         failureReason
         hold
+        shipment {
+          id
+        }
         discrepancies(first: 100) {
           edges {
             node {

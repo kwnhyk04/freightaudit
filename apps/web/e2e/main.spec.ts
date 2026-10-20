@@ -545,6 +545,48 @@ test.describe('needs review', () => {
     await expect(badge(page, 'Rejected')).toBeVisible();
     await expect(page.getByRole('region', { name: 'Audit trail' }).getByText('Billed twice for this shipment')).toBeVisible();
   });
+
+  // Seeded invoices in review, from the end, so the test above keeps its two; the seed's numbers are 8 random digits.
+  const inReview = (offset: number) =>
+    db<{ id: string; number: string }>(`SELECT id, invoice_number AS number FROM invoices WHERE status = 'needs_review' ORDER BY id DESC OFFSET ${offset} LIMIT 1`);
+
+  test('approved as billed from review with no earlier invoice of its carrier under its number, it is approved', async ({ page }) => {
+    const [invoice] = await inReview(1);
+    await page.goto(`/invoices/${invoice!.id}`);
+    page.once('dialog', (dialog) => void dialog.accept());
+    await page.getByRole('button', { name: 'Approve as billed' }).click();
+    await expect(badge(page, 'Approved')).toBeVisible();
+  });
+
+  test('approved as billed from review, one its carrier billed before under its number is held, says why and what next, and once no duplicate reads and approves as billed', async ({ page }) => {
+    const [invoice] = await inReview(0);
+    await db(
+      `INSERT INTO invoices (tenant_id, status, filename, content_sha256, carrier_id, invoice_number, created_at, updated_at)
+       SELECT tenant_id, 'approved', 'first-scan.pdf', md5(id::text) || md5(reverse(id::text)), carrier_id, invoice_number, '2026-10-01T10:00:00Z', '2026-10-01T10:00:00Z'
+       FROM invoices WHERE id = '${invoice!.id}'`,
+    );
+    await page.goto(`/invoices/${invoice!.id}`);
+    page.once('dialog', (dialog) => void dialog.accept());
+    await page.getByRole('button', { name: 'Approve as billed' }).click();
+    const held = page.getByRole('region', { name: 'Not approved: possible duplicate' });
+    await expect(held).toContainText('Decide the possible duplicate below: Not a duplicate, then approve it as billed; Confirm duplicate, then reject it.');
+    const duplicate = page.locator('.findings article', { hasText: 'Possible duplicate invoice' });
+    await expect(duplicate).toContainText(`Possible duplicate: invoice ${invoice!.number} from this carrier was also received on 2026-10-01 as first-scan.pdf.`);
+    await expect(page.getByRole('region', { name: 'Audit trail' }).getByText('Held for a possible duplicate')).toBeVisible();
+    await duplicate.getByRole('button', { name: 'Not a duplicate' }).click();
+    // No shipment matched, so nothing was checked against the rate card: it reads, lists and approves as billed.
+    await expect(badge(page, 'Ready to approve as billed')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Not checked against the rate card' })).toContainText('Approve it as billed, or reject it.');
+    await expect(page.getByRole('button', { name: 'Approve for payment' })).toHaveCount(0);
+    await page.goto(`/invoices?status=ready_to_approve&q=${invoice!.number}`);
+    const row = page.getByRole('row').filter({ has: page.locator(`a[href="/invoices/${invoice!.id}"]`) });
+    await expect(row.locator('.badge')).toHaveText('Ready to approve as billed');
+    await expect(row.locator('.reason')).toHaveText('Not checked against the rate card');
+    await page.goto(`/invoices/${invoice!.id}`);
+    page.once('dialog', (dialog) => void dialog.accept());
+    await page.getByRole('button', { name: 'Approve as billed' }).click();
+    await expect(badge(page, 'Approved')).toBeVisible();
+  });
 });
 
 test.describe('example data', () => {

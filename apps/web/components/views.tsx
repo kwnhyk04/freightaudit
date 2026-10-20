@@ -156,11 +156,12 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
                 const findings = node.discrepancies.edges.map((edge) => edge.node);
                 // Only a priced invoice has an expected amount.
                 const money = node.rateCardVersion && node.totalCents !== null ? invoiceAmounts(node.totalCents, findings) : undefined;
-                const reason = statusReason({ ...node, findings: findings.length });
+                const matched = node.shipment !== null;
+                const reason = statusReason({ ...node, findings: findings.length, matched });
                 return (
                   <tr key={node.id} className="link-row">
                     <td>
-                      <StatusBadge status={node.status} open={node.openDiscrepancyCount} hold={node.hold} />
+                      <StatusBadge status={node.status} open={node.openDiscrepancyCount} hold={node.hold} matched={matched} />
                       {reason && <div className="faint reason">{reason}</div>}
                     </td>
                     <td>

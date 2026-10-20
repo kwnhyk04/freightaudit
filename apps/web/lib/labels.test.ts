@@ -22,6 +22,7 @@ import {
   statusReason,
   statusTotals,
   trailRows,
+  unmatchedNote,
   uploadState,
 } from './labels.ts';
 
@@ -134,7 +135,7 @@ test('a review reason is a sentence on the invoice and a short phrase in a list 
 });
 
 test('a list row explains its status: what holds a checked invoice, the review or failure reason, or the step in progress', () => {
-  const row = { openDiscrepancyCount: 0, reviewReason: null, failureReason: null, findings: 0, hold: null };
+  const row = { openDiscrepancyCount: 0, reviewReason: null, failureReason: null, findings: 0, hold: null, matched: true };
   // A possible duplicate is decided before the charges, and a confirmed one only waits to be rejected.
   expect(statusReason({ ...row, status: 'RECONCILED', hold: 'POSSIBLE_DUPLICATE', openDiscrepancyCount: 2, findings: 2 })).toBe('Possible duplicate to decide');
   expect(statusReason({ ...row, status: 'RECONCILED', hold: 'CONFIRMED_DUPLICATE', findings: 3 })).toBe('Waits to be rejected');
@@ -142,6 +143,9 @@ test('a list row explains its status: what holds a checked invoice, the review o
   expect(statusReason({ ...row, status: 'RECONCILED', openDiscrepancyCount: 1, findings: 3 })).toBe('1 open finding');
   expect(statusReason({ ...row, status: 'RECONCILED', findings: 1 })).toBe('Findings decided');
   expect(statusReason({ ...row, status: 'RECONCILED' })).toBe('Matched the rate card');
+  // Held at its approval from review, it matched no shipment: once no duplicate, nothing was checked against the rate card.
+  expect(statusReason({ ...row, status: 'RECONCILED', findings: 1, matched: false })).toBe('Not checked against the rate card');
+  expect(statusReason({ ...row, status: 'RECONCILED', hold: 'POSSIBLE_DUPLICATE', openDiscrepancyCount: 1, findings: 1, matched: false })).toBe('Possible duplicate to decide');
   expect(statusReason({ ...row, status: 'NEEDS_REVIEW', reviewReason: 'unsupported_currency: CAD' })).toBe('Billed in CAD');
   expect(statusReason({ ...row, status: 'FAILED', failureReason: 'shipment has no miles' })).toBe('Shipment has no miles');
   expect(statusReason({ ...row, status: 'EXTRACTING' })).toBe('Reading the document');
@@ -157,6 +161,9 @@ test('a status reads in plain words; a checked invoice says whether billing issu
   expect(statusLabel('RECONCILED', 2, 'POSSIBLE_DUPLICATE')).toBe('Billing issues (2)');
   expect(statusLabel('RECONCILED', 2, 'CONFIRMED_DUPLICATE')).toBe('Confirmed duplicate');
   expect(statusLabel('RECONCILED', 0, 'CONFIRMED_DUPLICATE')).toBe('Confirmed duplicate');
+  // With no matched shipment, as when held at its approval from review, it is approved as billed once nothing holds it.
+  expect(statusLabel('RECONCILED', 0, null, false)).toBe('Ready to approve as billed');
+  expect(statusLabel('RECONCILED', 1, 'POSSIBLE_DUPLICATE', false)).toBe('Billing issues (1)');
   expect(statusLabel('EXTRACTING', 0)).toBe('Reading');
   expect(statusLabel('EXTRACTED', 0)).toBe('Checking');
   expect(statusLabel('RECONCILING', 0)).toBe('Checking');
@@ -331,9 +338,32 @@ test('the audit trail reads as plain words: who read it with which model and how
   expect(modelName('someone/new-model')).toBe('someone/new-model');
 });
 
+test('an approval from review held for a possible duplicate reads as held, not approved, with why', () => {
+  const held = { auditTrail: [move(9, 'needs_review', 'reconciled', 'not approved: another invoice from this carrier has the same number', 'reviewer')] } as unknown as Detail;
+  expect(trailRows(held, []).map(({ verb, rest, notes }) => [verb, rest, notes])).toEqual([
+    ['Held for a possible duplicate', 'when reviewer approved it as billed', ['Not approved: another invoice from this carrier has the same number']],
+  ]);
+});
+
+test('an invoice held at its approval from review says why it was not approved and what to do next, by its possible duplicate', () => {
+  const duplicate = (status: 'OPEN' | 'CONFIRMED' | 'DISMISSED') => [{ type: 'DUPLICATE_INVOICE' as const, status }];
+  expect(unmatchedNote(duplicate('OPEN'))).toEqual({
+    title: 'Not approved: possible duplicate',
+    text: 'Another invoice from this carrier has the same number, so this one was not approved. Decide the possible duplicate below: Not a duplicate, then approve it as billed; Confirm duplicate, then reject it.',
+  });
+  expect(unmatchedNote(duplicate('DISMISSED'))).toEqual({
+    title: 'Not checked against the rate card',
+    text: 'It came from review with no matched shipment and is not a duplicate. Approve it as billed, or reject it.',
+  });
+  expect(unmatchedNote(duplicate('CONFIRMED'))).toEqual({
+    title: 'Not checked against the rate card',
+    text: 'It came from review with no matched shipment and is a confirmed duplicate. Reject it.',
+  });
+});
+
 test('a recent upload shows its step while in flight, then how long it took and the result', () => {
   const now = Date.parse(at(1.4));
-  const base = { createdAt: at(0), currency: 'USD', totalCents: 173_180, reviewReason: null, failureReason: null, hold: null, discrepancies: { edges: [] }, auditTrail: [] };
+  const base = { createdAt: at(0), currency: 'USD', totalCents: 173_180, reviewReason: null, failureReason: null, hold: null, shipment: { id: 's' }, discrepancies: { edges: [] }, auditTrail: [] };
   expect(uploadState({ ...base, status: 'EXTRACTING' }, now)).toEqual({ step: 1, result: 'Working, 1.4 s so far', tone: 'faint' });
   expect(uploadState({ ...base, status: 'RECEIVED' }, now).step).toBe(1);
   expect(uploadState({ ...base, status: 'RECONCILING' }, now).step).toBe(2);
@@ -360,6 +390,12 @@ test('a recent upload shows its step while in flight, then how long it took and 
   const disputed = { node: { ...finding.node, status: 'CONFIRMED' as const } };
   expect(uploadState({ ...settled, status: 'RECONCILED', discrepancies: { edges: [disputed] } }, now)).toMatchObject({ result: 'Ready to approve, +$144.60 over the rate card' });
   expect(uploadState({ ...settled, status: 'RECONCILED' }, now)).toMatchObject({ result: 'Ready to approve, matched the rate card', tone: 'ok' });
+  // Held at its approval from review, it matched no shipment; found no duplicate, it is approved as billed.
+  const dismissed = { node: { ...duplicate.node, status: 'DISMISSED' as const } };
+  expect(uploadState({ ...settled, status: 'RECONCILED', shipment: null, discrepancies: { edges: [dismissed] } }, now)).toMatchObject({
+    result: 'Ready to approve as billed, not checked against the rate card',
+    tone: 'ok',
+  });
   expect(uploadState({ ...settled, status: 'NEEDS_REVIEW', reviewReason: 'no_shipment_match' }, now)).toMatchObject({
     result: 'Reading needs a check: No shipment matches',
     tone: 'warn',

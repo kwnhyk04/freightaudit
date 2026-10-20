@@ -17,9 +17,14 @@ export const STATUS: Record<InvoiceStatus, { label: string; tone: Tone; reason?:
   FAILED: { label: 'Failed', tone: 'bad' },
 };
 // A status pill's words; a checked invoice says whether it is a confirmed duplicate, which is never approved, billing
-// issues wait for a decision, or it is ready to approve.
-export const statusLabel = (status: InvoiceStatus, open: number, hold: InvoiceHold | null = null) =>
-  status !== 'RECONCILED' ? STATUS[status].label : hold === 'CONFIRMED_DUPLICATE' ? 'Confirmed duplicate' : open > 0 ? `Billing issues (${open})` : 'Ready to approve';
+// issues wait for a decision, or it is ready to approve, as billed when it matched no shipment (held at its approval
+// from review, it was never checked against the rate card).
+export const statusLabel = (status: InvoiceStatus, open: number, hold: InvoiceHold | null = null, matched = true) => {
+  if (status !== 'RECONCILED') return STATUS[status].label;
+  if (hold === 'CONFIRMED_DUPLICATE') return 'Confirmed duplicate';
+  if (open > 0) return `Billing issues (${open})`;
+  return matched ? 'Ready to approve' : 'Ready to approve as billed';
+};
 // Why a possible duplicate holds a checked invoice, in a list's words; open findings say how many instead.
 const HELD: Partial<Record<InvoiceHold, string>> = { CONFIRMED_DUPLICATE: 'Waits to be rejected', POSSIBLE_DUPLICATE: 'Possible duplicate to decide' };
 // A status from a URL parameter such as ?status=needs_review; anything else means all.
@@ -41,7 +46,13 @@ export const FILTERS: Filter[] = [
   { key: 'all', label: 'All', note: 'Every invoice, newest first.' },
   { key: 'needs_review', status: 'NEEDS_REVIEW', label: 'Reading needs a check', note: "The AI's reading matched no shipment or failed its checks; a reviewer corrects or rejects it." },
   { key: 'billing_issues', status: 'RECONCILED', open: true, label: 'Billing issues', note: 'Checked against the rate card, with findings to decide or a confirmed duplicate to reject.' },
-  { key: 'ready_to_approve', status: 'RECONCILED', open: false, label: 'Ready to approve', note: 'Checked against the rate card, with no finding left to decide.' },
+  {
+    key: 'ready_to_approve',
+    status: 'RECONCILED',
+    open: false,
+    label: 'Ready to approve',
+    note: 'Checked against the rate card with no finding left to decide, or from review with no matched shipment, ready to approve as billed.',
+  },
   { key: 'failed', status: 'FAILED', label: 'Failed', note: 'Processing used up its retries; each invoice shows why.' },
   { key: 'approved', status: 'APPROVED', label: 'Approved', note: 'Approved for payment.' },
   { key: 'rejected', status: 'REJECTED', label: 'Rejected', note: 'Rejected by a reviewer, with a reason.' },
@@ -144,7 +155,7 @@ export function reviewReason(code: string | null | undefined, short = false) {
 }
 
 // The line under a list row's status pill: what holds a checked invoice, the review or failure reason, or the step in
-// progress.
+// progress. matched is whether the invoice has its shipment.
 export function statusReason(row: {
   status: InvoiceStatus;
   openDiscrepancyCount: number;
@@ -152,16 +163,33 @@ export function statusReason(row: {
   failureReason: string | null;
   findings: number;
   hold: InvoiceHold | null;
+  matched: boolean;
 }) {
   if (row.status === 'RECONCILED') {
     const held = row.hold && HELD[row.hold];
     if (held) return held;
     if (row.openDiscrepancyCount > 0) return plural(row.openDiscrepancyCount, 'open finding');
+    if (!row.matched) return 'Not checked against the rate card';
     return row.findings > 0 ? 'Findings decided' : 'Matched the rate card';
   }
   if (row.status === 'NEEDS_REVIEW') return reviewReason(row.reviewReason, true);
   if (row.status === 'FAILED') return row.failureReason ? capital(row.failureReason) : 'Used up its retries';
   return STATUS[row.status].reason ?? null;
+}
+
+// The panel of a checked invoice with no shipment: approved as billed from review, it was held for a possible duplicate,
+// so it says why it was not approved and what follows from the duplicate's decision.
+export function unmatchedNote(findings: readonly { type: DiscrepancyType; status: DiscrepancyStatus }[]) {
+  const duplicate = findings.find((finding) => finding.type === 'DUPLICATE_INVOICE')?.status;
+  if (duplicate === 'OPEN') {
+    return {
+      title: 'Not approved: possible duplicate',
+      text: 'Another invoice from this carrier has the same number, so this one was not approved. Decide the possible duplicate below: Not a duplicate, then approve it as billed; Confirm duplicate, then reject it.',
+    };
+  }
+  const title = 'Not checked against the rate card';
+  if (duplicate === 'CONFIRMED') return { title, text: 'It came from review with no matched shipment and is a confirmed duplicate. Reject it.' };
+  return { title, text: 'It came from review with no matched shipment and is not a duplicate. Approve it as billed, or reject it.' };
 }
 
 // The status counts as tabs and sums: all invoices, those waiting for a reviewer, those the pipeline still moves.
@@ -305,6 +333,10 @@ export function trailRows(
       const changed = status && status.from && status.from !== 'open' ? [`Changed from ${decidedWord(status.from, kind)}`] : [];
       return row(verb, by, entry.detail ? [...changed, reasonText(entry.detail)] : changed);
     }
+    // An approval from review that found a possible duplicate moved the invoice to reconciled instead.
+    if (entry.action === 'STATUS_CHANGED' && status?.from === 'needs_review' && status.to === 'reconciled') {
+      return row('Held for a possible duplicate', `when ${entry.actor ?? 'a reviewer'} approved it as billed`, entry.detail ? [reasonText(entry.detail)] : []);
+    }
     if (entry.action !== 'STATUS_CHANGED' || !status || entry.actor) {
       const carrier = entry.changes.some((change) => change.field === 'carrier');
       const notes = entry.changes.map((change) => changeText(entry, change));
@@ -358,6 +390,7 @@ export function uploadState(upload: Recent, now: number): UploadState {
     // A possible duplicate bills nothing over the rate card, so its hold says why it waits.
     const held = upload.hold && HELD[upload.hold];
     if (held) return { done, result: `${label}, ${held.toLowerCase()}`, tone: upload.hold === 'CONFIRMED_DUPLICATE' ? 'warn' : 'accent' };
+    if (!upload.shipment) return { done, result: 'Ready to approve as billed, not checked against the rate card', tone: 'ok' };
     return standingCents > 0n
       ? { done, result: `${label}, +${formatMoney(standingCents, upload.currency)} over the rate card`, tone: 'accent' }
       : { done, result: 'Ready to approve, matched the rate card', tone: 'ok' };

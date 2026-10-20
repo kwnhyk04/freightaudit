@@ -18,6 +18,9 @@ query Invoices($first: Int, $after: String, $last: Int, $before: String, $status
         hold
         reviewReason
         failureReason
+        shipment {
+          id
+        }
         rateCardVersion {
           id
         }
