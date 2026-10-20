@@ -596,6 +596,34 @@ test.describe('needs review', () => {
     await page.getByRole('button', { name: 'Approve as billed' }).click();
     await approvedAsBilled(page);
   });
+
+  test('held for a possible duplicate, its misread invoice number corrected and checked again, the duplicate closes and it approves as billed', async ({ page }) => {
+    const [invoice] = await inReview(2);
+    await db(
+      `INSERT INTO invoices (tenant_id, status, filename, content_sha256, carrier_id, invoice_number, created_at, updated_at)
+       SELECT tenant_id, 'approved', 'first-scan.pdf', md5(id::text) || md5(reverse(id::text)), carrier_id, invoice_number, '2026-10-01T10:00:00Z', '2026-10-01T10:00:00Z'
+       FROM invoices WHERE id = '${invoice!.id}'`,
+    );
+    await page.goto(`/invoices/${invoice!.id}`);
+    page.once('dialog', (dialog) => void dialog.accept());
+    await page.getByRole('button', { name: 'Approve as billed' }).click();
+    // Held, the panel names the invoice it matches and takes the reading to check again.
+    const held = page.getByRole('region', { name: 'Not approved: possible duplicate' });
+    await expect(held).toContainText(`Possible duplicate: invoice ${invoice!.number} from this carrier was also received on 2026-10-01 as first-scan.pdf.`);
+    const number = `${invoice!.number}9`;
+    await held.getByLabel('Invoice number').fill(number);
+    await held.getByRole('button', { name: 'Check again' }).click();
+    // No other invoice from its carrier has the corrected number: the duplicate closes, and the trail says why.
+    await expect(page.locator('.findings article', { hasText: 'Possible duplicate invoice' }).locator('.badge')).toHaveText('Closed: reading corrected');
+    await expect(page.locator('.detail-head .badge')).toHaveText('Ready to approve as billed');
+    await expect(page.getByRole('button', { name: 'Check again' })).toHaveCount(0);
+    const trail = page.getByRole('region', { name: 'Audit trail' });
+    await expect(trail.getByText(`Invoice number: ${invoice!.number} to ${number}`)).toBeVisible();
+    await expect(trail.getByText('The corrected reading matches no other invoice')).toBeVisible();
+    page.once('dialog', (dialog) => void dialog.accept());
+    await page.getByRole('button', { name: 'Approve as billed' }).click();
+    await approvedAsBilled(page);
+  });
 });
 
 test.describe('example data', () => {

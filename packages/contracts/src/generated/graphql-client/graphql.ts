@@ -133,6 +133,7 @@ export type CorrectInvoiceMutationVariables = Exact<{
   id: string | number;
   carrierId?: string | number | null | undefined;
   proNumber?: string | null | undefined;
+  number?: string | null | undefined;
 }>;
 
 
@@ -255,8 +256,13 @@ export const ApproveInvoiceDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<ApproveInvoiceMutation, ApproveInvoiceMutationVariables>;
 export const CorrectInvoiceDocument = new TypedDocumentString(`
-    mutation CorrectInvoice($id: ID!, $carrierId: ID, $proNumber: String) {
-  correctInvoice(id: $id, carrierId: $carrierId, proNumber: $proNumber) {
+    mutation CorrectInvoice($id: ID!, $carrierId: ID, $proNumber: String, $number: String) {
+  correctInvoice(
+    id: $id
+    carrierId: $carrierId
+    proNumber: $proNumber
+    number: $number
+  ) {
     id
     status
   }

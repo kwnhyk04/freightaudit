@@ -133,13 +133,32 @@ const DUPLICATE_DECISION: Partial<Record<DiscrepancyStatus, { label: string; ton
   CONFIRMED: { label: 'Duplicate confirmed', tone: 'warn' },
   DISMISSED: { label: 'Not a duplicate', tone: 'ok' },
 };
-export const decisionLabel = (status: DiscrepancyStatus, type?: DiscrepancyType) => (type === 'DUPLICATE_INVOICE' && DUPLICATE_DECISION[status]) || DECISION[status];
+// The api's reason on the row that closed a held invoice's possible duplicate when its corrected reading matched no other
+// invoice (apps/api/src/review.ts); any other closed finding closed with its rejected invoice.
+const READING_CORRECTED = 'the corrected reading matches no other invoice';
+export const decisionLabel = (status: DiscrepancyStatus, type?: DiscrepancyType, closedWhy?: string | null): { label: string; tone: Tone } =>
+  status === 'CLOSED' && closedWhy === READING_CORRECTED
+    ? { label: 'Closed: reading corrected', tone: 'ok' }
+    : (type === 'DUPLICATE_INVOICE' && DUPLICATE_DECISION[status]) || DECISION[status];
 // The buttons that decide one finding: dismiss lets it go, confirm upholds it.
 export const decideWords = (type: DiscrepancyType) =>
   type === 'DUPLICATE_INVOICE' ? { dismiss: 'Not a duplicate', confirm: 'Confirm duplicate' } : { dismiss: 'Approve charge', confirm: 'Dispute' };
 
 export const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 const capital = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+// The api's refusals as sentences: its messages start lower case and stop without a period. The two a page out of date
+// meets on correcting a held invoice say in plain words what happened meanwhile and what to do.
+const PLAIN = new Map([
+  [
+    'its possible duplicate is already decided, so its reading stays as it is',
+    'Its possible duplicate was decided after this page loaded, so its carrier and invoice number can no longer be corrected. Reload the page to see the decision.',
+  ],
+  [
+    'a held invoice is not matched to a shipment again, so its PRO number stays as read',
+    'It was held for a possible duplicate after this page loaded, so it is not matched to a shipment again and its PRO number cannot be corrected. Reload the page to correct its carrier or invoice number instead.',
+  ],
+]);
+export const refusal = (text: string) => PLAIN.get(text) ?? `${capital(text)}${/[.!?]$/.test(text) ? '' : '.'}`;
 
 // Why an invoice needs review, in words a reviewer can act on: a sentence on the invoice, a short phrase in a list row.
 export function reviewReason(code: string | null | undefined, short = false) {
@@ -180,17 +199,22 @@ export function statusReason(row: {
 }
 
 // The panel of a checked invoice with no shipment: approved as billed from review, it was held for a possible duplicate,
-// so it says why it was not approved and what follows from the duplicate's decision.
-export function unmatchedNote(findings: readonly { type: DiscrepancyType; status: DiscrepancyStatus }[]) {
-  const duplicate = findings.find((finding) => finding.type === 'DUPLICATE_INVOICE')?.status;
-  if (duplicate === 'OPEN') {
+// so it says why it was not approved, the invoice it matches while that is open (the evidence names the earliest now),
+// and what follows from the duplicate's decision or its closing on a corrected reading.
+export function unmatchedNote(findings: readonly { type: DiscrepancyType; status: DiscrepancyStatus; evidence: string }[]) {
+  const duplicate = findings.find((finding) => finding.type === 'DUPLICATE_INVOICE');
+  if (duplicate?.status === 'OPEN') {
     return {
       title: 'Not approved: possible duplicate',
-      text: 'Another invoice from this carrier has the same number, so this one was not approved. Decide the possible duplicate below: Not a duplicate, then approve it as billed; Confirm duplicate, then reject it.',
+      text: 'Another invoice from this carrier has the same number, so this one was not approved. Decide the possible duplicate below: Not a duplicate, then approve it as billed; Confirm duplicate, then reject it. If its carrier or invoice number was misread, correct it and check again.',
+      match: duplicate.evidence,
     };
   }
   const title = 'Not checked against the rate card';
-  if (duplicate === 'CONFIRMED') return { title, text: 'It came from review with no matched shipment and is a confirmed duplicate. Reject it.' };
+  if (duplicate?.status === 'CONFIRMED') return { title, text: 'It came from review with no matched shipment and is a confirmed duplicate. Reject it.' };
+  if (duplicate?.status === 'CLOSED') {
+    return { title, text: 'It came from review with no matched shipment, and its corrected reading matches no other invoice. Approve it as billed, or reject it.' };
+  }
   return { title, text: 'It came from review with no matched shipment and is not a duplicate. Approve it as billed, or reject it.' };
 }
 
@@ -265,7 +289,7 @@ export const ACTION: Record<AuditAction, string> = {
   REPLAYED: 'Replayed',
 };
 
-export const FIELD: Record<string, string> = { status: 'Status', carrier: 'Carrier', proNumber: 'PRO number' };
+export const FIELD: Record<string, string> = { status: 'Status', carrier: 'Carrier', proNumber: 'PRO number', invoiceNumber: 'Invoice number' };
 
 // The pipeline step behind each queue.
 export const QUEUE: Record<string, string> = { extract: 'Extraction', reconcile: 'Reconciliation', 'tms-sync': 'TMS sync' };

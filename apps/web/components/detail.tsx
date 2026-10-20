@@ -57,26 +57,31 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
   // Before extraction, or when it failed, the file is all there is: the facts shrink to it.
   const unread = !extraction && !invoice.number;
   const correctable = invoice.status === 'NEEDS_REVIEW' && invoice.reviewReason === 'no_shipment_match';
-  // The sample shows the same fields, disabled and without a submit button.
+  // The sample shows the same fields, disabled and without a submit button; a held invoice's form takes the carrier too.
+  const carrierField = (
+    <label>
+      Carrier
+      <select name="carrierId" defaultValue={data.carriers.find((each) => each.name === invoice.carrier)?.id ?? ''} disabled={readOnly}>
+        <option value="">Keep as read</option>
+        {data.carriers.map((each) => (
+          <option key={each.id} value={each.id}>
+            {each.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
   const correction = (
     <>
-      <label>
-        Carrier
-        <select name="carrierId" defaultValue={data.carriers.find((each) => each.name === invoice.carrier)?.id ?? ''} disabled={readOnly}>
-          <option value="">Keep as read</option>
-          {data.carriers.map((each) => (
-            <option key={each.id} value={each.id}>
-              {each.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {carrierField}
       <label>
         PRO number
         <input name="proNumber" defaultValue={invoice.proNumber ?? ''} className="id" maxLength={64} disabled={readOnly} />
       </label>
     </>
   );
+  // Why each closed finding closed: its closing row's reason.
+  const closedWhy = new Map(invoice.auditTrail.filter((entry) => entry.action === 'DISCREPANCY_CLOSED').map((entry) => [entry.discrepancyId, entry.detail]));
   return (
     <>
       <div className="page-head detail-head">
@@ -145,6 +150,19 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
             <section className="panel attention" aria-labelledby="unmatched-title">
               <h2 id="unmatched-title">{unmatched.title}</h2>
               <p>{unmatched.text}</p>
+              {unmatched.match && <p className="muted">{unmatched.match}</p>}
+              {/* While its possible duplicate is open, a misread carrier or number is corrected here and looked up again. */}
+              {!readOnly && hold === 'POSSIBLE_DUPLICATE' && (
+                <div style={{ marginTop: 12 }}>
+                  <ActionForm hidden={{ intent: 'correct', id: invoice.id }} submit="Check again">
+                    {carrierField}
+                    <label>
+                      Invoice number
+                      <input name="number" defaultValue={invoice.number ?? ''} className="id" maxLength={64} />
+                    </label>
+                  </ActionForm>
+                </div>
+              )}
             </section>
           )}
           {invoice.status === 'FAILED' && (
@@ -162,7 +180,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                 {findings.map((finding) => {
                   const line = finding.lineItem && lines.find((each) => each.lineNumber === finding.lineItem!.lineNumber);
                   const title = `finding-${finding.id}`;
-                  const decision = decisionLabel(finding.status, finding.type);
+                  const decision = decisionLabel(finding.status, finding.type, closedWhy.get(finding.id));
                   return (
                     <article key={finding.id} aria-labelledby={title}>
                       {/* Read as title, text, amount, then the decision; CSS keeps the amount in the left column. */}

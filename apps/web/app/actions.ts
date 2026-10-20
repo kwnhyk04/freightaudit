@@ -17,7 +17,7 @@ import { redirect } from 'next/navigation';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { duplicateNote } from '../lib/labels.ts';
+import { duplicateNote, refusal } from '../lib/labels.ts';
 import { createLimiter } from '../lib/limiter.ts';
 import { verifyPassword } from '../lib/password.ts';
 import { SAMPLES } from '../lib/samples.ts';
@@ -29,8 +29,6 @@ import { createToken, safeNext, SESSION_COOKIE, SESSION_COOKIE_ATTRIBUTES, SESSI
 export type ActionState = { error?: string; code?: string; done?: string; existing?: NonNullable<InvoiceBriefQuery['invoice']> };
 
 const limiter = createLimiter();
-// The API's messages start lower case and stop without a period; the UI shows them as sentences.
-const sentence = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}${/[.!?]$/.test(text) ? '' : '.'}`;
 
 export async function login(_: ActionState, form: FormData): Promise<ActionState> {
   const client = await clientKey();
@@ -85,12 +83,12 @@ export async function review(_: ActionState, form: FormData): Promise<ActionStat
       if (!decision || !seen) return { error: 'Unknown action.' };
       await gql(DecideInvoiceDocument, { id, decision, seen, requestId: text(form, 'requestId') }, REVIEWER);
     } else if (intent === 'correct') {
-      await gql(CorrectInvoiceDocument, { id, carrierId: text(form, 'carrierId') || null, proNumber: text(form, 'proNumber') || null }, REVIEWER);
+      await gql(CorrectInvoiceDocument, { id, carrierId: text(form, 'carrierId') || null, proNumber: text(form, 'proNumber') || null, number: text(form, 'number') || null }, REVIEWER);
     } else if (intent === 'reject') await gql(RejectInvoiceDocument, { id, reason: text(form, 'reason') }, REVIEWER);
     else if (intent === 'replay') await gql(ReplayDeadLetterDocument, { id }, REVIEWER);
     else return { error: 'Unknown action.' };
   } catch (err) {
-    if (err instanceof ApiError) return { error: sentence(err.message), code: err.code };
+    if (err instanceof ApiError) return { error: refusal(err.message), code: err.code };
     throw err;
   }
   forgetSummary();
@@ -104,7 +102,7 @@ async function send(file: File, key: string): Promise<ActionState> {
   try {
     await asReviewer();
     const checked = checkUpload(new Uint8Array(await file.arrayBuffer()), file.size);
-    if (!checked.ok) return { error: sentence(`${file.name}: ${checked.detail}`) };
+    if (!checked.ok) return { error: refusal(`${file.name}: ${checked.detail}`) };
     const { data, error, response } = await rest().POST('/v1/invoices', {
       params: { header: { 'Idempotency-Key': key } },
       body: { file },
@@ -117,7 +115,7 @@ async function send(file: File, key: string): Promise<ActionState> {
     if (!data) {
       const wait = response.headers.get('retry-after');
       const detail = (error as { detail?: string } | undefined)?.detail ?? `the upload failed with HTTP ${response.status}`;
-      return { error: sentence(detail) + (wait ? ` Try again in ${wait} seconds.` : '') };
+      return { error: refusal(detail) + (wait ? ` Try again in ${wait} seconds.` : '') };
     }
     // A 200 means these exact bytes were uploaded before and nothing new was created: say which invoice they are.
     if (response.status === 200) {
@@ -125,7 +123,7 @@ async function send(file: File, key: string): Promise<ActionState> {
       if (invoice) return { done: duplicateNote(invoice), existing: invoice };
     }
   } catch (err) {
-    if (err instanceof ApiError) return { error: sentence(err.message), code: err.code };
+    if (err instanceof ApiError) return { error: refusal(err.message), code: err.code };
     if (err instanceof TypeError) {
       markOffline();
       return { error: 'The FreightAudit API did not answer. Try again in a moment.' };

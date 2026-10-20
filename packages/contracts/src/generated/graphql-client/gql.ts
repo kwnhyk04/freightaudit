@@ -16,7 +16,7 @@ import * as types from './graphql.js';
  */
 type Documents = {
     "mutation ApproveInvoice($id: ID!) {\n  approveInvoice(id: $id) {\n    id\n    status\n  }\n}": typeof types.ApproveInvoiceDocument,
-    "mutation CorrectInvoice($id: ID!, $carrierId: ID, $proNumber: String) {\n  correctInvoice(id: $id, carrierId: $carrierId, proNumber: $proNumber) {\n    id\n    status\n  }\n}": typeof types.CorrectInvoiceDocument,
+    "mutation CorrectInvoice($id: ID!, $carrierId: ID, $proNumber: String, $number: String) {\n  correctInvoice(\n    id: $id\n    carrierId: $carrierId\n    proNumber: $proNumber\n    number: $number\n  ) {\n    id\n    status\n  }\n}": typeof types.CorrectInvoiceDocument,
     "query DeadLetters($first: Int, $after: String, $status: DeadLetterStatus) {\n  deadLetters(first: $first, after: $after, status: $status) {\n    edges {\n      cursor\n      node {\n        id\n        queue\n        jobId\n        error\n        attempts\n        createdAt\n        replayedAt\n        invoice {\n          id\n          number\n          filename\n          carrier\n          status\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.DeadLettersDocument,
     "mutation DecideInvoice($id: ID!, $decision: InvoiceDecision!, $seen: [SeenDiscrepancy!]!, $requestId: ID!) {\n  decideInvoice(id: $id, decision: $decision, seen: $seen, requestId: $requestId) {\n    id\n    status\n  }\n}": typeof types.DecideInvoiceDocument,
     "query Discrepancies($first: Int, $after: String, $status: DiscrepancyStatus) {\n  discrepancies(first: $first, after: $after, status: $status) {\n    edges {\n      cursor\n      node {\n        id\n        type\n        status\n        expectedCents\n        billedCents\n        evidence\n        note\n        resolvedAt\n        lineItem {\n          id\n          lineNumber\n          description\n          chargeCode\n        }\n        invoice {\n          id\n          number\n          filename\n          carrier\n          currency\n          status\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.DiscrepanciesDocument,
@@ -31,7 +31,7 @@ type Documents = {
 };
 const documents: Documents = {
     "mutation ApproveInvoice($id: ID!) {\n  approveInvoice(id: $id) {\n    id\n    status\n  }\n}": types.ApproveInvoiceDocument,
-    "mutation CorrectInvoice($id: ID!, $carrierId: ID, $proNumber: String) {\n  correctInvoice(id: $id, carrierId: $carrierId, proNumber: $proNumber) {\n    id\n    status\n  }\n}": types.CorrectInvoiceDocument,
+    "mutation CorrectInvoice($id: ID!, $carrierId: ID, $proNumber: String, $number: String) {\n  correctInvoice(\n    id: $id\n    carrierId: $carrierId\n    proNumber: $proNumber\n    number: $number\n  ) {\n    id\n    status\n  }\n}": types.CorrectInvoiceDocument,
     "query DeadLetters($first: Int, $after: String, $status: DeadLetterStatus) {\n  deadLetters(first: $first, after: $after, status: $status) {\n    edges {\n      cursor\n      node {\n        id\n        queue\n        jobId\n        error\n        attempts\n        createdAt\n        replayedAt\n        invoice {\n          id\n          number\n          filename\n          carrier\n          status\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.DeadLettersDocument,
     "mutation DecideInvoice($id: ID!, $decision: InvoiceDecision!, $seen: [SeenDiscrepancy!]!, $requestId: ID!) {\n  decideInvoice(id: $id, decision: $decision, seen: $seen, requestId: $requestId) {\n    id\n    status\n  }\n}": types.DecideInvoiceDocument,
     "query Discrepancies($first: Int, $after: String, $status: DiscrepancyStatus) {\n  discrepancies(first: $first, after: $after, status: $status) {\n    edges {\n      cursor\n      node {\n        id\n        type\n        status\n        expectedCents\n        billedCents\n        evidence\n        note\n        resolvedAt\n        lineItem {\n          id\n          lineNumber\n          description\n          chargeCode\n        }\n        invoice {\n          id\n          number\n          filename\n          carrier\n          currency\n          status\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.DiscrepanciesDocument,
@@ -52,7 +52,7 @@ export function graphql(source: "mutation ApproveInvoice($id: ID!) {\n  approveI
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "mutation CorrectInvoice($id: ID!, $carrierId: ID, $proNumber: String) {\n  correctInvoice(id: $id, carrierId: $carrierId, proNumber: $proNumber) {\n    id\n    status\n  }\n}"): typeof import('./graphql.js').CorrectInvoiceDocument;
+export function graphql(source: "mutation CorrectInvoice($id: ID!, $carrierId: ID, $proNumber: String, $number: String) {\n  correctInvoice(\n    id: $id\n    carrierId: $carrierId\n    proNumber: $proNumber\n    number: $number\n  ) {\n    id\n    status\n  }\n}"): typeof import('./graphql.js').CorrectInvoiceDocument;
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
