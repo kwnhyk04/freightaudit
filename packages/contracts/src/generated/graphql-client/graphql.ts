@@ -10,7 +10,10 @@ export type AuditAction =
   | 'APPROVED'
   /** A reviewer corrected the carrier or PRO number and matching ran again. */
   | 'CORRECTED'
-  /** A discrepancy closed undecided because a reviewer rejected its invoice. */
+  /**
+   * A discrepancy closed undecided because a reviewer rejected its invoice, or corrected a held invoice's reading so that
+   * no other invoice matches it.
+   */
   | 'DISCREPANCY_CLOSED'
   /** A reviewer confirmed a discrepancy: the overcharge is disputed. */
   | 'DISCREPANCY_CONFIRMED'
@@ -50,7 +53,10 @@ export type DiscrepancyDecision =
 
 /** Review state of a discrepancy. */
 export type DiscrepancyStatus =
-  /** Closed undecided when a reviewer rejected the invoice. */
+  /**
+   * Closed undecided when a reviewer rejected the invoice, or when a held invoice's corrected reading matched no other
+   * invoice.
+   */
   | 'CLOSED'
   | 'CONFIRMED'
   | 'DISMISSED'

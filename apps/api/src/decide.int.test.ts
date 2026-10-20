@@ -204,6 +204,69 @@ test('approved as billed from review, an invoice its carrier billed before under
   expect((await rejectInvoice(again, 'Same invoice as first-scan.pdf')).data!.rejectInvoice).toEqual({ status: 'REJECTED' });
 });
 
+const CORRECT = `mutation ($id: ID!, $carrierId: ID, $pro: String, $number: String) {
+  correctInvoice(id: $id, carrierId: $carrierId, proNumber: $pro, number: $number) { status number hold discrepancies { edges { node { type status evidence } } } } }`;
+const correct = (id: string, read: { carrierId?: string; pro?: string; number?: string }) => gql<{ correctInvoice: unknown }>(CORRECT, { id, ...read });
+// Held at its approval from review: an earlier invoice of its carrier under its number, then Approve as billed.
+async function held(id: string) {
+  await billedBefore(id, 'first-scan.pdf', 'approved', '2026-10-01T10:00:00Z');
+  expect((await approveInvoice(id)).data!.approveInvoice).toEqual({ status: 'RECONCILED' });
+}
+const carrierName = async (carrierId: string) => (await db.select({ name: carriers.name }).from(carriers).where(eq(carriers.id, carrierId)))[0]!.name;
+
+test('a held invoice whose corrected number matches no other invoice has its possible duplicate closed, saying why, and waits for approval as billed', async () => {
+  const id = reviewed.shift()!;
+  await held(id);
+  const { invoiceNumber, contentSha256 } = await invoiceOf(id);
+  const [finding] = await findingsOf(id);
+  const number = `${invoiceNumber}9`;
+  expect((await correct(id, { number })).data!.correctInvoice).toEqual({
+    status: 'RECONCILED',
+    number,
+    hold: null,
+    discrepancies: { edges: [{ node: { type: 'DUPLICATE_INVOICE', status: 'CLOSED', evidence: finding!.evidence } }] },
+  });
+  expect((await auditOf(id)).slice(1).map((row) => [row.actor, row.action, row.changes, row.reason, row.discrepancyId])).toEqual([
+    ['reviewer', 'corrected', [{ field: 'invoiceNumber', from: invoiceNumber, to: number }], null, null],
+    ['reviewer', 'discrepancy_closed', [{ field: 'status', from: 'open', to: 'closed' }], 'the corrected reading matches no other invoice', finding!.id],
+  ]);
+  // Nothing goes back to matching: it waits for Approve as billed.
+  expect(await queues.queue('reconcile').getJob(contentSha256)).toBeUndefined();
+  expect((await approveInvoice(id)).data!.approveInvoice).toEqual({ status: 'APPROVED' });
+});
+
+test('a held invoice whose corrected carrier has another invoice under the number stays held, its finding naming that one', async () => {
+  const id = reviewed.shift()!;
+  const { carrierId, invoiceNumber } = await invoiceOf(id);
+  const [other] = await db.select({ id: carriers.id, name: carriers.name }).from(carriers).where(ne(carriers.id, carrierId!)).limit(1);
+  await billedBefore(id, 'other-carrier.pdf', 'approved', '2026-10-02T10:00:00Z', other!.id);
+  await held(id);
+  const evidence = `Possible duplicate: invoice ${invoiceNumber} from this carrier was also received on 2026-10-02 as other-carrier.pdf.`;
+  expect((await correct(id, { carrierId: other!.id })).data!.correctInvoice).toEqual({
+    status: 'RECONCILED',
+    number: invoiceNumber,
+    hold: 'POSSIBLE_DUPLICATE',
+    discrepancies: { edges: [{ node: { type: 'DUPLICATE_INVOICE', status: 'OPEN', evidence } }] },
+  });
+  expect((await auditOf(id)).slice(1).map((row) => [row.action, row.changes])).toEqual([['corrected', [{ field: 'carrier', from: await carrierName(carrierId!), to: other!.name }]]]);
+});
+
+test('a held invoice takes a corrected reading only while its possible duplicate is open, never a PRO number, and only it takes an invoice number', async () => {
+  const id = reviewed.shift()!;
+  await held(id);
+  const refused = async (target: string, read: Parameters<typeof correct>[1]) => (await correct(target, read)).errors?.[0];
+  expect(await refused(id, { pro: '1234567' })).toMatchObject({
+    message: 'a held invoice is not matched to a shipment again, so its PRO number stays as read',
+    extensions: { code: 'BAD_USER_INPUT' },
+  });
+  await resolve((await findingsOf(id))[0]!.id, 'DISMISS');
+  expect((await refused(id, { number: '1' }))?.extensions?.code).toBe('CONFLICT');
+  // A checked invoice was matched to its shipment, and one in review is matched again instead.
+  expect((await refused(fresh.shift()!, { number: '1' }))?.extensions?.code).toBe('CONFLICT');
+  expect((await refused(reviewed.shift()!, { number: '1' }))?.extensions?.code).toBe('BAD_USER_INPUT');
+  expect((await invoiceOf(id)).invoiceNumber).not.toBe('1');
+});
+
 test("approved as billed from review with no such invoice, it is approved as before: a rejected one or another carrier's is none, and a reading without a carrier or a number has nothing to compare", async () => {
   const id = reviewed.shift()!;
   const [other] = await db.select({ id: carriers.id }).from(carriers).where(ne(carriers.id, (await invoiceOf(id)).carrierId!)).limit(1);

@@ -353,8 +353,8 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
         await review.decideInvoice(deps, actorOf(req), id, decision, seen, requestId);
         return (await invoiceById(loaders, id))!;
       },
-      async correctInvoice(_, { id, carrierId, proNumber }, { req, loaders }) {
-        await review.correctInvoice(deps, actorOf(req), id, carrierId, proNumber);
+      async correctInvoice(_, { id, carrierId, proNumber, number }, { req, loaders }) {
+        await review.correctInvoice(deps, actorOf(req), id, carrierId, proNumber, number);
         return (await invoiceById(loaders, id))!;
       },
       async rejectInvoice(_, { id, reason }, { req, loaders }) {

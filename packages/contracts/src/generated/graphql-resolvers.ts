@@ -24,7 +24,10 @@ export type AuditAction =
   | 'APPROVED'
   /** A reviewer corrected the carrier or PRO number and matching ran again. */
   | 'CORRECTED'
-  /** A discrepancy closed undecided because a reviewer rejected its invoice. */
+  /**
+   * A discrepancy closed undecided because a reviewer rejected its invoice, or corrected a held invoice's reading so that
+   * no other invoice matches it.
+   */
   | 'DISCREPANCY_CLOSED'
   /** A reviewer confirmed a discrepancy: the overcharge is disputed. */
   | 'DISCREPANCY_CONFIRMED'
@@ -157,7 +160,10 @@ export type DiscrepancyEdge = {
 
 /** Review state of a discrepancy. */
 export type DiscrepancyStatus =
-  /** Closed undecided when a reviewer rejected the invoice. */
+  /**
+   * Closed undecided when a reviewer rejected the invoice, or when a held invoice's corrected reading matched no other
+   * invoice.
+   */
   | 'CLOSED'
   | 'CONFIRMED'
   | 'DISMISSED'
@@ -377,7 +383,10 @@ export type Mutation = {
   approveInvoice: Invoice;
   /**
    * Corrects the carrier or PRO number that kept a NEEDS_REVIEW invoice from matching a shipment, then runs
-   * matching again. Called on an EXTRACTED invoice, it only queues matching again.
+   * matching again. Called on an EXTRACTED invoice, it only queues matching again. On a RECONCILED invoice held at its
+   * approval from NEEDS_REVIEW, with no shipment and its possible duplicate open, it takes the carrier, the number or both,
+   * never the PRO number, and runs the duplicate check again: if no other invoice matches, the possible duplicate is CLOSED
+   * and the invoice waits for approval as billed; otherwise it stays held. number is taken only there.
    */
   correctInvoice: Invoice;
   /**
@@ -409,6 +418,7 @@ export type MutationApproveInvoiceArgs = {
 export type MutationCorrectInvoiceArgs = {
   carrierId?: InputMaybe<Scalars['ID']['input']>;
   id: Scalars['ID']['input'];
+  number?: InputMaybe<Scalars['String']['input']>;
   proNumber?: InputMaybe<Scalars['String']['input']>;
 };
 
