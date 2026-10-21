@@ -19,6 +19,33 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-21: The Design section says how the mockups were drawn (branch design-mockups, not committed)
+
+- What happened: after the report on the mockups' Content Credentials record, the user said to keep it. They asked for one plain line in the README's Design section saying the mockups were drawn with Claude (claude.ai) in a planning chat before the build, and nothing else changed.
+- What we did: added that line, in the user's words, as the section's last paragraph. Every existing line stays, so the "Below" sentence still leads straight into its table. The nine pictures were not touched.
+- Files: `README.md`, `docs/{todo,memory,activity-log}.md`.
+- Validation: `git diff` shows the one added README line. No code changed and no check ran.
+- Outstanding: the user ships the branch.
+
+### 2026-10-21: Approved mockups in the repo, and the hash-password comment (branch design-mockups from main `8d42fe3`, not committed)
+
+- **Setup:** #38 merged as `8d42fe3`, with the same 6 files and 273/97 lines the branch had. `git switch main`, `git fetch origin`, `git pull --ff-only`: `main` and `origin/main` at `8d42fe3`. Then `git switch -c design-mockups`.
+  - Small event: `git rev-parse --short main origin/main` failed with "fatal: Needed a single revision" (`--short` takes one revision), which stopped the chain before the branch existed. `git rev-parse main origin/main` without `--short` gave the two hashes; then the branch was created.
+- **The source:** `H:\Projects\projects\_design-reference\freightaudit` holds `approved/`, `draft-landing-dashboard/` and `superseded-b/`. Only `approved/` was read (user). It holds nine PNGs: the invoice list, an invoice and the upload page, each in light, dark and on a phone.
+- **Personal data check:**
+  - Metadata: a script walked each PNG's chunks. Each has IHDR, IDAT, IEND and one `caBX`, with no tEXt, iTXt, zTXt or eXIf. The `caBX` is a C2PA (Content Credentials) manifest, 5,758 bytes in each file. It holds the actions `c2pa.opened` and `com.anthropic.claude.provided` ("Claude provided this file at the request of a user and may have created or modified the file contents."), the claim generator "Anthropic Files", Anthropic's signing certificate and random UUIDs. A scan of all nine for anything else (an @, a path, a URL, an author or creator field) found nothing personal.
+  - Pixels: all nine viewed. They show fictional carriers (Halcyon Ridge Freight, Quarry Lane Transport, Copperline Haulage, Nimbus Road Lines, Tern & Tide Carriers), synthetic invoice, PRO, BOL and shipment numbers, Reno and Sacramento as cities, and one address, on the fictional carrier's freight bill ("410 Mill Road, Reno NV"). No person's name, email or phone appears, and "Sign out" shows no user.
+  - What we did: `cp -p` into `docs/design/mockups/`. Each copy's sha256 equals its source's. The manifests stay (docs/memory.md, 2026-10-21, approved mockups).
+- **README:** the Design section names `docs/design/mockups/` and shows a two-column table, approved mockup and built, for the invoice list, an invoice and the upload page, in light only. Each pair has the same pixel size (1440x904, 1440x1277, 1440x900, read from the PNG headers). A line says the data differ; the no-auto-approval example stays.
+- **`.env.example`:** the comment above `DEMO_PASSWORD_HASH` said to run `hash-password`, "then type the password and press Ctrl+D (Ctrl+Z, Enter on Windows)". It now says what `apps/web/scripts/hash-password.ts` does: `--write-env` asks twice without echoing (12 characters or more) and sets the hash in the root `.env`; without it the hash is printed. No test reads `.env.example` (a grep of the test files), and a comment has no behavior to test.
+- **Small events:**
+  - GateGuard asked for facts again before the first Bash command and each file's first edit. A first edit was refused even with the facts earlier in the same message (`.env.example`, README, context, todo, memory, this log); each retry passed.
+  - Agent slip: the copy command kept a leftover `sha256sum … > /dev/null`. The redirect wrote no file; the hashes were then compared in a loop.
+  - Agent slip: to count the new files in `git diff --stat`, `git add -N docs/design` marked them intent-to-add, and `git reset -q docs/design` undid it in the same command. Nothing stays staged (AGENTS.md: docs are not staged automatically).
+- Files: `docs/design/mockups/approved-*.png` (9, new), `README.md`, `.env.example`, `docs/{context,todo,memory,activity-log}.md`.
+- Validation: each copy's sha256 equals its source's; every image path in the README exists; each mockup and its built shot have the same size. No screenshot was retaken: none was asked for, and the built round-1 shots differ from a new run only by date (docs/memory.md, pitfall 2026-10-21). No lint, typecheck or test ran: no code changed, only a comment in `.env.example`.
+- Outstanding: the user ships it.
+
 ### 2026-10-21: README pass for the portfolio (branch readme-polish from main `f911569`, not committed)
 
 - **Setup:** C merged as `f911569` (#37). `git fetch origin` showed `main` and `origin/main` both at `f911569`; `git switch -c readme-polish`, clean tree. Docs and screenshots only (user); no live model call and no `pnpm demo:up`.
