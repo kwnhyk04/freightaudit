@@ -14,6 +14,10 @@ Next: the user ships the demo-check-retry PR (In Progress). Its push to main sho
     - Trade-off: a backend that is really down holds the first live page up to 8 s before the sample shows, and an outage between probes is seen up to 30 s later.
     - It stops the site flipping to the sample; pages still pay 2 to 6 s per new connection.
   - The root fix is a direct path for tailscale (UDP out), so Funnel traffic stops riding the relay over HTTPS through the proxy. That reverses the egress design (docs/threat-notes.md) and needs its own review.
+- [ ] pdf.js 6.4.299's modern build draws no page in a browser without `Map.prototype.getOrInsertComputed` (found 2026-10-22 in this container's Chromium 141, where `render()` throws; `Math.sumPrecise` is missing there too and only degrades fonts). By caniuse's MDN data (web search, 2026-10-22, not checked against release notes) the method ships in Chrome 145, Firefox 144 and Safari 26.2. Older browsers get no page in the viewer and no thumbnail on the upload page (its page count still shows). The user chooses:
+  - Leave it, since current browsers have both.
+  - Load pdf.js's `legacy/` build, which its README names for older browsers. `lib/pdfjs.test.ts` checks the modern build's files for `eval(`, so its list changes too.
+  - Polyfill the two methods before pdf.js loads.
 - [ ] (manual, user) FreightAudit's Gemini key moves to its own Google project (user, 2026-10-19). Until the user confirms it is done, the 2026-10-20 window rule stands (docs/memory.md, Constraints). The key is read from `.env` (local runs), `.env.prod` (the demo's worker, at its next `pnpm demo:up`) and the repository secret `GEMINI_API_KEY` (`ci.yml`'s eval smoke and `nightly-eval.yml`). Once the user confirms, the full-subset floors below can run.
 - [ ] Full-subset floors for rate-limit waits and wait time (live Gemini; after the key's move, user 2026-10-19), which the 2026-10-15 baseline could not give (no waits recorded): set them from the next full run on fresh results, `pnpm eval --suite extraction --subset full --fresh --set-floors` (cached cases from before 0011 report no waits). Without them the weekly full eval cannot flag a wait regression. Size S, plus one long run of 90 cases. Its PR changes `evals/thresholds.json`, so its CI eval smoke calls Gemini too.
 - [ ] The design hook's approved `side-tab` exception does not apply when the session's working directory is `apps/web` (found in C2). The user chooses between two options:
@@ -58,13 +62,17 @@ Next: the user ships the demo-check-retry PR (In Progress). Its push to main sho
     - [x] The invoice header and the upload result say "Re-bills shipment S: n of m lines were already billed on invoice X (date)." (the row in short: "Re-bills S: n of m lines already billed on invoice X").
     - [x] Tests first: the limits test with `NEXT` at 0 (2 of 5 failed, on 83 and 7), 4 label unit tests (each failed on its value against stubs keeping today's words) and an e2e re-bill (the sample's g001, read as digital.pdf's invoice, at its upload row). Then all passed.
     - [x] Deliberate breaks, each failing a test and reverted: the last earlier line named instead of the first; an earlier line winning over the named invoice; a repeat on the invoice counted as a re-bill; the Expected words kept for an approved charge; the date dropped; recent uploads without `earlierInvoice` (limits test); links without the invoice id (e2e).
-    - [x] Checks: `pnpm turbo run build typecheck lint test --force` 44 tasks (web 118 unit tests), `pnpm contracts:check`, `pnpm test:int` 141 in 25 suites, `pnpm e2e` 35 passed with the 8 PDF-drawing tests failing as on main in this container (Chromium 141 lacks `Math.sumPrecise`), lockout alone 1 passed.
+    - [x] Checks: `pnpm turbo run build typecheck lint test --force` 44 tasks (web 118 unit tests), `pnpm contracts:check`, `pnpm test:int` 141 in 25 suites, `pnpm e2e` 35 passed with the 8 PDF-drawing tests failing as on main in this container (pdf.js 6.4 needs `Map.prototype.getOrInsertComputed`, which Chromium 141 lacks; first noted as `Math.sumPrecise`, which it lacks too), lockout alone 1 passed.
     - [ ] The user ships it, after the demo check above; then `pnpm e2e:screenshots` on the PC, since the README's sample shots (g056) now read "Already billed on line 3".
-  - [ ] PR 3, web, upload preview. After PR 2; no Release.
-    - Choosing or dropping files only lists them: name, size, pages, a first-page thumbnail, Remove, and a warning for a file that will be refused, the golden-set check included through `uploadAllowlist`.
-    - "Upload N invoices" with per-file progress, and Clear.
-    - Toasts in a polite live region: success fades, errors stay until closed, Retry for 429, 503 and no answer.
-    - Recent uploads reads "Reading…", and a toast says when each upload finishes. The samples still upload on tap.
+  - [ ] PR 3, web, upload preview. After PR 2; no Release. Built on branch `upload-preview` from `rebill-web` `42fcd4a` (2026-10-22, the user's overnight request), not merged. Ship it after PR 2, with no other step: the one new api field it reads, `uploadAllowlist`, came with PR 1, which PR 2 already needs on the demo.
+    - [x] Choosing or dropping files only lists them: name, size, pages, a first-page thumbnail, Remove, and a warning for a file that will be refused, the golden-set check included through `uploadAllowlist`.
+    - [x] "Upload N invoices" with per-file progress ("Uploading 2 of 3…" with a spinner, each line's state), and Clear.
+    - [x] Toasts in a polite live region: success fades, errors stay until closed, Retry for 429, 503 and no answer.
+    - [x] Recent uploads reads "Reading…" (then "Checking…"), and a toast says when each upload finishes. The samples still upload on tap.
+    - [x] Tests first: 4 unit tests in `lib/uploads.test.ts` and 2 in `labels.test.ts` against stubs keeping today's behavior (6 of 36 failed, each on its value); the upload e2e tests rewritten, 10 with 3 new (on today's UI 10 of 12 failed). Then all passed.
+    - [x] Deliberate breaks, each failing a test and reverted: the golden-set warning off; any 5xx retryable; decided findings counted in the finish toast; the action called from `upload.tsx` rather than through `client.tsx` (the session test); choosing sends at once; errors fading; a sent duplicate counted again; the toasts without their live region.
+    - [x] Checks: `pnpm turbo run build typecheck lint test --force` 44 tasks (web 123 unit tests), `pnpm contracts:check`, `pnpm test:int` 141 in 25 suites, `pnpm e2e` 38 passed with the same 8 PDF-drawing tests failing as on main in this container, lockout alone 1 passed. With pdf.js's two missing methods polyfilled for a local run only, all 12 upload and re-bill tests passed.
+    - [ ] The user ships it after PR 2; then `pnpm e2e:screenshots` on the PC, since the upload page's round-1 shot shows the old dropzone.
 
 ## Completed
 

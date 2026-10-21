@@ -19,6 +19,60 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-22: Re-bills PR 3 built: the upload page lists files first, uploads them with one button and its progress, and says what follows in toasts (branch upload-preview from rebill-web `42fcd4a`)
+
+- **Readings the plan left open** (the user's rule for this overnight session: take the most reasonable reading and note it here; docs/memory.md, 2026-10-22, re-bills PR 3, has them in short):
+  - "Upload N invoices" counts only files that can go: read in the browser with nothing against them, and not sent yet, or sent and met a 429, a 503 or no answer. A file with a warning is never sent; Remove takes it off the list.
+  - Files go one at a time, in list order. A 429, a 503 or no answer ends the batch, since the next file would meet the same; the files not sent wait again, and Upload counts them. Any other refusal marks its file, and the batch goes on.
+  - Sent files stay listed with their outcome ("Uploaded", or the invoice an exact duplicate already is, linked) until Remove, Clear or a reload.
+  - An exact duplicate is a notice: a neutral toast that fades, with the same words on its line.
+  - After a batch, one success toast, "N invoices uploaded. Reading now.", with View (the invoice for one, the list for several), and one error toast, "Not uploaded", listing each file's reason, with Retry only after a 429, a 503 or no answer. Errors stay until closed; the rest fade after 6 s.
+  - While the backend is marked offline, an upload answers "The FreightAudit API did not answer. Try again in a moment." with Retry, in place of "Sample data is read-only.", which gave the upload page no way back. The sample buttons show the same words.
+  - In-flight rows read "Reading…" (received or extracting) or "Checking…" (reconciling), in place of "Working, 1.4 s so far". The poller refreshes every 5 s, then 60 s, so a running time would jump. "Done in" stays.
+  - A row the page saw in flight gets a toast when it settles: "Invoice X read: N findings to review", "ready to approve" ("as billed" without a shipment), "its reading needs a check", or "X failed: …" as an error toast. A row already settled at first sight gets none.
+  - The golden-set warning compares the SHA-256 of the file's bytes with `uploadAllowlist`, as the api checks the bytes it receives. It is unit-tested only: the e2e api runs without `UPLOAD_ALLOWLIST`, so the field is null there.
+  - pdf.js draws the first page 96 px wide, shown at 48; an image shows itself, through a blob URL released when its line goes. A PDF that pdf.js cannot read shows no picture and no page count, and the server's checks still apply.
+  - The page heading stays "Upload an invoice". No screenshot was retaken; `screenshots.spec.ts` only follows the new labels and the Upload button.
+  - Claude commits this branch, as the session's instructions say, although AGENTS.md (Git) leaves shipping to the user; no pull request, no merge, no gh.
+- **Request:** PR 3 exactly as planned in docs/todo.md: a preview list with Remove and Clear, "Upload N invoices", "Uploading 2 of 3…" with a spinner, per-file states, success and error toasts, live "Reading…" rows and finish toasts, golden-set warnings from `uploadAllowlist`, accessible and right at a phone's width. Tests first.
+- **Environment:** as in the readyz-stopgap entry: Node 24.22.0 through nvm, `dockerd` started by hand, Playwright 1.64 on the preinstalled Chromium 141 through scratchpad links, toxiproxy and gitleaks built from source.
+- **Tests first:**
+  - Unit: `apps/web/lib/uploads.test.ts`, 4 tests (sizes; refusals by type, size, pages and the golden set; the button's words; the batch toast and the retry codes), and 2 in `labels.test.ts` (the in-flight words, the finish toast). Against stubs keeping today's behavior, 6 of 36 failed, each on its value ("312 KB" against "319488", for one).
+  - e2e, `apps/web/e2e/main.spec.ts`: the upload tests rewritten, 10 with 3 new (Remove and Clear, no answer with Retry, a phone's width). On today's UI 10 of 12 failed: 8 found no "Invoice files" input (today's is "Invoice file"), and the duplicate and re-bill tests found no digital.pdf invoice, since the first test stops before its upload. The sample tap passed.
+  - Weak spot: most e2e REDs fail at the input's new name, not at a behavior. The deliberate breaks below cover the behaviors.
+- **Code:**
+  - `lib/uploads.ts` (new, pure): `sizeLabel`, `pickProblem`, `uploadLabel`, `progressLabel`, `uploadedToast`, `RETRYABLE`, `retryCode`.
+  - `components/upload.tsx` (new, a client component): the dropzone, the list of files, the batch, the toasts and the recent uploads table, moved out of `components/client.tsx`. pdf.js counts the pages and draws the first page, loaded as the viewer loads it.
+  - `components/client.tsx`: the old upload area out, `sendUpload` in (below).
+  - `app/actions.ts`: `upload` answers the new invoice's `id`; a 429 or 503 carries `RATE_LIMITED` or `BUSY`, and no answer `UNAVAILABLE`. In `send`, the offline check replaces `asReviewer`, since both callers check the session first.
+  - `lib/labels.ts`: `finishedNote`, and `uploadState` without its `now`.
+  - `recent-uploads.graphql`: the invoice's `number` and `uploadAllowlist` (38 fields, depth 8; the limits test passed as it was). Codegen changed the two client files.
+  - `app/(app)/upload/page.tsx` passes each row's `inFlight` and `finished`, and the allowlist. `globals.css`: the list, the spinner and the toasts, with reduced motion honored.
+- **The session test caught a regression:**
+  - What happened: with the cookie cleared, Upload stayed on `/upload` and answered "The upload did not reach the server." instead of going to sign-in.
+  - Why: `proxy.ts` answers a sessionless action POST with a 307 to `/login`, where Next runs only the actions that page's bundle carries. With the upload area in its own file, only `/upload` carried `upload` (`.next/server/server-reference-manifest.json`: 1 page, the other actions 9). On main, `client.tsx` calls it, and every page loads that file. This confirms the cause docs/memory.md (2026-10-18) left "not confirmed".
+  - What we did: `client.tsx` exports `sendUpload`, which calls the action, and `upload.tsx` calls that. A bare re-export (`export { upload } from …`) did not work: the build dropped it and the manifest still listed 1 page. With the wrapper, 9 pages, and the test passed. Best because it keeps the action where main has it, with no change to `proxy.ts`, which would widen what reaches Next without a session.
+- **The PDF-drawing failures, corrected:**
+  - What happened: the first two upload tests failed on the thumbnail and on "Page 1 of 1", and a polyfill for `Math.sumPrecise` alone changed nothing.
+  - Why: a scratch page that loads pdf.js from `node_modules` in this Chromium 141 showed `render()` throwing "getOrInsertComputed is not a function" (`Map.prototype.getOrInsertComputed`), with only a warning for `Math.sumPrecise`. PR 2's entry named `Math.sumPrecise` alone; it stays as written, and docs/todo.md is corrected.
+  - What we did: for local runs only, an init script in the upload tests polyfilled both. All 12 upload and re-bill tests passed, thumbnails and "Page 1 of 1" included. It was removed before the commit (grep finds none). By caniuse's MDN data (web search, not checked against release notes) the method ships in Chrome 145, Firefox 144 and Safari 26.2, so older browsers draw no page in the viewer, on main too. The options are in docs/todo.md (Pending), not built.
+- **A cascade, then fixed** (agent mistake): the thumbnail check first came right after the listing. In this container the first test then stopped before its upload, and the duplicate, drop and re-bill tests failed with it (11 failed). It now comes after the upload settles, and the full run failed the same 8 as main.
+- **Deliberate breaks, each failing a test and reverted:** the golden-set warning off (unit); any 5xx retryable (unit); decided findings counted in the finish toast (unit); the action called from `upload.tsx` as before the fix (e2e, the session test); choosing sends at once (e2e, 2 tests); errors fading like successes (e2e, the no-answer test); a sent duplicate counted again (e2e, the drop test); the toasts without their live region (e2e).
+  - Agent mistake: the first try at the session break left `sendUpload` in `client.tsx`, so every page still carried the action and the test passed. It was redone as the code stood before the fix: the manifest listed 1 page and the test failed.
+- **Visual check:** a scratch script, with the two polyfills, started the e2e stack, listed four files on `/upload` (a new PDF, a 6.2 MB JPEG, a text file and a PNG) and uploaded the two that could go, at 1280 and 390 px; screenshots not committed. The refused two showed their reasons in the warning color, the PDF and the PNG their first page. The button read "Upload 2 invoices", the lines then "Uploaded", and the toasts "2 invoices uploaded. Reading now." and then each invoice's finish. At 390 px the page stayed 390 wide and every button fit; the toasts take the width less 32 px at the foot of the screen and cover the list's bottom for their 6 s.
+- **Small events:**
+  - Lint: `uploadState`'s `now` was unused once the running time went; removed, with its callers' argument.
+  - tsc: the operation's new `number` reached the `Recent` type, which `uploadState`'s test fixtures build. It is omitted there, since `uploadState` does not read it; `finishedNote` takes it on its own.
+  - Two e2e tests rerun without `prepare.ts` met their files as duplicates of the previous run's. Every later run started with it.
+  - `pnpm test` from `apps/web` ran the root's turbo, since the scratch `env.sh` changes to the root; `pnpm run test` from `apps/web` gives the web's count.
+- **The push was refused** (403, no GitHub write access in this session, as for every branch); the branch goes to the user as a git bundle.
+- Files: `apps/web/components/{upload,client}.tsx`, `apps/web/lib/{uploads.ts,uploads.test.ts,labels.ts,labels.test.ts}`, `apps/web/app/actions.ts`, `apps/web/app/(app)/upload/page.tsx`, `apps/web/app/globals.css`, `apps/web/e2e/{main,screenshots}.spec.ts`, `packages/contracts/operations/recent-uploads.graphql`, `packages/contracts/src/generated/graphql-client/{gql,graphql}.ts`, `README.md`, `docs/{todo,context,memory,threat-notes,activity-log}.md`.
+- Validation: `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks (web 123 unit tests in 7 suites, from 118 in 6); `pnpm contracts:check`; `pnpm test:int` 141 in 25 suites; `pnpm e2e` 38 passed, the same 8 PDF-drawing tests failing as on main in this container, and lockout, which waits on them, alone 1 passed (47 tests in all, from 44). No live model call.
+- Outstanding:
+  - Ship after PR 2, under the same demo condition; then `pnpm e2e:screenshots` on the PC.
+  - The pdf.js browser question (docs/todo.md, Pending).
+  - Each overnight branch adds its entry at the top of this log, so merging them in turn conflicts here; keep both entries.
+
 ### 2026-10-22: Re-bills PR 2 built: each duplicate charge names where it was billed first, and a re-bill says so in its header and on its upload row (branch rebill-web from main `c698d9f`)
 
 - **Readings the plan left open** (the user's rule for this overnight session: take the most reasonable reading and note it here):

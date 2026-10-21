@@ -477,7 +477,7 @@ export function trailRows(
 // The upload page's progress steps; a step index says which one is under way.
 export const STEPS = ['Uploaded', 'Reading', 'Checking', 'Checked'] as const;
 const SETTLED = new Set(['reconciled', 'needs_review', 'failed']);
-type Recent = Omit<RecentUploadsQuery['invoices']['edges'][number]['node'], 'id' | 'filename'>;
+type Recent = Omit<RecentUploadsQuery['invoices']['edges'][number]['node'], 'id' | 'filename' | 'number'>;
 export type UploadState = { step?: number; done?: string; result: string; tone: 'ok' | 'warn' | 'bad' | 'accent' | 'faint'; rebill?: Words };
 // A checked upload's result: what holds it, or how far it bills over the rate card.
 function reconciledState(upload: Recent, findings: Recent['discrepancies']['edges'][number]['node'][]): Pick<UploadState, 'result' | 'tone'> {
@@ -493,12 +493,24 @@ function reconciledState(upload: Recent, findings: Recent['discrepancies']['edge
     : { result: 'Ready to approve, matched the rate card', tone: 'ok' };
 }
 
+// The toast once an upload settles while the page is open: what was read, and what now waits for the reviewer. A failure
+// is an error toast, which stays until closed.
+type Settled = Pick<Recent, 'status' | 'hold' | 'shipment' | 'reviewReason' | 'failureReason' | 'discrepancies'> & { number: string | null; filename: string };
+export function finishedNote(upload: Settled): { text: string; tone: 'ok' | 'bad' } {
+  const name = upload.number ? `Invoice ${upload.number}` : upload.filename;
+  if (upload.status === 'FAILED') return { text: `${name} failed: ${upload.failureReason ? capital(upload.failureReason) : 'Used up its retries'}`, tone: 'bad' };
+  if (upload.status === 'NEEDS_REVIEW') return { text: `${name} read: its reading needs a check`, tone: 'ok' };
+  const open = upload.discrepancies.edges.filter(({ node }) => node.status === 'OPEN').length;
+  if (open > 0) return { text: `${name} read: ${plural(open, 'finding')} to review`, tone: 'ok' };
+  return { text: `${name} read: ${upload.shipment ? 'ready to approve' : 'ready to approve as billed'}`, tone: 'ok' };
+}
+
 // A recent upload: its step while in flight, else how long it took (upload to its first settled status) and the result.
-export function uploadState(upload: Recent, now: number): UploadState {
+export function uploadState(upload: Recent): UploadState {
   const created = Date.parse(upload.createdAt);
   if (IN_FLIGHT.has(upload.status)) {
     const step = upload.status === 'RECEIVED' || upload.status === 'EXTRACTING' ? 1 : 2;
-    return { step, result: `Working, ${duration(now - created)} so far`, tone: 'faint' };
+    return { step, result: step === 1 ? 'Reading…' : 'Checking…', tone: 'faint' };
   }
   const settled = upload.auditTrail.find((entry) => entry.changes.some((change) => change.field === 'status' && SETTLED.has(change.to ?? '')));
   const done = settled ? `Done in ${duration(Date.parse(settled.at) - created)}` : 'Done';

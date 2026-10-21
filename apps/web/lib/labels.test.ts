@@ -11,6 +11,7 @@ import {
   duration,
   FILTERS,
   filterCount,
+  finishedNote,
   findingText,
   findingTitle,
   firstParams,
@@ -507,7 +508,6 @@ test("the api's refusals read as sentences, and the two a page out of date meets
 });
 
 test('a recent upload shows its step while in flight, then how long it took and the result', () => {
-  const now = Date.parse(at(1.4));
   const base = {
     createdAt: at(0),
     currency: 'USD',
@@ -520,12 +520,13 @@ test('a recent upload shows its step while in flight, then how long it took and 
     discrepancies: { edges: [] },
     auditTrail: [],
   };
-  expect(uploadState({ ...base, status: 'EXTRACTING' }, now)).toEqual({ step: 1, result: 'Working, 1.4 s so far', tone: 'faint' });
-  expect(uploadState({ ...base, status: 'RECEIVED' }, now).step).toBe(1);
-  expect(uploadState({ ...base, status: 'RECONCILING' }, now).step).toBe(2);
+  // While the pipeline has it, a row reads what it does: reading, then checking.
+  expect(uploadState({ ...base, status: 'EXTRACTING' })).toEqual({ step: 1, result: 'Reading…', tone: 'faint' });
+  expect(uploadState({ ...base, status: 'RECEIVED' })).toEqual({ step: 1, result: 'Reading…', tone: 'faint' });
+  expect(uploadState({ ...base, status: 'RECONCILING' })).toEqual({ step: 2, result: 'Checking…', tone: 'faint' });
   const settled = { ...base, auditTrail: [{ id: 'x', at: at(3.4), action: 'STATUS_CHANGED' as const, changes: [{ field: 'status', to: 'reconciled' }] }] };
   const finding = { node: { id: 'f', status: 'OPEN' as const, billedCents: 39_680, expectedCents: 25_220, earlierInvoice: null } };
-  expect(uploadState({ ...settled, status: 'RECONCILED', hold: 'OPEN_FINDINGS', discrepancies: { edges: [finding] } }, now)).toEqual({
+  expect(uploadState({ ...settled, status: 'RECONCILED', hold: 'OPEN_FINDINGS', discrepancies: { edges: [finding] } })).toEqual({
     done: 'Done in 3.4 s',
     result: 'Billing issues (1), +$144.60 over the rate card',
     tone: 'accent',
@@ -533,37 +534,59 @@ test('a recent upload shows its step while in flight, then how long it took and 
   // A possible duplicate bills nothing over the rate card, and still holds the invoice back; a confirmed one only waits
   // to be rejected.
   const duplicate = { node: { id: 'd', status: 'OPEN' as const, billedCents: 0, expectedCents: 0, earlierInvoice: null } };
-  expect(uploadState({ ...settled, status: 'RECONCILED', hold: 'POSSIBLE_DUPLICATE', discrepancies: { edges: [duplicate] } }, now)).toMatchObject({
+  expect(uploadState({ ...settled, status: 'RECONCILED', hold: 'POSSIBLE_DUPLICATE', discrepancies: { edges: [duplicate] } })).toMatchObject({
     result: 'Billing issues (1), possible duplicate to decide',
     tone: 'accent',
   });
   const confirmed = { node: { ...duplicate.node, status: 'CONFIRMED' as const } };
-  expect(uploadState({ ...settled, status: 'RECONCILED', hold: 'CONFIRMED_DUPLICATE', discrepancies: { edges: [confirmed] } }, now)).toMatchObject({
+  expect(uploadState({ ...settled, status: 'RECONCILED', hold: 'CONFIRMED_DUPLICATE', discrepancies: { edges: [confirmed] } })).toMatchObject({
     result: 'Confirmed duplicate, waits to be rejected',
     tone: 'warn',
   });
   // A disputed finding still stands over the rate card, but no billing issue is left open.
   const disputed = { node: { ...finding.node, status: 'CONFIRMED' as const } };
-  expect(uploadState({ ...settled, status: 'RECONCILED', discrepancies: { edges: [disputed] } }, now)).toMatchObject({ result: 'Ready to approve, +$144.60 over the rate card' });
-  expect(uploadState({ ...settled, status: 'RECONCILED' }, now)).toMatchObject({ result: 'Ready to approve, matched the rate card', tone: 'ok' });
+  expect(uploadState({ ...settled, status: 'RECONCILED', discrepancies: { edges: [disputed] } })).toMatchObject({ result: 'Ready to approve, +$144.60 over the rate card' });
+  expect(uploadState({ ...settled, status: 'RECONCILED' })).toMatchObject({ result: 'Ready to approve, matched the rate card', tone: 'ok' });
   // Held at its approval from review, it matched no shipment; found no duplicate, it is approved as billed.
   const dismissed = { node: { ...duplicate.node, status: 'DISMISSED' as const } };
-  expect(uploadState({ ...settled, status: 'RECONCILED', shipment: null, discrepancies: { edges: [dismissed] } }, now)).toMatchObject({
+  expect(uploadState({ ...settled, status: 'RECONCILED', shipment: null, discrepancies: { edges: [dismissed] } })).toMatchObject({
     result: 'Ready to approve as billed, not checked against the rate card',
     tone: 'ok',
   });
-  expect(uploadState({ ...settled, status: 'NEEDS_REVIEW', reviewReason: 'no_shipment_match' }, now)).toMatchObject({
+  expect(uploadState({ ...settled, status: 'NEEDS_REVIEW', reviewReason: 'no_shipment_match' })).toMatchObject({
     result: 'Reading needs a check: No shipment matches',
     tone: 'warn',
   });
-  expect(uploadState({ ...base, status: 'FAILED', failureReason: 'shipment has no miles' }, now)).toEqual({ done: 'Done', result: 'Failed: Shipment has no miles', tone: 'bad' });
-  expect(uploadState({ ...settled, status: 'APPROVED' }, now)).toMatchObject({ result: 'Approved', tone: 'ok' });
-  expect(uploadState({ ...settled, status: 'APPROVED', shipment: null }, now)).toMatchObject({ result: 'Approved as billed', tone: 'ok' });
-  expect(uploadState({ ...settled, status: 'REJECTED' }, now)).toMatchObject({ result: 'Rejected', tone: 'faint' });
+  expect(uploadState({ ...base, status: 'FAILED', failureReason: 'shipment has no miles' })).toEqual({ done: 'Done', result: 'Failed: Shipment has no miles', tone: 'bad' });
+  expect(uploadState({ ...settled, status: 'APPROVED' })).toMatchObject({ result: 'Approved', tone: 'ok' });
+  expect(uploadState({ ...settled, status: 'APPROVED', shipment: null })).toMatchObject({ result: 'Approved as billed', tone: 'ok' });
+  expect(uploadState({ ...settled, status: 'REJECTED' })).toMatchObject({ result: 'Rejected', tone: 'faint' });
+});
+
+test('an upload that settles while the page is open says so in a toast: what was read and what waits for the reviewer', () => {
+  const finding = (status: 'OPEN' | 'CONFIRMED') => ({ node: { id: status, status, billedCents: 100, expectedCents: 0, earlierInvoice: null } });
+  const upload = {
+    number: '74732749',
+    filename: 'g071.pdf',
+    status: 'RECONCILED' as const,
+    hold: 'OPEN_FINDINGS' as const,
+    shipment: { id: 's', reference: 'SHP-001426' },
+    reviewReason: null,
+    failureReason: null,
+    discrepancies: { edges: [finding('OPEN'), finding('OPEN'), finding('OPEN'), finding('CONFIRMED')] },
+  };
+  expect(finishedNote(upload)).toEqual({ text: 'Invoice 74732749 read: 3 findings to review', tone: 'ok' });
+  expect(finishedNote({ ...upload, discrepancies: { edges: [finding('OPEN')] } }).text).toBe('Invoice 74732749 read: 1 finding to review');
+  expect(finishedNote({ ...upload, hold: null, discrepancies: { edges: [] } }).text).toBe('Invoice 74732749 read: ready to approve');
+  // Without a number, the file's name; a reading in doubt or a failure says so, the failure until closed.
+  expect(finishedNote({ ...upload, number: null, status: 'NEEDS_REVIEW', discrepancies: { edges: [] } }).text).toBe('g071.pdf read: its reading needs a check');
+  expect(finishedNote({ ...upload, number: null, status: 'FAILED', failureReason: 'shipment has no miles', discrepancies: { edges: [] } })).toEqual({
+    text: 'g071.pdf failed: Shipment has no miles',
+    tone: 'bad',
+  });
 });
 
 test('a recent upload that re-bills a shipment says so beside its result, naming the invoice that billed its lines first', () => {
-  const now = Date.parse(at(9));
   const charge = (id: string, earlierInvoice: typeof first | null) => ({ node: { id, status: 'OPEN' as const, billedCents: 9_778, expectedCents: 0, earlierInvoice } });
   const upload = {
     status: 'RECONCILED' as const,
@@ -578,19 +601,19 @@ test('a recent upload that re-bills a shipment says so beside its result, naming
     discrepancies: { edges: [charge('a', first), charge('b', first), charge('c', first)] },
     auditTrail: [{ id: 'x', at: at(3.4), action: 'STATUS_CHANGED' as const, changes: [{ field: 'status', to: 'reconciled' }] }],
   };
-  const state = uploadState(upload, now);
+  const state = uploadState(upload);
   expect(state).toMatchObject({ done: 'Done in 3.4 s', result: 'Billing issues (3), +$293.34 over the rate card', tone: 'accent' });
   expect(state.rebill).toEqual(['Re-bills SHP-001426: 3 of 3 lines already billed on ', { invoice: 'e1', text: 'invoice 74731111' }]);
   // Only charges with an earlier invoice count; a repeat on its own invoice has none.
-  expect(said(uploadState({ ...upload, discrepancies: { edges: [charge('a', first), charge('b', null)] } }, now).rebill!)).toBe(
+  expect(said(uploadState({ ...upload, discrepancies: { edges: [charge('a', first), charge('b', null)] } }).rebill!)).toBe(
     'Re-bills SHP-001426: 1 of 3 lines already billed on invoice 74731111',
   );
-  const both = uploadState({ ...upload, discrepancies: { edges: [charge('a', first), charge('b', second)] } }, now).rebill!;
+  const both = uploadState({ ...upload, discrepancies: { edges: [charge('a', first), charge('b', second)] } }).rebill!;
   expect(said(both)).toBe('Re-bills SHP-001426: 2 of 3 lines already billed on earlier invoices: invoice 74731111 and invoice 74731222');
   expect(linksOf(both)).toEqual([
     { invoice: 'e1', text: 'invoice 74731111' },
     { invoice: 'e2', text: 'invoice 74731222' },
   ]);
-  expect(uploadState({ ...upload, discrepancies: { edges: [charge('b', null)] } }, now).rebill).toBeUndefined();
-  expect(uploadState({ ...upload, status: 'APPROVED' }, now).rebill).toBeUndefined();
+  expect(uploadState({ ...upload, discrepancies: { edges: [charge('b', null)] } }).rebill).toBeUndefined();
+  expect(uploadState({ ...upload, status: 'APPROVED' }).rebill).toBeUndefined();
 });

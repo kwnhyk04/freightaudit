@@ -462,6 +462,18 @@ From the approved design doc:
   - The re-bill line sits under the result, in the Result cell, so the result keeps its words and tone.
   - Not done: retaking the screenshots. The sample's g056 now reads "Delivery appointment was already billed on line 3 of this invoice." with "Already billed on line 3", so `docs/screenshots/ui/demo-invoice-*.png` (the README's) are out of date; this container's Chromium cannot draw the PDF.
   - Reason: the approved plan; each choice is the smallest that fits it.
+- 2026-10-22: Re-bills PR 3 as built (branch `upload-preview`; the plan's items, these readings the agent's, for the user to confirm at review).
+  - "Upload N invoices" counts only files that can go: read in the browser with nothing against them, and not sent yet or sent and met an answer worth trying again. A file with a warning is never sent; Remove takes it off the list.
+  - One file at a time, in list order. A 429, a 503 or no answer ends the batch, since the next file would meet the same; the files not sent wait again and Upload counts them. Any other refusal marks its file, and the batch goes on.
+  - Sent files stay listed with their outcome ("Uploaded", or the invoice an exact duplicate already is, linked) until Remove, Clear or a reload.
+  - An exact duplicate is a notice, not an error: a neutral toast that fades, with the same words on its line.
+  - After a batch, one success toast ("N invoices uploaded. Reading now.", with View) and one error toast listing each file's reason, with Retry only for the three answers above.
+  - While the backend is marked offline, an upload answers "The FreightAudit API did not answer. Try again in a moment." with Retry, in place of "Sample data is read-only.", which gave the upload page no way back. The sample buttons show the same words.
+  - In-flight rows read "Reading…" (received or extracting) or "Checking…" (reconciling). The elapsed time is gone: the poller refreshes every 5 s, then 60 s, so a running time would jump. "Done in" stays.
+  - A row the page saw in flight gets a toast once it settles: "Invoice X read: N findings to review", "ready to approve" ("as billed" without a shipment), "its reading needs a check", or "X failed: …" as an error toast. A row settled at first sight gets none.
+  - The golden-set warning compares the SHA-256 of the file's bytes with `uploadAllowlist`, as the api checks the bytes it receives. It is unit-tested only: the e2e api has no `UPLOAD_ALLOWLIST`.
+  - The page heading stays "Upload an invoice". No screenshot was retaken.
+  - Reason: the plan's items; each choice is the smallest that fits them.
 - 2026-10-21: The demo-check-retry PR (the user's request; the details are the agent's).
   - `pnpm demo:up`'s keyless check tries again, as the `/healthz` wait does, until the same 10-minute deadline. A try with no answer is repeated; any answer but 401 still fails at once, so the check still proves the key is required.
   - `release.yml` takes `workflow_dispatch` for a push that started no Release, as `7dec271`'s did. `publish` runs only on main, so a run started on another branch never moves `latest`.
@@ -724,6 +736,15 @@ From the approved design doc:
   - What we did: diagnosed read-only and changed nothing on the demo. The proposed fix (docs/todo.md) tries the keyless request again until the same deadline, and still fails at once on any answer but 401.
 - 2026-10-21: The web's live check is often slower than its own limit. `isLive` gives `/readyz` 2.5 s (`apps/web/lib/server.ts`), but at a calm moment only 3 of 10 public `/healthz` and `/readyz` requests from this PC answered within 2.5 s, and 2 never connected in 30 s (docs/context.md, Known Limitations). How to apply: a "Live backend offline" banner with the PC up may be this, not an outage; the proposed fix is in docs/todo.md.
 - 2026-10-21: In Git Bash, `docker exec <container> tailscale --socket=/tmp/tailscaled.sock …` fails: MSYS turns `/tmp/…` into `H:/.tmp/…`. Prefix the command with `MSYS_NO_PATHCONV=1`. `scripts/demo.ts` spawns docker from Node, so it is not affected.
+- 2026-10-22: A server action reaches `/login` without a session, and runs there only if the `/login` page carries it. This confirms the 2026-10-18 entry above, whose cause was "not confirmed".
+  - What happened: on branch `upload-preview`, with the cookie cleared, Upload stayed on `/upload` and answered "The upload did not reach the server." instead of going to sign-in.
+  - Why: `proxy.ts` answers a sessionless action POST with a 307 to `/login`, and the browser posts it there again, body and all. Next runs an action only on a page whose bundle carries it, else it forwards or fails. The upload area had moved to `components/upload.tsx`, so only `/upload` carried `upload` (`apps/web/.next/server/server-reference-manifest.json`: 1 page; the other actions 9). On main, `components/client.tsx` calls it, and every page loads that file.
+  - What we did: `client.tsx` exports `sendUpload`, which calls the action, and `upload.tsx` calls that; the manifest then listed 9 pages and the session test passed. A bare re-export (`export { upload } from …`) was not enough: the build dropped it and the manifest still listed 1 page.
+  - How to apply: a client file that calls an action must be one every page loads, or the action must also be called from `client.tsx`. After moving one, check its pages in the manifest.
+- 2026-10-22: pdf.js 6.4.299's modern build calls `Map.prototype.getOrInsertComputed` when it renders a page, and this container's Chromium 141 lacks it. Earlier entries (2026-10-22, PR 2) named `Math.sumPrecise` alone as the cause.
+  - What happened: with `Math.sumPrecise` polyfilled, the upload page's thumbnail and the viewer still drew nothing.
+  - Why: a scratch page loading pdf.js from `node_modules` in this Chromium showed `render()` throwing "getOrInsertComputed is not a function"; `Math.sumPrecise`'s absence only gave a warning, with fonts degraded. With both polyfilled the page drew.
+  - What we did: for local runs only, an init script polyfilled both in the upload tests, and all 12 upload and re-bill tests passed; it never went into a commit. Which browsers this leaves out, and the options, are in docs/todo.md (Pending).
 
 ## Rejected Approaches
 
@@ -785,6 +806,14 @@ From the approved design doc:
   - Why: not confirmed. Most likely they came from the computation that entry describes (the 2026-10-15 per-case scores through the harness's `measure`), and only some of its results were written down.
   - What we did: the README pass kept the recorded rows, with that entry as their source, and dropped the others (user rule: name the source or leave the number out).
   - How to apply: write every computed number into the activity log with how it was computed, in the entry that computes it.
+- 2026-10-22: Put a check the environment may fail after the step later tests rely on (agent mistake).
+  - What happened: PR 3's first e2e test checked the PDF's thumbnail right after listing it. In this container pdf.js cannot draw, so the test stopped before uploading digital.pdf, and the duplicate, drop and re-bill tests, which need that invoice, failed with it: 11 failed instead of main's 8.
+  - Why: the e2e tests share one database and run in order, so a test's upload is the next test's data.
+  - What we did: the thumbnail check moved after the upload settles. The full run then failed the same 8 as main.
+- 2026-10-22: A deliberate break must undo the whole fix (agent mistake).
+  - What happened: to break the session fix, the agent called the upload action directly from `upload.tsx` but left `sendUpload` in `client.tsx`. Every page still carried the action, so the session test passed and the break proved nothing.
+  - Why: the fix is where the action is called from, not which call `upload.tsx` makes.
+  - What we did: redid the break as the code stood before the fix (no `sendUpload`, the direct import). The manifest listed 1 page and the test failed. Then restored the fix.
 
 ## Constraints
 

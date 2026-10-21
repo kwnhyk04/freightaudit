@@ -1,12 +1,15 @@
 'use client';
 import type { InvoiceDecision } from '@freightaudit/contracts/graphql';
-import { checkUpload, MAX_PDF_PAGES, MAX_UPLOAD_LABEL, type UploadCheck } from '@freightaudit/contracts/limits';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { type ReactNode, useActionState, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useActionState, useEffect, useRef } from 'react';
 import { type ActionState, login, review, upload, uploadSample } from '../app/actions.ts';
-import { duplicateParts, STEPS, type UploadState } from '../lib/labels.ts';
-import { Said } from './ui.tsx';
+import { duplicateParts } from '../lib/labels.ts';
+
+// One file through the upload action, for components/upload.tsx. Called here, the action ships with every page that loads
+// this file: proxy.ts sends a sessionless upload to /login, which runs only actions it carries, and the session check
+// there sends the browser to sign-in.
+export const sendUpload = (form: FormData) => upload({}, form);
 
 // The sidebar's links, marking the section the reader is in, with a count where one waits; screen readers hear the
 // count as words.
@@ -80,14 +83,6 @@ export function StatusPoller({ active, label }: { active: boolean; label: string
   );
 }
 
-const describe = (file: File, check: Exclude<UploadCheck, { ok: true }>) => {
-  if (check.detail.startsWith('file is larger')) return `The file is ${(file.size / 1024 / 1024).toFixed(1)} MB; the limit is ${MAX_UPLOAD_LABEL}.`;
-  if (check.detail.startsWith('file must be')) return "It isn't a PDF, PNG or JPG.";
-  return `${check.detail.charAt(0).toUpperCase()}${check.detail.slice(1)}.`;
-};
-
-export type RecentRow = UploadState & { id: string; filename: string };
-
 // An exact duplicate's warning, with the invoice it already is as a link. The span keeps the sentence on its lines,
 // since a notice lays out its children as a grid.
 function DuplicateNotice({ existing, role }: { existing: NonNullable<ActionState['existing']>; role?: 'status' }) {
@@ -100,161 +95,6 @@ function DuplicateNotice({ existing, role }: { existing: NonNullable<ActionState
         {after}
       </span>
     </p>
-  );
-}
-
-// The dropzone and the recent uploads below it. A chosen or dropped file is checked as the api would check it and then
-// uploads by itself; a refused one joins the list as "Not accepted" until the page reloads, since it never reaches the
-// server. The live region says what is happening; focus stays where it was.
-export function UploadArea({ rows }: { rows: RecentRow[] }) {
-  const [state, action, pending] = useActionState<ActionState, FormData>(upload, {});
-  const [refused, setRefused] = useState<{ name: string; reason: string }[]>([]);
-  // The latest file refused in the browser, announced in place of any earlier upload's result.
-  const [notice, setNotice] = useState<string>();
-  const [sending, setSending] = useState<string>();
-  const [over, setOver] = useState(false);
-  // Choosing a file does nothing until React can check it, so the input waits for the page to hydrate.
-  const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
-  // An upload's own result comes after any refusal made while it was sending.
-  useEffect(() => {
-    if (!pending) setNotice(undefined);
-  }, [pending]);
-  const form = useRef<HTMLFormElement>(null);
-  const input = useRef<HTMLInputElement>(null);
-  // A file that never reaches the server joins the list as "Not accepted" and is announced.
-  function refuse(name: string, reason: string) {
-    setRefused((list) => [{ name, reason }, ...list]);
-    setNotice(`${name} not accepted: ${reason}`);
-  }
-  async function take(file: File | undefined) {
-    if (!file) return;
-    const result = checkUpload(new Uint8Array(await file.slice(0, 1024 * 1024).arrayBuffer()), file.size);
-    if (!result.ok) {
-      refuse(file.name, describe(file, result));
-      setSending(undefined);
-      if (input.current) input.current.value = '';
-      return;
-    }
-    setNotice(undefined);
-    setSending(file.name);
-    form.current?.requestSubmit();
-  }
-  // A refusal made while an upload sends is announced at once, in place of the upload's progress.
-  const status = notice ?? (pending ? `Uploading ${sending}` : (state.error ?? state.done ?? ''));
-  return (
-    <div className="upload-main">
-      <form
-        ref={form}
-        action={action}
-        className={`drop${over ? ' over' : ''}`}
-        onDragOver={(event) => {
-          event.preventDefault();
-          setOver(true);
-        }}
-        onDragLeave={() => setOver(false)}
-        onDrop={(event) => {
-          event.preventDefault();
-          setOver(false);
-          const file = event.dataTransfer.files[0];
-          if (!input.current || !file) return;
-          // A drop while an upload sends is refused: the disabled input would leave its file out of the form.
-          if (pending) return refuse(file.name, `Dropped while ${sending} was uploading. Drop it again.`);
-          input.current.files = event.dataTransfer.files;
-          void take(file);
-        }}
-      >
-        <svg className="drop-icon" aria-hidden="true" viewBox="0 0 24 24" width="24" height="24">
-          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5 M12 17v-6 M9.5 13.5 12 11l2.5 2.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <p>
-          <strong>Drop an invoice here, or </strong>
-          <label htmlFor="invoice-file" className="link">
-            choose a file
-          </label>
-        </p>
-        <input
-          ref={input}
-          id="invoice-file"
-          className="visually-hidden"
-          type="file"
-          name="file"
-          aria-label="Invoice file"
-          aria-describedby="upload-hint"
-          accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
-          disabled={!ready || pending}
-          onChange={(event) => void take(event.target.files?.[0])}
-        />
-        <p id="upload-hint" className="faint">
-          PDF, PNG or JPG, up to {MAX_UPLOAD_LABEL}, one invoice per file. A PDF may have up to {MAX_PDF_PAGES} pages. It uploads as soon as you choose it.
-        </p>
-        {/* The list below shows uploads and refused files; only a refusal from the server, or a duplicate's warning with
-            its link, shows here too. */}
-        <p className={state.error && !pending && !notice ? 'form-error' : 'visually-hidden'} role="status" aria-live="polite">
-          {status}
-        </p>
-        {state.existing && !pending && !notice && <DuplicateNotice existing={state.existing} />}
-      </form>
-      <section className="panel recent" aria-labelledby="recent-title">
-        <h2 id="recent-title">Recent uploads</h2>
-        {rows.length === 0 && refused.length === 0 ? (
-          <p className="faint">Nothing uploaded yet. Choose a file, or try a sample.</p>
-        ) : (
-          <div className="table-wrap" role="region" aria-labelledby="recent-title" tabIndex={0}>
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">File</th>
-                  <th scope="col">Progress</th>
-                  <th scope="col" className="num">
-                    Result
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {refused.map((file, index) => (
-                  <tr key={`refused-${index}`}>
-                    <td className="id">{file.name}</td>
-                    <td className="text-bad">Not accepted</td>
-                    <td className="num muted wrap">{file.reason}</td>
-                  </tr>
-                ))}
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>
-                      <Link href={`/invoices/${row.id}`} className="id">
-                        {row.filename}
-                      </Link>
-                    </td>
-                    <td>
-                      {row.step === undefined ? (
-                        <span className="text-ok">{row.done}</span>
-                      ) : (
-                        <ol className="steps" aria-label="Progress">
-                          {STEPS.map((step, index) => (
-                            <li key={step} className={index < row.step! ? 'done' : index === row.step ? 'now' : undefined} aria-current={index === row.step ? 'step' : undefined}>
-                              {step}
-                            </li>
-                          ))}
-                        </ol>
-                      )}
-                    </td>
-                    <td className={`num wrap text-${row.tone}`}>
-                      {row.result}
-                      {row.rebill && (
-                        <div className="muted">
-                          <Said words={row.rebill} base="" />
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-    </div>
   );
 }
 

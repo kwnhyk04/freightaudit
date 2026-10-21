@@ -19,14 +19,16 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { duplicateNote, refusal } from '../lib/labels.ts';
 import { createLimiter } from '../lib/limiter.ts';
+import { retryCode } from '../lib/uploads.ts';
 import { verifyPassword } from '../lib/password.ts';
 import { SAMPLES } from '../lib/samples.ts';
 import { ApiError, clientKey, currentSession, env, forgetSummary, gql, isLive, log, markOffline, requireSession, rest, REVIEWER } from '../lib/server.ts';
 import { createToken, safeNext, SESSION_COOKIE, SESSION_COOKIE_ATTRIBUTES, SESSION_SECONDS } from '../lib/session.ts';
 
-// error is the API's refusal as a sentence, with its code (CONFLICT means the page is out of date); done says what worked;
-// existing is the invoice an exact duplicate upload already is.
-export type ActionState = { error?: string; code?: string; done?: string; existing?: NonNullable<InvoiceBriefQuery['invoice']> };
+// error is the API's refusal as a sentence, with its code (CONFLICT means the page is out of date; lib/uploads.ts lists
+// the codes worth a retry); done says what worked, and id is the invoice a new upload made; existing is the invoice an
+// exact duplicate upload already is.
+export type ActionState = { error?: string; code?: string; done?: string; id?: string; existing?: NonNullable<InvoiceBriefQuery['invoice']> };
 
 const limiter = createLimiter();
 
@@ -96,11 +98,14 @@ export async function review(_: ActionState, form: FormData): Promise<ActionStat
   return {};
 }
 
+const NO_ANSWER = 'The FreightAudit API did not answer. Try again in a moment.';
 // One upload, from a chosen file or a sample: the same checks the api runs, so a refused file never travels further
 // than this server, then POST /v1/invoices. The page stays and refreshes, and the new invoice shows in its list.
 async function send(file: File, key: string): Promise<ActionState> {
   try {
-    await asReviewer();
+    // Both callers checked the session. Offline, as just after an api call got no answer, it is that answer again, which
+    // the upload page offers to retry, rather than the sample's read-only refusal.
+    if (!(await isLive())) return { error: NO_ANSWER, code: 'UNAVAILABLE' };
     const checked = checkUpload(new Uint8Array(await file.arrayBuffer()), file.size);
     if (!checked.ok) return { error: refusal(`${file.name}: ${checked.detail}`) };
     const { data, error, response } = await rest().POST('/v1/invoices', {
@@ -115,24 +120,24 @@ async function send(file: File, key: string): Promise<ActionState> {
     if (!data) {
       const wait = response.headers.get('retry-after');
       const detail = (error as { detail?: string } | undefined)?.detail ?? `the upload failed with HTTP ${response.status}`;
-      return { error: refusal(detail) + (wait ? ` Try again in ${wait} seconds.` : '') };
+      return { error: refusal(detail) + (wait ? ` Try again in ${wait} seconds.` : ''), code: retryCode(response.status) };
     }
     // A 200 means these exact bytes were uploaded before and nothing new was created: say which invoice they are.
     if (response.status === 200) {
       const { invoice } = await gql(InvoiceBriefDocument, { id: data.id });
       if (invoice) return { done: duplicateNote(invoice), existing: invoice };
     }
+    forgetSummary();
+    refresh();
+    return { done: `${file.name} uploaded.`, id: data.id };
   } catch (err) {
     if (err instanceof ApiError) return { error: refusal(err.message), code: err.code };
     if (err instanceof TypeError) {
       markOffline();
-      return { error: 'The FreightAudit API did not answer. Try again in a moment.' };
+      return { error: NO_ANSWER, code: 'UNAVAILABLE' };
     }
     throw err;
   }
-  forgetSummary();
-  refresh();
-  return { done: `${file.name} uploaded.` };
 }
 
 export async function upload(_: ActionState, form: FormData): Promise<ActionState> {
