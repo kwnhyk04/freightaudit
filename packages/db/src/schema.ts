@@ -122,6 +122,9 @@ export const extractions = pgTable('extractions', {
   // How the carrier read from the document matched a known carrier: exact, normalized or contained; null when none
   // matched, and on rows before 0011.
   carrierMatch: text('carrier_match'),
+  // Why Claude, reading first, handed the invoice to the free models (ClaudeHandoff in packages/llm); rows before 0017
+  // have none.
+  claudeHandoff: text('claude_handoff'),
   ...timestamps,
 });
 

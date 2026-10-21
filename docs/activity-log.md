@@ -19,6 +19,42 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-22: Claude hand-off recorded: while Claude reads first, why the free models read an invoice is stored, logged and shown in the audit trail (branch claude-fallback-log from main `c698d9f`)
+
+- **Readings the request left open** (the user's rule for this overnight session: take the most reasonable reading and note it here; docs/memory.md, 2026-10-22, has the choices and what was rejected):
+  - docs/todo.md had no item for it, done or open, so the task ran.
+  - "Reads an invoice with a fallback model" covers any free model: a hand-off at Claude's first pass goes to the free main model (text or primary), and one at its repair goes to the free fallback.
+  - "During the Claude-first window": past the end date nothing is recorded, since the free models reading is then the plan. Claude as the paid backup (not first) keeps no reason, as before.
+  - "An error class" is `failureOf`'s: `429`, `5xx`, `timeout`, `network` or `other`. The account reasons (`billing_error`, `credit_balance`, `spend_limit`, `bad_key_or_model`) are kept as such, and every later invoice reads `switched_off`.
+  - "The audit trail" is the api's `auditTrail` and the web's trail rows. The reason rides as a `claude` change on the read's last move (extracting to extracted or needs_review), beside the synthetic `carrier` change, so the invoice operation gains no field and stays at cost 83.
+  - The log line is warn: the worker's logger has no info level.
+  - Claude commits this branch, as the session's instructions say, although AGENTS.md (Git) leaves shipping to the user; no pull request, no merge, no gh.
+- **Request:** when the worker reads an invoice with a fallback model during the Claude-first window, log and store why (switched off, budget spent, a cap, an error class), so the audit trail and the logs say it. Tests first.
+- **Environment:** as in the readyz-stopgap entry: Node 24.22.0 through nvm, `dockerd` started by hand, Playwright 1.64 on Chromium 141 through scratchpad links, toxiproxy and gitleaks built from source.
+- **Tests first** (against `claudeHandoff: null` always, the column and its Drizzle mirror already in place):
+  - `packages/llm`: each Claude-first case in `claude-first.test.ts` says its `claudeHandoff`, and `extract.test.ts`'s whole-result check adds `null`. 13 of 40 failed, each on `claudeHandoff`.
+  - `apps/web/lib/labels.test.ts`: the Read and Sent to review rows with a `claude` change, an unknown reason shown as sent. 1 of 28 failed.
+  - Integration: two worker tests (Claude first with no day budget, read and not read; the row and the warn line, with nothing from the document in the log) and one api test (the change on extracted and needs_review moves, none without a reason). 3 failed.
+- **Code:**
+  - `packages/llm/src/extract.ts`: `ClaudeHandoff`, and `viaFirst` keeps the reason instead of dropping it.
+  - `packages/db`: `0017_claude_handoff.sql` (`extractions.claude_handoff`, nullable, no check) and `schema.ts`.
+  - `apps/worker/src/extract.ts`: the warn line, and the column on the saved, needs_review and split rows (through `CollectJob`); `testing.ts` gains `claudeFirst` for `runWorkers`.
+  - `apps/api/src/graphql.ts`: the `claude` change; `packages/contracts/schema.graphql` documents it under `AuditEntry.changes`, and codegen changed the resolver types' comments only.
+  - `apps/web/lib/labels.ts`: the words for each reason, on the Read and Sent to review rows.
+- **Deliberate breaks, each failing a test and reverted:** the end date counted as a hand-off (1 unit test); every failure called `other` (4); no note on Sent to review (1 web); the needs_review row without the reason, and the split upload's row without it (1 integration test each, run together); no log line (2); the api skipping needs_review moves (1).
+- **Small events:**
+  - `packages/db/src/migrations.int.test.ts` pins the applied names and their count; it failed on 0017 until both were updated (17 to 18). Structure, not behavior, so it was updated before the RED run that counts.
+  - A split-upload worker test came after GREEN, since the first tests missed `collect`. The break that drops the reason there failed it.
+  - `pnpm test:int -- apps/worker/src/extract.int.test.ts -t "<name>"` ran the whole file (16 tests). Why the name filter did not apply is not confirmed; the file passed either way.
+  - The todo line first said the invoice operation stays at cost 83 before it was checked. The scratch sizes script then printed 83 (and `NEXT` is 5), so the line stands.
+- **The push was refused** (403, no GitHub write access in this session, as for every branch); the branch goes to the user as a git bundle.
+- Files: `packages/llm/src/{extract.ts,index.ts,claude-first.test.ts,extract.test.ts}`, `packages/db/{migrations/0017_claude_handoff.sql,src/schema.ts,src/migrations.int.test.ts}`, `apps/worker/src/{extract.ts,testing.ts,extract.int.test.ts}`, `apps/api/src/{graphql.ts,graphql.int.test.ts}`, `packages/contracts/schema.graphql`, `packages/contracts/src/generated/graphql-resolvers.ts`, `apps/web/lib/{labels.ts,labels.test.ts}`, `README.md`, `docs/{todo,context,memory,migrations,activity-log}.md`.
+- Validation: `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks (llm 59 unit tests, web 115); `pnpm contracts:check`; `pnpm test:int` 145 in 25 suites (from 141); `pnpm e2e` 34 passed with the same 8 PDF-drawing tests failing as on main in this container, lockout alone 1 passed. Not run: `pnpm contracts:breaking` (it diffs only `openapi.yaml`, unchanged here). No live model call.
+- Outstanding:
+  - Shipping it runs the CI eval smoke with live free-model calls, since it changes `packages/llm` and `apps/worker/src/extract.ts` (never Claude in CI).
+  - After the merge, its Release and `pnpm demo:up`, which applies 0017 before the new worker starts. Web and backend can ship in either order: an older web ignores the `claude` change, and an older api sends none.
+  - Each overnight branch adds its entry at the top of this log, so merging them in turn conflicts here; keep both entries.
+
 ### 2026-10-21: demo-check-retry built: `demo:up`'s keyless check retries, a Release can be started by hand, and the demo's latency measured (branch demo-check-retry from main `7dec271`, not committed)
 
 - **Request:** no Release run exists for `7dec271`: Actions skipped the push (the user). One small PR with three parts:

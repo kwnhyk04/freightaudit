@@ -133,7 +133,8 @@ const ACTIONS: Record<string, AuditAction> = {
 };
 
 // An invoice's history: the upload, then every audit row. A pipeline move carries the facts behind it: how the carrier
-// reading matched (rule, reading and matched name), why it was sent to review, or the failed step's error.
+// reading matched (rule, reading and matched name), why it was sent to review, the failed step's error, and on the
+// read's last move why the free models read it while Claude reads first.
 async function auditTrail(id: string, loaders: Loaders): Promise<AuditEntry[]> {
   const [invoice, events, extraction, letters, known] = await Promise.all([
     loaders.invoice.load(id),
@@ -159,6 +160,9 @@ async function auditTrail(id: string, loaders: Loaders): Promise<AuditEntry[]> {
     } else if (move?.to === 'failed') {
       const queue = move.from === 'extracting' ? 'extract' : 'reconcile';
       detail = letters.find((letter) => letter.queue === queue && letter.createdAt <= event.createdAt)?.error ?? null;
+    }
+    if (move?.from === 'extracting' && (move.to === 'extracted' || move.to === 'needs_review') && extraction?.claudeHandoff) {
+      changes.push({ field: 'claude', from: null, to: extraction.claudeHandoff });
     }
     entries.push({
       id: event.id,

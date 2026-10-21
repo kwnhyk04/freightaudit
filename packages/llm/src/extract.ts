@@ -1,7 +1,7 @@
 import { CHARGE_CODES } from '@freightaudit/db';
 import { checkArithmetic } from '@freightaudit/domain';
 import { z } from 'zod';
-import { ClaudeSkippedError, ClaudeUnavailableError, type FailureClass, failureOf, RateLimitError, TransientError } from './errors.ts';
+import { ClaudeSkippedError, type ClaudeSkipReason, ClaudeUnavailableError, type ClaudeUnavailableReason, type FailureClass, failureOf, RateLimitError, TransientError } from './errors.ts';
 
 export type Usage = { inputTokens: number; outputTokens: number };
 // A page as the model reads it: its text layer, or a JPEG render of a page without one.
@@ -155,8 +155,13 @@ export type Extraction = {
   model: string;
   // Why the ladder turned to the fallback, which did not run when the problems name fallback_page_cap.
   fallbackReason: 'rate_limited' | 'invalid_output' | null;
+  // Why Claude, reading first, handed the invoice to the free models; null when it did not.
+  claudeHandoff: ClaudeHandoff | null;
   usage: Usage;
 };
+// Skipped unsent (switched off, a cap, the day's budget), its account refused, or a call failed with this class. Past
+// the end date Claude's window is over, so the free models reading is no hand-off.
+export type ClaudeHandoff = Exclude<ClaudeSkipReason, 'end_date'> | ClaudeUnavailableReason | FailureClass;
 
 // A first pass, one repair that sees the exact problems, one fresh pass on Claude when it is configured and has credit,
 // one on the free fallback model, then needs_review. A rate-limited first pass goes to Claude, else the free fallback.
@@ -168,6 +173,7 @@ export async function extractInvoices(
   const usage: Usage = { inputTokens: 0, outputTokens: 0 };
   let model = '';
   let fallbackReason: Extraction['fallbackReason'] = null;
+  let claudeHandoff: Extraction['claudeHandoff'] = null;
   let claudeUsed = 0;
   const call = async (role: Role, step: Step, prompt: string, provider: Provider = models[role]) => {
     model = `${provider.name}/${provider.model}`;
@@ -216,6 +222,7 @@ export async function extractInvoices(
     output,
     model,
     fallbackReason,
+    claudeHandoff,
     usage,
   });
 
@@ -243,15 +250,17 @@ export async function extractInvoices(
 
   let role: Role = parts.every((part) => 'text' in part) ? 'text' : 'primary';
   // Claude reading first: its first pass, its repair, then the free fallback. A call it cannot take hands the invoice to
-  // the free chain below: skipped, switched off, or (outside evals) rate limited or failed.
+  // the free chain below, which keeps why: skipped, switched off, or (outside evals) rate limited or failed.
   if (claude?.first) {
-    const handOff = (err: unknown) => err instanceof ClaudeSkippedError || err instanceof ClaudeUnavailableError || (fallbackOnRateLimit && err instanceof TransientError);
     const viaFirst = async (step: Step, prompt: string) => {
       try {
         return await call(role, step, prompt, claude);
       } catch (err) {
-        if (handOff(err)) return undefined;
-        throw err;
+        if (err instanceof ClaudeSkippedError) claudeHandoff = err.reason === 'end_date' ? null : err.reason;
+        else if (err instanceof ClaudeUnavailableError) claudeHandoff = err.reason;
+        else if (fallbackOnRateLimit && err instanceof TransientError) claudeHandoff = failureOf(err).errorClass;
+        else throw err;
+        return undefined;
       }
     };
     const read = await viaFirst('first_pass', PROMPT);

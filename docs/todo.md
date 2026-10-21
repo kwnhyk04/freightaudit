@@ -32,6 +32,14 @@ Next: the user ships the demo-check-retry PR (In Progress). Its push to main sho
 
 ## In Progress
 
+- [ ] Why the free models read an invoice while Claude reads first (user, 2026-10-22, the overnight request): built on branch `claude-fallback-log` from main `c698d9f`, not merged. No live model calls.
+  - [x] `extractInvoices` keeps the hand-off's reason (`claudeHandoff`): `switched_off`, `daily_budget`, `input_cap` or `extraction_cap` when never sent, the account reason when Claude refused it, or the failure class. Past the end date there is none, since the window is over.
+  - [x] Stored in `extractions.claude_handoff` (migration 0017, expand only; the split upload's row too) and logged once per invoice at warn, with the invoice id, the reason and the model.
+  - [x] The audit trail says it: the api adds a `claude` change to the read's last move, and the web's Read or Sent to review row reads "Handed to the free models: …". No new field in the invoice operation, so its cost stays 83.
+  - [x] Tests first: 13 of 40 llm unit tests failed on `claudeHandoff` against a stub that always gave null, 1 web unit test, and 3 integration tests (the worker's two, the api's one). Then all passed. A split-upload worker test came after GREEN; a break proved it.
+  - [x] Deliberate breaks, each failing a test and reverted: the end date counted (1 unit), every failure called `other` (4 unit), no note on Sent to review (web), the needs_review row and the split upload's row without the reason (1 integration test each), no log line (2), the api skipping needs_review (1).
+  - [x] Checks: `pnpm turbo run build typecheck lint test --force` 44 tasks, `pnpm contracts:check`, `pnpm test:int` 145 in 25 suites, `pnpm e2e` 34 passed with the 8 PDF-drawing tests failing as on main in this container, lockout alone 1 passed.
+  - [ ] The user ships it. It changes `packages/llm` and `apps/worker/src/extract.ts`, so its CI eval smoke makes live free-model calls (never Claude). Then its Release and `pnpm demo:up`, which applies 0017 before the new worker starts; any order of web and backend works.
 - [ ] Re-billed shipments in plain words, and an upload page that previews first (user, 2026-10-21): plan approved, its wording as written. Three PRs in this order, each built once the one before it is on main, and PR 1 on the demo. No live model calls. The plan, its tests and its wording are in the activity log (2026-10-21, planned).
   - [x] PR 1, api: merged as `7dec271` (#41), built on branch `rebill-api` from main `3c61a1b`. No migration, no worker change, no REST change.
     - `Discrepancy.earlierInvoice`: the earliest other invoice of the shipment that billed the line's charge code before it. It is worked out when read, so every stored finding has it, g071's included.

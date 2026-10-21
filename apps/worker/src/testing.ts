@@ -58,6 +58,8 @@ type RunOptions = WorkerOptions & {
   modelsUrl?: string;
   tmsUrl?: string;
   limits?: { enabled?: boolean; dailyTokenBudget?: number };
+  // Claude reading first, with no Claude budget for the day, so its gate hands every invoice to the free models unsent.
+  claudeFirst?: boolean;
   log?: Deps['log'];
 };
 
@@ -84,10 +86,11 @@ export async function createTestEnv(storage: Storage = createMemoryStorage()) {
     tenantId,
     databaseUrl: database.url,
     // In-process workers with fast retries and generous AI limits unless overridden; without a models URL, AI is off.
-    runWorkers({ modelsUrl, tmsUrl = modelsUrl ?? '', limits: overrides, log = quiet, ...options }: RunOptions = {}) {
+    runWorkers({ modelsUrl, tmsUrl = modelsUrl ?? '', limits: overrides, claudeFirst = false, log = quiet, ...options }: RunOptions = {}) {
       const roles = testRoles(modelsUrl ?? '');
-      const limits = createLimits(redis, { prefix, enabled: true, dailyTokenBudget: 1e9, roles, ...overrides });
-      const models = modelsUrl ? createModels(roles, limits) : undefined;
+      const claude = claudeFirst ? { provider: 'anthropic', model: 'claude-haiku-5-5', baseUrl: modelsUrl ?? '', apiKey: 'test-key', rpm: 100_000, tpm: 1e9 } : undefined;
+      const limits = createLimits(redis, { prefix, enabled: true, dailyTokenBudget: 1e9, dailyClaudeBudget: 0, roles: { ...roles, claude }, ...overrides });
+      const models = modelsUrl ? createModels(roles, limits, claude && { claude, claudeFirst: { until: '2099-12-31' } }) : undefined;
       const workers = startWorkers(
         { db, redis, queues, storage, limits, models, textMinChars: 100, tmsUrl, log },
         { lockDuration: 2_000, stalledInterval: 500, backoff: { baseMs: 50, capMs: 200 }, ...options },

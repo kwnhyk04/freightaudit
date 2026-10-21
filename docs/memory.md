@@ -457,6 +457,14 @@ From the approved design doc:
   - `release.yml` takes `workflow_dispatch` for a push that started no Release, as `7dec271`'s did. `publish` runs only on main, so a run started on another branch never moves `latest`.
   - `ci.yml`'s `BASE_SHA` falls back to zeros. A manual run has neither a PR base nor `event.before`, and an empty value would have sent oasdiff and the migration snapshot to an empty ref. With zeros it skips them, as a branch's first push does. Trade-off: a manual Release does not compare with the previous main; the PR's own CI ran those comparisons against its base.
   - The demo's latency fix is proposed, not built (docs/todo.md): the measurements put most answers above the web's 2.5 s threshold, and the root fix would reverse the egress design.
+- 2026-10-22: Why the free models read an invoice while Claude reads first, as built (branch `claude-fallback-log`; the user's request, these choices the agent's, for the user to confirm at review).
+  - One reason per invoice, the hand-off's: the skip's reason, the account reason, or `failureOf`'s class for a 429, 5xx, timeout or dropped connection. Which pass Claude missed is not stored: a Claude first pass in `llm_calls` means the repair was the one handed off.
+  - Past the end date nothing is recorded. The request names the Claude-first window, and after it the free models reading is the plan, not a hand-off.
+  - Only Claude reading first is recorded. Claude as the paid backup (not first) is skipped as before, with no reason kept; the request did not cover it, and the demo runs Claude first.
+  - Stored in a new nullable `extractions.claude_handoff` (0017) with no check constraint, as 0012's error classes: a reason added later needs no migration. Rejected: widening `fallback_reason`, which says why the ladder turned to the fallback model and has a check.
+  - Shown through the audit trail's read entry, as a `claude` change beside the synthetic `carrier` one. Rejected: a new `Extraction` field in the invoice operation, which would take the invoice page from 83 to 84 against `MAX_COST` 88 and leave re-bills PR 2 (its last 5) over the limit; and a new `AuditAction` value, which an older web would not know.
+  - Logged at warn, once per invoice after its read, with the invoice id, the reason and the model. The worker's logger has no info level, and a hand-off means the invoice missed the model the demo reads with first. A read that then fails logs nothing; its retry hands off again.
+  - Reason: the smallest change that stores, logs and shows the reason without touching the operation's cost or the GraphQL enums.
 
 ## Preferences and Instructions
 
