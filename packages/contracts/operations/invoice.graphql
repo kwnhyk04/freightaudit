@@ -66,6 +66,12 @@ query Invoice($id: ID!) {
             id
             lineNumber
           }
+          earlierInvoice {
+            id
+            number
+            filename
+            issuedOn
+          }
         }
       }
       pageInfo {

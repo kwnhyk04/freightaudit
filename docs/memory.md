@@ -452,6 +452,16 @@ From the approved design doc:
   - `Query.uploadAllowlist` gives the web the demo's golden digests, so the upload page can warn before sending. Rejected: a copy of the manifest in the web plus a Vercel setting, which would duplicate the api's config.
   - The web will show the earlier invoice's printed date (`issuedOn`) through `uploadDay`; the `Day` component prints "None" when empty, so it cannot go in a sentence.
   - Order: the api first, so one Release serves both features. Then the re-bills web PR, then the upload PR, since both web PRs change the recent-uploads operation and `UploadArea`.
+- 2026-10-22: Re-bills PR 2 as built (branch `rebill-web`; the wording is the approved plan's, these readings are the agent's, for the user to confirm at review).
+  - Where a duplicate charge was billed first: the earlier invoice the api names wins, since that is the re-bill, even when an earlier line of the same invoice has the code too. Without a name, the first earlier line with the code, then "an earlier invoice".
+  - The Expected cell's words replace $0 only while the finding stands. Once the charge is approved its billed amount stands, and the cell shows money again.
+  - Lines first billed on several earlier invoices name each, in the findings' order: "on earlier invoices: invoice A (date) and invoice B (date)". The plan's wording covers one invoice only.
+  - "1 of 2 lines was …" and "The other 1 is …" for one line.
+  - The upload row counts only charges with a named earlier invoice: the recent-uploads operation has no line codes, so it cannot tell a repeat on the invoice itself from an unnamed earlier invoice. It needs the shipment's reference and `lineItems { id }` too, so recent uploads cost 36 fields, still under 88.
+  - An earlier invoice without a number goes by its file name, as an exact duplicate upload names one (`duplicateParts`).
+  - The re-bill line sits under the result, in the Result cell, so the result keeps its words and tone.
+  - Not done: retaking the screenshots. The sample's g056 now reads "Delivery appointment was already billed on line 3 of this invoice." with "Already billed on line 3", so `docs/screenshots/ui/demo-invoice-*.png` (the README's) are out of date; this container's Chromium cannot draw the PDF.
+  - Reason: the approved plan; each choice is the smallest that fits it.
 - 2026-10-21: The demo-check-retry PR (the user's request; the details are the agent's).
   - `pnpm demo:up`'s keyless check tries again, as the `/healthz` wait does, until the same 10-minute deadline. A try with no answer is repeated; any answer but 401 still fails at once, so the check still proves the key is required.
   - `release.yml` takes `workflow_dispatch` for a push that started no Release, as `7dec271`'s did. `publish` runs only on main, so a run started on another branch never moves `latest`.

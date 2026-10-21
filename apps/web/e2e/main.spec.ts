@@ -237,6 +237,42 @@ test.describe('upload', () => {
   });
 });
 
+test.describe('re-bills', () => {
+  // The sample tapped above, g001, reads as digital.pdf's invoice in this run (the recorded fixture), so it bills that
+  // shipment again: each of its lines was already billed on digital.pdf's invoice.
+  test('a re-bill names the invoice that billed its charges first: on its upload row, in its header, findings and charges', async ({ page }) => {
+    const [rebill] = await db<{ id: string; reference: string; lines: number }>(
+      `SELECT i.id, s.reference, (SELECT count(*) FROM invoice_lines l WHERE l.invoice_id = i.id)::int AS lines
+       FROM invoices i JOIN shipments s ON s.id = i.shipment_id WHERE i.filename = 'clean-digital-g001.pdf'`,
+    );
+    const [first] = await db<{ id: string; number: string; issued: string }>(
+      "SELECT id, invoice_number AS number, to_char(invoice_date, 'YYYY-MM-DD') AS issued FROM invoices WHERE filename = 'digital.pdf'",
+    );
+    const name = `invoice ${first!.number}`;
+    const printed = day.format(new Date(`${first!.issued}T00:00:00Z`));
+    const lines = rebill!.lines;
+    await page.goto('/upload');
+    const row = page.getByRole('row', { name: /clean-digital-g001[.]pdf/ });
+    await expect(row).toContainText(`Re-bills ${rebill!.reference}: ${lines} of ${lines} lines already billed on ${name}`);
+    await expect(row.getByRole('link', { name })).toHaveAttribute('href', `/invoices/${first!.id}`);
+    // At 1280 px, where the charges table only just fits, its Expected column now holds words.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(`/invoices/${rebill!.id}`);
+    const header = page.locator('.detail-head');
+    await expect(header).toContainText(`Re-bills shipment ${rebill!.reference}: ${lines} of ${lines} lines were already billed on ${name} (${printed}).`);
+    const texts = await page.locator('.findings .finding-body > p.muted').allTextContents();
+    expect(texts.filter((text) => text.endsWith(` was already billed on ${name} (${printed}) for the same shipment.`))).toHaveLength(lines);
+    const charges = page.locator('table.charges');
+    await expect(page.getByText('Expected is $0 for a charge already billed, on an earlier invoice for this shipment or on an earlier line, so it is not paid twice.')).toBeVisible();
+    await expect(charges.locator('tbody td', { hasText: `Already billed on ${name}` })).toHaveCount(lines);
+    await expect(charges.locator('tbody').getByRole('link', { name })).toHaveCount(lines);
+    expect(await page.locator('.table-wrap', { has: charges }).evaluate((box) => box.scrollWidth - box.clientWidth)).toBe(0);
+    // Each names the first invoice by a link that opens it.
+    await header.getByRole('link', { name }).click();
+    await expect(page).toHaveURL(new RegExp(`/invoices/${first!.id}$`));
+  });
+});
+
 test.describe('review', () => {
   test('an open finding reads its title and text, then its amount, then the decision', async ({ page }) => {
     const [open] = await db<{ id: string }>(

@@ -2,9 +2,21 @@ import type { InvoiceHold, InvoiceStatus } from '@freightaudit/contracts/graphql
 import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { STATUS, statusLabel, type Tone } from '../lib/labels.ts';
+import { STATUS, statusLabel, type Tone, type Words } from '../lib/labels.ts';
 
 export const Badge = ({ tone, children }: { tone: Tone; children: ReactNode }) => <span className={`badge ${tone}`}>{children}</span>;
+
+// A sentence from lib/labels.ts, each { invoice, text } part a link to that invoice under base ('' live, '/demo' in the sample).
+export const Said = ({ words, base }: { words: Words; base: string }) =>
+  words.map((part, i) =>
+    typeof part === 'string' ? (
+      part
+    ) : (
+      <Link key={i} href={`${base}/invoices/${part.invoice}`}>
+        {part.text}
+      </Link>
+    ),
+  );
 
 // open is the invoice's open findings, which a checked invoice's pill counts; hold is what holds it back from approval,
 // and a confirmed duplicate only waits to be rejected; matched is whether it has its shipment.

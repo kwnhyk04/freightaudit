@@ -19,6 +19,39 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-22: Re-bills PR 2 built: each duplicate charge names where it was billed first, and a re-bill says so in its header and on its upload row (branch rebill-web from main `c698d9f`)
+
+- **Readings the plan left open** (the user's rule for this overnight session: take the most reasonable reading and note it here):
+  - The full plan is on the PC (`C:\Users\kwonhyuk\.claude\plans\pasted-content-id-9b73-re-billed-shipme-vast-blossom.md`), not in this container. The PR follows docs/todo.md and the approved wording in this log (2026-10-21, planned); the tests are reconstructed from them.
+  - Where a duplicate charge was billed first, the named earlier invoice wins over an earlier line of the same invoice; several earlier invoices are each named; one line reads "1 of 2 lines was …"; the upload row counts only charges with a named earlier invoice; an earlier invoice without a number goes by its file name; the row's re-bill line sits under its result (docs/memory.md, 2026-10-22, re-bills PR 2).
+  - No screenshot test was added or retaken. The plan's review added a screenshot test that this log does not describe, and this container's Chromium cannot draw a PDF page (below).
+  - Claude commits this branch, as the session's instructions say, although AGENTS.md (Git) leaves shipping to the user; no pull request, no merge, no gh. Dated 2026-10-22, Taipei's day.
+- **Request:** PR 2 exactly as planned in docs/todo.md: each duplicate charge names the invoice that billed it first, linked; the Expected cell reads "Already billed on invoice X" with one line above the table on why it is $0; the header and the upload result say the invoice re-bills its shipment. Tests that fail first, the deliberate breaks, full checks.
+- **Environment:** this cloud container, as in the readyz-stopgap entry: Node 24.22.0 through nvm, `dockerd` started by hand, Playwright 1.64 on the preinstalled Chromium 141 through scratchpad links, toxiproxy 2.12.0 built from source for `pnpm test:int`, gitleaks v8.30.1 built from source for the pre-commit hook.
+- **Tests first:**
+  - e2e, `apps/web/e2e/main.spec.ts`, "re-bills": the sample tapped in the upload tests, g001, reads as digital.pdf's invoice (the recorded fixture), so all 5 of its lines were billed on digital.pdf's invoice first. It checks the upload row, the header, each finding's sentence, the Expected cells and their links at 1280 px, the line above the table, that the table still fits, and that the link opens digital.pdf's invoice. On main's web it failed at the upload row, which read "Billing issues (6), possible duplicate to decide".
+  - `apps/api/src/query-limits.test.ts`: `NEXT` back to 0. 2 of 5 failed, on 83 and 7 against 88 and 8.
+  - `apps/web/lib/labels.test.ts`: 4 tests on `billedBefore`, `rebilledText` and `alreadyBilled`, `rebillNote`, and `uploadState`'s re-bill line. Each failed on its value against exports that kept today's words ("Linehaul is billed twice.", no header, no row line).
+  - A fifth rule came after the first GREEN: the Expected words only while the finding stands. Its assertion failed first (an approved charge still read "Already billed on …"), then passed.
+- **Code:**
+  - Operations: the invoice page's findings select `earlierInvoice { id number filename issuedOn }` (88 fields, depth 6); recent uploads add it under each finding, with the shipment's `reference` and `lineItems { id }` (36 fields, depth 8). Codegen changed the two client files.
+  - `lib/labels.ts`: `billedBefore`, `rebilledText`, `alreadyBilled`, `ALREADY_BILLED`, `rebillNote`, the row's `rebill` in `uploadState`; `Said` in `components/ui.tsx` renders their linked parts.
+  - `components/detail.tsx`: the header line, the findings' sentences, the Expected cells and the line above the table; `components/client.tsx`: the row's line; `globals.css`: the line's margin.
+- **Deliberate breaks, each failing a test and reverted:** the last earlier line instead of the first (unit); an earlier line winning over the named invoice (unit); a repeat on the invoice counted as a re-bill (unit); the Expected words kept for an approved charge (unit); the printed date dropped (2 unit tests); recent uploads without `earlierInvoice` (the limits test, depth 7); links without the invoice id (e2e, href `/invoices`).
+- **Visual check:** a scratch script started the e2e stack on its database as left by a run, signed in and took screenshots, not committed: the re-bill and the upload page at 1280 and 390 px, the sample's g069 and g056 at 1280. The Expected cells wrap to three lines at 1280 px and the table still fits; at 390 px the page stays 390 wide and the table scrolls in its frame. g069 reads "Re-bills shipment SHP-001269: 3 of 3 lines were already billed on an earlier invoice."; g056 has no header line and reads "Delivery appointment was already billed on line 3 of this invoice."
+- **Small events:**
+  - Agent mistake: the first e2e draft read `issued_on`, which is GraphQL's name; the column is `invoice_date` ("column issued_on does not exist"). Fixed before the RED run that counts.
+  - Agent mistake: the row test first expected +$7,314.56 over the rate card; its three charges of $97.78 make +$293.34. Fixed before its RED run.
+  - Agent slip: one `sed -i` removed a `!` in `labels.test.ts`, against AGENTS.md's rule for file edits. The change was read back, and every later edit used the edit tool.
+  - The upload test's fixtures needed `lineItems`, the shipment's `reference` and `earlierInvoice: null`, which the new operation types require (tsc).
+  - `-g "upload|re-bill"` also ran "an uploaded invoice … shows no example data", whose title holds "upload".
+- **The push was refused** (403, no GitHub write access in this session, as for every branch); the branch goes to the user as a git bundle.
+- Files: `packages/contracts/operations/{invoice,recent-uploads}.graphql`, `packages/contracts/src/generated/graphql-client/{gql,graphql}.ts`, `apps/api/src/query-limits.test.ts`, `apps/web/lib/{labels.ts,labels.test.ts}`, `apps/web/components/{detail,client,ui}.tsx`, `apps/web/app/globals.css`, `apps/web/e2e/main.spec.ts`, `README.md`, `docs/{todo,context,memory,activity-log}.md`.
+- Validation: `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks (web 118 unit tests in 6 suites, from 114); `pnpm contracts:check`; `pnpm test:int` 141 in 25 suites; `pnpm e2e` 35 passed, the same 8 PDF-drawing tests failing as on main in this container, lockout alone 1 passed. No live model call.
+- Outstanding:
+  - Ship only once the demo api runs `7dec271` or later, by its revision label; an older api refuses `earlierInvoice`.
+  - After the merge, `pnpm e2e:screenshots` on the PC: the README's sample shots show g056's old sentence and $0.
+
 ### 2026-10-21: demo-check-retry built: `demo:up`'s keyless check retries, a Release can be started by hand, and the demo's latency measured (branch demo-check-retry from main `7dec271`, not committed)
 
 - **Request:** no Release run exists for `7dec271`: Actions skipped the push (the user). One small PR with three parts:

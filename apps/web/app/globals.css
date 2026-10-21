@@ -712,6 +712,10 @@ td .reason {
 .panel-head h2 {
   margin-bottom: 2px;
 }
+/* Why a charge billed before is expected at $0, above the table that shows it. */
+.charges-note {
+  margin-bottom: 8px;
+}
 /* Charge cells keep 8 px a side, so every column, Difference included, fits beside the document from 1280 px. */
 table.charges th,
 table.charges td {

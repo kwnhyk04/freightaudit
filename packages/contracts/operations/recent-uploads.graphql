@@ -13,6 +13,10 @@ query RecentUploads {
         hold
         shipment {
           id
+          reference
+        }
+        lineItems {
+          id
         }
         discrepancies(first: 100) {
           edges {
@@ -21,6 +25,12 @@ query RecentUploads {
               status
               expectedCents
               billedCents
+              earlierInvoice {
+                id
+                number
+                filename
+                issuedOn
+              }
             }
           }
         }

@@ -17,9 +17,9 @@ const size = (document: DocumentNode) => {
 };
 
 // Fields the next web release adds to the largest operation, and levels to the deepest, when the api goes first and
-// already lets them through: each duplicate charge's earlierInvoice { id number filename issuedOn } on the invoice
-// page, and under recent uploads' findings.
-const NEXT = { cost: 5, depth: 1 };
+// already lets them through. None now: the re-bills web reads earlierInvoice on the invoice page and under recent
+// uploads' findings.
+const NEXT = { cost: 0, depth: 0 };
 
 test('every client operation passes, and the limits are the smallest that let them all through, the next web release included', () => {
   expect(operations.length).toBeGreaterThan(10);

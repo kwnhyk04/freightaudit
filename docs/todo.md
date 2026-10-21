@@ -52,10 +52,14 @@ Next: the user ships the demo-check-retry PR (In Progress). Its push to main sho
     - [x] Docs: how to start a Release by hand (docs/deploy.md, Troubleshooting).
     - [x] Checks: actionlint (the CI image) passes; `scripts/demo.ts` passes eslint and strict tsc. A scratch run of `smoke()`, taken from the file's own text, against a local server: a stalled first try was tried again and passed (25.0 s), and a 200 failed at once.
     - After the merge: the push should start a Release; if none starts, Run workflow on main. Then `pnpm demo:up`, then the read-only check of g071's `earlierInvoice`.
-  - [ ] PR 2, web, re-bills. Needs PR 1 on the demo; no Release.
-    - Each duplicate charge names the invoice that billed it first: "Linehaul was already billed on invoice X (Sep 12, 2026) for the same shipment.", linked.
-    - The Expected cell reads "Already billed on invoice X" (linked), with one line above the table on why it is $0.
-    - The invoice header and the upload result say "Re-bills shipment S: n of m lines were already billed on invoice X (date)."
+  - [ ] PR 2, web, re-bills. Needs PR 1 on the demo; no Release. Built on branch `rebill-web` from main `c698d9f` (2026-10-22, the user's overnight request), not merged. Ship it only once the demo api runs `7dec271` or later (its revision label): the invoice and upload pages now ask for `earlierInvoice`, which an older api refuses.
+    - [x] Each duplicate charge names the invoice that billed it first: "Linehaul was already billed on invoice X (Sep 12, 2026) for the same shipment.", linked.
+    - [x] The Expected cell reads "Already billed on invoice X" (linked), with one line above the table on why it is $0.
+    - [x] The invoice header and the upload result say "Re-bills shipment S: n of m lines were already billed on invoice X (date)." (the row in short: "Re-bills S: n of m lines already billed on invoice X").
+    - [x] Tests first: the limits test with `NEXT` at 0 (2 of 5 failed, on 83 and 7), 4 label unit tests (each failed on its value against stubs keeping today's words) and an e2e re-bill (the sample's g001, read as digital.pdf's invoice, at its upload row). Then all passed.
+    - [x] Deliberate breaks, each failing a test and reverted: the last earlier line named instead of the first; an earlier line winning over the named invoice; a repeat on the invoice counted as a re-bill; the Expected words kept for an approved charge; the date dropped; recent uploads without `earlierInvoice` (limits test); links without the invoice id (e2e).
+    - [x] Checks: `pnpm turbo run build typecheck lint test --force` 44 tasks (web 118 unit tests), `pnpm contracts:check`, `pnpm test:int` 141 in 25 suites, `pnpm e2e` 35 passed with the 8 PDF-drawing tests failing as on main in this container (Chromium 141 lacks `Math.sumPrecise`), lockout alone 1 passed.
+    - [ ] The user ships it, after the demo check above; then `pnpm e2e:screenshots` on the PC, since the README's sample shots (g056) now read "Already billed on line 3".
   - [ ] PR 3, web, upload preview. After PR 2; no Release.
     - Choosing or dropping files only lists them: name, size, pages, a first-page thumbnail, Remove, and a warning for a file that will be refused, the golden-set check included through `uploadAllowlist`.
     - "Upload N invoices" with per-file progress, and Clear.
