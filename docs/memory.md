@@ -452,6 +452,11 @@ From the approved design doc:
   - `Query.uploadAllowlist` gives the web the demo's golden digests, so the upload page can warn before sending. Rejected: a copy of the manifest in the web plus a Vercel setting, which would duplicate the api's config.
   - The web will show the earlier invoice's printed date (`issuedOn`) through `uploadDay`; the `Day` component prints "None" when empty, so it cannot go in a sentence.
   - Order: the api first, so one Release serves both features. Then the re-bills web PR, then the upload PR, since both web PRs change the recent-uploads operation and `UploadArea`.
+- 2026-10-21: The demo-check-retry PR (the user's request; the details are the agent's).
+  - `pnpm demo:up`'s keyless check tries again, as the `/healthz` wait does, until the same 10-minute deadline. A try with no answer is repeated; any answer but 401 still fails at once, so the check still proves the key is required.
+  - `release.yml` takes `workflow_dispatch` for a push that started no Release, as `7dec271`'s did. `publish` runs only on main, so a run started on another branch never moves `latest`.
+  - `ci.yml`'s `BASE_SHA` falls back to zeros. A manual run has neither a PR base nor `event.before`, and an empty value would have sent oasdiff and the migration snapshot to an empty ref. With zeros it skips them, as a branch's first push does. Trade-off: a manual Release does not compare with the previous main; the PR's own CI ran those comparisons against its base.
+  - The demo's latency fix is proposed, not built (docs/todo.md): the measurements put most answers above the web's 2.5 s threshold, and the root fix would reverse the egress design.
 
 ## Preferences and Instructions
 
@@ -702,6 +707,13 @@ From the approved design doc:
   - Why: the file's app had the default 60 requests a minute per key, counted in memory since it has no Redis, and the new tests came after the 60th request. A 429 is Problem Details, with neither key. Confirmed by the fix; the 429 body itself was not printed.
   - What we did: the file's app now gets `rateLimits: { general: 1_000, upload: 10 }`, with a comment; `limits.int.test.ts` covers the limit itself. A GraphQL answer with neither `data` nor `errors` points to a refusal before Yoga: check the status first.
 - 2026-10-21: `jest --selectProjects integration <path>` reads the path as one more project name and runs the whole project. `pnpm test:int -- <path>` did filter (one file, 15 tests), probably because pnpm passes the `--` on, which ends the list (not confirmed). Without `--`, filter with `--testPathPatterns <pattern>` (Jest 30).
+- 2026-10-21: A merge does not move the demo by itself. `pnpm demo:up` pulls `latest`, which moves only when the Release publishes, and it keeps every container when nothing new arrived. #41 merged as `7dec271`, yet GHCR had no `sha-7dec271` and `latest` was still `3c61a1b`. How to apply: before `demo:up`, check `docker buildx imagetools inspect ghcr.io/kwnhyk04/freightaudit-api:sha-<short>`; after it, check the revision label.
+- 2026-10-21: `pnpm demo:up`'s keyless check is one 10 s try (`scripts/demo.ts:57`), unlike the `/healthz` wait, which tries again for 10 minutes.
+  - What happened: both runs after #41 printed "The operation was aborted due to timeout". Each `/healthz` reached the api (14:14:26 and 14:15:38 UTC), and neither `/v1/invoices` did.
+  - Why: the timing is confirmed, the mechanism is not. An internet scanner sent 1,275 requests to the Funnel name from 14:13 to 14:16 UTC, and both runs fell inside it. Every Funnel connection rides the node's one relay tunnel (`derp20d`, `hkg`) through the proxy, so the check's request most likely stalled behind them. The api answered each scanner request 401 in under 1 ms, and answered locally in 1.7 to 79 ms. The path also stalled once after the burst (a 30 s TCP connect to the Funnel ingress at 14:22), so the burst may not be the only cause.
+  - What we did: diagnosed read-only and changed nothing on the demo. The proposed fix (docs/todo.md) tries the keyless request again until the same deadline, and still fails at once on any answer but 401.
+- 2026-10-21: The web's live check is often slower than its own limit. `isLive` gives `/readyz` 2.5 s (`apps/web/lib/server.ts`), but at a calm moment only 3 of 10 public `/healthz` and `/readyz` requests from this PC answered within 2.5 s, and 2 never connected in 30 s (docs/context.md, Known Limitations). How to apply: a "Live backend offline" banner with the PC up may be this, not an outage; the proposed fix is in docs/todo.md.
+- 2026-10-21: In Git Bash, `docker exec <container> tailscale --socket=/tmp/tailscaled.sock …` fails: MSYS turns `/tmp/…` into `H:/.tmp/…`. Prefix the command with `MSYS_NO_PATHCONV=1`. `scripts/demo.ts` spawns docker from Node, so it is not affected.
 
 ## Rejected Approaches
 
@@ -788,3 +800,9 @@ From the approved design doc:
 - 2026-10-14: Dollar cost targets apply only on a paid tier.
 - 2026-10-21: The approved mockups are not in the repository: `git ls-files` lists none. The 2026-10-18 activity log names nine approved pictures, and `.impeccable/config.json` names `approved-2-invoice-detail.png`. The README's Design section says the UI was built from them but links none. Whether to commit them is the user's call.
   - Resolved the same day (user): show them. The nine are in `docs/design/mockups/`, and the README's Design section shows the three light ones beside the built round-1 shots (decision entry, 2026-10-21, approved mockups).
+- 2026-10-21: Why #41's Release published no image.
+  - What happened: GHCR has no `sha-7dec271`, and `latest` is still `3c61a1b`. `release.yml` publishes `sha-<7 chars>` and `latest` only after its `checks` job, which reruns `ci.yml`, passes.
+  - Why: not confirmed. Before the merge, every local check passed (build, typecheck, lint, unit tests, `pnpm test:int` 141, `contracts:check`, `pnpm e2e` 43). `pnpm audit --audit-level high` still passes. The Trivy scan, gitleaks and the migration snapshot ran only in CI.
+  - What we did: asked the user for the failed job, since Claude does not read Actions (AGENTS.md).
+  - Update (user, 2026-10-21): no Release run exists for `7dec271` at all; Actions skipped the push. Why is still not confirmed: the commit message holds no skip token (`[skip ci]` and the like). What we did: the demo-check-retry PR adds `workflow_dispatch`, so such a push can get its Release by hand (docs/deploy.md, Troubleshooting).
+- 2026-10-21: Whether the egress proxy's memory matters. It used 121.4 MiB of its 128 MiB limit 4 hours after its restart, with `cache_mem 0 MB`, no OOM kill and no restart. Nothing ties it to the slow path yet.

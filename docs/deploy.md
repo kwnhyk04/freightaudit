@@ -245,6 +245,23 @@ Free plans only. What could ever bill you:
 
 - **The Funnel URL does not answer:** a new name takes up to 10 minutes to resolve. Check
   `docker compose --env-file .env.prod -f infra/docker-compose.yml -f infra/docker-compose.prod.yml logs tailscale`.
+- **`pnpm demo:up` ends with "did not answer within 10 minutes" after "Waiting for …/healthz":** the public path
+  stalled for the whole deadline. The containers are up, and the api answers in milliseconds. Each 10 s try of
+  `/healthz` and then of the keyless `GET /v1/invoices` is repeated until then (`scripts/demo.ts`); before the
+  demo-check-retry PR the keyless check had one try and failed with "The operation was aborted due to timeout".
+  - Why the path stalls: all of the node's Funnel traffic rides one relay tunnel through the proxy. On 2026-10-21 an
+    internet scanner's burst on the public name stalled it.
+  - Time it with `curl.exe -4 -s -o NUL -w "%{http_code} %{time_total}\n" <url>/v1/invoices` (401 expected), then run
+    `pnpm demo:up` again.
+- **`pnpm demo:up` changed nothing after a merge:** it pulls `latest`, which moves only when the Release publishes.
+  First check that the merge's image exists: `docker buildx imagetools inspect ghcr.io/kwnhyk04/freightaudit-api:sha-<short>`.
+  If the merge started no Release at all (Actions shows no run for its commit, as for `7dec271`), start one by hand:
+  1. GitHub, Actions, Release, Run workflow. Choose the branch `main` and click Run workflow. Or, from a shell with the
+     GitHub CLI, `gh workflow run release.yml --ref main`.
+  2. It runs the checks, then publishes main's head as `sha-<short>` and `latest`. Started on any other branch, it
+     only runs the checks. It skips the comparisons with a base commit (oasdiff, the migration snapshot), since a manual
+     run has none; the PR's own CI ran them.
+  3. Once the image exists, run `pnpm demo:up`.
 - **The node is logged out:** the volume `freightaudit-prod-tailscale-state` was deleted. Make a new auth key, set
   `TS_AUTHKEY`, run `pnpm demo:up`. Avoid this: each new login issues a new certificate, and Let's Encrypt limits them.
 - **After editing `infra/tailscale/serve.json`:** restart the tailscale service; file changes on H: may not reach it.

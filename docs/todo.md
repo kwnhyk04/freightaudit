@@ -6,8 +6,14 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Pending
 
-Next: the user ships PR 1 of the re-bills plan under In Progress (branch `rebill-api`), then runs its Release and `pnpm demo:up`; PR 2 and then PR 3 are built after that. Claude first is merged as `3c61a1b` (#40) and live on the demo since the user's `pnpm demo:up` on 2026-10-21. The approved mockups are merged as `b33401f` (#39), the README pass as `8d42fe3` (#38), and the follow-ups from #34 as #35, #36 and #37. The full-subset floors for rate-limit waits wait until the Gemini key has its own Google project. Until the user confirms that move, nothing with live Gemini calls runs on 2026-10-20 from 15:00 Taipei until Triage Copilot's exam run ends (docs/memory.md, Constraints); items marked "live Gemini" need such calls.
+Next: the user ships the demo-check-retry PR (In Progress). Its push to main should start a Release that publishes main, #41's api included; if none starts, use Run workflow (docs/deploy.md, Troubleshooting). Then `pnpm demo:up`. PR 2 and then PR 3 of the re-bills plan follow once PR 1 runs on the demo. The fix for the demo's latency waits for the user's OK (Pending). Claude first is merged as `3c61a1b` (#40) and live on the demo since the user's `pnpm demo:up` on 2026-10-21. The approved mockups are merged as `b33401f` (#39), the README pass as `8d42fe3` (#38), and the follow-ups from #34 as #35, #36 and #37. The full-subset floors for rate-limit waits wait until the Gemini key has its own Google project. Until the user confirms that move, nothing with live Gemini calls runs on 2026-10-20 from 15:00 Taipei until Triage Copilot's exam run ends (docs/memory.md, Constraints); items marked "live Gemini" need such calls.
 
+- [ ] The demo's public latency against the web's 2.5 s offline threshold (measured 2026-10-21; proposal waiting for the user's OK, not built).
+  - The numbers (docs/context.md, Known Limitations): only 3 of 10 public `/healthz` and `/readyz` requests answered within 2.5 s, and 2 never connected in 30 s.
+  - Proposed: `isLive` (`apps/web/lib/server.ts`) waits up to 8 s for `/readyz`, above the slowest answer measured (5.7 s), and keeps a live result 30 s instead of 5 s. A failed result stays 5 s, and a failed api call still marks the backend offline at once.
+    - Trade-off: a backend that is really down holds the first live page up to 8 s before the sample shows, and an outage between probes is seen up to 30 s later.
+    - It stops the site flipping to the sample; pages still pay 2 to 6 s per new connection.
+  - The root fix is a direct path for tailscale (UDP out), so Funnel traffic stops riding the relay over HTTPS through the proxy. That reverses the egress design (docs/threat-notes.md) and needs its own review.
 - [ ] (manual, user) FreightAudit's Gemini key moves to its own Google project (user, 2026-10-19). Until the user confirms it is done, the 2026-10-20 window rule stands (docs/memory.md, Constraints). The key is read from `.env` (local runs), `.env.prod` (the demo's worker, at its next `pnpm demo:up`) and the repository secret `GEMINI_API_KEY` (`ci.yml`'s eval smoke and `nightly-eval.yml`). Once the user confirms, the full-subset floors below can run.
 - [ ] Full-subset floors for rate-limit waits and wait time (live Gemini; after the key's move, user 2026-10-19), which the 2026-10-15 baseline could not give (no waits recorded): set them from the next full run on fresh results, `pnpm eval --suite extraction --subset full --fresh --set-floors` (cached cases from before 0011 report no waits). Without them the weekly full eval cannot flag a wait regression. Size S, plus one long run of 90 cases. Its PR changes `evals/thresholds.json`, so its CI eval smoke calls Gemini too.
 - [ ] The design hook's approved `side-tab` exception does not apply when the session's working directory is `apps/web` (found in C2). The user chooses between two options:
@@ -27,7 +33,7 @@ Next: the user ships PR 1 of the re-bills plan under In Progress (branch `rebill
 ## In Progress
 
 - [ ] Re-billed shipments in plain words, and an upload page that previews first (user, 2026-10-21): plan approved, its wording as written. Three PRs in this order, each built once the one before it is on main, and PR 1 on the demo. No live model calls. The plan, its tests and its wording are in the activity log (2026-10-21, planned).
-  - [x] PR 1, api (branch `rebill-api` from main `3c61a1b`, not committed). No migration, no worker change, no REST change.
+  - [x] PR 1, api: merged as `7dec271` (#41), built on branch `rebill-api` from main `3c61a1b`. No migration, no worker change, no REST change.
     - `Discrepancy.earlierInvoice`: the earliest other invoice of the shipment that billed the line's charge code before it. It is worked out when read, so every stored finding has it, g071's included.
     - `Query.uploadAllowlist`: the digests the api accepts, sorted, or null.
     - `MAX_COST` 88 and `MAX_DEPTH` 8, the sizes of PR 2's operations (`NEXT` in `query-limits.test.ts`).
@@ -35,6 +41,17 @@ Next: the user ships PR 1 of the re-bills plan under In Progress (branch `rebill
     - Deliberate breaks, each failing a test and reverted: the order dropped, the type check dropped, the own invoice allowed, the "before" limit dropped, the allowlist unsorted, `MAX_COST` 87.
     - Checks: `pnpm turbo run build typecheck lint test --force` 44 tasks, `pnpm test:int` 141 in 25 suites, `pnpm contracts:check`, `pnpm e2e` 43/43.
     - After the merge: its Release, then `pnpm demo:up` (no migration runs). Then a read-only check: g071's three findings return `earlierInvoice`, and `uploadAllowlist` returns 90 digests.
+    - [ ] Not on the demo yet (checked read-only, 2026-10-21): GHCR has no `sha-7dec271`, and `latest` is still `3c61a1b`. The user's two `pnpm demo:up` runs pulled the same `latest` and left every container as it was.
+      - No Release run exists for `7dec271` at all: GitHub Actions skipped the push (user, 2026-10-21). Why is not confirmed; the commit message holds no skip token.
+      - It lands with the next Release from main, or one started by hand (below).
+    - [x] Both runs also failed their public check: the keyless `GET /v1/invoices` got no answer within its one 10 s try, during an internet scanner's burst on the Funnel name (docs/activity-log.md, 2026-10-21). Fixed in the demo-check-retry PR below.
+  - [ ] The demo-check-retry PR (user, 2026-10-21): branch `demo-check-retry` from main `7dec271`, not committed. No live model calls.
+    - [x] `scripts/demo.ts`: the keyless check tries again until the same 10-minute deadline as the `/healthz` wait; any answer but 401 still fails at once.
+    - [x] `release.yml`: `workflow_dispatch`, so a Release can be started by hand, and `publish` runs only on main.
+    - [x] `ci.yml`: `BASE_SHA` falls back to zeros. A manual run has no PR base and no `event.before`, so it skips the base comparisons (oasdiff, the migration snapshot), as a branch's first push does.
+    - [x] Docs: how to start a Release by hand (docs/deploy.md, Troubleshooting).
+    - [x] Checks: actionlint (the CI image) passes; `scripts/demo.ts` passes eslint and strict tsc. A scratch run of `smoke()`, taken from the file's own text, against a local server: a stalled first try was tried again and passed (25.0 s), and a 200 failed at once.
+    - After the merge: the push should start a Release; if none starts, Run workflow on main. Then `pnpm demo:up`, then the read-only check of g071's `earlierInvoice`.
   - [ ] PR 2, web, re-bills. Needs PR 1 on the demo; no Release.
     - Each duplicate charge names the invoice that billed it first: "Linehaul was already billed on invoice X (Sep 12, 2026) for the same shipment.", linked.
     - The Expected cell reads "Already billed on invoice X" (linked), with one line above the table on why it is $0.

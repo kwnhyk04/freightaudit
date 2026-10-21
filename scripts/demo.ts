@@ -54,8 +54,14 @@ async function smoke(url: string) {
     if (Date.now() > deadline) throw new Error(`${url}/healthz did not answer within 10 minutes`);
     await sleep(15_000);
   }
-  const anonymous = await fetch(`${url}/v1/invoices`, { signal: AbortSignal.timeout(10_000) });
-  if (anonymous.status !== 401) throw new Error(`${url}/v1/invoices without a key answered ${anonymous.status}, not 401`);
+  // The public path can stall for a while (a scanner's burst rides the same relay), so a try with no answer is
+  // repeated until the deadline; any answer but 401 still fails at once.
+  let status: number | undefined;
+  while ((status = await fetch(`${url}/v1/invoices`, { signal: AbortSignal.timeout(10_000) }).then((r) => r.status, () => undefined)) === undefined) {
+    if (Date.now() > deadline) throw new Error(`${url}/v1/invoices did not answer within 10 minutes`);
+    await sleep(15_000);
+  }
+  if (status !== 401) throw new Error(`${url}/v1/invoices without a key answered ${status}, not 401`);
   console.log(`Live at ${url}: /healthz answers and a request without X-API-Key gets 401. This is the web's API_URL.`);
 }
 

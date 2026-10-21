@@ -17,8 +17,9 @@ env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
   TURBO_TELEMETRY_DISABLED: 1
-  # What this change is compared against: the PR's base, or the previous main on a push.
-  BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+  # What this change is compared against: the PR's base, or the previous main on a push. A Release started by hand has
+  # neither, so it gets zeros and skips the comparisons, as a branch's first push does.
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '0000000000000000000000000000000000000000' }}
 
 jobs:
   lint:
