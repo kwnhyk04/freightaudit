@@ -1,13 +1,14 @@
 import { CHARGE_CODES } from '@freightaudit/db';
 import { checkArithmetic } from '@freightaudit/domain';
 import { z } from 'zod';
-import { ClaudeUnavailableError, type FailureClass, failureOf, RateLimitError } from './errors.ts';
+import { ClaudeSkippedError, ClaudeUnavailableError, type FailureClass, failureOf, RateLimitError, TransientError } from './errors.ts';
 
 export type Usage = { inputTokens: number; outputTokens: number };
 // A page as the model reads it: its text layer, or a JPEG render of a page without one.
 export type Part = { page: number; text: string } | { page: number; jpeg: Uint8Array };
 // step is for traces only; providers ignore it. onWait hears how long the call first waited on its role's rate limit.
-export type GenerateInput = { prompt: string; parts: Part[]; schema: object; step?: Step | undefined; onWait?: ((ms: number) => void) | undefined };
+// claudeTokens is what this extraction already spent on Claude, for its gate.
+export type GenerateInput = { prompt: string; parts: Part[]; schema: object; step?: Step | undefined; onWait?: ((ms: number) => void) | undefined; claudeTokens?: number | undefined };
 // finishReason as the provider reports it, such as Gemini's STOP or an OpenAI-compatible stop or length.
 export type Reply = { text: string; usage: Usage; latencyMs: number; servedModel: string | undefined; finishReason?: string | undefined };
 // A model behind the provider layer. It only reads documents; code checks every amount it returns. maxImages is the
@@ -17,9 +18,10 @@ export type Provider = { name: string; model: string; maxImages?: number | undef
 // The text model reads documents whose every page has a text layer, the primary reads the rest, and the fallback takes
 // over when the first model is rate limited or its output stays invalid.
 export type Role = 'primary' | 'text' | 'fallback';
-// A paid model that comes after the main model and before the free fallback, while its account has credit. Its calls
-// are recorded under the fallback role, told apart by provider and model.
-export type Backup = Provider & { available(): boolean };
+// A paid model that comes after the main model and before the free fallback, while its account has credit; its calls are
+// recorded under the fallback role, told apart by provider and model. With `first` it reads before the free models, and
+// its calls are recorded under the document's role.
+export type Backup = Provider & { available(): boolean; first?: boolean | undefined };
 export type Models = Record<Role, Provider> & { claude?: Backup | undefined };
 export type Step = 'first_pass' | 'repair' | 'fallback';
 export type Call = {
@@ -166,6 +168,7 @@ export async function extractInvoices(
   const usage: Usage = { inputTokens: 0, outputTokens: 0 };
   let model = '';
   let fallbackReason: Extraction['fallbackReason'] = null;
+  let claudeUsed = 0;
   const call = async (role: Role, step: Step, prompt: string, provider: Provider = models[role]) => {
     model = `${provider.name}/${provider.model}`;
     let waitMs = 0;
@@ -190,8 +193,10 @@ export async function extractInvoices(
       const onWait = (ms: number) => {
         waitMs = ms;
       };
-      reply = await provider.generate({ prompt, parts, schema: EXTRACTION_JSON_SCHEMA, step, onWait });
+      reply = await provider.generate({ prompt, parts, schema: EXTRACTION_JSON_SCHEMA, step, onWait, claudeTokens: provider === models.claude ? claudeUsed : undefined });
     } catch (err) {
+      // A skipped Claude call was never sent, so there is nothing to record.
+      if (err instanceof ClaudeSkippedError) throw err;
       // A reply's latency is the provider's alone; a failed call's is everything after its rate-limit wait.
       const latencyMs = Math.max(0, Math.round(performance.now() - started) - waitMs);
       await record(err instanceof RateLimitError ? 'rate_limited' : 'error', { inputTokens: 0, outputTokens: 0 }, latencyMs, null, failureOf(err));
@@ -199,6 +204,7 @@ export async function extractInvoices(
     }
     usage.inputTokens += reply.usage.inputTokens;
     usage.outputTokens += reply.usage.outputTokens;
+    if (provider === models.claude) claudeUsed += reply.usage.inputTokens + reply.usage.outputTokens;
     const result = check(reply.text, pageCount);
     await record('invoices' in result ? 'valid' : 'invalid', reply.usage, reply.latencyMs, reply.servedModel ?? null);
     return { text: reply.text, result };
@@ -221,20 +227,45 @@ export async function extractInvoices(
       ? `fallback_page_cap: ${images} page images, more than the ${fallback.maxImages} ${fallback.name}/${fallback.model} takes`
       : undefined;
 
-  // Claude's turn, recorded under the fallback role: undefined when it is not configured or out of credit, and then the
-  // free fallback runs as it would without Claude.
+  // The backup's turn, recorded under the fallback role: undefined when it is not configured, cannot be used or is
+  // skipped, and then the free fallback runs as it would without Claude. Claude reading first takes no second turn.
   const { claude } = models;
+  const backup = claude?.first ? undefined : claude;
   const viaClaude = async (step: Step, prompt: string) => {
-    if (!claude?.available()) return undefined;
+    if (!backup?.available()) return undefined;
     try {
-      return await call('fallback', step, prompt, claude);
+      return await call('fallback', step, prompt, backup);
     } catch (err) {
-      if (err instanceof ClaudeUnavailableError) return undefined;
+      if (err instanceof ClaudeUnavailableError || err instanceof ClaudeSkippedError) return undefined;
       throw err;
     }
   };
 
   let role: Role = parts.every((part) => 'text' in part) ? 'text' : 'primary';
+  // Claude reading first: its first pass, its repair, then the free fallback. A call it cannot take hands the invoice to
+  // the free chain below: skipped, switched off, or (outside evals) rate limited or failed.
+  if (claude?.first) {
+    const handOff = (err: unknown) => err instanceof ClaudeSkippedError || err instanceof ClaudeUnavailableError || (fallbackOnRateLimit && err instanceof TransientError);
+    const viaFirst = async (step: Step, prompt: string) => {
+      try {
+        return await call(role, step, prompt, claude);
+      } catch (err) {
+        if (handOff(err)) return undefined;
+        throw err;
+      }
+    };
+    const read = await viaFirst('first_pass', PROMPT);
+    if (read) {
+      if ('invoices' in read.result) return done('first_pass', read.result.invoices);
+      const last = (await viaFirst('repair', repairPrompt(read.text, read.result.problems))) ?? read;
+      if ('invoices' in last.result) return done('repair', last.result.invoices);
+      fallbackReason = 'invalid_output';
+      if (pageCap) return done('needs_review', [], [...last.result.problems, pageCap], last.result.json);
+      const free = await call('fallback', 'fallback', PROMPT);
+      if ('invoices' in free.result) return done('fallback', free.result.invoices);
+      return done('needs_review', [], free.result.problems, free.result.json);
+    }
+  }
   let provider: Provider = models[role];
   let attempt;
   try {

@@ -22,6 +22,7 @@ const env = loadEnv([
   'TENANT_ID',
   'AI_ENABLED',
   'DAILY_AI_TOKEN_BUDGET',
+  'DAILY_CLAUDE_TOKEN_BUDGET',
   'LLM_TEXT_MIN_CHARS',
   'MOCK_TMS_URL',
   'JOB_LOCK_MS',
@@ -29,7 +30,7 @@ const env = loadEnv([
   ...LLM_SETTINGS,
 ]);
 // With AI off nothing is required: no model is built and extract jobs wait.
-const { roles, claude, problems } = llmRoles(env);
+const { roles, claude, claudeFirst, problems } = llmRoles(env);
 const unpriced = [...Object.values(roles), ...(claude ? [claude] : [])].flatMap(({ provider, model }) =>
   hasPrice(provider, model) ? [] : [`${provider}/${model} has no entry in packages/llm/prices.json`],
 );
@@ -41,15 +42,24 @@ const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
 const pool = createPool(env.DATABASE_URL, (msg, fields) => app.log.warn(fields, msg));
 const queues = createQueues(redis, env.REDIS_PREFIX);
 observeQueues(queues);
-const limits = createLimits(redis, { prefix: env.REDIS_PREFIX, enabled: env.AI_ENABLED, dailyTokenBudget: env.DAILY_AI_TOKEN_BUDGET, roles: { ...roles, claude } });
+const limits = createLimits(redis, {
+  prefix: env.REDIS_PREFIX,
+  enabled: env.AI_ENABLED,
+  dailyTokenBudget: env.DAILY_AI_TOKEN_BUDGET,
+  dailyClaudeBudget: env.DAILY_CLAUDE_TOKEN_BUDGET,
+  roles: { ...roles, claude },
+});
+// Which way Claude runs, never its key: off, the backup, or first until a UTC date.
+app.log.info({ claude: claude ? { model: claude.model, first: claudeFirst?.until ?? false, dailyTokens: env.DAILY_CLAUDE_TOKEN_BUDGET } : false }, 'claude');
 const workers = startWorkers(
   {
     db: drizzle(pool),
     redis,
     queues,
     limits,
-    // With LLM_CLAUDE_MODEL set, Claude comes between each role's main model and the free fallback.
-    models: env.AI_ENABLED ? createModels(roles, limits, { claude, log: (fields, msg) => app.log.warn(fields, msg) }) : undefined,
+    // With LLM_CLAUDE_MODEL set, Claude comes between each role's main model and the free fallback, or first while
+    // LLM_CLAUDE_FIRST_UNTIL lasts; switching it off for good raises the claude_switched_off alert.
+    models: env.AI_ENABLED ? createModels(roles, limits, { claude, claudeFirst, log: (fields, msg) => app.log.error(fields, msg) }) : undefined,
     textMinChars: env.LLM_TEXT_MIN_CHARS,
     storage: createStorage({ endpoint: env.S3_ENDPOINT, accessKey: env.S3_ACCESS_KEY, secretKey: env.S3_SECRET_KEY, bucket: env.S3_BUCKET }),
     tmsUrl: env.MOCK_TMS_URL,

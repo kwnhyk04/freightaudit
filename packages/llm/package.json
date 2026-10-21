@@ -8,7 +8,8 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "fixture-models": "node scripts/fixture-models.ts",
+    "claude:resume": "node --env-file-if-exists=../../.env scripts/resume-claude.ts",
+    "fixture-models":"node scripts/fixture-models.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"

@@ -152,3 +152,15 @@ export async function fakeModels(reply: (call: FakeCall) => FakeReply | Promise<
   const { url, close } = await listen(server, port);
   return { url, calls: () => calls, close };
 }
+
+// Claude's switch and day as Redis keeps them (Limits), in memory; two gates on one store are two worker processes.
+export function memoryClaudeStore(budget = 1_400_000) {
+  const state = { off: undefined as string | undefined, spent: 0 };
+  return {
+    state,
+    claudeOff: async () => state.off,
+    switchClaudeOff: async (reason: string) => (state.off ? false : ((state.off = reason), true)),
+    reserveClaude: async (tokens: number) => (state.spent + tokens > budget ? false : ((state.spent += tokens), true)),
+    settleClaude: async (reserved: number, used: { inputTokens: number; outputTokens: number }) => void (state.spent += used.inputTokens + used.outputTokens - reserved),
+  };
+}

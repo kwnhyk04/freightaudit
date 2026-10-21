@@ -6,7 +6,17 @@ import { LLM_SETTINGS, llmRoles, type LlmRole, settings } from '@freightaudit/co
 import { createPool, deadLetters, discrepancies, extractions, invoiceLines, invoices, llmCalls, tenants } from '@freightaudit/db';
 import { migrate } from '@freightaudit/db/migrate';
 import { seed } from '@freightaudit/db/scripts/seed';
-import { createLimits, createModels, EXTRACTION_JSON_SCHEMA, EXTRACTION_PROMPT, hasPrice, paidCost } from '@freightaudit/llm';
+import {
+  CLAUDE_EXTRACTION_CAP,
+  CLAUDE_FIRST_MAX_TOKENS,
+  CLAUDE_INPUT_CAP,
+  createLimits,
+  createModels,
+  EXTRACTION_JSON_SCHEMA,
+  EXTRACTION_PROMPT,
+  hasPrice,
+  paidCost,
+} from '@freightaudit/llm';
 import { createMemoryStorage, createQueues, type Queues, type Storage } from '@freightaudit/pipeline';
 import { startWorkers } from '@freightaudit/worker/workers';
 import { asc, eq, inArray, or } from 'drizzle-orm';
@@ -28,6 +38,8 @@ export type Roles = Record<'primary' | 'text' | 'fallback', LlmRole>;
 export type Subset = 'dev' | 'test' | 'ci' | 'full' | 'compare';
 export type Run = {
   label: string;
+  // A labelled configuration such as claude-primary, which names the report and never touches floors or the README.
+  config?: string | undefined;
   roles: Roles;
   cases: GoldenCase[];
   results: Map<string, CaseResult>;
@@ -44,6 +56,16 @@ export const pinsOf = (roles: Roles) => Object.fromEntries(Object.entries(roles)
 const llmSettings = z.object(Object.fromEntries(LLM_SETTINGS.map((key) => [key, settings[key]])) as Pick<typeof settings, (typeof LLM_SETTINGS)[number]>);
 // The roles as the worker resolves them from the environment, with what keeps them from running.
 export const configuredRoles = (source: Record<string, string | undefined> = process.env) => llmRoles(llmSettings.parse(source));
+// The labelled Claude-primary run (--config claude-primary): Claude reads first through the demo's gate and caps, with
+// the configured free models behind it. It runs on this PC only and never sets or checks floors.
+export function claudePrimary({ subset, setFloors }: { subset: Subset; setFloors: boolean }, source: Record<string, string | undefined> = process.env): LlmRole {
+  if (source.CI) throw new Error('--config claude-primary runs on this PC only, never in CI');
+  if (setFloors) throw new Error('--config claude-primary never sets floors');
+  if (subset === 'compare') throw new Error('--config claude-primary runs on the golden set, not --subset compare');
+  const { claude } = configuredRoles({ ...source, LLM_CLAUDE_MODEL: 'claude-haiku-5-5' });
+  if (!claude?.apiKey) throw new Error('--config claude-primary needs ANTHROPIC_API_KEY in .env');
+  return claude;
+}
 
 // Ports bound to 127.0.0.1 only, labelled with this run's pid, so a test run removes them if this process dies.
 class LocalContainer extends GenericContainer {
@@ -59,7 +81,7 @@ export type Environment = { db: NodePgDatabase; queues: Queues; storage: Storage
 
 // The small seed in Postgres, Redis for queues and limits, and the worker in this process with the given roles. Without
 // URLs it starts its own containers from the images the compose file pins.
-export async function startEnvironment(roles: Roles, urls: { databaseUrl?: string; redisUrl?: string } = {}): Promise<Environment> {
+export async function startEnvironment(roles: Roles, urls: { databaseUrl?: string; redisUrl?: string } = {}, claude?: LlmRole): Promise<Environment> {
   const containers: StartedTestContainer[] = [];
   let { databaseUrl, redisUrl } = urls;
   if (!databaseUrl || !redisUrl) {
@@ -91,7 +113,7 @@ export async function startEnvironment(roles: Roles, urls: { databaseUrl?: strin
   const redis = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const prefix = `eval-${process.pid}`;
   const queues = createQueues(redis, prefix);
-  const limits = createLimits(redis, { prefix, enabled: true, dailyTokenBudget: Number.MAX_SAFE_INTEGER, roles });
+  const limits = createLimits(redis, { prefix, enabled: true, dailyTokenBudget: Number.MAX_SAFE_INTEGER, dailyClaudeBudget: Number.MAX_SAFE_INTEGER, roles: { ...roles, claude } });
   const storage = createMemoryStorage();
   // A provider that rejects its key or model pauses the extract queue; the run stops instead of waiting on it.
   const alerts: object[] = [];
@@ -102,7 +124,8 @@ export async function startEnvironment(roles: Roles, urls: { databaseUrl?: strin
       queues,
       storage,
       limits,
-      models: createModels(roles, limits),
+      // Claude reads first with no end date of its own: the run's date is the user's choice.
+      models: createModels(roles, limits, { claude, claudeFirst: claude ? { until: '9999-12-31' } : undefined }),
       textMinChars: settings.LLM_TEXT_MIN_CHARS.parse(process.env.LLM_TEXT_MIN_CHARS),
       tmsUrl: 'http://127.0.0.1:9',
       log: { warn: () => {}, error: (obj) => void alerts.push(obj) },
@@ -239,12 +262,15 @@ export async function evaluate({
   concurrency = 4,
   only,
   cachedOnly = false,
-  environment = (r: Roles) => startEnvironment(r),
+  claude,
+  environment = (r: Roles) => startEnvironment(r, {}, claude),
 }: {
   set: 'golden' | 'comparison';
   subset: Subset;
   label: string;
   roles: Roles;
+  // Claude reading first ahead of the pinned roles (--config claude-primary).
+  claude?: LlmRole | undefined;
   fresh?: boolean;
   concurrency?: number;
   // These case ids alone, for tests.
@@ -258,7 +284,9 @@ export async function evaluate({
   const inSubset = (entry: Manifest['cases'][number]) => (subset === 'dev' || subset === 'test' ? entry.split === subset : subset === 'ci' ? entry.ci : true);
   const chosen = manifest.cases.filter((entry) => (only ? only.includes(entry.id) : inSubset(entry)));
   const cases = await Promise.all(chosen.map(async (entry) => JSON.parse(await readFile(new URL(`cases/${entry.id}.json`, root), 'utf8')) as GoldenCase));
-  const key = sha256(JSON.stringify({ set, version: manifest.version, pins: pinsOf(roles), prompt: PROMPT_HASH })).slice(0, 12);
+  // Claude first, with its caps, is part of what a cached result was read with.
+  const first = claude && `${claude.provider}/${claude.model} first, ${CLAUDE_FIRST_MAX_TOKENS} out, ${CLAUDE_INPUT_CAP} in, ${CLAUDE_EXTRACTION_CAP} an invoice`;
+  const key = sha256(JSON.stringify({ set, version: manifest.version, pins: pinsOf(roles), prompt: PROMPT_HASH, ...(first ? { claude: first } : {}) })).slice(0, 12);
   const cache = new URL(`../.cache/${set}-${manifest.version}/${key}/`, import.meta.url);
   await mkdir(cache, { recursive: true });
   // A cached result is reused only for the same set version, every pinned provider/model and the prompt hash (the
@@ -271,7 +299,7 @@ export async function evaluate({
   }
   const todo = cases.filter((golden) => !results.has(golden.id));
   // No configured key reaches the cache, the log or the report, whatever an error message held.
-  const keys = Object.values(roles).flatMap(({ apiKey }) => (apiKey ? [apiKey] : []));
+  const keys = [...Object.values(roles), ...(claude ? [claude] : [])].flatMap(({ apiKey }) => (apiKey ? [apiKey] : []));
   const mask = (text: string | null | undefined) => (text ? keys.reduce((masked, key) => masked.replaceAll(key, '[redacted]'), text) : null);
   let stopped: string | undefined;
   if (todo.length > 0 && !cachedOnly) {
@@ -318,14 +346,17 @@ async function main() {
       'set-floors': { type: 'boolean', default: false },
       concurrency: { type: 'string', default: '4' },
       cached: { type: 'boolean', default: false },
+      config: { type: 'string' },
     },
   });
+  if (values.config !== undefined && values.config !== 'claude-primary') throw new Error('--config must be claude-primary');
   if (values.suite !== 'extraction') throw new Error('--suite must be extraction');
   if (!['dev', 'test', 'ci', 'full', 'compare'].includes(values.subset)) throw new Error('--subset must be dev, test, ci, full or compare');
   const subset = values.subset as Subset;
   const { roles, problems } = configuredRoles();
   const unpriced = Object.values(roles).flatMap(({ provider, model }) => (hasPrice(provider, model) ? [] : [`${provider}/${model} has no entry in packages/llm/prices.json`]));
   if (problems.length + unpriced.length > 0) throw new Error([...problems, ...unpriced].join('\n'));
+  const claude = values.config ? claudePrimary({ subset, setFloors: values['set-floors'] }) : undefined;
   const started = Date.now();
   // The comparison pins only the primary differently: gemini-3.8-flash beside the configured one, on the comparison set.
   const plans =
@@ -334,12 +365,12 @@ async function main() {
           { label: `${roles.primary.provider}/${roles.primary.model}`, roles },
           { label: 'gemini/gemini-3.8-flash', roles: { ...roles, primary: { ...roles.primary, provider: 'gemini' as const, model: 'gemini-3.8-flash', rpm: 5 } } },
         ]
-      : [{ label: 'pinned', roles }];
+      : [{ label: values.config ?? 'pinned', roles, claude }];
   const runs: Run[] = [];
   for (const plan of plans) {
     runs.push(await evaluate({ set: subset === 'compare' ? 'comparison' : 'golden', subset, ...plan, fresh: values.fresh, concurrency: Number(values.concurrency), cachedOnly: values.cached }));
   }
-  process.exit(await report({ subset, runs, durationMs: Date.now() - started, setFloors: values['set-floors'] }));
+  process.exit(await report({ subset, runs, durationMs: Date.now() - started, setFloors: values['set-floors'], config: values.config }));
 }
 
 if (import.meta.main) await main();

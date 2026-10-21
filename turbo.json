@@ -58,6 +58,10 @@
         "NODE_ENV"
       ]
     },
+    "claude:resume": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
     "extract:resume": {
       "dependsOn": [
         "^build"
