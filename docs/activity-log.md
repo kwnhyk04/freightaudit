@@ -19,6 +19,86 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-21: demo-check-retry built: `demo:up`'s keyless check retries, a Release can be started by hand, and the demo's latency measured (branch demo-check-retry from main `7dec271`, not committed)
+
+- **Request:** no Release run exists for `7dec271`: Actions skipped the push (the user). One small PR with three parts:
+  - the proposed retry;
+  - `workflow_dispatch` on `release.yml`, with docs;
+  - public `/healthz` and `/readyz` measured 5 times a minute apart at a calm moment, against the web's 2.5 s threshold, with a fix proposed but not built if needed.
+- **Setup:** `git switch -c demo-check-retry` from main `7dec271`; the diagnosis's uncommitted docs came along.
+- **Code:**
+  - `scripts/demo.ts`: the keyless check repeats a try with no answer until the same 10-minute deadline. Any answer but 401 still fails at once.
+  - `release.yml`: `workflow_dispatch`, and `publish` only on main.
+  - `ci.yml`: `BASE_SHA` falls back to zeros.
+- **A manual run's base:**
+  - What happened: before adding the trigger, `ci.yml` read `BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}`. That is empty on `workflow_dispatch`, and its guards test only for zeros. So oasdiff and the migration snapshot would have run against an empty ref, failed the checks, and published nothing.
+  - Why: the expression assumed a pull request or a push.
+  - What we did: a zeros fallback, so a manual run skips those steps as a branch's first push does (docs/memory.md, decisions).
+- **The skipped push:** `7dec271`'s message holds no skip token (`[skip ci]` and the like); why Actions skipped it is not confirmed.
+- **Latency, measured:**
+  - The moment was calm: no outside request in the 10 minutes before. During the window the api saw only the 8 probes that connected.
+  - Results, 14:39 to 14:44 UTC, curl.exe from this PC, a new connection each:
+    - `/healthz`: 1.86, 2.22, 2.75 and 4.31 s, and once no connection in 30 s;
+    - `/readyz`: 1.19, 3.95, 5.33 and 5.68 s, and once no connection in 30 s.
+  - 3 of 10 answered within 2.5 s. Most time went to the TLS handshake (up to 5.0 s), which ends at the node, over the relay.
+  - The proposal is in docs/todo.md (Pending), not built.
+- **Checks:**
+  - actionlint (CI's image, by digest): exit 0.
+  - `scripts/demo.ts` passes eslint (the root config, through `packages/config`'s eslint) and strict tsc (a scratch tsconfig extending `packages/config/tsconfig.base.json`).
+  - A scratch run of `smoke()`, taken from the file's own text, against a local server: a stalled first try was tried again and passed after 2 tries in 25.0 s, and a 200 failed at once with "…answered 200, not 401".
+  - The api, worker and web are unchanged, so no other suite applies.
+- **Small events:**
+  - The measuring script exited 1. Its last command, `[ "$round" -lt 5 ] && sleep 60`, is false on round 5; all 10 lines were written.
+  - `pnpm exec eslint` at the root failed ("Command "eslint" not found"): the root has no eslint. It ran through `packages/config`'s instead.
+  - GateGuard asked for facts before the first Bash command and before the first edit of each file. Several edits were refused once more, and each retry passed.
+- Files: `scripts/demo.ts`, `.github/workflows/{release,ci}.yml`, `README.md`, `docs/{deploy,context,todo,memory,activity-log}.md`.
+- Validation: as under Checks. No live model call.
+- Outstanding:
+  - The user ships it. The push should start a Release; if not, Run workflow on main. Then `pnpm demo:up` and the read-only check of g071's `earlierInvoice`.
+  - The latency fix waits for the user's OK.
+
+### 2026-10-21: `pnpm demo:up` failed its public check twice after #41, diagnosed read-only (main `7dec271`, nothing changed on the demo)
+
+- **Request:** after PR 1 merged as `7dec271` (#41) and its Release finished, `pnpm demo:up` failed twice. Every container was healthy, then "Waiting for …/healthz to answer from the internet." and "The operation was aborted due to timeout", exit 1. Diagnose read-only, change nothing on the demo, and propose the fix.
+- **1. Images:**
+  - The demo api and worker run `3c61a1b` (#40), started 10:06 UTC; not #41's.
+  - Read with `docker buildx imagetools inspect`, without pulling: GHCR has no `sha-7dec271`, and its `latest` is `3c61a1b` (built 09:57 UTC).
+  - So #41's Release published nothing, and both runs pulled the same `latest` and kept every container.
+- **2. Timings** (curl.exe from this PC):
+  - Public `/healthz`: 200 in 10.79 s and 3.88 s, then 2.43 s over IPv4.
+  - Public `/v1/invoices` without a key: no TCP connect within 30 s, then 401 in 5.85 s and 2.59 s (IPv4).
+  - IPv6 plays no part: this PC resolves no AAAA for the name (curl exit 6).
+  - The demo publishes no host port, so the api's own port was timed from inside its container: `/healthz` 200 in 79 and 2.5 ms, `/v1/invoices` 401 in 3.8 and 1.7 ms.
+- **3. The api's log:**
+  - Each run's `/healthz` arrived (14:14:26 and 14:15:38 UTC, 200); neither run's `/v1/invoices` did.
+  - From 14:13 to 14:16 UTC an internet scanner sent 1,275 requests (`/.env`, `/.aws/credentials`, `/.git/config` and so on), each answered 401 in under 1 ms.
+  - The rest of the last 12 hours held a handful of external requests per 10 minutes.
+- **4. The code:**
+  - A keyless request gets its 401 from the key hook (`apps/api/src/app.ts:76-84`), before body parsing, rate limiting, Redis, Postgres or GraphQL.
+  - PR 1 changed only the GraphQL handler's deps, built once at startup, and `openapi.contract.test.ts` checks the 401 of every secured operation with PR 1's code.
+  - The demo does not run PR 1 anyway.
+- **Also read:**
+  - tailscale is healthy, its home relay is now `hkg` (it was `sin`), and one relay tunnel through the proxy has been open since 10:09 UTC;
+  - the proxy refused nothing (0 `TCP_DENIED`);
+  - the proxy sat at 121.4 of its 128 MiB with `cache_mem 0 MB`, with no OOM kill (docs/memory.md, Unresolved Questions).
+- **Cause:**
+  - What happened: the check's one 10 s try for `/v1/invoices` (`scripts/demo.ts:57`) met a stalled Funnel path, and its uncaught TimeoutError ended the run. The api serves fine; the public path is intermittently slow.
+  - Why: both runs fell inside the scanner's burst, which rides the same single relay tunnel. That timing is confirmed. That the burst caused the stall is not, since one TCP connect also stalled at 14:22, after it.
+  - What we did: changed nothing on the demo.
+    - Proposed, waiting for the user's OK: `smoke()` tries the keyless request again until the same 10-minute deadline, as the `/healthz` wait does, and still fails at once on any answer but 401. No api change and no test: the script has no harness, and the change follows the loop beside it.
+    - For #41's images, the user checks the Release run for `7dec271` (which job failed) and re-runs it, then `pnpm demo:up`.
+- **Small events:**
+  - Git Bash turned `/tmp/tailscaled.sock` into `H:/.tmp/…` for `docker exec`; `MSYS_NO_PATHCONV=1` fixed it (docs/memory.md).
+  - The first Node filter over piped `docker logs` printed nothing, not even its count. Why is not confirmed; a later pipe of the same kind worked. The logs went to scratchpad files, read by path.
+  - `docker events --until 0s` printed nothing usable; the api's log gave the run times instead.
+  - GateGuard asked for facts before the first Bash command and before the first edit of each file. Three edits were refused once more, and each retry passed.
+- Files: `docs/{todo,context,memory,activity-log,deploy,threat-notes}.md`.
+- Validation: none needed; only docs changed, and nothing on the demo.
+- Outstanding:
+  - #41's Release;
+  - the check's fix, waiting for the user's OK;
+  - then the read-only check that g071's findings return `earlierInvoice` on the demo.
+
 ### 2026-10-21: Re-bills PR 1 built: the api names a duplicate charge's earlier invoice, and its upload allowlist (branch rebill-api from main `3c61a1b`, not committed)
 
 - **Setup:** the user approved the plan below with its wording. `git switch -c rebill-api` from main `3c61a1b`, clean tree.
