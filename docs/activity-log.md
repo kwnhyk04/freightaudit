@@ -19,6 +19,43 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-22: The readyz stopgap built: the web waits 8 s for `/readyz`, keeps a live answer 30 s and a failed one 5 s (branch readyz-stopgap from main `c698d9f`)
+
+- **Readings the request left open** (the user's rule for this overnight session: take the most reasonable reading and note it here):
+  - Claude commits this branch and was to push it, as the session's instructions say, although AGENTS.md (Git) leaves shipping to the user. No pull request, no merge, no gh. The docs are committed with the branch, since each branch carries its own entry.
+- **The push was refused:**
+  - What happened: `git push -u origin readyz-stopgap` answered 403, "Claude doesn't have GitHub access to kwnhyk04/freightaudit for your organization", and so did a push of this session's own branch. The GitHub connector's `create_branch` answered 403 "Resource not accessible by integration"; it created nothing. Reads (`git ls-remote`, listing branches) work.
+  - Why: this session has no GitHub write access to the repository (the Claude GitHub App or the account link); not confirmed which.
+  - What we did: no retry loop, since it is not a network error. The commit stays local, and each branch goes to the user as a git bundle from the scratchpad (`git fetch <file> <branch>:<branch>`), so nothing is lost if the container is reclaimed. The fix is the user's: reconnect GitHub at claude.ai/connect-github, or install the Claude GitHub App on the repository.
+  - A probe that answers after a failed api call keeps that call's offline mark (docs/memory.md, 2026-10-22). The request did not ask for it; without it, an 8 s probe could undo "offline at once" for 30 s.
+  - Dated 2026-10-22, Taipei's day (docs/memory.md, 2026-10-18); the session ran from 17:13 UTC on 2026-10-21.
+- **Request:** the stopgap from docs/todo.md (Pending), tests first: `/readyz` waited up to 8 s instead of 2.5 s, a live result kept 30 s, a failed one 5 s, and a failed api call still marks the backend offline at once.
+- **This session's environment** (a cloud container, not the PC; nothing on the demo was read or changed):
+  - Node 22 only: Node 24.22.0 (CI's version) installed with the container's nvm, and pnpm 12.11.2 with npm. `pnpm install --frozen-lockfile` passed.
+  - No Docker daemon ran: `dockerd` started by hand, and Docker Hub pulls worked.
+  - Playwright 1.64 expects Chromium revision 1248; the container has 1194 (Chromium 141) and says not to run `playwright install`. Links in the scratchpad map 1248's paths to the 1194 binaries (`PLAYWRIGHT_BROWSERS_PATH`); a test page rendered.
+- **Tests first:** `apps/web/lib/live.test.ts`, 5 tests on a hand-moved clock and a `/readyz` the test answers. Before them, the cache moved from `lib/server.ts` to `lib/live.ts` with today's numbers (2.5 s, 5 s either way), so the tests could import it.
+  - RED: 3 of 5 failed on their values. The wait was 2,500 against 8,000; a live answer was asked again at 29,999 ms; a probe answering after `markOffline` returned live.
+  - The other 2 passed, as they should: they pin kept behavior (a failed answer kept 5 s; the offline mark at once, inside a live answer's 30 s).
+- **Code:** `lib/live.ts` holds the wait and both cache times, and keeps whatever was seen while a probe waited. `lib/server.ts` passes it the fetch and keeps `AI_ENABLED` and React's per-request `cache`.
+- **Deliberate breaks, each failing a test and reverted:** a live answer kept 5 s (1 failed); a failed one kept 30 s (2); the wait back to 2.5 s (1); `markOffline` doing nothing (2); a late probe overwriting the mark (1).
+- **e2e in this container:**
+  - What happened: `pnpm e2e` gave 34 passed, 8 failed and 1 not run (lockout, which depends on the others), on this branch and the same on main `c698d9f` in a scratch worktree.
+  - Why: each of the 8 waits for a drawn PDF page. The browser logged `TypeError: Math.sumPrecise is not a function`: pdf.js 6.4.299 calls it, and Chromium 141 lacks it. `typeof Math.sumPrecise` stayed undefined with `--js-flags=--js-staging` and `--harmony`.
+  - What we did: compared the failing set with main's (identical), and ran lockout alone (`playwright test --project=lockout --no-deps`: 1 passed). CI's Playwright Chromium (1248, 156.0.8078.4) runs the 8; nothing in the repository changed for this.
+- **`pnpm test:int` in this container:**
+  - What happened: the global setup failed at once, "No such image: ghcr.io/shopify/toxiproxy:2.12.0".
+  - Why: this session's egress proxy refuses GHCR's blob host (`pkg-containers.githubusercontent.com`, 403), and Docker Hub has no `shopify/toxiproxy:2.12.0`.
+  - What we did: built toxiproxy v2.12.0 from source (`go install github.com/Shopify/toxiproxy/v2/cmd/server@v2.12.0`, static), wrapped it in a local `FROM scratch` image run as the official one (`/toxiproxy -host=0.0.0.0`), tagged it `ghcr.io/shopify/toxiproxy:2.12.0` in this container only. Main then passed 141 in 25 suites, as recorded for #41. Best because the tests stay as written; CI pulls the real image.
+- **Small events:**
+  - Agent slip: one `cd apps/web && …` moved the session's working directory (docs/memory.md, 2026-10-19). It went back to the root at once, and later runs used a subshell.
+  - Jest printed "Haste module naming collision: @freightaudit/web" for `apps/web/.next/standalone/apps/web/package.json`, a build output; harmless.
+  - A first build of the toxiproxy image on `alpine:3.22` met Docker Hub's 429; `FROM scratch` needs no pull.
+  - The pre-commit hook runs a local gitleaks, else its GHCR image, which this container cannot pull. gitleaks v8.30.1, the hook's pinned version, was built from source (`go install github.com/zricethezav/gitleaks/v8@v8.30.1`) into the scratchpad and put on `PATH`; the hook ran it and found no leaks.
+- Files: `apps/web/lib/{live.ts,live.test.ts,server.ts}`, `docs/{todo,context,memory,deploy,activity-log}.md`.
+- Validation: `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks (web 119 unit tests in 7 suites, from 114 in 6); `pnpm test:int` 141 in 25 suites; `pnpm contracts:check`; `pnpm e2e` 34 passed with the 8 viewer tests failing as on main, lockout alone 1 passed. No live model call.
+- Outstanding: the user ships it; Vercel deploys at the merge, and the demo api needs nothing.
+
 ### 2026-10-21: demo-check-retry built: `demo:up`'s keyless check retries, a Release can be started by hand, and the demo's latency measured (branch demo-check-retry from main `7dec271`, not committed)
 
 - **Request:** no Release run exists for `7dec271`: Actions skipped the push (the user). One small PR with three parts:
