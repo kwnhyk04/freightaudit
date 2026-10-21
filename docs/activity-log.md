@@ -19,6 +19,42 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-21: README pass for the portfolio (branch readme-polish from main `f911569`, not committed)
+
+- **Setup:** C merged as `f911569` (#37). `git fetch origin` showed `main` and `origin/main` both at `f911569`; `git switch -c readme-polish`, clean tree. Docs and screenshots only (user); no live model call and no `pnpm demo:up`.
+- **Checked against the code and docs:**
+  - What happened: the README still said the demo's URL "goes here after the first deploy". Its exits from needs review stopped before the held invoice's correction (#36, #37), and its e2e list had none of the duplicate paths. "Each with its own regression floor" held only for the ci subset (`evals/thresholds.json`; the full subset's wait floors are a Pending item). The sample was "a few" invoices (11), and the tabs predated the split ones.
+  - Why: each PR since step 10 updated the docs it touched, not every README line.
+  - What we did: read each claim against its file, for example `packages/contracts/src/limits.ts`, `apps/web/lib/{session,limiter}.ts`, `.env.example`, `loadtest/k6.js` and the eval reports, and rewrote the stale lines.
+- **The rewrite:** the top follows the user's order: what FreightAudit does, the live demo and how to try it, the architecture, the main decisions with one line of why each, the eval results with their limits, and the known limitations. New sections: "Duplicate invoices, end to end" (detection at reconcile, the hold on Approve as billed from review, deciding, rejecting, correcting a held reading, the trail) and "Design". The generated eval block stays byte for byte: its sha256 between the markers matches main's, so a full eval run still rewrites it (`evals/harness/report.ts` replaces it wherever the markers are).
+- **Numbers and their sources:**
+  - What happened: the user asked that every README number come from a file in the repo, with the file named beside it, or be left out. Five had no file:
+    - the Haiku comparison's free-run recall, its tokens per invoice (1,514 / 3,025) and its paid-equivalent cost ($0.054);
+    - "about 32K tokens" for k6 part 2;
+    - "about 10 real model calls" to regenerate the sample.
+  - Why: not confirmed. The comparison's rows most likely came from the 2026-10-17 computation, which recorded only some of its results (docs/memory.md, Lessons Learned, 2026-10-21).
+  - What we did: named a file beside every other number; dropped those five; replaced the example values with placeholders (`--to=<prefix>`, "invoice <number>") and "127.0.0.1" in prose with "loopback". Best because the rule allows only these two outcomes, and no file holds the dropped ones.
+- **Screenshots:**
+  - What happened: `pnpm e2e:screenshots` passed 8/8 (1.0 min) and changed 23 pictures; the README's `demo-invoice-{light,dark}.png` came out byte-identical.
+  - Why: the pictures print the run's date and timing (docs/memory.md, pitfall 2026-10-21).
+  - What we did: a scratch pixel diff against HEAD (`sharp` from `evals/`) found 49 to 2,216 differing pixels per picture, in text-sized bands. A stacked crop of nine bands, viewed before and after, showed only "the oldest waiting 2 days" against "3 days", "Oct 19, 11:06" against "Oct 20, 19:52", "received on 2026-10-19" against "2026-10-20" and "Done in 0.6 s" against "0.7 s". Then `git restore -- docs/screenshots`, so no picture changes. The Jaeger and Grafana pictures come from step 8's run, outside `e2e:screenshots`, and were not retaken.
+- **"Before an interview"** moved from the README's Live demo section to `docs/deploy.md`, unchanged, since it is the owner's checklist.
+- **Independent check of the numbers:**
+  - What happened: a read-only subagent checked every README number against the file named beside it. It confirmed 264 of 289 and flagged 25:
+    - most were counts with no file beside them ("three BullMQ queues", "one repair", "exactly once", "three buttons", "one reviewer");
+    - the k6 rows' pace, run lengths and "2 workers x 8", which `evals/harness/report.ts` writes as fixed text, not from the result files;
+    - "One target is missed", which is true of the README table only: the 2026-10-15 report also misses end-to-end p95 (143 s) and throughput (394 an hour) under its own throttling.
+  - It also found a stale claim: the README and `docs/context.md` (Technical Stack) said pages with a text layer go to the text model. The code routes the whole document: `parts.every((part) => 'text' in part) ? 'text' : 'primary'` (`packages/llm/src/extract.ts`). `docs/context.md`'s worker paragraph already said so.
+  - Why: the first pass named sources per sentence and missed small counts; the routing line predates the per-document rule (not confirmed).
+  - What we did: named the file beside each flagged number, or reworded without it ("Signing in needs the reviewer password"; the Part 1 heading lost its "3x"). The line after `<!-- eval:end -->` names the k6 rows' real files, so the generated block stays as written. The Haiku sources moved above their table, the missed-targets bullet now says "in this table", and the routing was corrected in the README and `docs/context.md`.
+  - It also found `.env.example`'s `hash-password` comment out of step with the script. That file is outside a docs-and-screenshots PR, so it became a Pending item in docs/todo.md.
+- **Small events:**
+  - GateGuard asked for facts before the first Bash command, the scratch script, `git restore` (destructive check) and the first edit of each doc. A first edit was refused even when the facts came earlier in the same message (README, context, todo, memory, this log); each retry with the facts restated passed. After the usage-limit pause, the gate asked again before the first Bash command and each file's first edit.
+  - Codegen and the build were not run; no code changed.
+- Files: `README.md`, `docs/{deploy,context,todo,memory,activity-log}.md`.
+- Validation: `pnpm e2e:screenshots` 8/8, with every changed picture restored; the eval block's hash equals main's; every file path the README names exists (a shell loop over its backticked paths); the independent check above. No lint, typecheck or test ran: no code or config changed.
+- Outstanding: the user ships it. Open for the user: the agent's choices (docs/memory.md, 2026-10-21, README pass), whether to commit the approved mockups, which are not in the repository (Unresolved Questions), and the `.env.example` comment (docs/todo.md, Pending).
+
 ### 2026-10-21: Follow-up C built: correcting a held invoice's reading on the web (branch correct-held-web from main `3fb206d`, not committed)
 
 - **Setup:** B merged as `3fb206d` (#36). `git switch -c correct-held-web` from main `3fb206d`, clean tree.
