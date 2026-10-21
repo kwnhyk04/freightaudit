@@ -171,6 +171,13 @@ docker compose --env-file .env.prod -f infra/docker-compose.yml -f infra/docker-
 docker compose --env-file .env.prod -f infra/docker-compose.yml -f infra/docker-compose.prod.yml exec postgres pg_restore -U freightaudit -d freightaudit --clean --if-exists /tmp/restore.dump
 ```
 
+## Before an interview
+
+1. Start Docker Desktop, then `pnpm demo:up` (it checks the public URL).
+2. `pnpm db:reset-demo` for clean data; the 11 sample invoices take a few minutes to read.
+3. Open the link 10 minutes early: sign in, open an invoice, check the document renders.
+4. Keep the backup video open in a tab, in case the network fails.
+
 ## What is reachable
 
 No service of `freightaudit-prod` publishes a host port, and Windows does not join the tailnet.

@@ -404,6 +404,14 @@ From the approved design doc:
   - Plain words: `refusal` in `lib/labels.ts` maps the api's two exact messages to the web's sentences, and every other message keeps the sentence rule, moved there from `app/actions.ts`. The held form sends neither on its own: the decided-duplicate refusal comes from a held page whose duplicate was decided meanwhile, the PRO one from a needs-review page whose invoice was held meanwhile.
   - Not done: the document mark of a corrected invoice number. The PRO's mark is dropped once corrected; the number's stays, and boxes the corrected value only where the PDF prints it exactly once (a mark has no label).
   - Reason: the user's C request and the approved wording; each choice is the smallest that fits it.
+- 2026-10-21: README pass decisions (the agent's, for the user to confirm at review).
+  - After the top, in the user's order, the README runs: Duplicate invoices, Review UI, Design, Setup, Usage, Observability, Load test, CI/CD.
+  - "Before an interview" moved to `docs/deploy.md` unchanged: it is the owner's checklist, not how a visitor tries the demo.
+  - How to try the demo says the one reviewer password "is not published", since no file says how a visitor gets it.
+  - The duplicate section reuses `docs/screenshots/ui/round-1/2-invoice-detail.png` (the byte copy with its possible duplicate open). No captured page shows a held invoice; a new shot needs a change to `apps/web/e2e/screenshots.spec.ts`, which is code, so none was added.
+  - The evidence and trail quotes use placeholders ("invoice <number>", "<old> to <new>"), so a retaken shot's new date cannot make them wrong.
+  - The Design section says only what the repo records: the UI was built from mockups approved before the build, the round-1 shots are at their sizes (`screenshots.spec.ts`), and one deliberate difference (the no-auto-approval rewording, 2026-10-18 above).
+  - Reason: the user's README request; each choice keeps to what a file in the repo shows.
 
 ## Preferences and Instructions
 
@@ -412,6 +420,7 @@ From the approved design doc:
 - 2026-10-13: Markdown filenames use kebab-case (for example `docs/migrations.md`).
 - 2026-10-14: Do not shape the schema around a lint rule; configure the rule narrowly instead (user instruction).
 - 2026-10-14: The ecc config-protection hook blocks agent edits to ESLint config files. Show the exact lines; the user applies them.
+- 2026-10-21: Every number in `README.md` comes from a file in the repo, and that file is named beside it: in the same sentence, row or bullet, or on the line above a table. Otherwise the number is left out (user instruction, README pass). The README is in plain words and short sentences, with no marketing language. The generated eval block names its report in its first line, and the line after `<!-- eval:end -->` names the k6 result files. How to apply: a README edit that adds or changes a number names its file.
 
 ## Solved Problems
 
@@ -639,6 +648,14 @@ From the approved design doc:
 - 2026-10-21: A filtered e2e run works when Playwright is called directly (follows the entry above). After the build (`pnpm turbo run build --filter=@freightaudit/web... --output-logs=errors-only` for a web-only change, once the api, worker and pipeline are built), `(cd apps/web && node e2e/prepare.ts && node_modules/.bin/playwright test --project=setup --project=main -g "<words>" --reporter=line)` ran setup and the one matching test: 2 passed in about 16 s. Used for C's e2e RED, GREEN and three mutation runs; the full `pnpm e2e` still runs before shipping.
 - 2026-10-21: In the web's ESM Jest, a test that imports a named export not yet written fails the whole suite before any test runs: "SyntaxError: The requested module './labels.ts' does not provide an export named 'refusal'". So that RED shows no test's value. What we did: added the export with today's behavior first (the sentence rule, moved from `app/actions.ts`), then each new test failed on its value.
 - 2026-10-21: "The demo runs it" can come before it does: check the revision label before building a web PR on a new api field. What happened: asked for C after B's Release, the first check found the demo api and worker on `40bae9f` (started 15:52 UTC) and no `sha-3fb206d` tag on GHCR. Why: not confirmed; most likely `pnpm demo:up` pulled `:latest` before B's Release had published. What we did: wrote no code, reported it and waited. The user sent the request again, and the second check found both on `3fb206d` (started 16:57 UTC) and the tag present, so C went ahead.
+- 2026-10-21: Every `pnpm e2e:screenshots` run rewrites most pictures, even with no UI change.
+  - What happened: the README pass's retake changed 23 of the pictures, and none for a UI change. The README's two sample pictures (`demo-invoice-{light,dark}.png`) came out byte-identical.
+  - Why: the Open findings card says "the oldest waiting N days" from `Date.now()` (`openFindingsNote`); the detail page and its trail print the run's date ("Received Oct 20, 19:52 UTC", "received on 2026-10-20 as digital.pdf"); the upload rows print the run's timing ("Done in 0.6 s" against "0.7 s").
+  - What we did:
+    1. A pixel diff of each changed picture against HEAD: a scratch script with `sharp` from `evals/` (`createRequire`), reading HEAD's blob through `git show`. It printed each picture's differing pixels and their row bands, 49 to 2,216 pixels each.
+    2. Crops of the bands, before and after, viewed side by side: only those texts differed.
+    3. `git restore -- docs/screenshots`.
+  - Best because it proves the date-only case picture by picture instead of guessing from the code.
 
 ## Rejected Approaches
 
@@ -689,6 +706,11 @@ From the approved design doc:
   - What we did:
     - Added the test the user asked for. It passed on the code as it was, and skipping the finding failed it.
     - Told the user, and named the path that is really unchecked: approval as billed from needs_review.
+- 2026-10-21: A number an agent computes needs its record in the same entry, or the README cannot cite it later.
+  - What happened: the README's Claude Haiku comparison had, for the free run on the 70 test cases, a recall, tokens per invoice (1,514 / 3,025) and a paid-equivalent cost ($0.054) that no file records. The 2026-10-17 activity log entry lists only the other rows.
+  - Why: not confirmed. Most likely they came from the computation that entry describes (the 2026-10-15 per-case scores through the harness's `measure`), and only some of its results were written down.
+  - What we did: the README pass kept the recorded rows, with that entry as their source, and dropped the others (user rule: name the source or leave the number out).
+  - How to apply: write every computed number into the activity log with how it was computed, in the entry that computes it.
 
 ## Constraints
 
@@ -711,3 +733,4 @@ From the approved design doc:
 - 2026-10-15: Why Mistral's account allows 0 requests a minute with either key, although its Limits page shows limits for `mistral-small-2603`, is open; it is no longer the fallback.
 - 2026-10-15: `qwen/qwen3.8-27b` is a preview model, which Groq may change or retire; a retired model answers 404, which pauses the extract queue (the circuit breaker) the first time the fallback runs.
 - 2026-10-14: Dollar cost targets apply only on a paid tier.
+- 2026-10-21: The approved mockups are not in the repository: `git ls-files` lists none. The 2026-10-18 activity log names nine approved pictures, and `.impeccable/config.json` names `approved-2-invoice-detail.png`. The README's Design section says the UI was built from them but links none. Whether to commit them is the user's call.
