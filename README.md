@@ -190,7 +190,17 @@ CI runs it in the `e2e` job.
 
 ## Design
 
-The UI was built from mockups that were drawn and approved before the build began. `pnpm e2e:screenshots` shoots the invoice list, an invoice and the upload page at the mockups' sizes, in light, dark and on a phone, into `docs/screenshots/ui/round-1/` (`apps/web/e2e/screenshots.spec.ts`), so the build can be held against them. Where the build departs from them on purpose, `docs/memory.md` says why. For example, the mockups' "approved without a reviewer" texts were reworded, since nothing is approved without a reviewer.
+The UI was built from mockups that were drawn and approved before the build began. They are in `docs/design/mockups/`, in light, dark and on a phone. `pnpm e2e:screenshots` shoots the same screens at the mockups' sizes into `docs/screenshots/ui/round-1/` (`apps/web/e2e/screenshots.spec.ts`), so the build can be held against them. Below, in light only, each approved mockup is on the left and the built screen on the right.
+
+| Approved mockup | Built |
+| --- | --- |
+| ![The invoice list, approved mockup](docs/design/mockups/approved-1-invoice-list.png) | ![The invoice list, built](docs/screenshots/ui/round-1/1-invoice-list.png) |
+| ![An invoice, approved mockup](docs/design/mockups/approved-2-invoice-detail.png) | ![An invoice, built](docs/screenshots/ui/round-1/2-invoice-detail.png) |
+| ![The upload page, approved mockup](docs/design/mockups/approved-3-upload.png) | ![The upload page, built](docs/screenshots/ui/round-1/3-upload.png) |
+
+The data differ: the mockups show made-up invoices, and the built screens show the invoices the screenshot run seeds and uploads. Where the build departs from the mockups on purpose, `docs/memory.md` says why. For example, the mockups' "approved without a reviewer" texts were reworded, since nothing is approved without a reviewer.
+
+The mockups were drawn with Claude (claude.ai) in a planning chat before the build.
 
 ## Setup
 

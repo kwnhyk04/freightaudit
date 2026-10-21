@@ -412,6 +412,12 @@ From the approved design doc:
   - The evidence and trail quotes use placeholders ("invoice <number>", "<old> to <new>"), so a retaken shot's new date cannot make them wrong.
   - The Design section says only what the repo records: the UI was built from mockups approved before the build, the round-1 shots are at their sizes (`screenshots.spec.ts`), and one deliberate difference (the no-auto-approval rewording, 2026-10-18 above).
   - Reason: the user's README request; each choice keeps to what a file in the repo shows.
+- 2026-10-21: Approved mockups decisions (the user's request to show them; the details are the agent's, for the user to confirm at review).
+  - Only `H:\Projects\projects\_design-reference\freightaudit\approved` was read and copied (user), never its `draft-landing-dashboard` or `superseded-b` siblings. The copies are byte for byte, with the source names (`approved-<n>-<screen>[-dark|-phone].png`).
+  - Each picture carries a C2PA (Content Credentials) manifest, signed by Anthropic, saying Claude provided the file. It holds no personal data, so it stays: stripping it would change the files and drop their stated origin.
+    - The user confirmed it the same day: keep the record. The README's Design section now says the mockups were drawn with Claude (claude.ai) in a planning chat before the build (user's words).
+  - The Design section pairs each light mockup with the round-1 shot of the same screen, which `pnpm e2e:screenshots` takes at the mockup's size. It says the data differ, and keeps the no-auto-approval rewording as the example of a deliberate difference.
+  - Reason: the user asked for the approved pictures, side by side with the build, light only, with no real personal data.
 
 ## Preferences and Instructions
 
@@ -734,3 +740,4 @@ From the approved design doc:
 - 2026-10-15: `qwen/qwen3.8-27b` is a preview model, which Groq may change or retire; a retired model answers 404, which pauses the extract queue (the circuit breaker) the first time the fallback runs.
 - 2026-10-14: Dollar cost targets apply only on a paid tier.
 - 2026-10-21: The approved mockups are not in the repository: `git ls-files` lists none. The 2026-10-18 activity log names nine approved pictures, and `.impeccable/config.json` names `approved-2-invoice-detail.png`. The README's Design section says the UI was built from them but links none. Whether to commit them is the user's call.
+  - Resolved the same day (user): show them. The nine are in `docs/design/mockups/`, and the README's Design section shows the three light ones beside the built round-1 shots (decision entry, 2026-10-21, approved mockups).
