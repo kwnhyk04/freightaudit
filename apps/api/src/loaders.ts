@@ -10,8 +10,9 @@ import {
   shipments,
 } from '@freightaudit/db';
 import DataLoader from 'dataloader';
-import { and, asc, count, desc, eq, inArray, lte, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, lt, lte, ne, or, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
 import { after, cursorAt } from './keyset.ts';
 import { invoiceColumns } from './service.ts';
 
@@ -46,6 +47,8 @@ const shipmentColumns = {
 const lowerDay = sql<string | null>`to_char(lower(${rateCardVersions.effective}) AT TIME ZONE 'UTC', 'YYYY-MM-DD')`;
 const upperDay = sql<string | null>`to_char(upper(${rateCardVersions.effective}) AT TIME ZONE 'UTC', 'YYYY-MM-DD')`;
 const versionColumns = { id: rateCardVersions.id, carrier: carriers.name, version: rateCardVersions.version, effectiveFrom: lowerDay, effectiveTo: upperDay };
+// Another invoice's line with the same charge code, for a duplicate charge's earlier invoice.
+const earlierLine = alias(invoiceLines, 'earlier_line');
 
 // Rows grouped under the keys DataLoader asked for, in its order.
 function grouped<Row, Key>(keys: readonly Key[], rows: Row[], keyOf: (row: Row) => Key) {
@@ -254,6 +257,29 @@ export function createLoaders(db: NodePgDatabase, tenantId: string) {
           .where(ofDiscrepancies(ids)),
         (row) => row.key,
       ).map((row) => row?.line ?? null),
+    ),
+    // A duplicate charge's earlier invoice: the earliest other invoice of its shipment with a line of the same code,
+    // written before its own line. Lines are written when an invoice is checked, so that is the rule's "billed before";
+    // like reconcile, it counts invoices of any status. The resolver asks only for duplicate charges.
+    // ponytail: created_at is each check's transaction start, so two checks of one shipment that begin in one order and
+    // take its lock in the other can name nothing, or rarely the wrong invoice; store the link at reconcile if it matters.
+    discrepancyEarlierInvoice: new DataLoader(async (ids: readonly string[]) =>
+      single(
+        ids,
+        await db
+          .selectDistinctOn([discrepancies.id], { key: discrepancies.id, ...graphqlInvoiceColumns })
+          .from(discrepancies)
+          .innerJoin(invoiceLines, eq(invoiceLines.id, discrepancies.invoiceLineId))
+          .innerJoin(invoices, and(eq(invoices.tenantId, tenantId), eq(invoices.shipmentId, discrepancies.shipmentId), ne(invoices.id, discrepancies.invoiceId)))
+          .innerJoin(
+            earlierLine,
+            and(eq(earlierLine.invoiceId, invoices.id), eq(earlierLine.chargeCode, invoiceLines.chargeCode), lt(earlierLine.createdAt, invoiceLines.createdAt)),
+          )
+          .leftJoin(carriers, eq(carriers.id, invoices.carrierId))
+          .where(ofDiscrepancies(ids))
+          .orderBy(discrepancies.id, earlierLine.createdAt, invoices.createdAt, invoices.id),
+        (row) => row.key,
+      ),
     ),
     discrepancyShipment: new DataLoader(async (ids: readonly string[]) =>
       single(

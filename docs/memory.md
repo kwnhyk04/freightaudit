@@ -440,6 +440,18 @@ From the approved design doc:
   - In evals (`fallbackOnRateLimit: false`) a Claude 429, timeout or 5xx retries the job as before; on the demo it hands that invoice to the free chain.
   - The demo's Redis publishes no port, so on the demo the switch is cleared with `redis-cli` in its container (docs/deploy.md); `pnpm claude:resume` serves local runs.
   - No worker integration test for the 402 and the restart. Two gates on one store (unit) and two Limits on one Redis (integration) cover the restart; the worker only wires them.
+- 2026-10-21 (user): Claude first is live on the demo. The user ran `pnpm demo:up` on 2026-10-21 and restarted the egress proxy, and g071 was then read by Claude Haiku 5.5. From then on, "the demo runs on free tiers only" no longer holds (the first 2026-10-21 Claude entry above: "once the plan ships"). The demo api and worker carry revision `3c61a1b`.
+- 2026-10-21: Re-bills plan and its PR 1 (approved by the user with its wording; the details are the agent's).
+  - A duplicate charge's earlier invoice is worked out when read, not stored. It is the earliest other invoice of the shipment with a line of the same charge code, written before the finding's own line, of any status, as reconcile's `billedBefore` counts them.
+    - Why: every stored finding gets it at once, g071's on the demo included, with no migration or backfill.
+    - A new `discrepancies` column would also break the flat-rate seed and the expand/contract test (`seed.ts:362`, `expand-contract.int.test.ts`).
+  - The "before" limit came from the plan review. Without it, an original invoice that repeats a charge on its own lines would name a later re-bill as its earlier bill.
+  - Ceiling, marked `ponytail:` in `apps/api/src/loaders.ts`: a line's `created_at` is its check's transaction start. Two checks of one shipment that start in one order and take its lock in the other can name nothing, or rarely the wrong invoice. Storing the link at reconcile is the upgrade.
+  - The resolver asks only for duplicate charges, so a page without one costs no query; the loader relies on that.
+  - `MAX_DEPTH` 8 (from 7) lets recent uploads read each finding's earlier invoice, and `MAX_COST` 88 (from 83) covers the invoice page's new fields. `NEXT` in the limits test became `{ cost, depth }` until the web PR selects them.
+  - `Query.uploadAllowlist` gives the web the demo's golden digests, so the upload page can warn before sending. Rejected: a copy of the manifest in the web plus a Vercel setting, which would duplicate the api's config.
+  - The web will show the earlier invoice's printed date (`issuedOn`) through `uploadDay`; the `Day` component prints "None" when empty, so it cannot go in a sentence.
+  - Order: the api first, so one Release serves both features. Then the re-bills web PR, then the upload PR, since both web PRs change the recent-uploads operation and `UploadArea`.
 
 ## Preferences and Instructions
 
@@ -685,6 +697,11 @@ From the approved design doc:
     2. Crops of the bands, before and after, viewed side by side: only those texts differed.
     3. `git restore -- docs/screenshots`.
   - Best because it proves the date-only case picture by picture instead of guessing from the code.
+- 2026-10-21: A late test in `apps/api/src/graphql.int.test.ts` met the api's rate limit.
+  - What happened: the re-bills tests, the file's last, got an answer with no `data` and no `errors` (a TypeError in the test). Alone, the same tests met the expected "Cannot query field" refusal, and after the code was in they passed.
+  - Why: the file's app had the default 60 requests a minute per key, counted in memory since it has no Redis, and the new tests came after the 60th request. A 429 is Problem Details, with neither key. Confirmed by the fix; the 429 body itself was not printed.
+  - What we did: the file's app now gets `rateLimits: { general: 1_000, upload: 10 }`, with a comment; `limits.int.test.ts` covers the limit itself. A GraphQL answer with neither `data` nor `errors` points to a refusal before Yoga: check the status first.
+- 2026-10-21: `jest --selectProjects integration <path>` reads the path as one more project name and runs the whole project. `pnpm test:int -- <path>` did filter (one file, 15 tests), probably because pnpm passes the `--` on, which ends the list (not confirmed). Without `--`, filter with `--testPathPatterns <pattern>` (Jest 30).
 
 ## Rejected Approaches
 
@@ -740,6 +757,7 @@ From the approved design doc:
   - Why: with Claude first, every cap from real use is far below the ceiling, so the ceiling only decides for the backup slot.
   - What we did: the test now drives the backup slot, which has no cap from real use; with the ceiling removed it fails. Best because each break should fail the one rule it removes.
 - 2026-10-21: A test that splits a repo file by lines must allow CRLF. The Windows checkout (`core.autocrlf=true`) holds `infra/docker-compose.prod.yml` with CRLF, so a split on `:\n` found no service and the compose check failed on its first run. The test now turns `\r\n` into `\n` first.
+- 2026-10-21: A rule that names "the earliest other one" needs "before this one" too, or a later one answers for an earlier one. The first re-bills plan missed it for an invoice's own repeated charge; a review of the plan against the code caught it, and a test now pins it.
 - 2026-10-21: A number an agent computes needs its record in the same entry, or the README cannot cite it later.
   - What happened: the README's Claude Haiku comparison had, for the free run on the 70 test cases, a recall, tokens per invoice (1,514 / 3,025) and a paid-equivalent cost ($0.054) that no file records. The 2026-10-17 activity log entry lists only the other rows.
   - Why: not confirmed. Most likely they came from the computation that entry describes (the 2026-10-15 per-case scores through the harness's `measure`), and only some of its results were written down.

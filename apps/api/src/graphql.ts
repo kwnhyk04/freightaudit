@@ -15,7 +15,8 @@ import { fail } from './problem.ts';
 import { queryLimits } from './query-limits.ts';
 import * as review from './review.ts';
 
-export type GraphqlDeps = { db: NodePgDatabase; queues: Queues; tenantId: string };
+// uploadAllowlist: the digests UPLOAD_ALLOWLIST accepts, as app.ts passes them; absent, any file is accepted.
+export type GraphqlDeps = { db: NodePgDatabase; queues: Queues; tenantId: string; uploadAllowlist?: ReadonlySet<string> };
 type Server = { req: FastifyRequest; reply: FastifyReply };
 type Context = Server & { loaders: Loaders };
 type Change = { field: string; from: string | null; to: string | null };
@@ -211,7 +212,7 @@ function summaryScope({ carrierId, from, to }: { carrierId?: string | null; from
   );
 }
 
-function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Context> {
+function createResolvers({ db, queues, tenantId, uploadAllowlist }: GraphqlDeps): Resolvers<Context> {
   const deps = { db, queues, tenantId };
   const invoiceById = async (loaders: Loaders, id: string) => {
     const row = UUID.test(id) ? await loaders.invoice.load(id) : null;
@@ -338,6 +339,7 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
         return connection(rows, first, ({ row }) => toDeadLetter(row));
       },
       carriers: async (_, __, { loaders }) => loaders.carriers(),
+      uploadAllowlist: () => (uploadAllowlist ? [...uploadAllowlist].sort() : null),
     },
 
     Mutation: {
@@ -414,6 +416,12 @@ function createResolvers({ db, queues, tenantId }: GraphqlDeps): Resolvers<Conte
       },
       shipment: (parent, _, { loaders }) => loaders.discrepancyShipment.load(parent.id!),
       rateCardVersion: (parent, _, { loaders }) => loaders.discrepancyVersion.load(parent.id!),
+      // Only a duplicate charge bills a code again, so no other kind costs a query.
+      earlierInvoice: async (parent, _, { loaders }) => {
+        if (parent.type !== 'DUPLICATE_CHARGE') return null;
+        const row = await loaders.discrepancyEarlierInvoice.load(parent.id!);
+        return row && toInvoice(row);
+      },
     },
 
     DeadLetter: {

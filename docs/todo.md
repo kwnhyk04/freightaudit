@@ -6,7 +6,7 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Pending
 
-Next: the user ships the Claude-first branch under In Progress, then its deploy steps (docs/deploy.md, Claude first). The approved mockups are merged as `b33401f` (#39), the README pass as `8d42fe3` (#38), and the follow-ups from #34 as #35, #36 and #37. The full-subset floors for rate-limit waits wait until the Gemini key has its own Google project. Until the user confirms that move, nothing with live Gemini calls runs on 2026-10-20 from 15:00 Taipei until Triage Copilot's exam run ends (docs/memory.md, Constraints); items marked "live Gemini" need such calls.
+Next: the user ships PR 1 of the re-bills plan under In Progress (branch `rebill-api`), then runs its Release and `pnpm demo:up`; PR 2 and then PR 3 are built after that. Claude first is merged as `3c61a1b` (#40) and live on the demo since the user's `pnpm demo:up` on 2026-10-21. The approved mockups are merged as `b33401f` (#39), the README pass as `8d42fe3` (#38), and the follow-ups from #34 as #35, #36 and #37. The full-subset floors for rate-limit waits wait until the Gemini key has its own Google project. Until the user confirms that move, nothing with live Gemini calls runs on 2026-10-20 from 15:00 Taipei until Triage Copilot's exam run ends (docs/memory.md, Constraints); items marked "live Gemini" need such calls.
 
 - [ ] (manual, user) FreightAudit's Gemini key moves to its own Google project (user, 2026-10-19). Until the user confirms it is done, the 2026-10-20 window rule stands (docs/memory.md, Constraints). The key is read from `.env` (local runs), `.env.prod` (the demo's worker, at its next `pnpm demo:up`) and the repository secret `GEMINI_API_KEY` (`ci.yml`'s eval smoke and `nightly-eval.yml`). Once the user confirms, the full-subset floors below can run.
 - [ ] Full-subset floors for rate-limit waits and wait time (live Gemini; after the key's move, user 2026-10-19), which the 2026-10-15 baseline could not give (no waits recorded): set them from the next full run on fresh results, `pnpm eval --suite extraction --subset full --fresh --set-floors` (cached cases from before 0011 report no waits). Without them the weekly full eval cannot flag a wait regression. Size S, plus one long run of 90 cases. Its PR changes `evals/thresholds.json`, so its CI eval smoke calls Gemini too.
@@ -26,7 +26,28 @@ Next: the user ships the Claude-first branch under In Progress, then its deploy 
 
 ## In Progress
 
-- [ ] Claude Haiku first on the public demo (user, 2026-10-21): approved with the user's answers, built on branch `claude-first` from main `b33401f`, not committed. The user ships it, then runs the deploy steps (docs/deploy.md, Claude first).
+- [ ] Re-billed shipments in plain words, and an upload page that previews first (user, 2026-10-21): plan approved, its wording as written. Three PRs in this order, each built once the one before it is on main, and PR 1 on the demo. No live model calls. The plan, its tests and its wording are in the activity log (2026-10-21, planned).
+  - [x] PR 1, api (branch `rebill-api` from main `3c61a1b`, not committed). No migration, no worker change, no REST change.
+    - `Discrepancy.earlierInvoice`: the earliest other invoice of the shipment that billed the line's charge code before it. It is worked out when read, so every stored finding has it, g071's included.
+    - `Query.uploadAllowlist`: the digests the api accepts, sorted, or null.
+    - `MAX_COST` 88 and `MAX_DEPTH` 8, the sizes of PR 2's operations (`NEXT` in `query-limits.test.ts`).
+    - Tests first: the limits test (2 of 5 failed, on 83 and 7) and two in `graphql.int.test.ts` (refused: no such field). Then they passed.
+    - Deliberate breaks, each failing a test and reverted: the order dropped, the type check dropped, the own invoice allowed, the "before" limit dropped, the allowlist unsorted, `MAX_COST` 87.
+    - Checks: `pnpm turbo run build typecheck lint test --force` 44 tasks, `pnpm test:int` 141 in 25 suites, `pnpm contracts:check`, `pnpm e2e` 43/43.
+    - After the merge: its Release, then `pnpm demo:up` (no migration runs). Then a read-only check: g071's three findings return `earlierInvoice`, and `uploadAllowlist` returns 90 digests.
+  - [ ] PR 2, web, re-bills. Needs PR 1 on the demo; no Release.
+    - Each duplicate charge names the invoice that billed it first: "Linehaul was already billed on invoice X (Sep 12, 2026) for the same shipment.", linked.
+    - The Expected cell reads "Already billed on invoice X" (linked), with one line above the table on why it is $0.
+    - The invoice header and the upload result say "Re-bills shipment S: n of m lines were already billed on invoice X (date)."
+  - [ ] PR 3, web, upload preview. After PR 2; no Release.
+    - Choosing or dropping files only lists them: name, size, pages, a first-page thumbnail, Remove, and a warning for a file that will be refused, the golden-set check included through `uploadAllowlist`.
+    - "Upload N invoices" with per-file progress, and Clear.
+    - Toasts in a polite live region: success fades, errors stay until closed, Retry for 429, 503 and no answer.
+    - Recent uploads reads "Reading…", and a toast says when each upload finishes. The samples still upload on tap.
+
+## Completed
+
+- [x] Claude Haiku first on the public demo (user, 2026-10-21): merged as `3c61a1b` (#40), built on branch `claude-first` from main `b33401f`. Live on the demo since the user's `pnpm demo:up` on 2026-10-21; g071 was then read by Claude Haiku 5.5 (user).
   - [x] Tests first: 18 in `packages/llm/src/claude-first.test.ts` and 2 changed or new in `claude.test.ts`, 2 in `limits.int.test.ts`, 3 in `evals/harness/no-claude-in-ci.test.ts`. They failed on their assertions against stubs keeping today's behavior (24 of 29, 2 of 5, 3 of 6), then passed.
   - [x] Deliberate breaks, each failing a test and reverted: the switch not stored (6 failed), the end date a day early (1), the budget charged after the call (1, the two-at-once reservation), `max_tokens` back to 65,536 (2), the 100,000 ceiling removed (1, after the test moved to the backup slot; docs/memory.md).
   - [x] Checks: build 11/11, typecheck 21/21, lint 12/12, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 139 in 25 suites, `pnpm e2e` 43/43. No live model call.
@@ -38,9 +59,7 @@ Next: the user ships the Claude-first branch under In Progress, then its deploy 
   - Demo wiring: the worker's compose environment gains `ANTHROPIC_API_KEY`, `LLM_CLAUDE_MODEL`, `LLM_CLAUDE_FIRST_UNTIL` and `DAILY_CLAUDE_TOKEN_BUDGET` (the worker only); squid's worker allowlist gains `api.anthropic.com`.
   - Eval: `--config claude-primary`, run locally only. Haiku is pinned for primary and text. The report is `<date>-<subset>-claude-primary`, with a side-by-side table against the official free run's per-case scores and the measured per-call maxima. It never sets or checks floors, never rewrites the README table, and refuses to run under CI.
   - Tests that fail first: the Claude-first request order; a 402 and a spend-limit 400 that switch for good and survive a restart; the date at 2026-11-10 23:59:59 and 2026-11-11 00:00 UTC; `max_tokens` 560; an over-cap input never sent; a Claude 503 or timeout that finishes on the free chain; Claude's own day counter and its atomic reservation; the new settings' validation; the demo compose and squid allowlist; the eval config's report name, refusals and side-by-side table.
-  - After the merge: the Release for the merge commit, `git pull` on the PC, the `.env.prod` lines, `pnpm demo:up`, `docker restart freightaudit-prod-egress-proxy-1`, then the checks. The PR changes `packages/llm`, so its CI eval smoke makes live free-model calls (the Gemini window rule, docs/memory.md, Constraints).
-
-## Completed
+  - [x] After the merge: the Release for the merge commit, `git pull` on the PC, the `.env.prod` lines, `pnpm demo:up`, `docker restart freightaudit-prod-egress-proxy-1`, then the checks. The PR changes `packages/llm`, so its CI eval smoke makes live free-model calls (the Gemini window rule, docs/memory.md, Constraints). Done (user, 2026-10-21): `pnpm demo:up` and the proxy restart; g071 was then read by Claude Haiku 5.5.
 
 - [x] Approved mockups in the repo (user, 2026-10-21): merged as `b33401f` (#39). No live model calls.
   - [x] The nine pictures of `H:\Projects\projects\_design-reference\freightaudit\approved` (not draft or superseded) copied byte for byte into `docs/design/mockups/`: the invoice list, an invoice and the upload page, each in light, dark and on a phone. Each file's sha256 matches its source.

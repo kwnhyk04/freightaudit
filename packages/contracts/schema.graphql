@@ -56,6 +56,12 @@ type Query {
   This tenant's carriers by name. A plain list: a tenant has few carriers, and a correction picks one of them.
   """
   carriers: [Carrier!]!
+
+  """
+  The SHA-256 digests (lowercase hex) of the only files this api accepts as uploads, sorted, or null when it accepts
+  any file. The public demo accepts only the golden set's PDFs (UPLOAD_ALLOWLIST), so the web can warn before sending.
+  """
+  uploadAllowlist: [String!]
 }
 
 """
@@ -579,6 +585,12 @@ type Discrepancy implements Node {
   Changes whenever the discrepancy does; decideInvoice compares it with the version the reviewer saw.
   """
   version: String!
+  """
+  For a DUPLICATE_CHARGE: the earliest other invoice of the same shipment that billed this line's charge code before
+  it, which this line bills again. Null for other findings and for a charge repeated only on its own invoice. Worked
+  out when read, so findings stored before this field existed have it too.
+  """
+  earlierInvoice: Invoice
 }
 
 """
