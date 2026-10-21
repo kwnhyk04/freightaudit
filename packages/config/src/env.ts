@@ -75,6 +75,12 @@ export const settings = {
   LLM_CLAUDE_MODEL: z.string().default(''),
   LLM_CLAUDE_RPM: perMinute(50),
   LLM_CLAUDE_TPM: perMinute(50_000),
+  // With a UTC date, Claude reads first through the end of that day, then the free chain for good. Empty: off.
+  LLM_CLAUDE_FIRST_UNTIL: z
+    .union([z.literal(''), z.iso.date().refine((day) => Number.isFinite(Date.parse(`${day}T00:00:00Z`)) && new Date(`${day}T00:00:00Z`).toISOString().startsWith(day), 'not a calendar date')])
+    .default(''),
+  // Claude's own UTC day, apart from DAILY_AI_TOKEN_BUDGET: $15 to 2026-11-10 over 21 days at $0.50 per million.
+  DAILY_CLAUDE_TOKEN_BUDGET: integer(1_400_000),
   // One key per provider account; required while AI_ENABLED is true for each provider a role uses. Empty means not set.
   GEMINI_API_KEY: z.string().optional(),
   GROQ_API_KEY: z.string().optional(),
@@ -150,6 +156,7 @@ export const LLM_SETTINGS = [
   'LLM_CLAUDE_MODEL',
   'LLM_CLAUDE_RPM',
   'LLM_CLAUDE_TPM',
+  'LLM_CLAUDE_FIRST_UNTIL',
 ] as const satisfies (keyof Settings)[];
 
 const BASE_URLS: Record<LlmProvider, string> = {
@@ -200,5 +207,7 @@ export function llmRoles(env: LlmEnv) {
     ? { provider: 'anthropic', model: env.LLM_CLAUDE_MODEL, baseUrl: BASE_URLS.anthropic, apiKey: env.ANTHROPIC_API_KEY || undefined, rpm: env.LLM_CLAUDE_RPM, tpm: env.LLM_CLAUDE_TPM }
     : undefined;
   if (claude && !claude.apiKey) problems.push('LLM_CLAUDE_MODEL is set, which needs ANTHROPIC_API_KEY');
-  return { roles, claude, problems };
+  const claudeFirst = env.LLM_CLAUDE_FIRST_UNTIL ? { until: env.LLM_CLAUDE_FIRST_UNTIL } : undefined;
+  if (claudeFirst && !claude) problems.push('LLM_CLAUDE_FIRST_UNTIL is set, which needs LLM_CLAUDE_MODEL');
+  return { roles, claude, claudeFirst, problems };
 }

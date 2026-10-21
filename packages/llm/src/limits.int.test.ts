@@ -1,7 +1,7 @@
 import { testEnv } from '@freightaudit/db/testing';
 import { Redis } from 'ioredis';
 import { randomBytes } from 'node:crypto';
-import { createLimits, type RoleLimits } from './limits.ts';
+import { createLimits, resumeClaude, type RoleLimits } from './limits.ts';
 
 const redis = new Redis(testEnv('REDIS_URL'));
 const prefix = `test-${randomBytes(4).toString('hex')}`;
@@ -82,4 +82,38 @@ test('the daily budget blocks model calls until the next UTC midnight, and AI of
 
   const off = createLimits(redis, { prefix: day, enabled: false, roles: roles({ rpm: 60, tpm: 60_000 }), dailyTokenBudget: 1e9 });
   expect(await off.blockedUntil(now)).toBe(now + 5 * 60_000);
+});
+
+test("Claude has its own UTC day: its tokens never count against the free budget, and a reservation that would pass its budget is refused, even two at once", async () => {
+  const day = `${prefix}-claude-day`;
+  const options = { prefix: day, enabled: true, roles: { ...roles({ rpm: 60, tpm: 60_000 }), claude: { rpm: 50, tpm: 50_000 } }, dailyTokenBudget: 1_000, dailyClaudeBudget: 5_000 };
+  const limits = createLimits(redis, options);
+  const now = Date.parse('2026-10-21T15:00:00Z');
+  expect(await limits.reserveClaude(3_000, now)).toBe(true);
+  await limits.record('claude', { inputTokens: 1_500, outputTokens: 500 }, 2_000, now);
+  await limits.settleClaude(3_000, { inputTokens: 1_500, outputTokens: 500 }, now);
+  expect(await redis.hget(`${day}:llm:day:2026-10-21`, 'claude_tokens')).toBe('2000');
+  // The free budget of 1,000 is untouched by Claude's 2,000.
+  expect(await limits.blockedUntil(now)).toBeUndefined();
+  // 3,000 left: of two reservations of 2,000 sent at once, only one fits.
+  const both = await Promise.all([limits.reserveClaude(2_000, now), createLimits(redis, options).reserveClaude(2_000, now)]);
+  expect(both.filter(Boolean)).toHaveLength(1);
+  expect(await limits.reserveClaude(1_001, now)).toBe(false);
+  // The next UTC day starts empty.
+  expect(await limits.reserveClaude(5_000, Date.parse('2026-10-22T00:00:00Z'))).toBe(true);
+});
+
+test('the switch to the free models is stored once, seen by every worker process, and stays until claude:resume clears it', async () => {
+  const off = `${prefix}-claude-off`;
+  const options = { prefix: off, enabled: true, roles: roles({ rpm: 60, tpm: 60_000 }), dailyTokenBudget: 1e9 };
+  const limits = createLimits(redis, options);
+  expect(await limits.claudeOff()).toBeUndefined();
+  expect(await limits.switchClaudeOff('spend_limit')).toBe(true);
+  expect(await limits.switchClaudeOff('billing_error')).toBe(false);
+  // Another process, or the same worker after pnpm demo:up, reads the first reason.
+  const restarted = createLimits(redis, options);
+  expect(await restarted.claudeOff()).toBe('spend_limit');
+  expect(await resumeClaude(redis, off)).toBe(true);
+  expect(await restarted.claudeOff()).toBeUndefined();
+  expect(await resumeClaude(redis, off)).toBe(false);
 });

@@ -28,7 +28,7 @@ container .8 to .15), so a compromised worker cannot borrow tailscale's way out:
 
 | Port | Client | Allowed hosts | Evidence (squid's access log) |
 | --- | --- | --- | --- |
-| 3128 | worker | `generativelanguage.googleapis.com`, `api.groq.com` | 2026-10-17: a Gemini extraction tunnelled through it; Groq answered CONNECT. 2026-10-18: the public sample's Gemini and Groq calls |
+| 3128 | worker | `generativelanguage.googleapis.com`, `api.groq.com`, `api.anthropic.com` (since Claude-first, 2026-10-21; not yet seen in the log) | 2026-10-17: a Gemini extraction tunnelled through it; Groq answered CONNECT. 2026-10-18: the public sample's Gemini and Groq calls |
 | 3129 | tailscale | `controlplane.tailscale.com`, `log.tailscale.com`, `acme-v02.api.letsencrypt.org`, and the relays by the pattern `^derp[0-9]+[a-z]*[.]tailscale[.]com$` | 2026-10-17, before login: the first two only. 2026-10-18, first start with a login: all three, and 87 relay names in 28 regions, denied until the pattern was added; no bare IP |
 
 With no UDP route out, tailscale's traffic, Funnel's included, goes through Tailscale's relays (DERP). tailscaled measures
@@ -143,7 +143,11 @@ Nothing to add. The release workflow publishes the images; nothing deploys from 
 | `AI_ENABLED` | Vercel `true`; `.env.prod` `true` | Web: live pages or the sample. Worker: model calls on or off | Redeploy, or `pnpm demo:up` |
 | `ENABLE_EXPERIMENTAL_COREPACK` | Vercel `1` | Builds with pnpm 12.11.2 from `packageManager` | None |
 | `GEMINI_API_KEY`, `GROQ_API_KEY` | `.env.prod` (demo keys); GitHub secrets (CI eval only) | Free-tier model keys | New key in the console, `pnpm demo:up`, delete the old key |
-| `DAILY_AI_TOKEN_BUDGET` | `.env.prod`, default 100,000 | Tokens a UTC day across all models | Edit, `pnpm demo:up` |
+| `DAILY_AI_TOKEN_BUDGET` | `.env.prod`, default 100,000 | The free models' tokens a UTC day | Edit, `pnpm demo:up` |
+| `ANTHROPIC_API_KEY` | `.env.prod`; root `.env` for the local Claude eval | Claude Haiku's key | New key in the console, `pnpm demo:up`, delete the old key |
+| `LLM_CLAUDE_MODEL` | `.env.prod`: `claude-haiku-5-5` | Turns Claude on; empty keeps the free chain | Edit, `pnpm demo:up` |
+| `LLM_CLAUDE_FIRST_UNTIL` | `.env.prod`: `2026-11-10` | The last UTC day Claude reads first; then the free chain for good | Edit, `pnpm demo:up` |
+| `DAILY_CLAUDE_TOKEN_BUDGET` | `.env.prod`, default 1,400,000 | Claude's own tokens a UTC day, reserved before each call | Edit, `pnpm demo:up` |
 | `POSTGRES_PASSWORD` | `.env.prod` | Demo database password (used once, when the volume is created) | `ALTER USER freightaudit PASSWORD '<new>'` in the container, edit `.env.prod`, `pnpm demo:up` |
 | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | `.env.prod` | Demo object store credentials | Edit, `pnpm demo:up` |
 | `TS_AUTHKEY` | `.env.prod`, first start only | One-off Tailscale auth key | Expires in a day; a new login needs a new key |
@@ -152,8 +156,26 @@ Nothing to add. The release workflow publishes the images; nothing deploys from 
 | `TENANT_ID`, `LOG_LEVEL` | `.env.prod` | The seeded tenant; log level | None |
 | `UPLOAD_ALLOWLIST`, `MOCK_TMS_URL`, `OTEL_SDK_DISABLED`, `EXTRACT_CONCURRENCY` | set by `infra/docker-compose.prod.yml` | Golden-only uploads; no TMS sync; no telemetry; one document read at a time (`1`) | Change the compose file |
 
-Never on the PC's demo or Vercel: `ANTHROPIC_API_KEY`, `LLM_CLAUDE_MODEL` (the demo runs on free tiers only), and any
-`NEXT_PUBLIC_` variable.
+Never on Vercel or GitHub: `ANTHROPIC_API_KEY` or any Claude setting (user, 2026-10-21); CI stays on the free models.
+Never anywhere: a `NEXT_PUBLIC_` variable.
+
+### Claude first (until 2026-11-10)
+
+The worker reads each invoice with Claude Haiku first, then its repair, then the free fallback. A 402, a 400 naming the
+credit balance or a spend limit, or a 401, 403 or 404 switches every worker to the free chain for good, with the alert
+`claude_switched_off` in the worker's log; from 2026-11-11 00:00 UTC the free chain reads by date. To let Claude read
+again after a top-up or a fixed key, delete the switch in the demo's Redis, which publishes no port for
+`pnpm claude:resume`: `docker exec freightaudit-prod-redis-1 redis-cli DEL <REDIS_PREFIX>:llm:claude:off`, with the
+`REDIS_PREFIX` of `.env.prod`.
+
+After the PR that brings it merges:
+1. The Release for the merge commit publishes `sha-<short>`.
+2. On the PC, `git pull` (the compose file and `infra/squid.conf` come from the checkout).
+3. In `.env.prod`: `ANTHROPIC_API_KEY=<key>`, `LLM_CLAUDE_MODEL=claude-haiku-5-5`, `LLM_CLAUDE_FIRST_UNTIL=2026-11-10`,
+   `DAILY_CLAUDE_TOKEN_BUDGET=1400000`.
+4. `pnpm demo:up`, then `docker restart freightaudit-prod-egress-proxy-1`, which reads the new allowlist.
+5. Check: the worker's revision label, its `claude` start line, one sample tap's model call by `anthropic`, and
+   `CONNECT api.anthropic.com:443` with no `TCP_DENIED` in `docker logs freightaudit-prod-egress-proxy-1`.
 
 ## Commands
 
@@ -215,7 +237,9 @@ Free plans only. What could ever bill you:
 - Vercel Hobby: cannot bill; over its limits the project pauses for up to 30 days.
 - Tailscale Personal: free; only add-ons bill (more than 50 tagged devices, Mullvad).
 - GitHub: public repository, so Actions and public images are free.
-- Anthropic: nothing from the demo, which holds no Anthropic key.
+- Anthropic: while Claude reads first, at most `DAILY_CLAUDE_TOKEN_BUDGET` (1,400,000) tokens a UTC day, $0.70 priced as all
+  output at Haiku's $0.50 per million (`packages/llm/prices.json`); FreightAudit's share of the organization's $50 monthly
+  limit is $15 until 2026-11-10, and the console's limit stops it beyond that.
 
 ## Troubleshooting
 

@@ -20,6 +20,7 @@
     "db:seed": "turbo run db:seed --",
     "db:reset": "turbo run db:reset",
     "extract:resume": "turbo run extract:resume",
+    "claude:resume": "turbo run claude:resume",
     "fixtures": "turbo run fixtures --",
     "codegen": "turbo run codegen",
     "eval": "turbo run eval --",

@@ -418,6 +418,28 @@ From the approved design doc:
     - The user confirmed it the same day: keep the record. The README's Design section now says the mockups were drawn with Claude (claude.ai) in a planning chat before the build (user's words).
   - The Design section pairs each light mockup with the round-1 shot of the same screen, which `pnpm e2e:screenshots` takes at the mockup's size. It says the data differ, and keeps the no-auto-approval rewording as the example of a deliberate difference.
   - Reason: the user asked for the approved pictures, side by side with the build, light only, with no real personal data.
+- 2026-10-21 (user): Claude Haiku may be the public demo's primary extractor.
+  - The Anthropic key lives only in `.env.prod` and `.env` on this PC, never on GitHub or Vercel; CI stays free-only.
+  - This supersedes "the demo runs on free tiers only" (docs/deploy.md, the worker's comment in `infra/docker-compose.prod.yml`, the 2026-10-17 Claude entries) once the plan ships. Until then the demo stays free-only.
+  - Budget: the Anthropic organization's monthly limit is $50, shared by FreightAudit, FilingLens and Triage Copilot. The user's answer gave "$15 until 2026-11-10, when the credits expire" as FilingLens's share and asked to size FilingLens's daily Claude budget from it. The plan reads it as FreightAudit's share, since 2026-11-10 is this plan's cutoff too. Not confirmed.
+- 2026-10-21: Claude-first plan (the agent's, waiting for the user's OK; docs/todo.md, In Progress).
+  - Why Claude-first uses the backup slot and not role pins: the free roles' settings stay as they are, so switching to the free chain only means skipping Claude.
+  - The caps are measured on `evals/.cache/golden-v1/435c71cd4f62`, the 2026-10-17 Haiku run's per-call records (gitignored, on this PC only). Only golden PDFs within 4 MiB count, since only those can reach the demo; g078, a 9.6 MiB 14-page scan, cannot. That leaves 69 cases and 72 calls:
+    - input per call at most 6,373 (g079, a 3-page scan), so the cap is 7,100;
+    - output per call at most 462 (g084, two invoices in one PDF). The dev split's g083 (7 lines, 2 invoices) never ran on Haiku; at about 48 tokens a line (g056's 6 lines gave 398, 2-line cases 204 to 207) it projects to about 510, so the cap is 560;
+    - per extraction at most 7,060 (g053: a first pass of 2,971 in and 330 out, then a repair of 3,385 in and 374 out), so the cap is 7,800;
+    - the prompt alone is about 1,450 tokens (1-page digital inputs 1,445 to 1,626), and a scanned page adds about 1,600 to 1,700.
+  - Totals for the 69 cases: 156,991 tokens, 87.6% input, $0.0235 paid ($0.149 per million). Extrapolated to all 89 uploadable PDFs: about 202,500 tokens and $0.030. The 11-invoice sample is about 25,000 tokens at the per-case mean.
+  - Daily Claude budget: $15 over the 21 days from 2026-10-21 to 2026-11-10 is $0.714 a day. At $0.50 per million (Haiku's output price below 100K, `packages/llm/prices.json`) that is 1,428,571 tokens, rounded down to 1,400,000.
+  - Triage Copilot was not read (context isolation). Its sizing was applied as the user described it: real usage plus about 10%.
+- 2026-10-21: Claude-first as built (branch `claude-first`; the agent's choices within the approved plan, for the user's review).
+  - The per-invoice cap is 8,500, not the plan's 7,800. The gate checks what the invoice already used plus the next call's reservation (its estimate and the full 560), and g053's repair comes to about 7,750 that way; 7,800 would have refused the largest real case.
+  - The input estimate: prompt, schema and page text at 1.5 characters a token (invoice text runs about 1.6), each image at width x height / 750 plus 10, read from its JPEG header (2,100 when the header gives no size). On the 70 recorded Haiku first passes it is 1.02 to 1.09 times the billed input; g079 estimates 6,521 against 6,373 billed.
+  - One gate for every Claude call. The backup slot also gets the persisted switch, Claude's own day and the 100,000 ceiling; the caps from real use bind only while Claude reads first. So a backup's 401, 403 or 404 also switches to the free chain instead of pausing the extract queue.
+  - A skipped Claude call is never recorded in `llm_calls`, since nothing was sent. A failed call keeps its reservation, in case Anthropic billed it (`ponytail:` comment).
+  - In evals (`fallbackOnRateLimit: false`) a Claude 429, timeout or 5xx retries the job as before; on the demo it hands that invoice to the free chain.
+  - The demo's Redis publishes no port, so on the demo the switch is cleared with `redis-cli` in its container (docs/deploy.md); `pnpm claude:resume` serves local runs.
+  - No worker integration test for the 402 and the restart. Two gates on one store (unit) and two Limits on one Redis (integration) cover the restart; the worker only wires them.
 
 ## Preferences and Instructions
 
@@ -427,6 +449,7 @@ From the approved design doc:
 - 2026-10-14: Do not shape the schema around a lint rule; configure the rule narrowly instead (user instruction).
 - 2026-10-14: The ecc config-protection hook blocks agent edits to ESLint config files. Show the exact lines; the user applies them.
 - 2026-10-21: Every number in `README.md` comes from a file in the repo, and that file is named beside it: in the same sentence, row or bullet, or on the line above a table. Otherwise the number is left out (user instruction, README pass). The README is in plain words and short sentences, with no marketing language. The generated eval block names its report in its first line, and the line after `<!-- eval:end -->` names the k6 result files. How to apply: a README edit that adds or changes a number names its file.
+- 2026-10-21: When Claude is primary, every per-task cap (output per call, input per request, tokens per extraction) is sized from real usage with about 10% headroom, so Haiku is never cut off mid-work. Claude has its own daily token budget, sized to FreightAudit's share of the Anthropic spend limit and separate from the free models' budgets, which stay as they are. No single prompt may pass 100,000 tokens, since Haiku charges 5x above that (user instruction).
 
 ## Solved Problems
 
@@ -712,6 +735,11 @@ From the approved design doc:
   - What we did:
     - Added the test the user asked for. It passed on the code as it was, and skipping the finding failed it.
     - Told the user, and named the path that is really unchecked: approval as billed from needs_review.
+- 2026-10-21: A tighter cap can hide another cap's test.
+  - What happened: the deliberate break that removed the 100,000-token ceiling passed its test. The test sent a 108,000-token prompt with Claude first, and the 8,500 per-invoice cap refused it before the ceiling was ever checked.
+  - Why: with Claude first, every cap from real use is far below the ceiling, so the ceiling only decides for the backup slot.
+  - What we did: the test now drives the backup slot, which has no cap from real use; with the ceiling removed it fails. Best because each break should fail the one rule it removes.
+- 2026-10-21: A test that splits a repo file by lines must allow CRLF. The Windows checkout (`core.autocrlf=true`) holds `infra/docker-compose.prod.yml` with CRLF, so a split on `:\n` found no service and the compose check failed on its first run. The test now turns `\r\n` into `\n` first.
 - 2026-10-21: A number an agent computes needs its record in the same entry, or the README cannot cite it later.
   - What happened: the README's Claude Haiku comparison had, for the free run on the 70 test cases, a recall, tokens per invoice (1,514 / 3,025) and a paid-equivalent cost ($0.054) that no file records. The 2026-10-17 activity log entry lists only the other rows.
   - Why: not confirmed. Most likely they came from the computation that entry describes (the 2026-10-15 per-case scores through the harness's `measure`), and only some of its results were written down.
@@ -724,6 +752,7 @@ From the approved design doc:
   - On 2026-10-20, from 15:00 Taipei until TC's exam run ends, nothing with live Gemini calls runs: no `pnpm eval`, no recording with `LLM_RECORD=1`, and no shipping of a PR that changes the eval smoke's paths (`packages/llm`, `packages/db/src/reference.ts`, `apps/worker/src/extract.ts`, `packages/config/src/env.ts`, `evals/`), since its CI smoke calls Gemini. Tests and `pnpm e2e` never call a real provider, so they still run.
   - The user is moving FA's key to its own Google project (pending; the user does it). Until the user confirms it is done, this window rule applies. Whether `.env.prod` and the repository secret `GEMINI_API_KEY` hold the shared key is not confirmed, so the rule treats them as if they do.
   - Public demo uploads and sample taps call Gemini, and visitors cannot be stopped (user). From the code, to bound it: both need the reviewer password; only a golden PDF the demo has not seen calls a model, and an exact repeat answers 200 with none; a PDF with a page that has no text layer goes to Gemini, an all-text one to Groq; and once a UTC day's `DAILY_AI_TOKEN_BUDGET` (100,000 tokens on the demo) is spent, the worker delays extract jobs to the next UTC midnight.
+- 2026-10-21: The Claude-first PR will change `packages/llm`, which the CI eval smoke watches. So its PR runs live free-model calls in CI (never Claude), and the window rule above governs when it may ship.
 
 ## Unresolved Questions
 

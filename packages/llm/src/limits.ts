@@ -44,9 +44,27 @@ export type Clock = { now(): number; sleep(ms: number): Promise<void> };
 export type RoleLimits = { rpm: number; tpm: number };
 // One bucket per role, and one for the Claude backup when it is configured.
 export type Bucket = Role | 'claude';
-export type LimitsOptions = { prefix: string; enabled: boolean; dailyTokenBudget: number; roles: Record<Role, RoleLimits> & { claude?: RoleLimits | undefined }; clock?: Clock };
+// dailyTokenBudget is the free models' UTC day, dailyClaudeBudget Claude's (none without one).
+export type LimitsOptions = {
+  prefix: string;
+  enabled: boolean;
+  dailyTokenBudget: number;
+  dailyClaudeBudget?: number;
+  roles: Record<Role, RoleLimits> & { claude?: RoleLimits | undefined };
+  clock?: Clock;
+};
 
-export function createLimits(redis: Redis, { prefix, enabled, dailyTokenBudget, roles, clock }: LimitsOptions) {
+// Claude's day: takes ARGV[1] tokens unless that passes the budget ARGV[2]; returns 1 when taken.
+const RESERVE = `
+local spent = tonumber(redis.call('HGET', KEYS[1], 'claude_tokens') or '0')
+if spent + tonumber(ARGV[1]) > tonumber(ARGV[2]) then return 0 end
+redis.call('HINCRBY', KEYS[1], 'claude_tokens', ARGV[1])
+redis.call('EXPIRE', KEYS[1], 172800)
+return 1
+`;
+const claudeOffKey = (prefix: string) => `${prefix}:llm:claude:off`;
+
+export function createLimits(redis: Redis, { prefix, enabled, dailyTokenBudget, dailyClaudeBudget = 0, roles, clock }: LimitsOptions) {
   const dayKey = (now: number) => `${prefix}:llm:day:${new Date(now).toISOString().slice(0, 10)}`;
   const limitsOf = (role: Bucket) => {
     const found = roles[role];
@@ -80,17 +98,34 @@ export function createLimits(redis: Redis, { prefix, enabled, dailyTokenBudget, 
       }
       return { tokens: want, waitedMs };
     },
+    // Why Claude is switched off for every process, until pnpm claude:resume; undefined while it is on.
+    claudeOff: async () => (await redis.get(claudeOffKey(prefix))) ?? undefined,
+    // Stores the first reason only; true when this call switched it.
+    switchClaudeOff: async (reason: string) => (await redis.set(claudeOffKey(prefix), reason, 'NX')) === 'OK',
+    // Takes `tokens` from Claude's UTC day, atomically, unless that would pass its budget.
+    reserveClaude: async (tokens: number, now = Date.now()) => Number(await redis.eval(RESERVE, 1, dayKey(now), tokens, dailyClaudeBudget)) === 1,
+    // Trues a reservation up to what the call used.
+    settleClaude: async (reserved: number, used: Usage, now = Date.now()) => void (await redis.hincrby(dayKey(now), 'claude_tokens', used.inputTokens + used.outputTokens - reserved)),
     // Counts a finished call against the UTC day and trues up the role's bucket from what was taken to real usage.
+    // Claude's tokens count on its own day (reserveClaude), never against the free models' budget.
     async record(role: Bucket, usage: Usage, taken: number, now = Date.now()) {
       const tokens = usage.inputTokens + usage.outputTokens;
       const key = dayKey(now);
-      await redis.multi().hincrby(key, 'calls', 1).hincrby(key, 'tokens', tokens).expire(key, 2 * 86_400).exec();
+      await redis
+        .multi()
+        .hincrby(key, 'calls', 1)
+        .hincrby(key, 'tokens', role === 'claude' ? 0 : tokens)
+        .expire(key, 2 * 86_400)
+        .exec();
       if (tokens !== taken) await bucket(role, tokens - taken, true);
     },
   };
 }
 
 export type Limits = ReturnType<typeof createLimits>;
+
+// pnpm claude:resume: Claude reads again, as configured; true when it was switched off.
+export const resumeClaude = async (redis: Redis, prefix: string) => (await redis.del(claudeOffKey(prefix))) === 1;
 
 // Design target per page: about 4,000 input and 1,200 output tokens.
 const TOKENS_PER_PAGE = 5_200;

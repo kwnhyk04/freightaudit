@@ -2,7 +2,8 @@
 // regression floors of evals/thresholds.json beside them, and on a full run the eval table that opens the README. The
 // exit code is 2 when a quota stop left cases unrun, 1 when a metric breaks its floor, else 0.
 import { existsSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { CLAUDE_EXTRACTION_CAP, CLAUDE_FIRST_MAX_TOKENS, CLAUDE_INPUT_CAP } from '@freightaudit/llm';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { failuresOf, type Measured, measure, meets, type Metric, METRICS, scoreCase, type Score } from './metrics.ts';
 import type { Roles, Run, Subset } from './run.ts';
 
@@ -108,9 +109,50 @@ const usage = (runs: Run[]) => {
 };
 const pins = (roles: Roles) => Object.entries(roles).map(([role, { provider, model }]) => `${role} ${provider}/${model}`).join(', ');
 
-export async function report({ subset, runs, durationMs, setFloors }: { subset: Subset; runs: Run[]; durationMs: number; setFloors: boolean }) {
+// A full run is the official report and has the date alone; a labelled configuration always names its subset and itself.
+export const reportName = (subset: Subset, date: string, config?: string) => (config ? `${date}-${subset}-${config}` : subset === 'full' ? date : `${date}-${subset}`);
+
+const REPORTS = new URL('../reports/', import.meta.url);
+const largest = (values: number[]) => (values.length > 0 ? Math.max(...values).toLocaleString('en-US') : 'none');
+
+// A labelled run beside the latest official free run on the cases both read, then Claude's largest calls and invoices
+// against the caps it ran under.
+async function beside(scores: Score[], run: Run) {
+  const official = (await readdir(REPORTS)).filter((file) => /^\d{4}-\d{2}-\d{2}\.json$/.test(file)).sort().at(-1);
+  const lines = ['', `## Beside the official free run (${official ?? 'none found'})`, ''];
+  if (official) {
+    const ids = new Set(scores.map((score) => score.id));
+    const theirs = (JSON.parse(await readFile(new URL(official, REPORTS), 'utf8')) as { scores: Score[] }).scores.filter((score) => ids.has(score.id));
+    const free = new Map(measure(theirs).map((m) => [m.metric, m]));
+    lines.push(`On the ${theirs.length} cases both runs read, measured from each report's per-case scores.`, '', '| Metric | Free models (official) | This run |', '| --- | --- | --- |');
+    for (const m of measure(scores)) {
+      const metric = metricOf(m.metric);
+      lines.push(`| ${metric.label} | ${fmt(metric.unit, free.get(m.metric)?.value)} | ${fmt(metric.unit, m.value)} |`);
+    }
+  }
+  const calls = [...run.results.values()].flatMap((result) => result.calls).filter((call) => call.provider === 'anthropic' && (call.outcome === 'valid' || call.outcome === 'invalid'));
+  // An invoice's Claude calls run from its first pass to the next one.
+  const perInvoice: number[] = [];
+  for (const call of calls) {
+    if (call.step === 'first_pass' || perInvoice.length === 0) perInvoice.push(0);
+    perInvoice[perInvoice.length - 1]! += call.inputTokens + call.outputTokens;
+  }
+  lines.push(
+    '',
+    '## Claude against its caps',
+    '',
+    '| Per | Largest in this run | Cap |',
+    '| --- | --- | --- |',
+    `| Output tokens per call | ${largest(calls.map((call) => call.outputTokens))} | ${CLAUDE_FIRST_MAX_TOKENS.toLocaleString('en-US')} |`,
+    `| Input tokens per call | ${largest(calls.map((call) => call.inputTokens))} | ${CLAUDE_INPUT_CAP.toLocaleString('en-US')}, estimated before sending |`,
+    `| Claude tokens per invoice | ${largest(perInvoice)} | ${CLAUDE_EXTRACTION_CAP.toLocaleString('en-US')}, with the next call reserved |`,
+  );
+  return lines;
+}
+
+export async function report({ subset, runs, durationMs, setFloors, config }: { subset: Subset; runs: Run[]; durationMs: number; setFloors: boolean; config?: string | undefined }) {
   const date = new Date().toISOString().slice(0, 10);
-  const name = subset === 'full' ? date : `${date}-${subset}`;
+  const name = reportName(subset, date, config);
   const stopped = runs.find((run) => run.stopped)?.stopped;
   // A comparison scores only the cases every run finished, so both columns cover the same invoices.
   const done = (golden: { id: string }) => (subset === 'compare' ? runs.every((run) => run.results.has(golden.id)) : true);
@@ -144,7 +186,8 @@ export async function report({ subset, runs, durationMs, setFloors }: { subset: 
     const measured: Measured[] = measure(scores);
     const ceiling = throughput(scores, run.roles);
     const thresholds: Thresholds = existsSync(THRESHOLDS) ? (JSON.parse(await readFile(THRESHOLDS, 'utf8')) as Thresholds) : {};
-    const floors = (thresholds[subset] ??= {});
+    // A labelled configuration is never held to the official floors and never sets them.
+    const floors = config ? {} : (thresholds[subset] ??= {});
     const suggestions: string[] = [];
     const rows = measured.map((m) => {
       const metric = metricOf(m.metric);
@@ -202,9 +245,10 @@ export async function report({ subset, runs, durationMs, setFloors }: { subset: 
       const result = run.results.get(s.id)!;
       lines.push(`| ${s.id} | ${kinds.get(s.id)} | ${s.path} | ${s.header.correct}/${s.header.total} | ${s.lines.tp}/${s.lines.fp}/${s.lines.fn} | ${s.overcharges.tp}/${s.overcharges.fp}/${s.overcharges.fn} | ${s.outcomes.ok}/${s.outcomes.total} | ${result.status}${result.error ? ` (${result.error})` : ''} |`);
     }
-    Object.assign(json, { golden: 'v1', promptHash: run.promptHash, pins: pins(run.roles), cases: scores.length, computed: run.computed, metrics: measured, throughputPerHour: ceiling ?? null, floors, failures, scores });
+    if (config) lines.push(...(await beside(scores, run)));
+    Object.assign(json, { config: config ?? null, golden: 'v1', promptHash: run.promptHash, pins: pins(run.roles), cases: scores.length, computed: run.computed, metrics: measured, throughputPerHour: ceiling ?? null, floors, failures, scores });
 
-    if (subset === 'full' && !stopped) {
+    if (subset === 'full' && !stopped && !config) {
       // Every pinned role with the model version the provider reported serving, or that it was never called.
       const served = Object.entries(run.roles)
         .map(([role, { provider, model }]) => {

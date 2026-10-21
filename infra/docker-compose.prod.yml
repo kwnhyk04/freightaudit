@@ -107,19 +107,24 @@ services:
   worker:
     <<: [*kept, *hardened]
     image: ${IMAGE_REPO:-ghcr.io/kwnhyk04}/freightaudit-worker:${IMAGE_TAG:-latest}
-    # No Claude backup and no paid key: the demo runs on free tiers only.
+    # Claude Haiku may read first until LLM_CLAUDE_FIRST_UNTIL, on its own daily budget; its key lives only in .env.prod.
+    # Empty Claude settings keep the free chain.
     environment:
       <<: *backend-env
       AI_ENABLED: ${AI_ENABLED:-true}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?set GEMINI_API_KEY in .env.prod; see docs/deploy.md}
       GROQ_API_KEY: ${GROQ_API_KEY:?set GROQ_API_KEY in .env.prod; see docs/deploy.md}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_CLAUDE_MODEL: ${LLM_CLAUDE_MODEL:-}
+      LLM_CLAUDE_FIRST_UNTIL: ${LLM_CLAUDE_FIRST_UNTIL:-}
+      DAILY_CLAUDE_TOKEN_BUDGET: ${DAILY_CLAUDE_TOKEN_BUDGET:-1400000}
       # The Groq account is shared with other projects and CI; about 3 resets and 25 uploads a day.
       DAILY_AI_TOKEN_BUDGET: ${DAILY_AI_TOKEN_BUDGET:-100000}
       # The demo bills seeded shipments, so there is no TMS to sync.
       MOCK_TMS_URL: ""
       # One document at a time, within the free tiers' per-minute limits.
       EXTRACT_CONCURRENCY: "1"
-      # Model calls go through egress-proxy, which allows only the Gemini and Groq API hosts. Node 24 reads
+      # Model calls go through egress-proxy, which allows only the Gemini, Groq and Anthropic API hosts. Node 24 reads
       # HTTPS_PROXY only with NODE_USE_ENV_PROXY=1; every internal service stays direct.
       NODE_USE_ENV_PROXY: "1"
       HTTPS_PROXY: http://egress-proxy:3128

@@ -19,6 +19,61 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-21: Claude Haiku first on the demo, built (branch claude-first from main `b33401f`, not committed)
+
+- **Setup:** the user approved the plan with four answers (docs/todo.md). `git switch -c claude-first` from main `b33401f`; the plan's uncommitted docs came along.
+- **Calibration of the input estimate:**
+  - What happened: the input cap needs an estimate made before sending that never undercounts.
+  - Why: Anthropic counts tokens only after the call; a count endpoint would be another live call.
+  - What we did: a scratch script (scratchpad, not the repo) ran the worker's own `readPages` over the 70 golden PDFs of the 2026-10-17 Haiku run (6.5 s) and set each against its recorded first-pass input from the eval cache.
+    - Scans cost exactly 1,270 + 1,701 a page (1, 2, 3 and 14 pages: 2,971, 4,672, 6,373, 25,084), and invoice text runs about 1.6 characters a token.
+    - At 2 characters a token the estimate undercounted g084 (1,774 against 1,823); at 1.5 it is 1.02 to 1.09 times every billed input.
+- **Tests first:**
+  - Stubs kept today's behavior: a pass-through gate, `max_tokens` 65,536, a reservation that always grants, the old report name. So the new tests failed on their assertions: 24 of 29 in the Claude files, 2 of 5 in `limits.int.test.ts`, 3 of 6 in `no-claude-in-ci.test.ts`.
+  - Then `claude-first.ts` (caps, estimate, gate), the ladder in `extract.ts`, Claude's day and switch in `limits.ts`, `models.ts`, the settings in `env.ts`, the worker, the eval's `--config claude-primary`, the compose file, squid and the env examples. Every suite passed.
+- **Deliberate breaks:** each failed a test and was reverted: the switch not stored, the end date a day early, the budget charged after the call, `max_tokens` back to 65,536, and the 100,000 ceiling removed.
+  - What happened: the ceiling's break first passed its test, because the 8,500 per-invoice cap refused the 108,000-token prompt first.
+  - What we did: the test moved to the backup slot, where only the ceiling binds. The break then failed it (docs/memory.md, Lessons Learned).
+- **The per-invoice cap is 8,500, not the plan's 7,800:** the gate adds the next call's full reservation, and g053's repair comes to about 7,750 that way (docs/memory.md, Claude-first as built).
+- **Small events:**
+  - The compose check failed on its first run: CRLF in the Windows checkout. The test now normalizes line endings (docs/memory.md).
+  - Agent slip: the first `ClaudeSkippedError` used a parameter property, which the repo's erasable-only TypeScript forbids. It was caught on review before any run and rewritten as a field.
+  - Agent slip: the scratch calibration script was edited once with `sed -i` instead of an edit tool (a scratchpad file, but AGENTS.md's rule is general).
+  - GateGuard asked for facts before the first edit of each of about 30 files; a first edit was refused even with the facts earlier in the same message, and each retry passed.
+- Files: `packages/llm/src/{claude-first.ts,claude-first.test.ts,claude.ts,claude.test.ts,errors.ts,extract.ts,limits.ts,limits.int.test.ts,models.ts,index.ts,testing.ts}`, `packages/llm/{package.json,scripts/resume-claude.ts}`, `packages/config/src/env.ts`, `apps/worker/src/main.ts`, `evals/harness/{run.ts,report.ts,no-claude-in-ci.test.ts}`, `infra/{docker-compose.prod.yml,squid.conf}`, `.env.example`, `.env.prod.example`, `package.json`, `turbo.json`, `README.md`, `docs/{deploy,context,threat-notes,memory,todo,activity-log}.md`.
+- Validation: build 11/11, typecheck 21/21, lint 12/12, `pnpm turbo run test --force` 18 tasks, `pnpm test:int` 139 in 25 suites, `pnpm e2e` 43/43. No live model call; `contracts:check` not run, since no contract file changed.
+- Outstanding: the user ships it, then the deploy steps (docs/deploy.md, Claude first). Not yet seen live: a Claude call through squid, and the labelled `--config claude-primary` eval, which costs real credit (about $0.024 for the test split) and waits for the user's go.
+
+### 2026-10-21: Claude Haiku first on the demo, planned (read-only, docs only, not committed)
+
+- **Request:** the user changed a standing rule: Claude Haiku may be the demo's primary extractor, with its key only in `.env.prod` and `.env`, and CI free-only. Plan the chain, guardrails, evals and setup, and wait for the user's OK before code. Mid-turn the user added: size every per-task cap from real usage with about 10% headroom, give Claude its own daily budget from the Anthropic spend limit, and never send a prompt over 100,000 tokens.
+- **Checks, all read-only:**
+  - `git fetch` and `git log`: main at `b33401f` (#39, the mockups), the same as `origin/main`, clean tree.
+  - Code read: `packages/llm/src/{claude,errors,models,extract,limits}.ts`, `packages/config/src/env.ts`, `apps/worker/src/{main,extract}.ts`, `infra/docker-compose.prod.yml`, `infra/squid.conf`, `evals/harness/{run.ts,no-claude-in-ci.test.ts}` and `packages/llm/prices.json`. The findings are in the plan below.
+  - The Anthropic SDK (0.132.1) uses the global `fetch` (`internal/shims.js`), which Node 24 routes through `HTTPS_PROXY` under `NODE_USE_ENV_PROXY=1`, as the demo worker sets.
+  - Real Haiku usage: a node script over `evals/.cache/golden-v1/435c71cd4f62` (the 2026-10-17 run's per-call records) and `evals/golden/v1/manifest.json` (file sizes, pages, splits) and `cases/*.json` (lines and invoices per case). The numbers and how each was derived are in docs/memory.md (2026-10-21, Claude-first plan).
+  - Env names, by name only: `grep -qE '^[[:space:]]*(export[[:space:]]+)?ANTHROPIC_API_KEY[[:space:]]*=' <file>` printed only True or False: `.env` True, `.env.prod` False. No value was read or printed, and whether `.env`'s value is empty was not checked.
+- **Plan** (for the user's OK; summary in docs/todo.md, In Progress):
+  - What exists: the Haiku adapter, its unavailable reasons (402, the two 400 messages, a 429 without retry-after), the backup slot between the free main model and the free fallback, its per-minute bucket, the price entry with the 100K note, the eval's anthropic pins and the CI guard.
+  - What the code does today that the plan changes:
+    - "Unavailable" lasts one process, so a restart tries Claude again.
+    - `max_tokens` is 65,536.
+    - Claude tokens count in the one daily budget, checked when a job starts, so a job can overshoot.
+    - A Claude 401, 403 or 404 pauses the whole extract queue, and a Claude timeout or 5xx fails the job into its retries.
+    - The demo worker's environment lists no Anthropic setting, and squid allows only the Gemini and Groq hosts.
+  - New: the Claude-first mode, the persisted switch and its resume command, the date rule, the caps and Claude's own day counter, the demo wiring and the eval config. The tests come first, and planned mutations check each one.
+- **The spend limit:**
+  - What happened: asked through AskUserQuestion, the user answered that the organization's $50 monthly limit is shared by FreightAudit, FilingLens and Triage Copilot, that "FilingLens's share is $15 until 2026-11-10, when the credits expire", and to size FilingLens's daily Claude budget from the $15.
+  - Why the plan uses it: the date matches this plan's cutoff, so it is read as FreightAudit's share (not confirmed).
+  - What we did: sized 1,400,000 tokens a day, at most $0.70 a day and $14.70 over the 21 days, and flagged the reading for the user.
+- **Small events:**
+  - Agent slip: `cd …/packages/llm && …` outside a subshell moved the shell's working directory; the next call moved it back to the root.
+  - `require.resolve('@anthropic-ai/sdk/package.json')` failed with ERR_PACKAGE_PATH_NOT_EXPORTED (the package exports no `package.json`); the version came from reading the file directly.
+  - GateGuard asked for facts before the first Bash command and before the first edit of each doc; each retry passed. Triage Copilot's files were not read (context isolation).
+- Files: `docs/{context,todo,memory,activity-log}.md`.
+- Validation: none needed, since nothing but docs changed. No live model call.
+- Outstanding: the user's OK on the plan, the $15 share, and two behavior choices (a 429 without retry-after; Claude's 401, 403 and 404).
+
 ### 2026-10-21: The Design section says how the mockups were drawn (branch design-mockups, not committed)
 
 - What happened: after the report on the mockups' Content Credentials record, the user said to keep it. They asked for one plain line in the README's Design section saying the mockups were drawn with Claude (claude.ai) in a planning chat before the build, and nothing else changed.

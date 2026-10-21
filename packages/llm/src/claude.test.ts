@@ -1,6 +1,8 @@
 import { CLAUDE_MAX_TOKENS, createClaudeProvider } from './claude.ts';
+import { gateClaude } from './claude-first.ts';
 import { RateLimitError } from './errors.ts';
 import { type Call, extractInvoices, type Models, type Part, type Provider } from './extract.ts';
+import { memoryClaudeStore } from './testing.ts';
 
 const valid = JSON.stringify({
   invoices: [
@@ -54,7 +56,8 @@ function always(name: string, reply: string | Error) {
 function chain(responses: Parameters<typeof anthropic>, main: string | Error = 'not json') {
   const api = anthropic(...responses);
   const logs: object[] = [];
-  const claude = createClaudeProvider({ apiKey: KEY, model: 'claude-haiku-5-5', baseUrl: 'http://claude.test', fetch: api.fetch, log: (fields) => void logs.push(fields) });
+  const client = createClaudeProvider({ apiKey: KEY, model: 'claude-haiku-5-5', baseUrl: 'http://claude.test', fetch: api.fetch });
+  const claude = gateClaude(client, memoryClaudeStore(), { first: false, maxTokens: CLAUDE_MAX_TOKENS, log: (fields) => void logs.push(fields) });
   const free = always('groq', valid);
   const models: Models = { primary: always('gemini', main), text: always('groq-text', main), fallback: free, claude };
   return { api, logs, claude, free, models };
@@ -94,8 +97,9 @@ test.each([
   ['a 402 billing_error', apiError(402, 'billing_error', 'Your account has a billing problem.'), 'billing_error'],
   ['a 400 about the credit balance', apiError(400, 'invalid_request_error', 'Your credit balance is too low to access the Anthropic API.'), 'credit_balance'],
   ['a 400 about a spend limit', apiError(400, 'invalid_request_error', 'You have reached your specified API usage limits.'), 'spend_limit'],
-  ['a 429 without retry-after', apiError(429, 'rate_limit_error', 'Number of request tokens has exceeded your daily rate limit.'), 'rate_limit_without_retry_after'],
-] as const)('%s makes Claude unavailable: the free fallback takes over for the rest of the process, logged once', async (_case, response, reason) => {
+  ['a 401', apiError(401, 'authentication_error', 'invalid x-api-key'), 'bad_key_or_model'],
+  ['a 404', apiError(404, 'not_found_error', 'model: claude-haiku-5-5'), 'bad_key_or_model'],
+] as const)('%s makes Claude unavailable: the free fallback takes over for good, with one alert', async (_case, response, reason) => {
   const { api, logs, claude, free, models } = chain([response]);
   const first = await extractInvoices(models, { parts: text, pageCount: 1 });
   expect(first).toMatchObject({ step: 'fallback', model: 'groq/groq-model' });
@@ -105,8 +109,16 @@ test.each([
   expect(api.bodies).toHaveLength(1);
   expect(free.calls).toBe(2);
   // The reason and status, once: never the key or the provider's message.
-  expect(logs).toEqual([{ alert: 'claude_unavailable', reason, status: response.status }]);
-  expect(JSON.stringify(logs)).not.toMatch(/sk-ant|credit balance|usage limits|billing problem|daily rate/);
+  expect(logs).toEqual([{ alert: 'claude_switched_off', reason, status: response.status }]);
+  expect(JSON.stringify(logs)).not.toMatch(/sk-ant|credit balance|usage limits|billing problem|x-api-key/);
+});
+
+test('a 429 without retry-after is a rate limit like any other: it waits and retries, and Claude stays in the chain', async () => {
+  const { logs, claude, free, models } = chain([apiError(429, 'rate_limit_error', 'Number of request tokens has exceeded your rate limit.')]);
+  await expect(extractInvoices(models, { parts: text, pageCount: 1 })).rejects.toBeInstanceOf(RateLimitError);
+  expect(claude.available()).toBe(true);
+  expect(free.calls).toBe(0);
+  expect(logs).toEqual([]);
 });
 
 test('a 429 with retry-after is a normal rate limit: it waits and retries as today, and Claude stays in the chain', async () => {
