@@ -19,6 +19,100 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-21: Re-bills PR 1 built: the api names a duplicate charge's earlier invoice, and its upload allowlist (branch rebill-api from main `3c61a1b`, not committed)
+
+- **Setup:** the user approved the plan below with its wording. `git switch -c rebill-api` from main `3c61a1b`, clean tree.
+- **Tests first:**
+  - `query-limits.test.ts`: `NEXT` became `{ cost: 5, depth: 1 }`; 2 of 5 failed, on 83 and 7.
+  - `graphql.int.test.ts`, two new tests. Both failed: the api refused `earlierInvoice` and `uploadAllowlist` as unknown fields.
+    - The earlier-invoice test inserts A, B and C for one unbilled seeded shipment, with explicit `created_at`, B and C first.
+    - It checks that the re-bills name A, the earliest; that repeats on one invoice name nothing, A's own included although B bills that code later; that a rate mismatch names nothing; that a rejected A still counts; and that one extra query serves all of B's duplicate charges.
+- **Code:**
+  - Schema: `Discrepancy.earlierInvoice` and `Query.uploadAllowlist`. Codegen changed only `graphql-resolvers.ts`.
+  - `discrepancyEarlierInvoice` in `apps/api/src/loaders.ts`: one batched `selectDistinctOn` query. The earlier line is `alias(invoiceLines, 'earlier_line')`, and the race ceiling is a `ponytail:` comment.
+  - The resolver returns null without a query for any other kind of finding.
+  - `GraphqlDeps.uploadAllowlist`, passed by `app.ts`.
+  - `MAX_DEPTH` 8 and `MAX_COST` 88.
+- **The rate limit inside the int test:**
+  - What happened: in the full file, the two new tests failed with a TypeError (an answer with no `data` and no `errors`). That happened both before the code and after it was in. Alone, with `-t`, they first met the expected refusal, then passed.
+  - Why: the file's app keeps the default 60 requests a minute per key, in memory, and the new tests come after the 60th request. A 429 is Problem Details. Confirmed by the fix; the 429 body was not printed.
+  - What we did:
+    1. One temporary `console.log` of the body, run alone: the "Cannot query field" refusal. The log was removed before any other change.
+    2. The file's app gets `rateLimits: { general: 1_000, upload: 10 }`, with a comment; `limits.int.test.ts` covers the limit itself.
+    3. The whole file passed (docs/memory.md, Known Issues).
+- **Deliberate breaks, each failing a test and reverted:**
+  - the ORDER BY dropped: C named B;
+  - the type check dropped: the rate mismatch named A;
+  - the own invoice allowed: both repeats named their own invoice;
+  - the "before" limit dropped: A's own repeat named a later invoice;
+  - the allowlist unsorted;
+  - `MAX_COST` 87: 2 of 5 failed.
+- **Small events:**
+  - A run as `jest --selectProjects integration <path>` read the path as a project name and ran the whole integration project: 129 passed, the new tests included. Later runs used `--testPathPatterns graphql.int` (docs/memory.md).
+  - Agent slip: a revert of the first break matched five loaders and was refused, while the second break, sent in the same batch, applied. `git diff --stat` before the next run caught it, and a revert with more context fixed it.
+  - GateGuard asked for facts before the first Bash command and before the first edit of each file. Several edits were refused once more even with the facts given just before, and each retry passed.
+  - `pnpm e2e` started this project's dev Postgres, Redis and MinIO, as it does.
+- **Docs: #40 marked done** from the user's report: `pnpm demo:up` on 2026-10-21, the egress proxy restarted, and g071 read by Claude Haiku 5.5.
+  - Read-only checks: the demo api and worker carry revision `3c61a1b` (started 10:06 UTC). `docker logs freightaudit-prod-egress-proxy-1` holds two `TCP_TUNNEL/200` for `CONNECT api.anthropic.com:443` from the worker (10.231.231.2) and no `TCP_DENIED`.
+  - Stale lines found and corrected: `docs/context.md` (Claude first "not committed"; the demo worker's settings, "no Claude model or Anthropic key"; squid's worker hosts) and `docs/threat-notes.md` ("No paid model or key on the demo"). Also `docs/deploy.md`'s "not yet seen in the log".
+- Files: `packages/contracts/{schema.graphql,src/generated/graphql-resolvers.ts}`, `apps/api/src/{app.ts,graphql.ts,loaders.ts,query-limits.ts,query-limits.test.ts,graphql.int.test.ts}`, `docs/{todo,context,memory,activity-log,deploy,threat-notes}.md`.
+- Validation: `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks; `pnpm test:int` 141 in 25 suites; `pnpm contracts:check`; `pnpm e2e` 43/43. No live model call.
+- Outstanding: the user ships PR 1, then its Release and `pnpm demo:up` (no migration). Then the read-only check that g071's findings return `earlierInvoice` and `uploadAllowlist` returns 90 digests. Then PR 2, then PR 3.
+
+### 2026-10-21: Re-billed shipments in plain words, and an upload page that previews first, planned (read-only)
+
+- **Request:**
+  - First: g071 (number 74732749) bills shipment SHP-001426 again under a new number. Its lines read "Duplicate charge" with Expected $0.00, and nothing named the invoice that billed them first. Keep accepting re-bills, which are evidence (a supplementary invoice may add charges), but say it plainly. Each finding names the earlier invoice (number, date, link). The charges table says "Already billed on invoice X", with a line on why Expected is $0. The upload result and the header say the invoice re-bills a shipment.
+  - Added mid-turn, as its own PR: choosing or dropping files must not upload them. A preview list; "Upload N invoices" with progress; toasts; Recent uploads reading live.
+  - Plan first; the user approved it, its wording as written.
+- **Checks, all read-only:** three code explorers (worker and domain, api and contracts, web), then a review agent that checked the plan against the code. What they found:
+  - The worker's earlier-lines query (`apps/worker/src/reconcile.ts:97-102`) selects only `charge_code`, with no invoice, order or status filter. The domain stores "<CODE> is billed twice." for both kinds of repeat, and no column links a finding to another invoice.
+  - The web writes the duplicate sentence itself (`apps/web/lib/labels.ts:115`).
+  - `invoice.graphql` costs exactly `MAX_COST` 83, and `recent-uploads.graphql` nests exactly `MAX_DEPTH` 7.
+  - The upload page uploads a file as soon as it is chosen. The browser counts no pages, and only the api knows the demo's allowlist.
+  - The public sample's g069 is a re-bill. Its earlier invoice is seeded and not in the sample.
+  - The docs still called #40 "not committed".
+- **Decisions** (docs/memory.md, 2026-10-21, re-bills):
+  - The earlier invoice is worked out at read time, with a "before" limit.
+  - The web writes the sentences.
+  - `MAX_DEPTH` 8 and `MAX_COST` 88.
+  - `uploadAllowlist` comes from the api.
+  - The date shown is the earlier invoice's printed date.
+- **The review's catch:**
+  - What happened: the first rule had no "before" limit. An original invoice that repeats a charge on its own lines would then name a later re-bill as its earlier bill, and the seed plants such repeats.
+  - Why: the plan reasoned only about findings caused by an earlier invoice.
+  - What we did:
+    - added the limit, its test and the race ceiling;
+    - also corrected the DISTINCT ON order, the operation sizes, the date helper and the e2e counts;
+    - added the screenshot and drop-form tests the plan had missed.
+- **Order:**
+  1. PR 1, the api: then its Release and `pnpm demo:up`.
+  2. PR 2, the web for re-bills.
+  3. PR 3, the web upload page. It follows PR 2, since both change the recent-uploads operation and `UploadArea`.
+- **Wording, approved:**
+  - The finding:
+    - "Linehaul was already billed on invoice 74731111 (Sep 12, 2026) for the same shipment.";
+    - "Appointment was already billed on line 3 of this invoice.";
+    - "…was already billed on an earlier invoice for the same shipment." (no number known);
+    - "…is billed twice." (lines not loaded).
+  - The Expected cell: "Already billed on invoice X", "Already billed on line 3" or "Already billed on an earlier invoice".
+  - Above the table: "Expected is $0 for a charge already billed, on an earlier invoice for this shipment or on an earlier line, so it is not paid twice."
+  - The header: "Re-bills shipment SHP-001426: 3 of 3 lines were already billed on invoice 74731111 (Sep 12, 2026)." With fewer than all lines, it adds "The other 2 are checked against the rate card as usual."
+  - The upload row: "Re-bills SHP-001426: 3 of 3 lines already billed on invoice 74731111".
+  - The upload toasts:
+    - "3 invoices uploaded. Reading now." with View;
+    - one error toast listing each file not uploaded and why, with Retry only for 429, 503 and no answer;
+    - "Invoice 74732749 read: 3 findings to review".
+- **Existing findings:**
+  - Live ones get their earlier invoice when read, with no backfill.
+  - Repeats on one invoice name their earlier line.
+  - The sample's g069 says "an earlier invoice" without a number: the sample was exported before the field, and a new export would need live models.
+  - REST evidence is unchanged.
+- **The full plan,** with each PR's tests that fail first: `C:\Users\kwonhyuk\.claude\plans\pasted-content-id-9b73-re-billed-shipme-vast-blossom.md`.
+- Files: the docs listed in the entry above.
+- Validation: none needed for the plan itself. No live model call.
+- Outstanding: PR 1 to ship; PR 2 and PR 3 to build.
+
 ### 2026-10-21: Claude Haiku first on the demo, built (branch claude-first from main `b33401f`, not committed)
 
 - **Setup:** the user approved the plan with four answers (docs/todo.md). `git switch -c claude-first` from main `b33401f`; the plan's uncommitted docs came along.

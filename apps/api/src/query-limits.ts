@@ -2,8 +2,8 @@ import { type ASTVisitor, type FragmentDefinitionNode, GraphQLError, Kind, type 
 
 // Only the web's server-only key reaches /graphql, so these bound what a leaked key could ask for. Each is the smallest
 // value every client operation in packages/contracts/operations passes; query-limits.test.ts pins both edges.
-export const MAX_DEPTH = 7;
-export const MAX_COST = 83;
+export const MAX_DEPTH = 8;
+export const MAX_COST = 88;
 
 type Size = { depth: number; cost: number };
 

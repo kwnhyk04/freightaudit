@@ -116,6 +116,12 @@ export type Discrepancy = Node & {
   __typename?: 'Discrepancy';
   /** Amount the carrier billed. */
   billedCents: Scalars['Cents']['output'];
+  /**
+   * For a DUPLICATE_CHARGE: the earliest other invoice of the same shipment that billed this line's charge code before
+   * it, which this line bills again. Null for other findings and for a charge repeated only on its own invoice. Worked
+   * out when read, so findings stored before this field existed have it too.
+   */
+  earlierInvoice?: Maybe<Invoice>;
   /** How the expected amount was derived. */
   evidence: Scalars['String']['output'];
   /** Amount the contract allows. */
@@ -493,6 +499,11 @@ export type Query = {
    * be rejected; see Invoice.hold), false the others.
    */
   invoices: InvoiceConnection;
+  /**
+   * The SHA-256 digests (lowercase hex) of the only files this api accepts as uploads, sorted, or null when it accepts
+   * any file. The public demo accepts only the golden set's PDFs (UPLOAD_ALLOWLIST), so the web can warn before sending.
+   */
+  uploadAllowlist?: Maybe<Array<Scalars['String']['output']>>;
 };
 
 
@@ -783,6 +794,7 @@ export type DeadLetterEdgeResolvers<ContextType = any, ParentType extends Resolv
 
 export type DiscrepancyResolvers<ContextType = any, ParentType extends ResolversParentTypes['Discrepancy'] = ResolversParentTypes['Discrepancy']> = {
   billedCents?: Resolver<ResolversTypes['Cents'], ParentType, ContextType>;
+  earlierInvoice?: Resolver<Maybe<ResolversTypes['Invoice']>, ParentType, ContextType>;
   evidence?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   expectedCents?: Resolver<ResolversTypes['Cents'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
@@ -923,6 +935,7 @@ export type QueryResolvers<ContextType = any, ParentType extends ResolversParent
   invoice?: Resolver<Maybe<ResolversTypes['Invoice']>, ParentType, ContextType, RequireFields<QueryInvoiceArgs, 'id'>>;
   invoiceSummary?: Resolver<ResolversTypes['InvoiceSummary'], ParentType, ContextType, Partial<QueryInvoiceSummaryArgs>>;
   invoices?: Resolver<ResolversTypes['InvoiceConnection'], ParentType, ContextType, RequireFields<QueryInvoicesArgs, 'first'>>;
+  uploadAllowlist?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
 };
 
 export type RateCardVersionResolvers<ContextType = any, ParentType extends ResolversParentTypes['RateCardVersion'] = ResolversParentTypes['RateCardVersion']> = {

@@ -1,4 +1,4 @@
-import { auditEvents, deadLetters, discrepancies, invoices, invoiceStatus } from '@freightaudit/db';
+import { auditEvents, deadLetters, discrepancies, invoiceLines, invoices, invoiceStatus } from '@freightaudit/db';
 import { seed } from '@freightaudit/db/scripts/seed';
 import { createTestDatabase, testEnv } from '@freightaudit/db/testing';
 import { createMemoryStorage, createQueues, type Queues } from '@freightaudit/pipeline';
@@ -6,7 +6,7 @@ import { serverOptions } from '@freightaudit/telemetry';
 import { and, desc, eq, isNotNull } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Redis } from 'ioredis';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import pg from 'pg';
 import { buildApp } from './app.ts';
 import { MAX_DEPTH } from './query-limits.ts';
@@ -42,9 +42,10 @@ beforeAll(async () => {
   queues = createQueues(redis, `test-${randomBytes(4).toString('hex')}`);
   const storage = createMemoryStorage();
   const options = serverOptions('info');
+  // This file sends more than a minute's 60 requests; limits.int.test.ts covers the limit itself.
   app = buildApp(
     { ...options, logger: { ...options.logger, stream: { write: (line: string) => logged.push(line) } } },
-    { apiKeys: [apiKey], storage, service: createService({ db, queues, tenantId, storage }), graphql: { db, queues, tenantId } },
+    { apiKeys: [apiKey], storage, service: createService({ db, queues, tenantId, storage }), graphql: { db, queues, tenantId }, rateLimits: { general: 1_000, upload: 10 } },
   );
 });
 afterAll(async () => {
@@ -344,4 +345,87 @@ test('client errors say what is wrong; an unexpected failure is masked and logs 
   expect(failed.errors?.[0]).toMatchObject({ message: 'Unexpected error.', extensions: { code: 'INTERNAL_SERVER_ERROR' } });
   expect(logged.join('')).toContain('graphql resolver failed');
   expect(logged.join('')).not.toContain(canary);
+});
+
+test('a duplicate charge names the earliest other invoice that billed its code for the shipment before it; nothing else names one', async () => {
+  // A seeded shipment no invoice bills yet, and a rate card version of its carrier for the lines.
+  const { rows } = await pool.query(
+    `SELECT s.id, s.carrier_id, v.id AS version_id FROM shipments s JOIN rate_card_versions v ON v.carrier_id = s.carrier_id
+     WHERE NOT EXISTS (SELECT 1 FROM invoices i WHERE i.shipment_id = s.id) LIMIT 1`,
+  );
+  const { id: shipmentId, carrier_id: carrierId, version_id: rateCardVersionId } = rows[0];
+  // An invoice checked at day, its lines a millisecond apart, as reconcile writes them in one transaction.
+  async function checked(number: string, status: 'reconciled' | 'rejected', day: number, codes: string[]) {
+    const at = Date.UTC(2026, 9, day, 12);
+    const contentSha256 = createHash('sha256').update(number).digest('hex');
+    const [invoice] = await db
+      .insert(invoices)
+      .values({ tenantId, status, filename: `${number}.pdf`, contentSha256, carrierId, shipmentId, invoiceNumber: number, invoiceDate: '2026-09-01', createdAt: new Date(at) })
+      .returning({ id: invoices.id });
+    const lines = await db
+      .insert(invoiceLines)
+      .values(codes.map((chargeCode, i) => ({ tenantId, invoiceId: invoice!.id, lineNumber: i + 1, description: chargeCode, chargeCode, amountCents: 100n, rateCardVersionId, createdAt: new Date(at + i) })))
+      .returning({ id: invoiceLines.id });
+    const finding = (lineNumber: number, type: 'duplicate_charge' | 'rate_mismatch') => ({
+      tenantId,
+      invoiceId: invoice!.id,
+      invoiceLineId: lines[lineNumber - 1]!.id,
+      shipmentId,
+      type,
+      expectedCents: 0n,
+      billedCents: 100n,
+      evidence: 'test',
+    });
+    return { id: invoice!.id, finding };
+  }
+  // B and C go in before A, so a lookup that lost its order would meet a later invoice first.
+  const b = await checked('B-2', 'reconciled', 2, ['LINEHAUL', 'FUEL', 'DETENTION', 'DETENTION']);
+  const c = await checked('C-3', 'reconciled', 3, ['LINEHAUL', 'FUEL']);
+  // A billed first and was rejected later; its own FUEL repeat came before B and C billed FUEL again.
+  const a = await checked('A-1', 'rejected', 1, ['LINEHAUL', 'FUEL', 'FUEL']);
+  await db
+    .insert(discrepancies)
+    .values([
+      b.finding(1, 'duplicate_charge'),
+      b.finding(2, 'duplicate_charge'),
+      b.finding(4, 'duplicate_charge'),
+      c.finding(1, 'duplicate_charge'),
+      c.finding(2, 'rate_mismatch'),
+      a.finding(3, 'duplicate_charge'),
+    ]);
+
+  type Finding = { type: string; lineItem: { lineNumber: number }; earlierInvoice: { id: string; number: string } | null };
+  const findings = async (id: string, fields = 'type lineItem { lineNumber } earlierInvoice { id number }'): Promise<Finding[]> => {
+    const { data, errors } = await gql(`query ($id: ID!) { invoice(id: $id) { discrepancies(first: 10) { edges { node { id ${fields} } } } } }`, { id });
+    expect(errors).toBeUndefined();
+    return data.invoice.discrepancies.edges.map(({ node }: { node: Finding }) => node);
+  };
+  const earlier = async (id: string) =>
+    Object.fromEntries((await findings(id)).map((node) => [`${node.type} on line ${node.lineItem.lineNumber}`, node.earlierInvoice?.id ?? null]));
+  expect({ a: await earlier(a.id), b: await earlier(b.id), c: await earlier(c.id) }).toEqual({
+    a: { 'DUPLICATE_CHARGE on line 3': null },
+    b: { 'DUPLICATE_CHARGE on line 1': a.id, 'DUPLICATE_CHARGE on line 2': a.id, 'DUPLICATE_CHARGE on line 4': null },
+    c: { 'DUPLICATE_CHARGE on line 1': a.id, 'RATE_MISMATCH on line 2': null },
+  });
+  expect((await findings(c.id)).find((node) => node.type === 'DUPLICATE_CHARGE')?.earlierInvoice).toEqual({ id: a.id, number: 'A-1' });
+
+  // One batched query serves the earlier invoice of all three of B's duplicate charges.
+  const queriesFor = async (fields: string) => {
+    queries = 0;
+    await findings(b.id, fields);
+    return queries;
+  };
+  expect(await queriesFor('earlierInvoice { number }')).toBe((await queriesFor('type')) + 1);
+});
+
+test('uploadAllowlist is null while the api accepts any file, and else the digests it accepts, sorted', async () => {
+  expect((await gql('{ uploadAllowlist }')).data!.uploadAllowlist).toBeNull();
+  const digests = ['f'.repeat(64), '0'.repeat(64), 'a'.repeat(64)];
+  const strict = buildApp(serverOptions('silent'), { apiKeys: [apiKey], storage: createMemoryStorage(), graphql: { db, queues, tenantId }, uploadAllowlist: new Set(digests) });
+  try {
+    const response = await strict.inject({ method: 'POST', url: '/graphql', headers: { 'x-api-key': apiKey }, payload: { query: '{ uploadAllowlist }' } });
+    expect(response.json()).toEqual({ data: { uploadAllowlist: [...digests].sort() } });
+  } finally {
+    await strict.close();
+  }
 });

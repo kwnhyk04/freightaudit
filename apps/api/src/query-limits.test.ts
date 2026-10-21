@@ -16,17 +16,18 @@ const size = (document: DocumentNode) => {
   return measure(operation.selectionSet, () => undefined);
 };
 
-// Fields the next web release adds to the largest operation, when the api goes first and already lets them through.
-// None now: C4d's invoice operation selects the trail's discrepancyId, the field C4c made room for.
-const NEXT = 0;
+// Fields the next web release adds to the largest operation, and levels to the deepest, when the api goes first and
+// already lets them through: each duplicate charge's earlierInvoice { id number filename issuedOn } on the invoice
+// page, and under recent uploads' findings.
+const NEXT = { cost: 5, depth: 1 };
 
 test('every client operation passes, and the limits are the smallest that let them all through, the next web release included', () => {
   expect(operations.length).toBeGreaterThan(10);
   for (const { name, document } of operations) expect([name, errors(document)]).toEqual([name, []]);
   const sizes = operations.map(({ document }) => size(document));
   expect({ depth: MAX_DEPTH, cost: MAX_COST }).toEqual({
-    depth: Math.max(...sizes.map((each) => each.depth)),
-    cost: Math.max(...sizes.map((each) => each.cost)) + NEXT,
+    depth: Math.max(...sizes.map((each) => each.depth)) + NEXT.depth,
+    cost: Math.max(...sizes.map((each) => each.cost)) + NEXT.cost,
   });
 });
 
@@ -39,8 +40,8 @@ test('the largest client operation with one field more than the limit is refused
   const largest = operations.reduce((top, each) => (size(each.document).cost > size(top.document).cost ? each : top));
   // The first brace opens the operation's selection: no client operation has an object in its variables.
   const more = (fields: number) => print(largest.document).replace('{', `{ ${'__typename '.repeat(fields)}`);
-  expect(errors(more(NEXT))).toEqual([]);
-  expect(errors(more(NEXT + 1))).toEqual([`The query selects ${MAX_COST + 1} fields; the limit is ${MAX_COST}.`]);
+  expect(errors(more(NEXT.cost))).toEqual([]);
+  expect(errors(more(NEXT.cost + 1))).toEqual([`The query selects ${MAX_COST + 1} fields; the limit is ${MAX_COST}.`]);
 });
 
 test('aliases are refused, since no client operation uses one', () => {

@@ -144,7 +144,8 @@ export function buildApp(
     },
   });
 
-  const yoga = createGraphql(app.log, graphql);
+  // GraphQL tells the web which files the uploads above accept, so it can warn before sending one.
+  const yoga = createGraphql(app.log, graphql && { ...graphql, uploadAllowlist });
   app.register(async (scope) => {
     scope.route({
       url: yoga.graphqlEndpoint,

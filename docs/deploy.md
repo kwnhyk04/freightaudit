@@ -28,7 +28,7 @@ container .8 to .15), so a compromised worker cannot borrow tailscale's way out:
 
 | Port | Client | Allowed hosts | Evidence (squid's access log) |
 | --- | --- | --- | --- |
-| 3128 | worker | `generativelanguage.googleapis.com`, `api.groq.com`, `api.anthropic.com` (since Claude-first, 2026-10-21; not yet seen in the log) | 2026-10-17: a Gemini extraction tunnelled through it; Groq answered CONNECT. 2026-10-18: the public sample's Gemini and Groq calls |
+| 3128 | worker | `generativelanguage.googleapis.com`, `api.groq.com`, `api.anthropic.com` (since Claude-first, 2026-10-21; two `TCP_TUNNEL/200` from the worker in the log on 2026-10-21, no denial) | 2026-10-17: a Gemini extraction tunnelled through it; Groq answered CONNECT. 2026-10-18: the public sample's Gemini and Groq calls |
 | 3129 | tailscale | `controlplane.tailscale.com`, `log.tailscale.com`, `acme-v02.api.letsencrypt.org`, and the relays by the pattern `^derp[0-9]+[a-z]*[.]tailscale[.]com$` | 2026-10-17, before login: the first two only. 2026-10-18, first start with a login: all three, and 87 relay names in 28 regions, denied until the pattern was added; no bare IP |
 
 With no UDP route out, tailscale's traffic, Funnel's included, goes through Tailscale's relays (DERP). tailscaled measures
