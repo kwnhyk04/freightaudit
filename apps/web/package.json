@@ -21,11 +21,11 @@
     "@freightaudit/config": "workspace:*",
     "@freightaudit/contracts": "workspace:*",
     "@freightaudit/domain": "workspace:*",
-    "next": "^16.4.0",
+    "next": "^16.4.2",
     "openapi-fetch": "^0.17.0",
     "pdfjs-dist": "6.4.299",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",
