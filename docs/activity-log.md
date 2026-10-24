@@ -19,6 +19,55 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-24: next-security, web image: the fonts come from the repository after Turbopack's next/font/google failed CI (branch next-security at `700d61e`, not committed)
+
+- **Request:** CI's docker (web) job failed on next-security. With next 16.4.2, Turbopack reported 18 errors in `apps/web/app/layout.tsx`'s next/font/google fonts: "Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'" and "next/font/google queries have exactly one entry". The plan:
+  - Reproduce it with the Dockerfile first.
+  - Pin next to exactly 16.4.1, and keep that if its Docker build passes.
+  - Only if 16.4.1 fails the same way, serve the fonts with next/font/local, with the same look and a screenshot check.
+- The plain Docker build passed:
+  - What happened: `docker build -f apps/web/Dockerfile` built 16.4.2 with no error. Its context was a `git archive` of HEAD with LF endings, like CI's checkout.
+  - Why: the failure is intermittent (below).
+  - What we did: built the image's build stage (`--target build`) and reran its `next build` with each condition that differs from CI. With no network (`--network none`) it failed another way: "Failed to fetch IBM Plex Mono from Google Fonts", 2 errors. With fonts.gstatic.com blocked it gave 28 "Module not found" and no query error. With CI's 4 CPUs (`--cpuset-cpus=0-3`) it failed with CI's errors exactly: 18 "Module not found", all in IBM Plex Sans's CSS, plus 72 "exactly one entry" lines.
+- How often it failed:
+  - What happened: at 4 CPUs, 16.4.2 failed 2 of 57 runs. With all 16 CPUs it failed 0 of 13. Both failures came within the first 7 runs, then none in 50. 25 alternating rounds of 16.4.2 and 16.4.1 failed 0 times each, and one run with 200 ms of added latency (netem) passed.
+  - Why: failures clustered in time point to an outside condition, not a race.
+  - What we did: read Turbopack's source (`crates/next-core/src/next_font/google/mod.rs` at v16.4.2).
+    - Turbopack puts each font file's URL into a JSON import query built with `qstring::QString::from`.
+    - `font_file_options_from_query_map` bails with "next/font/google queries have exactly one entry" unless that query is one key. `qstring` splits at `&`.
+    - IBM Plex Sans is a variable font: Google's CSS gives 18 faces that share 6 URLs. Mono's 10 faces have 10 URLs, and Mono never failed.
+- The decisive test:
+  - What happened: I fed Turbopack mocked responses through Next's `NEXT_FONT_GOOGLE_MOCKED_RESPONSES`. A Sans stylesheet whose font URLs were in Google's dynamic form (`https://fonts.gstatic.com/l/font?kit=…&skey=…&v=v23`) failed on both 16.4.2 and 16.4.1. Both gave CI's errors exactly: 18 "Module not found" and 72 "exactly one entry" lines. Google's real stylesheet, mocked the same way, passed on both versions.
+  - Why: an `&` in a font URL splits Turbopack's query. That Google served such URLs to CI, and to this PC during the two failures, is inferred from the identical signature, not confirmed. 20 fetches from the container and 12 from the host afterwards all had plain `/s/` URLs.
+  - What we did, step 1: pinned next to exactly 16.4.1. The lockfile changed only `next` and `@next/*`, and the audit passed. Its Docker build passed once, and 0 of 25 runs failed at 4 CPUs.
+  - What we did, step 2: 16.4.1 fails the same way under the trigger, so the pin does not reach the cause. I reverted it (`git checkout -- apps/web/package.json pnpm-lock.yaml`, then `pnpm install`) and followed step 2. Next stays at 16.4.2.
+- Fonts from the repository, in `apps/web/app/fonts/`:
+  - **Files:** `ibm-plex-sans-latin.woff2` (40,240 bytes, the variable font for 400 to 600), `ibm-plex-mono-latin-400.woff2` (10,052 bytes) and `ibm-plex-mono-latin-500.woff2` (10,060 bytes).
+  - **License:** `OFL.txt` is Google Fonts' `ofl/ibmplexsans/OFL.txt` (4,456 bytes). It is identical to Mono's file and to IBM's `LICENSE.txt`, and was downloaded with `curl` as a verbatim copy.
+  - **Source:** the latin `@font-face` URLs of Google's css2 API (Sans v23, Mono v20). I downloaded them with next/font/google's User-Agent, Mac Chrome 104, read from `@next/swc` 16.4.2. Each file has the same sha256 as the preloaded file next/font/google wrote into `.next/static/media` in the build before the change.
+  - **Small event:** my first download used a Windows Chrome User-Agent. Google served other files for it (Sans 45,712 bytes; why not confirmed, likely hinting), so I fetched again with Next's own User-Agent.
+  - **Layout:** `apps/web/app/layout.tsx` uses `localFont` for `plexSans` (one file, `weight: '400 600'`) and `plexMono` (400 and 500), with the same CSS variables, so `globals.css` is unchanged. The consts were first named `sans` and `mono`. next/font/local turns the const name into the CSS family name, and `sans` is a fontconfig alias on Linux, so I renamed them.
+  - **Latin only:** every character of the UI, the sample, the golden set, the seed sources and the fixtures is in the latin subset, checked by code point across 116 data files and the web's source. Google's CSS also offered latin-ext, cyrillic, greek and vietnamese files on demand. Such characters now fall back to system fonts (`ponytail:` in `layout.tsx`).
+  - **Built CSS:** one Sans face (`font-weight: 400 600`) and two Mono faces, with `font-display: swap` and three preloads, as before. The Arial fallbacks differ slightly: Sans size-adjust 101.13% (was 101.17%), Mono 131.49% (was 134.59%). This only matters before the fonts load.
+- Screenshot check:
+  - I ran `pnpm e2e:screenshots` on HEAD with Google fonts, then again with the local fonts. Each run passed 8 of 8 and wrote 38 pictures. A scratch script compared them by bytes and by pixels with `sharp` from `evals/`.
+  - 26 pictures are byte-identical. They include login, the four sample pages in light and dark, findings, needs review, failed, review queue, dead letters and upload.
+  - The other 12 differ only in the fixture's upload time (13:09 and 13:16 UTC, checked in crops) and in the animated dot of rows still being checked.
+  - After each run, `git checkout -- docs/screenshots` restored the pictures to HEAD.
+- The shell's directory slipped once:
+  - What happened: a `cd apps/web && node -p …` left the shell in `apps/web`.
+  - Why: the Bash tool keeps the directory between calls (agent mistake).
+  - What we did: `cd` back to the root in the next call. Nothing ran in `apps/web`.
+- Validation:
+  - **Docker:** the web image built from CI's Dockerfile on 16.4.2. The context was an LF archive of this tree made through a temporary index, with the real index untouched. The build stage's `next build` with no network at 4 CPUs passed 3 of 3. Trivy 0.75.0, run as CI runs it (fixable criticals), exited 0.
+  - **Repository:** `pnpm audit --audit-level high` exited 0 (5 low, 4 moderate). `pnpm turbo run build typecheck lint test --force` passed 44 of 44 tasks, and `pnpm e2e` passed 43 of 43.
+  - **Cleanup:** I removed the six scratch images built this session (`freightaudit-web:repro-1642`, `build-1642`, `1641`, `build-1641`, `local-fonts` and `build-local-fonts`) by tag. No other images or build cache were touched.
+- Correction to the next entry's exposure note:
+  - What happened: `layout.tsx` has an SVG icon as a data URI, and my earlier search for `\.svg` missed `svg+xml`.
+  - Why: the search pattern was too narrow (agent mistake).
+  - What we did: checked how the icon is served. A data URI never goes through `/_next/image`, so the Image Optimization note stands.
+- Outstanding: CI's docker (web) result once the user ships. Turbopack's handling of an `&` in a font URL is an upstream bug, and it has not been reported.
+
 ### 2026-10-24: next-security: Next.js and two dev-only packages upgraded past new advisories (branch next-security from main `c698d9f`, not committed)
 
 - **Request:** CI failed `pnpm audit` and the web image's Trivy scan: next 16.4.0 (GHSA-2464-fhr4-w9xw and GHSA-673q-mjm6-r5xr critical, GHSA-p3m5-59mp-jv5r high; fixed in 16.4.1), @graphql-tools/utils up to 12.0.1 (GHSA-c4qx-w738-7hr3) and undici below 8.12.2 (GHSA-xjj6-f33q-929c), both dev-only.
