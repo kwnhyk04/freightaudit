@@ -19,6 +19,41 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-24: main merged into rebill-web for its ship (`git merge main --no-commit`, not committed)
+
+- **Request:** the user's ship stopped on a conflict in `docs/activity-log.md`. The plan:
+  - Merge main (`4e0587c`: #46, #45 and #48) into `rebill-web` at `42fcd4a`.
+  - A docs conflict keeps both sides in date order; a code conflict stops the merge.
+  - No commit and no `git merge --continue`. Ask before anything that starts containers or runs e2e.
+- **Start:** on `rebill-web` at `42fcd4a` with a clean tree and no merge in progress. Local `main` equals `origin/main` (`4e0587c`, not fetched), and the merge base is `c698d9f`. Only the four docs changed on both sides, so no code file could conflict.
+- **The merge:** `git merge main --no-commit` stopped with one conflict, in `docs/activity-log.md`. `docs/context.md`, `docs/memory.md` and `docs/todo.md` merged by themselves.
+- The conflict:
+  - What happened: one hunk at the top of the log. The branch added its 2026-10-22 Re-bills PR 2 entry. Main added three 2026-10-24 entries and the 2026-10-22 readyz stopgap entry.
+  - Why: the log is newest first, so every branch writes at the same place.
+  - What we did: kept both sides, newest first: main's three 2026-10-24 entries, then the branch's 2026-10-22 entry, then main's 2026-10-22 one. The two 2026-10-22 entries go by commit time, since `42fcd4a` is from 18:09:59 UTC on 2026-10-21 and readyz's `73bfa29` from 17:40:47 UTC. I made the change with the Edit tool, copy first, then deleting the original with the markers, so the delete matched only if the copy was exact.
+  - Checks: no marker is left. The file has 2,074 lines, which is the branch's 1,943 plus main's 2,041 minus the base's 1,910. Its lines are exactly the base plus both sides' additions.
+  - Agent mistake: one check reported the log as LF (0 CR lines), and I first wrote that here. The same command form (`F=docs/activity-log.md && … grep -c $'\r$' $F`) still prints 0 on the file, while `grep -c $'\r$' docs/activity-log.md` counts 2,109 of 2,109 lines. So that count was a shell quoting artifact; the file is CRLF throughout, as git writes it here.
+- The auto-merged docs:
+  - What happened: both sides' changes sit in separate places and read correctly. Main's docs still called the readyz stopgap "not merged" and waiting for its ship, although #48 merged it.
+  - Why: they were written before #48 merged.
+  - What we did: marked it merged as `4e0587c` (#48) in docs/todo.md and docs/context.md, and recorded this merge on the PR 2 item.
+- **The demo check the branch asks for** ("ship only once the demo api runs `7dec271` or later"):
+  - Read only, with `docker inspect` on `freightaudit-prod-api-1` and `-worker-1`; nothing was started.
+  - Both run revision `c698d9f`, started 11:55 UTC on 2026-10-24, and `git merge-base --is-ancestor 7dec271 c698d9f` holds. So PR 1 is on the demo, and the todo's "Not on the demo yet" is marked done.
+- **Small events:**
+  - What happened: two shell lines failed. A grep window of 200 characters printed nothing, since the match sat nearer the end. Then `grep -oE` with `{0,160}` read as brace expansion ("No such file or directory"). A long one-liner also hit "unexpected EOF while looking for matching `)'".
+  - Why: the patterns were too wide, or the shell expanded them (not confirmed for the EOF).
+  - What we did: used the Grep tool and shorter commands.
+- Validation, with no containers:
+  - `pnpm install --frozen-lockfile` reported the lockfile up to date.
+  - `pnpm turbo run lint typecheck --force` passed 33 of 33 tasks.
+  - `pnpm turbo run test --filter=@freightaudit/web --force` passed 123 tests in 7 suites: 114, plus the branch's 4 and main's 5.
+  - `pnpm turbo run build --filter=@freightaudit/web... --force` passed 4 of 4 tasks on Next 16.4.2, with the three local font files in `.next/static/media`.
+- Not run: `pnpm e2e` and `pnpm test:int`, which start containers, so the user decides first.
+- Outstanding:
+  - The user's ship concludes the merge.
+  - After it, `pnpm e2e:screenshots` on the PC, since the README's sample shots are out of date (docs/todo.md, PR 2).
+
 ### 2026-10-24: main merged into readyz-stopgap for its ship (`git merge main --no-commit`, not committed)
 
 - **Request:** the user's ship stopped on a conflict in `docs/activity-log.md`. The plan:
@@ -112,6 +147,39 @@ Chronological record of development activity, newest first, with small events an
   - Image Optimization RCE (GHSA-2464-fhr4-w9xw): the advisory does not name a trigger beyond "when SVG files are used" and gives no config condition. `apps/web` has no `next/image`, no `images` block in `next.config.ts` and no SVG file in `public/` or `app/`. The default `/_next/image` route still exists in Next, and the advisory text did not say a default app is safe, so exposure is not confirmed either way; it is likely low.
 - Validation: `pnpm audit --audit-level high` exits 0 (9 left: 5 low, 4 moderate); `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks; `pnpm e2e` 43 of 43. `pnpm test:int` not run: nothing in the api or packages changed except a dev dependency override used by Testcontainers, so CI is the place for it.
 - Outstanding: the Trivy scan of the web image runs only in CI; ask the user for its result. Drop both overrides once their parents ship the fix.
+
+### 2026-10-22: Re-bills PR 2 built: each duplicate charge names where it was billed first, and a re-bill says so in its header and on its upload row (branch rebill-web from main `c698d9f`)
+
+- **Readings the plan left open** (the user's rule for this overnight session: take the most reasonable reading and note it here):
+  - The full plan is on the PC (`C:\Users\kwonhyuk\.claude\plans\pasted-content-id-9b73-re-billed-shipme-vast-blossom.md`), not in this container. The PR follows docs/todo.md and the approved wording in this log (2026-10-21, planned); the tests are reconstructed from them.
+  - Where a duplicate charge was billed first, the named earlier invoice wins over an earlier line of the same invoice; several earlier invoices are each named; one line reads "1 of 2 lines was …"; the upload row counts only charges with a named earlier invoice; an earlier invoice without a number goes by its file name; the row's re-bill line sits under its result (docs/memory.md, 2026-10-22, re-bills PR 2).
+  - No screenshot test was added or retaken. The plan's review added a screenshot test that this log does not describe, and this container's Chromium cannot draw a PDF page (below).
+  - Claude commits this branch, as the session's instructions say, although AGENTS.md (Git) leaves shipping to the user; no pull request, no merge, no gh. Dated 2026-10-22, Taipei's day.
+- **Request:** PR 2 exactly as planned in docs/todo.md: each duplicate charge names the invoice that billed it first, linked; the Expected cell reads "Already billed on invoice X" with one line above the table on why it is $0; the header and the upload result say the invoice re-bills its shipment. Tests that fail first, the deliberate breaks, full checks.
+- **Environment:** this cloud container, as in the readyz-stopgap entry: Node 24.22.0 through nvm, `dockerd` started by hand, Playwright 1.64 on the preinstalled Chromium 141 through scratchpad links, toxiproxy 2.12.0 built from source for `pnpm test:int`, gitleaks v8.30.1 built from source for the pre-commit hook.
+- **Tests first:**
+  - e2e, `apps/web/e2e/main.spec.ts`, "re-bills": the sample tapped in the upload tests, g001, reads as digital.pdf's invoice (the recorded fixture), so all 5 of its lines were billed on digital.pdf's invoice first. It checks the upload row, the header, each finding's sentence, the Expected cells and their links at 1280 px, the line above the table, that the table still fits, and that the link opens digital.pdf's invoice. On main's web it failed at the upload row, which read "Billing issues (6), possible duplicate to decide".
+  - `apps/api/src/query-limits.test.ts`: `NEXT` back to 0. 2 of 5 failed, on 83 and 7 against 88 and 8.
+  - `apps/web/lib/labels.test.ts`: 4 tests on `billedBefore`, `rebilledText` and `alreadyBilled`, `rebillNote`, and `uploadState`'s re-bill line. Each failed on its value against exports that kept today's words ("Linehaul is billed twice.", no header, no row line).
+  - A fifth rule came after the first GREEN: the Expected words only while the finding stands. Its assertion failed first (an approved charge still read "Already billed on …"), then passed.
+- **Code:**
+  - Operations: the invoice page's findings select `earlierInvoice { id number filename issuedOn }` (88 fields, depth 6); recent uploads add it under each finding, with the shipment's `reference` and `lineItems { id }` (36 fields, depth 8). Codegen changed the two client files.
+  - `lib/labels.ts`: `billedBefore`, `rebilledText`, `alreadyBilled`, `ALREADY_BILLED`, `rebillNote`, the row's `rebill` in `uploadState`; `Said` in `components/ui.tsx` renders their linked parts.
+  - `components/detail.tsx`: the header line, the findings' sentences, the Expected cells and the line above the table; `components/client.tsx`: the row's line; `globals.css`: the line's margin.
+- **Deliberate breaks, each failing a test and reverted:** the last earlier line instead of the first (unit); an earlier line winning over the named invoice (unit); a repeat on the invoice counted as a re-bill (unit); the Expected words kept for an approved charge (unit); the printed date dropped (2 unit tests); recent uploads without `earlierInvoice` (the limits test, depth 7); links without the invoice id (e2e, href `/invoices`).
+- **Visual check:** a scratch script started the e2e stack on its database as left by a run, signed in and took screenshots, not committed: the re-bill and the upload page at 1280 and 390 px, the sample's g069 and g056 at 1280. The Expected cells wrap to three lines at 1280 px and the table still fits; at 390 px the page stays 390 wide and the table scrolls in its frame. g069 reads "Re-bills shipment SHP-001269: 3 of 3 lines were already billed on an earlier invoice."; g056 has no header line and reads "Delivery appointment was already billed on line 3 of this invoice."
+- **Small events:**
+  - Agent mistake: the first e2e draft read `issued_on`, which is GraphQL's name; the column is `invoice_date` ("column issued_on does not exist"). Fixed before the RED run that counts.
+  - Agent mistake: the row test first expected +$7,314.56 over the rate card; its three charges of $97.78 make +$293.34. Fixed before its RED run.
+  - Agent slip: one `sed -i` removed a `!` in `labels.test.ts`, against AGENTS.md's rule for file edits. The change was read back, and every later edit used the edit tool.
+  - The upload test's fixtures needed `lineItems`, the shipment's `reference` and `earlierInvoice: null`, which the new operation types require (tsc).
+  - `-g "upload|re-bill"` also ran "an uploaded invoice … shows no example data", whose title holds "upload".
+- **The push was refused** (403, no GitHub write access in this session, as for every branch); the branch goes to the user as a git bundle.
+- Files: `packages/contracts/operations/{invoice,recent-uploads}.graphql`, `packages/contracts/src/generated/graphql-client/{gql,graphql}.ts`, `apps/api/src/query-limits.test.ts`, `apps/web/lib/{labels.ts,labels.test.ts}`, `apps/web/components/{detail,client,ui}.tsx`, `apps/web/app/globals.css`, `apps/web/e2e/main.spec.ts`, `README.md`, `docs/{todo,context,memory,activity-log}.md`.
+- Validation: `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks (web 118 unit tests in 6 suites, from 114); `pnpm contracts:check`; `pnpm test:int` 141 in 25 suites; `pnpm e2e` 35 passed, the same 8 PDF-drawing tests failing as on main in this container, lockout alone 1 passed. No live model call.
+- Outstanding:
+  - Ship only once the demo api runs `7dec271` or later, by its revision label; an older api refuses `earlierInvoice`.
+  - After the merge, `pnpm e2e:screenshots` on the PC: the README's sample shots show g056's old sentence and $0.
 
 ### 2026-10-22: The readyz stopgap built: the web waits 8 s for `/readyz`, keeps a live answer 30 s and a failed one 5 s (branch readyz-stopgap from main `c698d9f`)
 

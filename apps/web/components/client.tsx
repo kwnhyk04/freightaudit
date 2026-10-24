@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { type ReactNode, useActionState, useEffect, useRef, useState } from 'react';
 import { type ActionState, login, review, upload, uploadSample } from '../app/actions.ts';
 import { duplicateParts, STEPS, type UploadState } from '../lib/labels.ts';
+import { Said } from './ui.tsx';
 
 // The sidebar's links, marking the section the reader is in, with a count where one waits; screen readers hear the
 // count as words.
@@ -238,7 +239,14 @@ export function UploadArea({ rows }: { rows: RecentRow[] }) {
                         </ol>
                       )}
                     </td>
-                    <td className={`num wrap text-${row.tone}`}>{row.result}</td>
+                    <td className={`num wrap text-${row.tone}`}>
+                      {row.result}
+                      {row.rebill && (
+                        <div className="muted">
+                          <Said words={row.rebill} base="" />
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

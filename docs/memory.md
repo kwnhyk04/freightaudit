@@ -458,6 +458,16 @@ From the approved design doc:
   - `Query.uploadAllowlist` gives the web the demo's golden digests, so the upload page can warn before sending. Rejected: a copy of the manifest in the web plus a Vercel setting, which would duplicate the api's config.
   - The web will show the earlier invoice's printed date (`issuedOn`) through `uploadDay`; the `Day` component prints "None" when empty, so it cannot go in a sentence.
   - Order: the api first, so one Release serves both features. Then the re-bills web PR, then the upload PR, since both web PRs change the recent-uploads operation and `UploadArea`.
+- 2026-10-22: Re-bills PR 2 as built (branch `rebill-web`; the wording is the approved plan's, these readings are the agent's, for the user to confirm at review).
+  - Where a duplicate charge was billed first: the earlier invoice the api names wins, since that is the re-bill, even when an earlier line of the same invoice has the code too. Without a name, the first earlier line with the code, then "an earlier invoice".
+  - The Expected cell's words replace $0 only while the finding stands. Once the charge is approved its billed amount stands, and the cell shows money again.
+  - Lines first billed on several earlier invoices name each, in the findings' order: "on earlier invoices: invoice A (date) and invoice B (date)". The plan's wording covers one invoice only.
+  - "1 of 2 lines was …" and "The other 1 is …" for one line.
+  - The upload row counts only charges with a named earlier invoice: the recent-uploads operation has no line codes, so it cannot tell a repeat on the invoice itself from an unnamed earlier invoice. It needs the shipment's reference and `lineItems { id }` too, so recent uploads cost 36 fields, still under 88.
+  - An earlier invoice without a number goes by its file name, as an exact duplicate upload names one (`duplicateParts`).
+  - The re-bill line sits under the result, in the Result cell, so the result keeps its words and tone.
+  - Not done: retaking the screenshots. The sample's g056 now reads "Delivery appointment was already billed on line 3 of this invoice." with "Already billed on line 3", so `docs/screenshots/ui/demo-invoice-*.png` (the README's) are out of date; this container's Chromium cannot draw the PDF.
+  - Reason: the approved plan; each choice is the smallest that fits it.
 - 2026-10-21: The demo-check-retry PR (the user's request; the details are the agent's).
   - `pnpm demo:up`'s keyless check tries again, as the `/healthz` wait does, until the same 10-minute deadline. A try with no answer is repeated; any answer but 401 still fails at once, so the check still proves the key is required.
   - `release.yml` takes `workflow_dispatch` for a push that started no Release, as `7dec271`'s did. `publish` runs only on main, so a run started on another branch never moves `latest`.
@@ -728,6 +738,10 @@ From the approved design doc:
 - 2026-10-21: In Git Bash, `docker exec <container> tailscale --socket=/tmp/tailscaled.sock …` fails: MSYS turns `/tmp/…` into `H:/.tmp/…`. Prefix the command with `MSYS_NO_PATHCONV=1`. `scripts/demo.ts` spawns docker from Node, so it is not affected.
 - 2026-10-24: To rerun the web image's build like CI, build its build stage from an LF archive (`git -c core.autocrlf=false archive`), then run `next build` in it at CI's 4 CPUs: `docker run --rm --cpuset-cpus=0-3 <image> sh -c 'cd apps/web && rm -rf .next && node_modules/.bin/next build'`. To include untracked files, archive a tree written through a temporary index (`GIT_INDEX_FILE=<copy of .git/index> git add -A && git write-tree`), which leaves the real index alone.
 - 2026-10-24: Google Fonts serves different files per User-Agent. With a Windows Chrome agent, Sans latin is 45,712 bytes; with next/font/google's Mac Chrome 104 agent, it is 40,240. To match what the site serves, fetch with Next's agent. `NEXT_FONT_GOOGLE_MOCKED_RESPONSES` (a CommonJS file mapping css2 URL to CSS) makes Turbopack read a given stylesheet, which turns a Google-side failure into a repeatable one.
+- 2026-10-24: This session's Bash tool can misread quoting, apparently through an extra eval in its command wrapper (not confirmed).
+  - What happened: a quoted `grep -oE ".{0,160}…"` was brace-expanded into file names. `F=docs/activity-log.md && … grep -c $'\r$' $F` printed 0 on a file whose 2,109 lines all end in CRLF, which led to a false "LF" claim in a log entry (corrected the same day).
+  - What we did: counted CRs with a plain path (`grep -c $'\r$' docs/activity-log.md`) and used the Grep tool for regex windows.
+  - How to apply: check a surprising count another way before writing it down.
 
 ## Rejected Approaches
 

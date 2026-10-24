@@ -4,6 +4,9 @@ import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import type { MarkValues } from '../lib/marks.ts';
 import {
+  ALREADY_BILLED,
+  alreadyBilled,
+  billedBefore,
   decideWords,
   decisionLabel,
   decisionQuestion,
@@ -16,13 +19,15 @@ import {
   lineLabel,
   overcharge,
   plural,
+  rebilledText,
+  rebillNote,
   reviewReason,
   statusLabel,
   trailRows,
   unmatchedNote,
 } from '../lib/labels.ts';
 import { ActionForm, BulkDecision, DecideForm, DialogAction, StatusPoller } from './client.tsx';
-import { Badge, Day, Difference, Moment, Money, StatusBadge } from './ui.tsx';
+import { Badge, Day, Difference, Moment, Money, Said, StatusBadge } from './ui.tsx';
 import { DocumentViewer } from './viewer.tsx';
 import type { Where } from './views.tsx';
 
@@ -45,6 +50,22 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
   const findings = invoice.discrepancies.edges.map(({ node }) => node);
   const lines = invoice.lineItems.length > 0 ? invoice.lineItems : (extraction?.lines ?? []);
   const byLine = new Map(findings.filter((finding) => finding.lineItem).map((finding) => [finding.lineItem!.lineNumber, finding]));
+  // Where each duplicate charge was billed first, and so whether the invoice re-bills its shipment.
+  const before = new Map(
+    findings.flatMap((finding) => {
+      const where = billedBefore(finding, lines);
+      return where ? [[finding.id, where] as const] : [];
+    }),
+  );
+  const rebill = invoice.shipment ? rebillNote(invoice.shipment.reference, lines.length, [...before.values()]) : undefined;
+  // A charge billed before says where in its Expected cell, in place of its $0, while its finding stands.
+  const already = new Map(
+    lines.flatMap((line) => {
+      const finding = byLine.get(line.lineNumber);
+      const words = finding && alreadyBilled(finding, before.get(finding.id));
+      return words ? [[line.lineNumber, words] as const] : [];
+    }),
+  );
   // Only a priced invoice has expected amounts; before that, every line is as billed by definition.
   const priced = Boolean(invoice.rateCardVersion);
   const money = priced && invoice.totalCents !== null ? invoiceAmounts(invoice.totalCents, findings) : undefined;
@@ -104,6 +125,11 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
               </>
             )}
           </p>
+          {rebill && (
+            <p className="muted">
+              <Said words={rebill} base={base} />
+            </p>
+          )}
         </div>
         {!readOnly && <InvoiceActions invoice={invoice} findings={findings} money={money} />}
       </div>
@@ -179,6 +205,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
               <div className="findings">
                 {findings.map((finding) => {
                   const line = finding.lineItem && lines.find((each) => each.lineNumber === finding.lineItem!.lineNumber);
+                  const where = before.get(finding.id);
                   const title = `finding-${finding.id}`;
                   const decision = decisionLabel(finding.status, finding.type, closedWhy.get(finding.id));
                   return (
@@ -189,7 +216,9 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                           <h3 id={title}>{findingTitle(finding.type, line?.description)}</h3>
                           <Badge tone={decision.tone}>{decision.label}</Badge>
                         </div>
-                        <p className="muted">{findingText(finding, line, invoice.rateCardVersion?.version, invoice.currency)}</p>
+                        <p className="muted">
+                          {line && where ? <Said words={rebilledText(line.description, where)} base={base} /> : findingText(finding, line, invoice.rateCardVersion?.version, invoice.currency)}
+                        </p>
                         {finding.note && <p className="faint">Note: {finding.note}</p>}
                       </div>
                       <Difference cents={overcharge(finding)} currency={invoice.currency} />
@@ -217,6 +246,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
             <>
               <section className="panel" aria-labelledby="charges-title">
                 <h2 id="charges-title">{priced ? 'Charges against the rate card' : 'Charges as read'}</h2>
+                {priced && already.size > 0 && <p className="faint charges-note">{ALREADY_BILLED}</p>}
                 {lines.length === 0 ? (
                   <p className="faint">No lines were read.</p>
                 ) : (
@@ -248,6 +278,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                         {lines.map((line) => {
                           const finding = byLine.get(line.lineNumber);
                           const amounts = lineAmounts(line.amountCents, finding);
+                          const billed = already.get(line.lineNumber);
                           return (
                             <tr key={line.lineNumber} className={finding && finding.status !== 'DISMISSED' ? 'flagged' : undefined}>
                               <td className="num">{line.lineNumber}</td>
@@ -261,8 +292,8 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                               </td>
                               {priced && (
                                 <>
-                                  <td className="num muted">
-                                    <Money cents={amounts.expectedCents} currency={invoice.currency} />
+                                  <td className={billed ? 'num muted wrap' : 'num muted'}>
+                                    {billed ? <Said words={billed} base={base} /> : <Money cents={amounts.expectedCents} currency={invoice.currency} />}
                                   </td>
                                   <td className="num">
                                     <Difference cents={amounts.differenceCents} currency={invoice.currency} />
