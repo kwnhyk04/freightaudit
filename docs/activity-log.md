@@ -19,6 +19,22 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-24: next-security: Next.js and two dev-only packages upgraded past new advisories (branch next-security from main `c698d9f`, not committed)
+
+- **Request:** CI failed `pnpm audit` and the web image's Trivy scan: next 16.4.0 (GHSA-2464-fhr4-w9xw and GHSA-673q-mjm6-r5xr critical, GHSA-p3m5-59mp-jv5r high; fixed in 16.4.1), @graphql-tools/utils up to 12.0.1 (GHSA-c4qx-w738-7hr3) and undici below 8.12.2 (GHSA-xjj6-f33q-929c), both dev-only.
+- Wrong branch at the start:
+  - What happened: I created `next-security` while the checkout was on `commit-message-rule`, not main, so the branch carried that branch's commit.
+  - Why: the session began on `commit-message-rule`; I created the branch before checking where HEAD was. The user said main was clean and to switch to it.
+  - What we did: `git checkout main`, `git rev-parse` showed `next-security` and `commit-message-rule` on the same commit (`038969a`), so `git branch -D next-security` lost nothing, then `git checkout -b next-security` from main `c698d9f`. The `commit-message-rule` branch is untouched.
+- Next: `apps/web/package.json` `next` ^16.4.0 to ^16.4.1; the lockfile resolves 16.4.2. No `eslint-config-next` exists in the repository, so nothing paired to move.
+- Dev-only packages: both parents are at their latest release and still lag (`@graphql-eslint/eslint-plugin` 4.4.2 requires utils ^10, `testcontainers` 12.2.1 pins undici 8.11.2), so a parent upgrade was not possible. Two scoped pnpm overrides in `pnpm-workspace.yaml`: `@graphql-eslint/eslint-plugin>@graphql-tools/utils` ^12.0.2 (now 12.0.4) and `testcontainers>undici` ^8.12.2 (now 8.12.3). No ignore entry added. The old `GHSA-7mx3-vvmw-hjmv` ignore (utils up to 12.0.0) no longer applies at 12.0.4, so I removed it; `GHSA-vfj7-8cjw-p6xm` (braces) stays, no fix exists.
+- Exposure of the live site (advisories read on github.com, 2026-10-24):
+  - Server Actions DoS (GHSA-p3m5-59mp-jv5r): affected. The advisory needs only the App Router with at least one Server Action, no session, no workaround but upgrading. `apps/web/app/actions.ts` has the sign-in, upload and reviewer actions, so the Vercel site was exposed to it.
+  - `use cache` RCE (GHSA-673q-mjm6-r5xr): not used. No `use cache` and no `cacheComponents` anywhere in `apps/web`.
+  - Image Optimization RCE (GHSA-2464-fhr4-w9xw): the advisory does not name a trigger beyond "when SVG files are used" and gives no config condition. `apps/web` has no `next/image`, no `images` block in `next.config.ts` and no SVG file in `public/` or `app/`. The default `/_next/image` route still exists in Next, and the advisory text did not say a default app is safe, so exposure is not confirmed either way; it is likely low.
+- Validation: `pnpm audit --audit-level high` exits 0 (9 left: 5 low, 4 moderate); `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks; `pnpm e2e` 43 of 43. `pnpm test:int` not run: nothing in the api or packages changed except a dev dependency override used by Testcontainers, so CI is the place for it.
+- Outstanding: the Trivy scan of the web image runs only in CI; ask the user for its result. Drop both overrides once their parents ship the fix.
+
 ### 2026-10-21: demo-check-retry built: `demo:up`'s keyless check retries, a Release can be started by hand, and the demo's latency measured (branch demo-check-retry from main `7dec271`, not committed)
 
 - **Request:** no Release run exists for `7dec271`: Actions skipped the push (the user). One small PR with three parts:
