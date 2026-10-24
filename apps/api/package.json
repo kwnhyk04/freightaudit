@@ -10,7 +10,7 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
-    "@fastify/multipart": "^10.1.3",
+    "@fastify/multipart": "^10.1.4",
     "@fastify/rate-limit": "^11.2.1",
     "@freightaudit/config": "workspace:*",
     "@freightaudit/contracts": "workspace:*",
@@ -21,10 +21,10 @@
     "@freightaudit/telemetry": "workspace:*",
     "dataloader": "^2.2.3",
     "drizzle-orm": "catalog:",
-    "fastify": "^5.12.5",
+    "fastify": "^5.12.7",
     "fastify-openapi-glue": "^4.11.5",
     "graphql": "^16.14.2",
-    "graphql-yoga": "^5.24.4",
+    "graphql-yoga": "^5.24.6",
     "ioredis": "catalog:",
     "pg": "catalog:"
   },

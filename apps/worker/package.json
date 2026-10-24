@@ -20,7 +20,7 @@
     "@freightaudit/telemetry": "workspace:*",
     "bullmq": "catalog:",
     "drizzle-orm": "catalog:",
-    "fastify": "^5.12.5",
+    "fastify": "^5.12.7",
     "ioredis": "catalog:",
     "pg": "catalog:",
     "zod": "catalog:"
