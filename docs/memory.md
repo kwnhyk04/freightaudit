@@ -468,6 +468,22 @@ From the approved design doc:
   - The re-bill line sits under the result, in the Result cell, so the result keeps its words and tone.
   - Not done: retaking the screenshots. The sample's g056 now reads "Delivery appointment was already billed on line 3 of this invoice." with "Already billed on line 3", so `docs/screenshots/ui/demo-invoice-*.png` (the README's) are out of date; this container's Chromium cannot draw the PDF.
   - Reason: the approved plan; each choice is the smallest that fits it.
+- 2026-10-22: Re-bills PR 3 as built (branch `upload-preview`; the plan's items, these readings the agent's, for the user to confirm at review).
+  - "Upload N invoices" counts only files that can go: read in the browser with nothing against them, and not sent yet or sent and met an answer worth trying again. A file with a warning is never sent; Remove takes it off the list.
+  - One file at a time, in list order. A 429, a 503 or no answer ends the batch, since the next file would meet the same; the files not sent wait again and Upload counts them. Any other refusal marks its file, and the batch goes on.
+  - Sent files stay listed with their outcome ("Uploaded", or the invoice an exact duplicate already is, linked) until Remove, Clear or a reload.
+  - An exact duplicate is a notice, not an error: a neutral toast that fades, with the same words on its line.
+  - After a batch, one success toast ("N invoices uploaded. Reading now.", with View) and one error toast listing each file's reason, with Retry only for the three answers above.
+  - While the backend is marked offline, an upload answers "The FreightAudit API did not answer. Try again in a moment." with Retry, in place of "Sample data is read-only.", which gave the upload page no way back. The sample buttons show the same words.
+  - In-flight rows read "Reading…" (received or extracting) or "Checking…" (reconciling). The elapsed time is gone: the poller refreshes every 5 s, then 60 s, so a running time would jump. "Done in" stays.
+  - A row the page saw in flight gets a toast once it settles: "Invoice X read: N findings to review", "ready to approve" ("as billed" without a shipment), "its reading needs a check", or "X failed: …" as an error toast. A row settled at first sight gets none.
+  - The golden-set warning compares the SHA-256 of the file's bytes with `uploadAllowlist`, as the api checks the bytes it receives. It is unit-tested only: the e2e api has no `UPLOAD_ALLOWLIST`.
+  - The page heading stays "Upload an invoice". No screenshot was retaken.
+  - Reason: the plan's items; each choice is the smallest that fits them.
+- 2026-10-25: Re-bills PR 3: a file that uploads leaves the list for Recent uploads (user decision; the plan said so, and the 2026-10-22 reading above kept it listed as "Uploaded").
+  - A file that failed, was refused or was not sent stays with its reason. An exact duplicate stays with the invoice it already is, since nothing new was created; the plan counts it among the files not uploaded.
+  - What we did: `answered` in `apps/web/lib/uploads.ts` gives the list after each answer, built tests first; `components/upload.tsx` calls it and no longer has an "Uploaded" note.
+  - Reason: the user's decision. The rule sits in the pure module, so the unit tests reach it without containers.
 - 2026-10-21: The demo-check-retry PR (the user's request; the details are the agent's).
   - `pnpm demo:up`'s keyless check tries again, as the `/healthz` wait does, until the same 10-minute deadline. A try with no answer is repeated; any answer but 401 still fails at once, so the check still proves the key is required.
   - `release.yml` takes `workflow_dispatch` for a push that started no Release, as `7dec271`'s did. `publish` runs only on main, so a run started on another branch never moves `latest`.
@@ -481,6 +497,7 @@ From the approved design doc:
 
 ## Preferences and Instructions
 
+- 2026-10-25: Reading a container's details (user instruction): run `docker inspect` only with `--format`, picking the image, the start time and the revision label, or use `docker ps`. Never print a container's full inspect output. Why: its environment holds the keys, and anything printed stays in the session transcript. What we did: the user set this rule after the rebill-web merge checked which build the demo runs; that check used `--format` only, and the transcript holds no environment block. Both commands below were run on the demo and print only the fields they name: `docker inspect --format '{{.Name}} {{.Config.Image}} {{.State.StartedAt}} {{index .Config.Labels "org.opencontainers.image.revision"}}' freightaudit-prod-api-1 freightaudit-prod-worker-1` shows each container's build, and `docker ps --filter label=com.docker.compose.project=freightaudit-prod --format '{{.Names}} {{.Image}} {{.Status}}'` lists the demo's containers. This widens the 2026-10-18 pitfall on telling what runs.
 - 2026-10-24: Merging main into a branch (user instruction): first confirm the branch, its commit and a clean tree, else stop and report. Run `git merge main --no-commit`. A docs conflict keeps both sides, with entries in date order. A conflict in a code file stops the merge for the user. Never run `git commit` or `git merge --continue`, since ship concludes the merge. Ask before anything that starts containers or runs e2e.
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).
 - 2026-10-13: General coding rules live in `AGENTS.md`. `CLAUDE.md` imports it so Claude Code loads the rules.
@@ -736,12 +753,26 @@ From the approved design doc:
   - What we did: diagnosed read-only and changed nothing on the demo. The proposed fix (docs/todo.md) tries the keyless request again until the same deadline, and still fails at once on any answer but 401.
 - 2026-10-21: The web's live check is often slower than its own limit. `isLive` gives `/readyz` 2.5 s (`apps/web/lib/server.ts`), but at a calm moment only 3 of 10 public `/healthz` and `/readyz` requests from this PC answered within 2.5 s, and 2 never connected in 30 s (docs/context.md, Known Limitations). How to apply: a "Live backend offline" banner with the PC up may be this, not an outage; the proposed fix is in docs/todo.md.
 - 2026-10-21: In Git Bash, `docker exec <container> tailscale --socket=/tmp/tailscaled.sock …` fails: MSYS turns `/tmp/…` into `H:/.tmp/…`. Prefix the command with `MSYS_NO_PATHCONV=1`. `scripts/demo.ts` spawns docker from Node, so it is not affected.
+- 2026-10-22: A server action reaches `/login` without a session, and runs there only if the `/login` page carries it. This confirms the 2026-10-18 entry above, whose cause was "not confirmed".
+  - What happened: on branch `upload-preview`, with the cookie cleared, Upload stayed on `/upload` and answered "The upload did not reach the server." instead of going to sign-in.
+  - Why: `proxy.ts` answers a sessionless action POST with a 307 to `/login`, and the browser posts it there again, body and all. Next runs an action only on a page whose bundle carries it, else it forwards or fails. The upload area had moved to `components/upload.tsx`, so only `/upload` carried `upload` (`apps/web/.next/server/server-reference-manifest.json`: 1 page; the other actions 9). On main, `components/client.tsx` calls it, and every page loads that file.
+  - What we did: `client.tsx` exports `sendUpload`, which calls the action, and `upload.tsx` calls that; the manifest then listed 9 pages and the session test passed. A bare re-export (`export { upload } from …`) was not enough: the build dropped it and the manifest still listed 1 page.
+  - How to apply: a client file that calls an action must be one every page loads, or the action must also be called from `client.tsx`. After moving one, check its pages in the manifest.
+- 2026-10-22: pdf.js 6.4.299's modern build calls `Map.prototype.getOrInsertComputed` when it renders a page, and this container's Chromium 141 lacks it. Earlier entries (2026-10-22, PR 2) named `Math.sumPrecise` alone as the cause.
+  - What happened: with `Math.sumPrecise` polyfilled, the upload page's thumbnail and the viewer still drew nothing.
+  - Why: a scratch page loading pdf.js from `node_modules` in this Chromium showed `render()` throwing "getOrInsertComputed is not a function"; `Math.sumPrecise`'s absence only gave a warning, with fonts degraded. With both polyfilled the page drew.
+  - What we did: for local runs only, an init script polyfilled both in the upload tests, and all 12 upload and re-bill tests passed; it never went into a commit. Which browsers this leaves out, and the options, are in docs/todo.md (Pending).
 - 2026-10-24: To rerun the web image's build like CI, build its build stage from an LF archive (`git -c core.autocrlf=false archive`), then run `next build` in it at CI's 4 CPUs: `docker run --rm --cpuset-cpus=0-3 <image> sh -c 'cd apps/web && rm -rf .next && node_modules/.bin/next build'`. To include untracked files, archive a tree written through a temporary index (`GIT_INDEX_FILE=<copy of .git/index> git add -A && git write-tree`), which leaves the real index alone.
 - 2026-10-24: Google Fonts serves different files per User-Agent. With a Windows Chrome agent, Sans latin is 45,712 bytes; with next/font/google's Mac Chrome 104 agent, it is 40,240. To match what the site serves, fetch with Next's agent. `NEXT_FONT_GOOGLE_MOCKED_RESPONSES` (a CommonJS file mapping css2 URL to CSS) makes Turbopack read a given stylesheet, which turns a Google-side failure into a repeatable one.
 - 2026-10-24: This session's Bash tool can misread quoting, apparently through an extra eval in its command wrapper (not confirmed).
   - What happened: a quoted `grep -oE ".{0,160}…"` was brace-expanded into file names. `F=docs/activity-log.md && … grep -c $'\r$' $F` printed 0 on a file whose 2,109 lines all end in CRLF, which led to a false "LF" claim in a log entry (corrected the same day).
   - What we did: counted CRs with a plain path (`grep -c $'\r$' docs/activity-log.md`) and used the Grep tool for regex windows.
   - How to apply: check a surprising count another way before writing it down.
+- 2026-10-25: Merging main into a branch built on another branch that main took as a squash conflicts on that branch's own changes.
+  - What happened: main into `upload-preview` (one commit on `rebill-web`'s `42fcd4a`) conflicted in 10 files. The README and the five code files among them conflicted only on lines `42fcd4a` changed, which the branch had edited again.
+  - Why: main holds `42fcd4a`'s changes inside the squash `d8938d0` (#49), which records no parent, so git merged from the older base `c698d9f`, where neither copy exists.
+  - What we did: checked that main's tree equals the squashed branch's last commit (`git rev-parse a712901^{tree} d8938d0^{tree}`), then merged in memory from the real base, `git merge-tree --write-tree --merge-base=42fcd4a HEAD main`. Only the four docs conflicted there. `git checkout <tree> -- <code files>` and `git restore --source=<tree> --worktree -- <docs>` took its result, and `git diff --stat <tree>` came back empty. Best because one copy of the shared change is kept by construction, with no hunk judged by eye.
+  - How to apply: for each later branch built on a squashed one, merge from that branch's own commit, and stop only on conflicts that remain there.
 
 ## Rejected Approaches
 
@@ -803,6 +834,14 @@ From the approved design doc:
   - Why: not confirmed. Most likely they came from the computation that entry describes (the 2026-10-15 per-case scores through the harness's `measure`), and only some of its results were written down.
   - What we did: the README pass kept the recorded rows, with that entry as their source, and dropped the others (user rule: name the source or leave the number out).
   - How to apply: write every computed number into the activity log with how it was computed, in the entry that computes it.
+- 2026-10-22: Put a check the environment may fail after the step later tests rely on (agent mistake).
+  - What happened: PR 3's first e2e test checked the PDF's thumbnail right after listing it. In this container pdf.js cannot draw, so the test stopped before uploading digital.pdf, and the duplicate, drop and re-bill tests, which need that invoice, failed with it: 11 failed instead of main's 8.
+  - Why: the e2e tests share one database and run in order, so a test's upload is the next test's data.
+  - What we did: the thumbnail check moved after the upload settles. The full run then failed the same 8 as main.
+- 2026-10-22: A deliberate break must undo the whole fix (agent mistake).
+  - What happened: to break the session fix, the agent called the upload action directly from `upload.tsx` but left `sendUpload` in `client.tsx`. Every page still carried the action, so the session test passed and the break proved nothing.
+  - Why: the fix is where the action is called from, not which call `upload.tsx` makes.
+  - What we did: redid the break as the code stood before the fix (no `sendUpload`, the direct import). The manifest listed 1 page and the test failed. Then restored the fix.
 - 2026-10-24: A rare failure that passes locally needs a repeatable trigger before a fix counts as proven.
   - What happened: the user's plan was to keep the 16.4.1 pin if its Docker build passed. 16.4.2 also passed locally in 55 of 57 runs at CI's CPU count, and both failures came in the first 7 runs, so a passing build proved nothing.
   - What we did: read the error's source, then built a trigger (a mocked response with an `&` in each font URL) that failed every time. It failed 16.4.1 too, which was the plan's own condition for step 2.

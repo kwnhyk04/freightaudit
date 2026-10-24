@@ -5,6 +5,7 @@ query RecentUploads {
         id
         status
         filename
+        number
         currency
         totalCents
         createdAt
@@ -46,4 +47,5 @@ query RecentUploads {
       }
     }
   }
+  uploadAllowlist
 }

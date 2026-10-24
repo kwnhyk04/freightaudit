@@ -202,7 +202,7 @@ export type InvoicesQuery = { invoices: { totalCount: number, offset: number, ed
 export type RecentUploadsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type RecentUploadsQuery = { invoices: { edges: Array<{ node: { id: string, status: InvoiceStatus, filename: string, currency: string | null, totalCents: number | null, createdAt: string, reviewReason: string | null, failureReason: string | null, hold: InvoiceHold | null, shipment: { id: string, reference: string } | null, lineItems: Array<{ id: string }>, discrepancies: { edges: Array<{ node: { id: string, status: DiscrepancyStatus, expectedCents: number, billedCents: number, earlierInvoice: { id: string, number: string | null, filename: string, issuedOn: string | null } | null } }> }, auditTrail: Array<{ id: string, at: string, action: AuditAction, changes: Array<{ field: string, to: string | null }> }> } }> } };
+export type RecentUploadsQuery = { uploadAllowlist: Array<string> | null, invoices: { edges: Array<{ node: { id: string, status: InvoiceStatus, filename: string, number: string | null, currency: string | null, totalCents: number | null, createdAt: string, reviewReason: string | null, failureReason: string | null, hold: InvoiceHold | null, shipment: { id: string, reference: string } | null, lineItems: Array<{ id: string }>, discrepancies: { edges: Array<{ node: { id: string, status: DiscrepancyStatus, expectedCents: number, billedCents: number, earlierInvoice: { id: string, number: string | null, filename: string, issuedOn: string | null } | null } }> }, auditTrail: Array<{ id: string, at: string, action: AuditAction, changes: Array<{ field: string, to: string | null }> }> } }> } };
 
 export type RejectInvoiceMutationVariables = Exact<{
   id: string | number;
@@ -542,6 +542,7 @@ export const RecentUploadsDocument = new TypedDocumentString(`
         id
         status
         filename
+        number
         currency
         totalCents
         createdAt
@@ -583,6 +584,7 @@ export const RecentUploadsDocument = new TypedDocumentString(`
       }
     }
   }
+  uploadAllowlist
 }
     `) as unknown as TypedDocumentString<RecentUploadsQuery, RecentUploadsQueryVariables>;
 export const RejectInvoiceDocument = new TypedDocumentString(`

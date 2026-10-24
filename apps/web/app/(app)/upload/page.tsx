@@ -1,6 +1,7 @@
 import { RecentUploadsDocument } from '@freightaudit/contracts/graphql';
-import { SampleButton, StatusPoller, UploadArea } from '../../../components/client.tsx';
-import { IN_FLIGHT, plural, uploadState } from '../../../lib/labels.ts';
+import { SampleButton, StatusPoller } from '../../../components/client.tsx';
+import { UploadArea } from '../../../components/upload.tsx';
+import { finishedNote, IN_FLIGHT, plural, uploadState } from '../../../lib/labels.ts';
 import { GOLDEN_SET_URL, SAMPLES } from '../../../lib/samples.ts';
 import { gql, livePage } from '../../../lib/server.ts';
 
@@ -8,10 +9,16 @@ export default async function UploadPage() {
   // Uploads need the live backend; while it is offline the sample invoices are shown instead.
   await livePage('/invoices');
   // The latest invoices, whoever uploaded them: one tenant and one reviewer, so everyone signed in sees the same list.
-  const { invoices } = await gql(RecentUploadsDocument, {});
-  const now = Date.now();
-  const rows = invoices.edges.map(({ node }) => ({ id: node.id, filename: node.filename, ...uploadState(node, now) }));
-  const working = invoices.edges.filter(({ node }) => IN_FLIGHT.has(node.status)).length;
+  // The allowlist lets the page warn, before sending, of a file the demo's api would refuse.
+  const { invoices, uploadAllowlist } = await gql(RecentUploadsDocument, {});
+  const rows = invoices.edges.map(({ node }) => ({
+    id: node.id,
+    filename: node.filename,
+    ...uploadState(node),
+    inFlight: IN_FLIGHT.has(node.status),
+    finished: finishedNote(node),
+  }));
+  const working = rows.filter((row) => row.inFlight).length;
   return (
     <>
       <div className="page-head">
@@ -22,7 +29,7 @@ export default async function UploadPage() {
       </div>
       <StatusPoller active={working > 0} label={working > 0 ? `${plural(working, 'upload')} in progress` : 'Every upload is done'} />
       <div className="upload">
-        <UploadArea rows={rows} />
+        <UploadArea rows={rows} allowlist={uploadAllowlist ?? null} />
         <aside className="panel samples" aria-labelledby="samples-title">
           <div className="samples-head">
             <h2 id="samples-title">Try a sample invoice</h2>
