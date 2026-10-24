@@ -271,6 +271,7 @@ Free plans only. What could ever bill you:
 - **The site shows "Live backend offline":** the PC is off or asleep, or `pnpm demo:down` ran; `pnpm demo:up` brings
   it back.
 - **"Live backend offline" while the PC is up:** look for the web's `GET /readyz` in `docker logs freightaudit-prod-api-1`.
-  The web asks only while its `AI_ENABLED` is `true`, at `new URL('/readyz', API_URL)`, and counts more than 2.5 s as
-  offline (`apps/web/lib/server.ts`). On Vercel, check `AI_ENABLED` and that `API_URL` is exactly the Funnel URL, then
+  The web asks only while its `AI_ENABLED` is `true`, at `new URL('/readyz', API_URL)`, and counts more than 8 s as
+  offline, keeping a live answer 30 s and a failed one 5 s (`apps/web/lib/live.ts`; 2.5 s and 5 s before branch
+  `readyz-stopgap`). On Vercel, check `AI_ENABLED` and that `API_URL` is exactly the Funnel URL, then
   redeploy: changed variables reach only new deployments.

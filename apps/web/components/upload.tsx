@@ -5,27 +5,12 @@ import type { PDFDocumentLoadingTask } from 'pdfjs-dist';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ActionState } from '../app/actions.ts';
 import { duplicateParts, plural, STEPS, type UploadState, type Words } from '../lib/labels.ts';
-import { pickProblem, progressLabel, RETRYABLE, sizeLabel, uploadedToast, uploadLabel } from '../lib/uploads.ts';
+import { answered, type Picked, pickProblem, progressLabel, RETRYABLE, sizeLabel, uploadedToast, uploadLabel } from '../lib/uploads.ts';
 import { sendUpload } from './client.tsx';
 import { Said } from './ui.tsx';
 
 // A recent upload's row, and the toast it gets once the pipeline settles it while the page is open.
 export type RecentRow = UploadState & { id: string; filename: string; inFlight: boolean; finished: { text: string; tone: 'ok' | 'bad' } };
-
-// A file the reviewer picked: listed until removed or cleared, and sent only by Upload. checked says this browser has read
-// it; problem is why the api would refuse it, and such a file is never sent.
-type Picked = {
-  id: string;
-  file: File;
-  checked: boolean;
-  pages?: number;
-  thumb?: string;
-  problem?: string;
-  state: 'ready' | 'queued' | 'sending' | 'uploaded' | 'existing' | 'failed';
-  reason?: string;
-  retry?: boolean;
-  existing?: NonNullable<ActionState['existing']>;
-};
 type Toast = { id: number; tone: 'ok' | 'neutral' | 'bad'; words: Words; lines?: string[]; link?: { href: string; text: string }; retry?: boolean };
 
 // A success or a notice fades after this long; an error stays until closed.
@@ -111,8 +96,8 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
     setPicks([]);
   }
 
-  // Sends the files in the order listed. A busy api, its rate limit or no answer ends the batch, since the next file would
-  // meet the same; those not sent stay listed and counted. Files added meanwhile wait for the next Upload.
+  // Sends the files in the order listed, and answered says what each answer does to the list: an uploaded file leaves it,
+  // and a busy api, its rate limit or no answer ends the batch. Files added meanwhile wait for the next Upload.
   async function send(batch: Picked[]) {
     setPicks((list) => list.map((each) => (batch.some((sent) => sent.id === each.id) ? { ...each, state: 'queued', reason: undefined } : each)));
     const uploaded: string[] = [];
@@ -124,20 +109,17 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
       const form = new FormData();
       form.append('file', pick.file, pick.file.name);
       const result: ActionState = await sendUpload(form).catch(() => ({ error: 'The upload did not reach the server.', code: 'UNAVAILABLE' }));
-      if (result.existing) {
-        update(pick.id, { state: 'existing', existing: result.existing });
-        toast({ tone: 'neutral', words: duplicateWords(result.existing) });
-      } else if (result.error) {
-        const again = RETRYABLE.has(result.code ?? '');
-        update(pick.id, { state: 'failed', reason: result.error, retry: again });
+      const unsent = batch.slice(index + 1).map((each) => each.id);
+      setPicks((list) => answered(list, pick.id, result, unsent));
+      if (result.existing) toast({ tone: 'neutral', words: duplicateWords(result.existing) });
+      else if (result.error) {
         failed.push(`${pick.file.name}: ${result.error}`);
-        if (again) {
+        if (RETRYABLE.has(result.code ?? '')) {
           retry = true;
-          for (const rest of batch.slice(index + 1)) update(rest.id, { state: 'ready' });
           break;
         }
       } else {
-        update(pick.id, { state: 'uploaded' });
+        release([pick]);
         uploaded.push(result.id ?? '');
       }
     }
@@ -321,7 +303,6 @@ function PickNote({ pick }: { pick: Picked }) {
   if (pick.problem) return <span className="text-warn">{pick.problem}</span>;
   if (pick.state === 'queued') return <span className="faint">Waiting</span>;
   if (pick.state === 'sending') return <span className="muted">Uploading…</span>;
-  if (pick.state === 'uploaded') return <span className="text-ok">Uploaded</span>;
   if (pick.state === 'existing' && pick.existing) {
     return (
       <span className="muted">

@@ -1,5 +1,5 @@
 import { checkUpload } from '@freightaudit/contracts/limits';
-import { pickProblem, progressLabel, RETRYABLE, retryCode, sizeLabel, uploadedToast, uploadLabel } from './uploads.ts';
+import { answered, type Picked, pickProblem, progressLabel, RETRYABLE, retryCode, sizeLabel, uploadedToast, uploadLabel } from './uploads.ts';
 
 const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
 
@@ -39,4 +39,32 @@ test('after a batch a toast counts the new uploads; only a busy api, a rate limi
   expect(retryCode(503)).toBe('BUSY');
   for (const status of [400, 403, 413, 415, 500]) expect(retryCode(status)).toBeUndefined();
   expect([...RETRYABLE].sort()).toEqual(['BUSY', 'RATE_LIMITED', 'UNAVAILABLE']);
+});
+
+// A picked file as a batch holds it: read, with nothing against it.
+const picked = (id: string, state: Picked['state'] = 'queued'): Picked => ({ id, file: { name: `${id}.pdf` } as File, checked: true, state });
+
+test('a file whose upload makes an invoice leaves the list; a duplicate and a refusal stay with what the api said', () => {
+  const list = [picked('a', 'sending'), picked('b'), picked('c')];
+  // A new invoice: the answer holds no refusal and no earlier invoice.
+  expect(answered(list, 'a', {}, ['b', 'c'])).toEqual([picked('b'), picked('c')]);
+  const existing = { id: 'invoice-1' } as NonNullable<Picked['existing']>;
+  expect(answered(list, 'a', { existing }, ['b', 'c'])).toEqual([{ ...picked('a'), state: 'existing', existing }, picked('b'), picked('c')]);
+  // A refusal not worth retrying marks its file, and the batch goes on.
+  expect(answered(list, 'a', { error: "It isn't a PDF, PNG or JPG." }, ['b', 'c'])).toEqual([
+    { ...picked('a'), state: 'failed', reason: "It isn't a PDF, PNG or JPG.", retry: false },
+    picked('b'),
+    picked('c'),
+  ]);
+});
+
+test('a busy api, its rate limit or no answer ends the batch: the files not sent yet stay listed, waiting for the next Upload', () => {
+  const list = [{ ...picked('a'), state: 'existing' as const }, picked('b', 'sending'), picked('c')];
+  for (const code of ['BUSY', 'RATE_LIMITED', 'UNAVAILABLE']) {
+    expect(answered(list, 'b', { error: 'The FreightAudit API did not answer. Try again in a moment.', code }, ['c'])).toEqual([
+      list[0],
+      { ...picked('b'), state: 'failed', reason: 'The FreightAudit API did not answer. Try again in a moment.', retry: true },
+      picked('c', 'ready'),
+    ]);
+  }
 });

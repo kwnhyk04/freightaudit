@@ -101,7 +101,7 @@ test.describe('login', () => {
 });
 
 test.describe('upload', () => {
-  test('choosing files only lists them, with size and pages and why one would be refused; Upload sends the rest, and toasts say what follows', async ({ page, request }) => {
+  test('choosing files only lists them, with size and pages and why one would be refused; Upload sends the rest, which leave the list, and toasts say what follows', async ({ page, request }) => {
     await page.goto('/upload');
     const file = page.getByLabel('Invoice files');
     // The input waits for the page to hydrate, since only then is a chosen file checked and listed.
@@ -117,12 +117,18 @@ test.describe('upload', () => {
     await expect(pick(page, 'notes.txt')).toContainText("It isn't a PDF, PNG or JPG.");
     await expect(pick(page, 'big.pdf')).toContainText('The file is 4.0 MB; the limit is 4 MB.');
     await expect(pick(page, 'digital.pdf')).toContainText(/[0-9]+ KB · 1 page/);
+    // The line shows the PDF's first page as a picture. A soft check, so a browser that cannot draw it still uploads the
+    // invoice the tests after this one need.
+    await expect.soft(pick(page, 'digital.pdf').locator('img')).toHaveAttribute('src', /^data:image\/png;base64,/);
     // Choosing sent nothing, and only the file that can go is counted.
     expect(posts.count).toBe(0);
     const toasts = page.locator('.toasts');
     await expect(toasts).toHaveAttribute('aria-live', 'polite');
     await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
-    await expect(pick(page, 'digital.pdf')).toContainText('Uploaded');
+    // The uploaded file leaves the list for Recent uploads; the two not sent stay with their reasons.
+    await expect(pick(page, 'digital.pdf')).toHaveCount(0);
+    await expect(pick(page, 'notes.txt')).toContainText("It isn't a PDF, PNG or JPG.");
+    await expect(pick(page, 'big.pdf')).toContainText('The file is 4.0 MB; the limit is 4 MB.');
     await expect(toasts).toContainText('1 invoice uploaded. Reading now.');
     await expect(page).toHaveURL(/\/upload$/);
     expect(posts.count).toBe(1);
@@ -131,9 +137,6 @@ test.describe('upload', () => {
     await expect(row).toContainText('Reading…');
     await expect(row).toContainText(/Done in [0-9.]+ s/, { timeout: 45_000 });
     await expect(toasts).toContainText('Invoice 98211354 read: 3 findings to review');
-    // The line showed the PDF's first page as a picture. Checked only now, so a browser that cannot draw it still leaves
-    // the invoice uploaded for the tests after this one.
-    await expect(pick(page, 'digital.pdf').locator('img')).toHaveAttribute('src', /^data:image\/png;base64,/);
     // Neither the web nor the api lets anyone keep a copy of the document.
     const viewed = page.waitForResponse((response) => /\/api\/invoices\/[0-9a-f-]{36}\/document$/.test(response.url()));
     await row.getByRole('link', { name: 'digital.pdf' }).click();
@@ -171,7 +174,7 @@ test.describe('upload', () => {
     await expect(pick(page, 'photo.png')).toContainText(/[0-9]+ KB · 1 page/);
     await expect(pick(page, 'photo.png').locator('img')).toHaveAttribute('src', /^blob:/);
     await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
-    await expect(pick(page, 'photo.png')).toContainText('Uploaded');
+    await expect(pick(page, 'photo.png')).toHaveCount(0);
     await page.getByRole('row', { name: /photo[.]png/ }).getByRole('link', { name: 'photo.png' }).click();
     await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
     await expect(page.getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
@@ -257,17 +260,24 @@ test.describe('upload', () => {
     expect(posts).toBe(2);
   });
 
-  test('an upload that gets no answer says so in a toast that stays until closed; Retry and Upload send it again', async ({ page }) => {
+  test('an upload that gets no answer ends the batch, and the file not sent stays listed; its toast stays until closed; Retry and Upload send it again', async ({ page }) => {
     await page.goto('/upload');
     const file = page.getByLabel('Invoice files');
     await expect(file).toBeEnabled();
     const posts = countUploads(page);
     await page.route('**/upload', (route) => (route.request().method() === 'POST' ? route.abort() : route.continue()));
-    await file.setInputFiles({ name: 'digital-copy.pdf', mimeType: 'application/pdf', buffer: Buffer.concat([digital, Buffer.from('\n%copy\n')]) });
-    await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
+    await file.setInputFiles([
+      { name: 'digital-copy.pdf', mimeType: 'application/pdf', buffer: Buffer.concat([digital, Buffer.from('\n%copy\n')]) },
+      { name: 'digital-next.pdf', mimeType: 'application/pdf', buffer: Buffer.concat([digital, Buffer.from('\n%next\n')]) },
+    ]);
+    await page.getByRole('button', { name: 'Upload 2 invoices' }).click();
     const failed = page.locator('.toast', { hasText: 'Not uploaded' });
     await expect(failed).toContainText('digital-copy.pdf: The upload did not reach the server.');
     await expect(pick(page, 'digital-copy.pdf')).toContainText('Not uploaded: The upload did not reach the server.');
+    // No answer ends the batch: the second file was never sent, and both wait in the list, counted.
+    expect(posts.count).toBe(1);
+    await expect(pick(page, 'digital-next.pdf')).not.toContainText('Not uploaded');
+    await expect(page.getByRole('button', { name: 'Upload 2 invoices' })).toBeVisible();
     // A success fades after a few seconds; an error stays.
     await page.waitForTimeout(7_000);
     await expect(failed).toBeVisible();
@@ -276,10 +286,12 @@ test.describe('upload', () => {
     await expect(failed).toHaveCount(1);
     await failed.getByRole('button', { name: 'Close' }).click();
     await expect(failed).toHaveCount(0);
-    // The file stays in the list, counted again, until it goes.
+    // The file stays in the list, counted again, until it uploads and leaves. The second goes unsent, so this run adds
+    // only the one invoice the tests after this one count on.
+    await page.getByRole('button', { name: 'Remove digital-next.pdf' }).click();
     await page.unroute('**/upload');
     await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
-    await expect(pick(page, 'digital-copy.pdf')).toContainText('Uploaded');
+    await expect(pick(page, 'digital-copy.pdf')).toHaveCount(0);
     await expect(page.locator('.toasts')).toContainText('1 invoice uploaded. Reading now.');
   });
 
