@@ -9,6 +9,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import createClient from 'openapi-fetch';
 import { cache } from 'react';
+import { createLiveCheck } from './live.ts';
 import { readToken, SESSION_COOKIE } from './session.ts';
 
 // The web's settings; the API key and the session secret never leave this server.
@@ -54,20 +55,15 @@ export async function clientKey() {
   return (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 }
 
-let probe: { at: number; live: boolean } | undefined;
-// A failed api call counts as offline at once, so the next page goes to the sample instead of waiting out the cache.
-export const markOffline = () => void (probe = { at: Date.now(), live: false });
-// Live while AI is on and the api's /readyz answers within 2.5 s (its own checks take up to 2 s), cached 5 s.
-export const isLive = cache(async () => {
-  if (!env().AI_ENABLED) return false;
-  if (probe && Date.now() - probe.at < 5_000) return probe.live;
-  const live = await fetch(new URL('/readyz', env().API_URL), { cache: 'no-store', signal: AbortSignal.timeout(2_500) }).then(
+// Live while AI is on and the api's /readyz answers in time (its own checks take up to 2 s); live.ts keeps the answer.
+const live = createLiveCheck((timeoutMs) =>
+  fetch(new URL('/readyz', env().API_URL), { cache: 'no-store', signal: AbortSignal.timeout(timeoutMs) }).then(
     (response) => response.ok,
     () => false,
-  );
-  probe = { at: Date.now(), live };
-  return live;
-});
+  ),
+);
+export const markOffline = live.markOffline;
+export const isLive = cache(async () => (env().AI_ENABLED ? live.check() : false));
 
 // A live page needs the session; while the backend is offline its /demo twin takes its place.
 export async function livePage(path: string) {

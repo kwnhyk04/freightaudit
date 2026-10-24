@@ -463,9 +463,15 @@ From the approved design doc:
   - `release.yml` takes `workflow_dispatch` for a push that started no Release, as `7dec271`'s did. `publish` runs only on main, so a run started on another branch never moves `latest`.
   - `ci.yml`'s `BASE_SHA` falls back to zeros. A manual run has neither a PR base nor `event.before`, and an empty value would have sent oasdiff and the migration snapshot to an empty ref. With zeros it skips them, as a branch's first push does. Trade-off: a manual Release does not compare with the previous main; the PR's own CI ran those comparisons against its base.
   - The demo's latency fix is proposed, not built (docs/todo.md): the measurements put most answers above the web's 2.5 s threshold, and the root fix would reverse the egress design.
+- 2026-10-22: The readyz stopgap (branch `readyz-stopgap`; the numbers are the user's, the details the agent's, for the user to confirm at review).
+  - The probe's cache moved to `apps/web/lib/live.ts`, a pure module that takes the clock and the `/readyz` call, as `lib/limiter.ts` takes its clock, so its unit tests do no I/O. `server.ts` keeps the fetch and the `AI_ENABLED` check.
+  - A probe still waiting when an api call fails keeps that call's offline mark. With an 8 s wait, an answer that started before the failure would otherwise mark the backend live for 30 s.
+  - Not done: probes are not shared. Requests that find the answer stale each ask `/readyz` while one waits, now for up to 8 s; the api answers `/readyz` from a 2 s cache.
+  - Reason: the user's request; each choice is the smallest that fits it.
 
 ## Preferences and Instructions
 
+- 2026-10-24: Merging main into a branch (user instruction): first confirm the branch, its commit and a clean tree, else stop and report. Run `git merge main --no-commit`. A docs conflict keeps both sides, with entries in date order. A conflict in a code file stops the merge for the user. Never run `git commit` or `git merge --continue`, since ship concludes the merge. Ask before anything that starts containers or runs e2e.
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).
 - 2026-10-13: General coding rules live in `AGENTS.md`. `CLAUDE.md` imports it so Claude Code loads the rules.
 - 2026-10-13: Markdown filenames use kebab-case (for example `docs/migrations.md`).
