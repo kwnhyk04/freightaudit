@@ -386,6 +386,24 @@ type Entry = Detail['auditTrail'][number];
 const statusWord = (status: string | null) => (status ? (STATUS[status.toUpperCase() as InvoiceStatus]?.label ?? status) : 'none');
 // An audit detail in words: a review reason code, or free text such as a failure or a note.
 const reasonText = (detail: string) => (/^[a-z_]+(:|$)/.test(detail) ? reviewReason(detail) : capital(detail));
+// Why Claude, reading first, handed an invoice to the free models: the api's `claude` change on the read's last move.
+const CLAUDE_HANDOFF: Record<string, string> = {
+  switched_off: 'Claude was switched off',
+  daily_budget: "Claude's budget for the day was spent",
+  input_cap: "its pages were over Claude's input cap",
+  extraction_cap: "the invoice would have passed Claude's cap for one invoice",
+  billing_error: "Claude's account had a billing problem",
+  credit_balance: "Claude's credit was used up",
+  spend_limit: "Claude's spend limit was reached",
+  bad_key_or_model: 'Claude refused its key or model',
+  '429': 'Claude was rate limited',
+  '5xx': 'Claude answered with a server error',
+  timeout: 'Claude did not answer in time',
+  network: 'the connection to Claude failed',
+  other: "Claude's call failed",
+};
+const handoffNotes = (entry: Entry) =>
+  entry.changes.filter((change) => change.field === 'claude').map((change) => `Handed to the free models: ${CLAUDE_HANDOFF[change.to ?? ''] ?? change.to}`);
 // A field change in words: statuses by their labels, and on extraction the carrier as read and how it matched.
 function changeText(entry: Entry, { field, from, to }: Entry['changes'][number]) {
   if (field === 'status') return `${entry.action === 'STATUS_CHANGED' ? '' : 'Status: '}${statusWord(from)} to ${statusWord(to)}`;
@@ -458,7 +476,7 @@ export function trailRows(
       const time = readingFrom ? ` in ${duration(Date.parse(entry.at) - Date.parse(readingFrom))}` : '';
       const step = { repair: ['after 1 repair'], fallback: ['on the fallback model'] }[invoice.extraction?.step ?? ''] ?? [];
       const carrier = entry.changes.filter((change) => change.field === 'carrier').map((change) => changeText(entry, change));
-      return row('Read', `by${model}${time}`, [...step, ...carrier]);
+      return row('Read', `by${model}${time}`, [...step, ...handoffNotes(entry), ...carrier]);
     }
     if (to === 'reconciling') return row('Checking started');
     if (from === 'reconciling' && to === 'reconciled') {
@@ -468,7 +486,7 @@ export function trailRows(
       const next = findings.length > 0 ? `${plural(findings.length, 'finding')}, so it waits for a reviewer` : 'No findings, so it waits only for approval';
       return row('Matched', `to ${shipment}${carrier}, checked against ${card} by rules in code`, [next]);
     }
-    if (to === 'needs_review') return row('Sent to review', by, [reviewReason(entry.detail)]);
+    if (to === 'needs_review') return row('Sent to review', by, [reviewReason(entry.detail), ...handoffNotes(entry)]);
     if (to === 'failed') return row('Failed', by, [entry.detail ? reasonText(entry.detail) : 'The step used up its retries.']);
     return row('Status changed', by, [changeText(entry, status)]);
   });

@@ -68,8 +68,8 @@ test('Claude reads first: a digital and a scanned invoice each go to Anthropic u
   const api = anthropic(message(valid));
   const { models, free } = worker(api);
   const calls: Call[] = [];
-  expect(await extractInvoices(models, { parts: digital, pageCount: 1 }, { onCall: (call) => void calls.push(call) })).toMatchObject({ step: 'first_pass', model: 'anthropic/claude-haiku-5-5' });
-  expect(await extractInvoices(models, { parts: scan, pageCount: 1 }, { onCall: (call) => void calls.push(call) })).toMatchObject({ step: 'first_pass', model: 'anthropic/claude-haiku-5-5' });
+  expect(await extractInvoices(models, { parts: digital, pageCount: 1 }, { onCall: (call) => void calls.push(call) })).toMatchObject({ step: 'first_pass', model: 'anthropic/claude-haiku-5-5', claudeHandoff: null });
+  expect(await extractInvoices(models, { parts: scan, pageCount: 1 }, { onCall: (call) => void calls.push(call) })).toMatchObject({ step: 'first_pass', model: 'anthropic/claude-haiku-5-5', claudeHandoff: null });
   expect(calls.map(({ role, provider }) => `${role} ${provider}`)).toEqual(['text anthropic', 'primary anthropic']);
   expect(api.bodies.map((body) => body.max_tokens)).toEqual([560, 560]);
   expect(CLAUDE_FIRST_MAX_TOKENS).toBe(560);
@@ -83,14 +83,14 @@ test.each([
   ['a 401', apiError(401, 'authentication_error', 'invalid x-api-key'), 'bad_key_or_model'],
   ['a 403', apiError(403, 'permission_error', 'Your API key does not have permission.'), 'bad_key_or_model'],
   ['a 404', apiError(404, 'not_found_error', 'model: claude-haiku-5-5'), 'bad_key_or_model'],
-] as const)('%s: this invoice ends on the free chain, and Claude stays off for good, across a restart, with one alert', async (_case, response, reason) => {
+] as const)('%s: this invoice ends on the free chain, which says why, and Claude stays off for good, across a restart, with one alert', async (_case, response, reason) => {
   const api = anthropic(response);
   const first = worker(api);
-  expect(await extractInvoices(first.models, { parts: digital, pageCount: 1 })).toMatchObject({ step: 'first_pass', model: 'groq-text/groq-text-model' });
+  expect(await extractInvoices(first.models, { parts: digital, pageCount: 1 })).toMatchObject({ step: 'first_pass', model: 'groq-text/groq-text-model', claudeHandoff: reason });
   expect(first.store.state.off).toBe(reason);
   // A restarted worker on the same store never asks Anthropic again.
   const restarted = worker(api, first.store);
-  expect(await extractInvoices(restarted.models, { parts: scan, pageCount: 1 })).toMatchObject({ model: 'gemini/gemini-model' });
+  expect(await extractInvoices(restarted.models, { parts: scan, pageCount: 1 })).toMatchObject({ model: 'gemini/gemini-model', claudeHandoff: 'switched_off' });
   expect(api.bodies).toHaveLength(1);
   expect([...first.logs, ...restarted.logs]).toEqual([{ alert: 'claude_switched_off', reason, status: response.status }]);
   expect(JSON.stringify(first.logs)).not.toMatch(/sk-ant|credit balance|usage limits|billing problem|x-api-key/);
@@ -100,21 +100,22 @@ test('the end date: Claude reads first through 2026-11-10 23:59:59 UTC, and from
   const api = anthropic(message(valid));
   expect(await extractInvoices(worker(api, memoryStore(), { now: Date.parse('2026-11-10T23:59:59Z') }).models, { parts: digital, pageCount: 1 })).toMatchObject({ model: 'anthropic/claude-haiku-5-5' });
   const after = worker(api, memoryStore(), { now: Date.parse('2026-11-11T00:00:00Z') });
-  expect(await extractInvoices(after.models, { parts: digital, pageCount: 1 })).toMatchObject({ model: 'groq-text/groq-text-model' });
+  // Its window is over, so the free chain reading is no hand-off.
+  expect(await extractInvoices(after.models, { parts: digital, pageCount: 1 })).toMatchObject({ model: 'groq-text/groq-text-model', claudeHandoff: null });
   expect(api.bodies).toHaveLength(1);
 });
 
 test.each([
-  ['a 429 without retry-after', apiError(429, 'rate_limit_error', 'Number of request tokens has exceeded your rate limit.')],
-  ['a 429 with retry-after', apiError(429, 'rate_limit_error', 'Slow down.', { 'retry-after': '7' })],
-  ['a 503', apiError(503, 'overloaded_error', 'Overloaded')],
-  ['a dropped connection', new TypeError('fetch failed')],
-] as const)('%s: this invoice ends on the free chain, and Claude stays on for the next', async (_case, response) => {
+  ['a 429 without retry-after', apiError(429, 'rate_limit_error', 'Number of request tokens has exceeded your rate limit.'), '429'],
+  ['a 429 with retry-after', apiError(429, 'rate_limit_error', 'Slow down.', { 'retry-after': '7' }), '429'],
+  ['a 503', apiError(503, 'overloaded_error', 'Overloaded'), '5xx'],
+  ['a dropped connection', new TypeError('fetch failed'), 'network'],
+] as const)('%s: this invoice ends on the free chain, which names the failure, and Claude stays on for the next', async (_case, response, failure) => {
   const api = anthropic(response, message(valid));
   const { models, store } = worker(api);
-  expect(await extractInvoices(models, { parts: digital, pageCount: 1 })).toMatchObject({ step: 'first_pass', model: 'groq-text/groq-text-model' });
+  expect(await extractInvoices(models, { parts: digital, pageCount: 1 })).toMatchObject({ step: 'first_pass', model: 'groq-text/groq-text-model', claudeHandoff: failure });
   expect(store.state.off).toBeUndefined();
-  expect(await extractInvoices(models, { parts: digital, pageCount: 1 })).toMatchObject({ model: 'anthropic/claude-haiku-5-5' });
+  expect(await extractInvoices(models, { parts: digital, pageCount: 1 })).toMatchObject({ model: 'anthropic/claude-haiku-5-5', claudeHandoff: null });
 });
 
 test('an eval run pins its models: a rate-limited Claude waits and retries instead of handing the invoice to the free models', async () => {
@@ -126,7 +127,7 @@ test('the input cap: a prompt estimated over 7,100 tokens never reaches Anthropi
   const api = anthropic(message(valid));
   const long: Part[] = [{ page: 1, text: 'LINEHAUL 1,240.00 '.repeat(500) }];
   expect(estimateInputTokens({ prompt: EXTRACTION_PROMPT, parts: long, schema: EXTRACTION_JSON_SCHEMA })).toBeGreaterThan(CLAUDE_INPUT_CAP);
-  expect(await extractInvoices(worker(api).models, { parts: long, pageCount: 1 })).toMatchObject({ model: 'groq-text/groq-text-model' });
+  expect(await extractInvoices(worker(api).models, { parts: long, pageCount: 1 })).toMatchObject({ model: 'groq-text/groq-text-model', claudeHandoff: 'input_cap' });
   expect(api.bodies).toHaveLength(0);
   expect(CLAUDE_INPUT_CAP).toBe(7_100);
 });
@@ -138,8 +139,9 @@ test('the 100,000-token ceiling binds Claude as the backup too, which has no cap
   const client = createClaudeProvider({ apiKey: KEY, model: 'claude-haiku-5-5', baseUrl: 'http://claude.test', fetch: api.fetch });
   const claude = gateClaude(client, memoryStore(), { first: false, maxTokens: 65_536, now: () => ON });
   const models: Models = { primary: always('gemini', 'not json'), text: always('groq-text', 'not json'), fallback: always('groq', 'not json'), claude };
-  // The free main model and its repair fail, the backup is skipped unsent, and the free fallback fails too.
-  expect(await extractInvoices(models, { parts: huge, pageCount: 1 })).toMatchObject({ step: 'needs_review' });
+  // The free main model and its repair fail, the backup is skipped unsent, and the free fallback fails too. Only Claude
+  // reading first hands an invoice off.
+  expect(await extractInvoices(models, { parts: huge, pageCount: 1 })).toMatchObject({ step: 'needs_review', claudeHandoff: null });
   expect(api.bodies).toHaveLength(0);
 });
 
@@ -147,7 +149,13 @@ test("Claude's repair still invalid: the free fallback reads, then needs_review"
   const api = anthropic(message('not json'), message('not json'));
   const read = worker(api);
   const calls: Call[] = [];
-  expect(await extractInvoices(read.models, { parts: digital, pageCount: 1 }, { onCall: (call) => void calls.push(call) })).toMatchObject({ step: 'fallback', model: 'groq/groq-model' });
+  // Claude took both of its passes, so its output, not a hand-off, sent the invoice on.
+  expect(await extractInvoices(read.models, { parts: digital, pageCount: 1 }, { onCall: (call) => void calls.push(call) })).toMatchObject({
+    step: 'fallback',
+    model: 'groq/groq-model',
+    fallbackReason: 'invalid_output',
+    claudeHandoff: null,
+  });
   expect(calls.map(({ provider, step }) => `${provider} ${step}`)).toEqual(['anthropic first_pass', 'anthropic repair', 'groq fallback']);
   const none = worker(anthropic(message('not json')), memoryStore(), { free: 'not json' });
   expect(await extractInvoices(none.models, { parts: digital, pageCount: 1 })).toMatchObject({ step: 'needs_review' });
@@ -156,7 +164,7 @@ test("Claude's repair still invalid: the free fallback reads, then needs_review"
 test('the per-extraction cap: a Claude repair that would take the invoice past 8,500 tokens goes to the free fallback instead', async () => {
   const api = anthropic(message('not json', 7_000, 500));
   const { models } = worker(api);
-  expect(await extractInvoices(models, { parts: digital, pageCount: 1 })).toMatchObject({ step: 'fallback', model: 'groq/groq-model' });
+  expect(await extractInvoices(models, { parts: digital, pageCount: 1 })).toMatchObject({ step: 'fallback', model: 'groq/groq-model', claudeHandoff: 'extraction_cap' });
   expect(api.bodies).toHaveLength(1);
   expect(CLAUDE_EXTRACTION_CAP).toBe(8_500);
 });
@@ -165,9 +173,9 @@ test("Claude's daily budget: a call is reserved before it is sent, settled to re
   const api = anthropic(message(valid, 900, 300));
   const store = memoryStore(3_000);
   const { models } = worker(api, store);
-  expect(await extractInvoices(models, { parts: digital, pageCount: 1 })).toMatchObject({ model: 'anthropic/claude-haiku-5-5' });
+  expect(await extractInvoices(models, { parts: digital, pageCount: 1 })).toMatchObject({ model: 'anthropic/claude-haiku-5-5', claudeHandoff: null });
   expect(store.state.spent).toBe(1_200);
   // 1,200 spent: the next reservation (its estimate plus 560) would pass 3,000, so the free chain reads.
-  expect(await extractInvoices(models, { parts: digital, pageCount: 1 })).toMatchObject({ model: 'groq-text/groq-text-model' });
+  expect(await extractInvoices(models, { parts: digital, pageCount: 1 })).toMatchObject({ model: 'groq-text/groq-text-model', claudeHandoff: 'daily_budget' });
   expect(api.bodies).toHaveLength(1);
 });

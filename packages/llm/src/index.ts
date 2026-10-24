@@ -16,6 +16,7 @@ export {
 export {
   type Backup,
   type Call,
+  type ClaudeHandoff,
   EXTRACTION_JSON_SCHEMA,
   EXTRACTION_PROMPT,
   type ExtractedInvoice,

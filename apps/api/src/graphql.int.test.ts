@@ -1,4 +1,4 @@
-import { auditEvents, deadLetters, discrepancies, invoiceLines, invoices, invoiceStatus } from '@freightaudit/db';
+import { auditEvents, deadLetters, discrepancies, extractions, invoiceLines, invoices, invoiceStatus } from '@freightaudit/db';
 import { seed } from '@freightaudit/db/scripts/seed';
 import { createTestDatabase, testEnv } from '@freightaudit/db/testing';
 import { createMemoryStorage, createQueues, type Queues } from '@freightaudit/pipeline';
@@ -282,6 +282,26 @@ test('a reviewer corrects a needs_review PRO number, which queues matching again
   });
   const audited = await db.select().from(auditEvents).where(eq(auditEvents.invoiceId, rejected!));
   expect(audited).toMatchObject([{ actor: 'reviewer', action: 'rejected', reason: 'Billed twice by the carrier' }]);
+});
+
+test('a pipeline read says why the free models read it while Claude reads first, on the move it ended with; other reads say nothing', async () => {
+  // An invoice the pipeline reads, its extraction saved with the hand-off it recorded, then moved on as the worker does.
+  const read = async (claudeHandoff: string | null, to: 'extracted' | 'needs_review') => {
+    const contentSha256 = createHash('sha256').update(randomBytes(16)).digest('hex');
+    const [row] = await db.insert(invoices).values({ tenantId, filename: 'handoff.pdf', contentSha256 }).returning({ id: invoices.id });
+    const id = row!.id;
+    const result = to === 'extracted' ? { carrier: 'Halcyon Ridge Freight', line_items: [] } : { problems: ['output is not valid JSON'], output: null };
+    await db.insert(extractions).values({ tenantId, invoiceId: id, model: 'groq/openai/gpt-oss-120b', inputTokens: 1, outputTokens: 1, step: to === 'extracted' ? 'first_pass' : 'needs_review', result, claudeHandoff });
+    for (const status of ['extracting', to] as const) await db.update(invoices).set({ status }).where(eq(invoices.id, id));
+    const trail = await gql('query ($id: ID!) { invoice(id: $id) { auditTrail { action changes { field from to } } } }', { id });
+    return trail.data!.invoice.auditTrail.at(-1).changes as { field: string; from: string | null; to: string | null }[];
+  };
+  expect(await read('daily_budget', 'extracted')).toContainEqual({ field: 'claude', from: null, to: 'daily_budget' });
+  expect(await read('switched_off', 'needs_review')).toEqual([
+    { field: 'status', from: 'extracting', to: 'needs_review' },
+    { field: 'claude', from: null, to: 'switched_off' },
+  ]);
+  expect((await read(null, 'extracted')).map((change) => change.field)).toEqual(['status', 'carrier']);
 });
 
 test('approval waits for every discrepancy decision; the decisions and the approval are audited', async () => {

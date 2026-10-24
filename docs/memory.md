@@ -484,6 +484,7 @@ From the approved design doc:
   - A file that failed, was refused or was not sent stays with its reason. An exact duplicate stays with the invoice it already is, since nothing new was created; the plan counts it among the files not uploaded.
   - What we did: `answered` in `apps/web/lib/uploads.ts` gives the list after each answer, built tests first; `components/upload.tsx` calls it and no longer has an "Uploaded" note.
   - Reason: the user's decision. The rule sits in the pure module, so the unit tests reach it without containers.
+- 2026-10-25: The two upload-preview points left open, settled by the user after its merge report: an exact duplicate stays in the list, as planned, and its e2e was left to CI, which runs it before merge. upload-preview merged as `a07b552` (#50), so CI's e2e passed. Reason: the user's decisions, recorded with claude-fallback-log rather than in a PR of their own.
 - 2026-10-21: The demo-check-retry PR (the user's request; the details are the agent's).
   - `pnpm demo:up`'s keyless check tries again, as the `/healthz` wait does, until the same 10-minute deadline. A try with no answer is repeated; any answer but 401 still fails at once, so the check still proves the key is required.
   - `release.yml` takes `workflow_dispatch` for a push that started no Release, as `7dec271`'s did. `publish` runs only on main, so a run started on another branch never moves `latest`.
@@ -494,6 +495,14 @@ From the approved design doc:
   - A probe still waiting when an api call fails keeps that call's offline mark. With an 8 s wait, an answer that started before the failure would otherwise mark the backend live for 30 s.
   - Not done: probes are not shared. Requests that find the answer stale each ask `/readyz` while one waits, now for up to 8 s; the api answers `/readyz` from a 2 s cache.
   - Reason: the user's request; each choice is the smallest that fits it.
+- 2026-10-22: Why the free models read an invoice while Claude reads first, as built (branch `claude-fallback-log`; the user's request, these choices the agent's, for the user to confirm at review).
+  - One reason per invoice, the hand-off's: the skip's reason, the account reason, or `failureOf`'s class for a 429, 5xx, timeout or dropped connection. Which pass Claude missed is not stored: a Claude first pass in `llm_calls` means the repair was the one handed off.
+  - Past the end date nothing is recorded. The request names the Claude-first window, and after it the free models reading is the plan, not a hand-off.
+  - Only Claude reading first is recorded. Claude as the paid backup (not first) is skipped as before, with no reason kept; the request did not cover it, and the demo runs Claude first.
+  - Stored in a new nullable `extractions.claude_handoff` (0017) with no check constraint, as 0012's error classes: a reason added later needs no migration. Rejected: widening `fallback_reason`, which says why the ladder turned to the fallback model and has a check.
+  - Shown through the audit trail's read entry, as a `claude` change beside the synthetic `carrier` one. Rejected: a new `Extraction` field in the invoice operation, which would take the invoice page from 83 to 84 against `MAX_COST` 88 and leave re-bills PR 2 (its last 5) over the limit; and a new `AuditAction` value, which an older web would not know.
+  - Logged at warn, once per invoice after its read, with the invoice id, the reason and the model. The worker's logger has no info level, and a hand-off means the invoice missed the model the demo reads with first. A read that then fails logs nothing; its retry hands off again.
+  - Reason: the smallest change that stores, logs and shows the reason without touching the operation's cost or the GraphQL enums.
 
 ## Preferences and Instructions
 
@@ -773,6 +782,10 @@ From the approved design doc:
   - Why: main holds `42fcd4a`'s changes inside the squash `d8938d0` (#49), which records no parent, so git merged from the older base `c698d9f`, where neither copy exists.
   - What we did: checked that main's tree equals the squashed branch's last commit (`git rev-parse a712901^{tree} d8938d0^{tree}`), then merged in memory from the real base, `git merge-tree --write-tree --merge-base=42fcd4a HEAD main`. Only the four docs conflicted there. `git checkout <tree> -- <code files>` and `git restore --source=<tree> --worktree -- <docs>` took its result, and `git diff --stat <tree>` came back empty. Best because one copy of the shared change is kept by construction, with no hunk judged by eye.
   - How to apply: for each later branch built on a squashed one, merge from that branch's own commit, and stop only on conflicts that remain there.
+- 2026-10-25: `pnpm contracts:check` runs right on this Windows checkout. `.gitattributes` keeps `packages/contracts/src/generated/**` at LF, as codegen writes them, so regenerating in place shows no false differences.
+  - What happened: the upload-preview merge skipped it partly over that worry (agent mistake). The claude-fallback-log merge ran it: up to date, and no change in `git status`.
+  - Why: the agent assumed the CRLF checkout applied to every file without reading `.gitattributes`.
+  - What we did: ran it, and corrected the reason in that day's activity log. How to apply: run it after any merge that touches the schema, the operations or the generated files.
 
 ## Rejected Approaches
 

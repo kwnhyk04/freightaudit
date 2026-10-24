@@ -30,6 +30,8 @@ type CollectJob = InvoiceJob & {
   usage: Usage;
   step?: Extraction['step'];
   fallbackReason?: Extraction['fallbackReason'];
+  // Absent on a collect job queued before 0017's release.
+  claudeHandoff?: Extraction['claudeHandoff'];
   parts: { invoiceId: string; jobId: string }[];
 };
 
@@ -91,6 +93,8 @@ export async function extract(deps: Deps, job: Job<InvoiceJob>, token?: string) 
   // More than a first pass, by the step the ladder ended on; and the fallback wanted, run or past its page cap.
   if (result.step !== 'first_pass') extractEscalations.add(1, { step: result.step });
   if (result.fallbackReason) extractFallbacks.add(1, { reason: result.fallbackReason });
+  // The extraction row keeps the same reason, for the audit trail.
+  if (result.claudeHandoff) deps.log.warn({ invoiceId: invoice.id, claudeHandoff: result.claudeHandoff, model: result.model }, 'Claude reading first handed the invoice to the free models');
   if (result.step === 'needs_review') return needsReview(deps, invoice, result);
   if (result.invoices.length > 1) {
     if (invoice.parentInvoiceId) throw new PermanentError('a split-out part holds more than one invoice');
@@ -130,9 +134,9 @@ async function pauseExtract({ queues, log }: Deps, job: Job, token: string | und
 
 // Output still invalid after the repair and the fallback: the extraction keeps the problems (field names only) and the
 // last output for a reviewer, and the invoice waits in needs_review instead of going to reconcile.
-async function needsReview({ db }: Deps, invoice: Invoice, { model, usage, step, fallbackReason, problems, output }: Extraction) {
+async function needsReview({ db }: Deps, invoice: Invoice, { model, usage, step, fallbackReason, claudeHandoff, problems, output }: Extraction) {
   await db.transaction(async (tx) => {
-    const extraction = { tenantId: invoice.tenantId, invoiceId: invoice.id, model, ...usage, step, fallbackReason, result: { problems, output } };
+    const extraction = { tenantId: invoice.tenantId, invoiceId: invoice.id, model, ...usage, step, fallbackReason, claudeHandoff, result: { problems, output } };
     await tx.insert(extractions).values(extraction).onConflictDoNothing();
     await tx.update(invoices).set({ status: 'needs_review' }).where(and(eq(invoices.id, invoice.id), eq(invoices.status, 'extracting')));
   });
@@ -140,7 +144,7 @@ async function needsReview({ db }: Deps, invoice: Invoice, { model, usage, step,
   return { invoiceId: invoice.id, status: 'needs_review' };
 }
 
-async function save({ db }: Deps, invoice: Invoice, data: ExtractedInvoice, { model, usage, step, fallbackReason }: Extraction) {
+async function save({ db }: Deps, invoice: Invoice, data: ExtractedInvoice, { model, usage, step, fallbackReason, claudeHandoff }: Extraction) {
   await db.transaction(async (tx) => {
     // The model copies the carrier as printed, in capitals or with a title line beside it; the domain matches it to one
     // known carrier or none (needs_review at reconcile), and the extraction keeps the rule that matched.
@@ -148,7 +152,7 @@ async function save({ db }: Deps, invoice: Invoice, data: ExtractedInvoice, { mo
     const known = await tx.select({ id: carriers.id, name: carriers.name }).from(carriers).where(eq(carriers.tenantId, invoice.tenantId));
     const match = matchCarrier(data.carrier, known);
     // The unique invoice_id makes this a no-op when another run already saved.
-    const extraction = { tenantId: invoice.tenantId, invoiceId: invoice.id, model, ...usage, step, fallbackReason, carrierMatch: match?.rule ?? null, result: data };
+    const extraction = { tenantId: invoice.tenantId, invoiceId: invoice.id, model, ...usage, step, fallbackReason, claudeHandoff, carrierMatch: match?.rule ?? null, result: data };
     await tx.insert(extractions).values(extraction).onConflictDoNothing();
     await tx
       .update(invoices)
@@ -167,7 +171,7 @@ async function save({ db }: Deps, invoice: Invoice, data: ExtractedInvoice, { mo
 
 // A multi-invoice upload: one PDF and invoice row per part, then a flow whose parent runs once every part has
 // finished, failed or not, and records each outcome on the upload.
-async function split({ db, storage, queues }: Deps, invoice: Invoice, pdf: Pdf, { invoices: found, model, usage, step, fallbackReason }: Extraction) {
+async function split({ db, storage, queues }: Deps, invoice: Invoice, pdf: Pdf, { invoices: found, model, usage, step, fallbackReason, claudeHandoff }: Extraction) {
   const pageCount = pdf.getPageCount();
   const ranges = found.map((part, i): [number, number] => [part.first_page, (found[i + 1]?.first_page ?? pageCount + 1) - 1]);
   const parts = await splitPdf(pdf, ranges);
@@ -193,7 +197,7 @@ async function split({ db, storage, queues }: Deps, invoice: Invoice, pdf: Pdf, 
     queues.flows.add({
       name: 'collect',
       queueName: 'extract',
-      data: { tenantId: invoice.tenantId, invoiceId: invoice.id, model, usage, step, fallbackReason, parts: children, ...trace } satisfies CollectJob,
+      data: { tenantId: invoice.tenantId, invoiceId: invoice.id, model, usage, step, fallbackReason, claudeHandoff, parts: children, ...trace } satisfies CollectJob,
       opts: { ...jobOptions, jobId: `split-${invoice.contentSha256}` },
       children: children.map(({ invoiceId, jobId }) => ({
         name: 'extract',
@@ -210,7 +214,7 @@ async function split({ db, storage, queues }: Deps, invoice: Invoice, pdf: Pdf, 
 // Parent of a split: records each part's outcome on the upload, then marks the upload extracted (from failed when
 // a dead-lettered collect is replayed).
 export async function collect({ db }: Deps, job: Job<CollectJob>) {
-  const { tenantId, invoiceId, model, usage, step = null, fallbackReason = null, parts } = job.data;
+  const { tenantId, invoiceId, model, usage, step = null, fallbackReason = null, claudeHandoff = null, parts } = job.data;
   // Keyed by job key (<prefix>:extract:<job id>), with the failure reason.
   const failures = Object.entries(await job.getIgnoredChildrenFailures());
   const rows = await db
@@ -223,7 +227,7 @@ export async function collect({ db }: Deps, job: Job<CollectJob>) {
     return error === undefined ? { invoiceId: id, status: statuses.get(id) } : { invoiceId: id, status: 'failed', error };
   });
   await db.transaction(async (tx) => {
-    await tx.insert(extractions).values({ tenantId, invoiceId, model, ...usage, step, fallbackReason, result: { parts: outcomes } }).onConflictDoNothing();
+    await tx.insert(extractions).values({ tenantId, invoiceId, model, ...usage, step, fallbackReason, claudeHandoff, result: { parts: outcomes } }).onConflictDoNothing();
     const unfinished = and(eq(invoices.id, invoiceId), inArray(invoices.status, ['extracting', 'failed']));
     await tx.update(invoices).set({ status: 'extracted' }).where(unfinished);
   });

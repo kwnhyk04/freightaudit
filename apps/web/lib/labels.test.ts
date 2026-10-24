@@ -434,6 +434,23 @@ test('the audit trail reads as plain words: who read it with which model and how
   expect(modelName('someone/new-model')).toBe('someone/new-model');
 });
 
+test('a read while Claude reads first says why the free models had it, on its Read or Sent to review row', () => {
+  const handedOff = (to: string, reason: string, detail: string | null = null) => ({
+    ...move(3, 'extracting', to, detail),
+    changes: [
+      { field: 'status', from: 'extracting', to },
+      { field: 'claude', from: null, to: reason },
+    ],
+  });
+  const notes = (entry: unknown, step = 'first_pass') => trailRows({ extraction: { model: 'groq/openai/gpt-oss-120b', step }, auditTrail: [move(1, 'received', 'extracting'), entry] } as unknown as Detail, [])[1]!.notes;
+  expect(notes(handedOff('extracted', 'daily_budget'))).toEqual(["Handed to the free models: Claude's budget for the day was spent"]);
+  expect(notes(handedOff('extracted', 'extraction_cap'), 'fallback')).toEqual(['on the fallback model', "Handed to the free models: the invoice would have passed Claude's cap for one invoice"]);
+  expect(notes(handedOff('needs_review', 'switched_off', 'output is not valid JSON'))).toEqual(["The model's reading failed validation.", 'Handed to the free models: Claude was switched off']);
+  expect(notes(handedOff('extracted', '5xx'))).toEqual(['Handed to the free models: Claude answered with a server error']);
+  // A reason this page has no words for yet shows as the api sent it.
+  expect(notes(handedOff('extracted', 'something_new'))).toEqual(['Handed to the free models: something_new']);
+});
+
 test('an approval from review held for a possible duplicate reads as held, not approved, with why', () => {
   const held = { auditTrail: [move(9, 'needs_review', 'reconciled', 'not approved: another invoice from this carrier has the same number', 'reviewer')] } as unknown as Detail;
   expect(trailRows(held, []).map(({ verb, rest, notes }) => [verb, rest, notes])).toEqual([

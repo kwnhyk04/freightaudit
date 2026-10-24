@@ -19,6 +19,46 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-25: main merged into claude-fallback-log for its ship, with the two upload-preview decisions recorded (`git merge main --no-commit`, not committed)
+
+- **Request:** the user's ship stopped on conflicts in `README.md`, `docs/activity-log.md`, `docs/context.md` and `docs/memory.md`. The plan:
+  - Confirm `claude-fallback-log` at `8ff017b` with a clean tree, else stop and report.
+  - `git merge main --no-commit`. Doc and README conflicts keep both sides in date order; a code conflict that is not a plain both-sides-added case stops the merge.
+  - Confirm migration 0017 is still the next free number after main's 0016.
+  - Record the two upload-preview decisions: an exact duplicate stays in the list; e2e was left to CI, and upload-preview merged as #50, so CI's e2e passed.
+  - Lint, typecheck, the unit tests of api, worker, llm and web, and the build; ask before `test:int`, e2e or anything that starts containers. No commit and no `git merge --continue`; `docker inspect` only with `--format` (not needed this time).
+- **Start:** on `claude-fallback-log` at `8ff017b` with a clean tree and no merge in progress. Local `main` equals `origin/main` (`a07b552`, #50, not fetched). The branch is one commit on `c698d9f`, which is also the merge base, so git's base is the real one, unlike upload-preview's squash case below.
+- **Migration number:** main's last migration is `0016_needs_review_to_reconciled.sql` and main has no 0017 (`git ls-tree main packages/db/migrations/`), so the branch's `0017_claude_handoff.sql` is still the next free number. Main changed nothing under `packages/db` since the base.
+- **The merge:** `git merge main --no-commit` stopped with four conflicts, all README and docs. Seven files changed on both sides; `apps/web/lib/labels.ts`, `apps/web/lib/labels.test.ts` and `docs/todo.md` merged by themselves. In the two code files the branch's changed lines are the same on top of main as on the base (compared line by line), so no code file needed a decision.
+- The conflicts:
+  - What happened: one hunk in each file.
+  - Why: both sides wrote at the same place: adjacent README lines, context's test-count line (both appended to it), memory's Decisions after 2026-10-21, and the top of this log.
+  - What we did:
+    - `README.md`: main's Upload line and the branch's "Out of needs review" line, one copy each; each side had changed one of the two.
+    - `docs/context.md`: one line with main's additions (re-bills PR 2 and PR 3), then the branch's (the Claude hand-off record).
+    - `docs/memory.md`: main's 2026-10-22 readyz entry (`73bfa29`, 17:40:47 UTC), then the branch's 2026-10-22 entry (`8ff017b`, 19:26:55 UTC on 2026-10-21), since this part of the section runs oldest first.
+    - `docs/activity-log.md`, newest first: main's 2026-10-25 entry and four 2026-10-24 ones, then the branch's 2026-10-22 entry, above PR 3 (19:03:57 UTC), PR 2 (18:09:59) and readyz (17:40:47). The memory and log entries moved copy first with the Edit tool, then the original was deleted with its markers.
+  - Checks: no marker is left in the repository. Line counts are each side's sum less the base's: README 352, activity-log 2,255, context 333, memory 887. With the base added, each file holds exactly both sides' lines (sorted, CRs removed), except context's one line that both sides extended; every line ends in CRLF.
+- **The two upload-preview decisions,** agreed on 2026-10-25 to ride on this branch rather than a PR of their own:
+  - An exact duplicate stays in the upload list with the invoice it already is, as planned (docs/memory.md, docs/todo.md).
+  - Its e2e was left to CI, which runs it before merge; upload-preview merged as `a07b552` (#50), so CI's e2e passed (docs/todo.md).
+- **A correction to the upload-preview entry below** (agent mistake):
+  - What happened: that entry skipped `pnpm contracts:check` partly because regenerating in place on this CRLF checkout might report false differences.
+  - Why: `.gitattributes` keeps `packages/contracts/src/generated/**` at LF on every platform, as codegen writes them; the agent did not read it.
+  - What we did: ran `pnpm contracts:check` here; it printed "Generated files are up to date", and `git status` showed no new change. The entry's other reason, that main changed nothing in `packages/contracts` after `42fcd4a`, held, so that skip missed nothing.
+- **The auto-merged docs:** main's docs still called upload-preview unmerged. docs/context.md now describes the upload page as #50 built it (the old dropzone sentences went), its pdf.js limitation and its counts as merged, and the status; docs/todo.md marks PR 3 shipped and records this merge.
+- **Small event:** a final `git status --short | grep -E` with a `(UU|…)` group failed with "Unmatched ( or \(", the shell wrapper's quoting quirk (docs/memory.md, 2026-10-24). `git diff --name-only --diff-filter=U` listed the unmerged files instead.
+- Validation, with no containers:
+  - `pnpm install --frozen-lockfile` reported the lockfile up to date.
+  - `pnpm turbo run lint typecheck --force` passed 33 of 33 tasks.
+  - `pnpm turbo run test --filter=@freightaudit/api --filter=@freightaudit/worker --filter=@freightaudit/llm --filter=@freightaudit/web --force`: api 12 tests in 3 suites, llm 59 in 6, web 131 in 8 (main's 130 and the branch's 1). The worker has no unit test task; its tests are integration tests.
+  - `pnpm turbo run build --force` passed 11 of 11 tasks.
+  - `pnpm contracts:check`: the generated files are up to date.
+- Not run: `pnpm test:int` (where the branch's worker, api and migration tests run) and `pnpm e2e`, which start containers, so the user decides first.
+- Outstanding:
+  - The user's ship concludes the merge. Its CI eval smoke makes live free-model calls (never Claude), since the branch changes `packages/llm` and `apps/worker/src/extract.ts`.
+  - After the merge, its Release and `pnpm demo:up`, which applies 0017 before the new worker starts.
+
 ### 2026-10-25: main merged into upload-preview for its ship, and a file that uploads now leaves the upload list (`git merge main --no-commit`, not committed)
 
 - **Request:** get `upload-preview` (re-bills PR 3) ready to ship. The plan:
@@ -203,6 +243,42 @@ Chronological record of development activity, newest first, with small events an
   - Image Optimization RCE (GHSA-2464-fhr4-w9xw): the advisory does not name a trigger beyond "when SVG files are used" and gives no config condition. `apps/web` has no `next/image`, no `images` block in `next.config.ts` and no SVG file in `public/` or `app/`. The default `/_next/image` route still exists in Next, and the advisory text did not say a default app is safe, so exposure is not confirmed either way; it is likely low.
 - Validation: `pnpm audit --audit-level high` exits 0 (9 left: 5 low, 4 moderate); `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks; `pnpm e2e` 43 of 43. `pnpm test:int` not run: nothing in the api or packages changed except a dev dependency override used by Testcontainers, so CI is the place for it.
 - Outstanding: the Trivy scan of the web image runs only in CI; ask the user for its result. Drop both overrides once their parents ship the fix.
+
+### 2026-10-22: Claude hand-off recorded: while Claude reads first, why the free models read an invoice is stored, logged and shown in the audit trail (branch claude-fallback-log from main `c698d9f`)
+
+- **Readings the request left open** (the user's rule for this overnight session: take the most reasonable reading and note it here; docs/memory.md, 2026-10-22, has the choices and what was rejected):
+  - docs/todo.md had no item for it, done or open, so the task ran.
+  - "Reads an invoice with a fallback model" covers any free model: a hand-off at Claude's first pass goes to the free main model (text or primary), and one at its repair goes to the free fallback.
+  - "During the Claude-first window": past the end date nothing is recorded, since the free models reading is then the plan. Claude as the paid backup (not first) keeps no reason, as before.
+  - "An error class" is `failureOf`'s: `429`, `5xx`, `timeout`, `network` or `other`. The account reasons (`billing_error`, `credit_balance`, `spend_limit`, `bad_key_or_model`) are kept as such, and every later invoice reads `switched_off`.
+  - "The audit trail" is the api's `auditTrail` and the web's trail rows. The reason rides as a `claude` change on the read's last move (extracting to extracted or needs_review), beside the synthetic `carrier` change, so the invoice operation gains no field and stays at cost 83.
+  - The log line is warn: the worker's logger has no info level.
+  - Claude commits this branch, as the session's instructions say, although AGENTS.md (Git) leaves shipping to the user; no pull request, no merge, no gh.
+- **Request:** when the worker reads an invoice with a fallback model during the Claude-first window, log and store why (switched off, budget spent, a cap, an error class), so the audit trail and the logs say it. Tests first.
+- **Environment:** as in the readyz-stopgap entry: Node 24.22.0 through nvm, `dockerd` started by hand, Playwright 1.64 on Chromium 141 through scratchpad links, toxiproxy and gitleaks built from source.
+- **Tests first** (against `claudeHandoff: null` always, the column and its Drizzle mirror already in place):
+  - `packages/llm`: each Claude-first case in `claude-first.test.ts` says its `claudeHandoff`, and `extract.test.ts`'s whole-result check adds `null`. 13 of 40 failed, each on `claudeHandoff`.
+  - `apps/web/lib/labels.test.ts`: the Read and Sent to review rows with a `claude` change, an unknown reason shown as sent. 1 of 28 failed.
+  - Integration: two worker tests (Claude first with no day budget, read and not read; the row and the warn line, with nothing from the document in the log) and one api test (the change on extracted and needs_review moves, none without a reason). 3 failed.
+- **Code:**
+  - `packages/llm/src/extract.ts`: `ClaudeHandoff`, and `viaFirst` keeps the reason instead of dropping it.
+  - `packages/db`: `0017_claude_handoff.sql` (`extractions.claude_handoff`, nullable, no check) and `schema.ts`.
+  - `apps/worker/src/extract.ts`: the warn line, and the column on the saved, needs_review and split rows (through `CollectJob`); `testing.ts` gains `claudeFirst` for `runWorkers`.
+  - `apps/api/src/graphql.ts`: the `claude` change; `packages/contracts/schema.graphql` documents it under `AuditEntry.changes`, and codegen changed the resolver types' comments only.
+  - `apps/web/lib/labels.ts`: the words for each reason, on the Read and Sent to review rows.
+- **Deliberate breaks, each failing a test and reverted:** the end date counted as a hand-off (1 unit test); every failure called `other` (4); no note on Sent to review (1 web); the needs_review row without the reason, and the split upload's row without it (1 integration test each, run together); no log line (2); the api skipping needs_review moves (1).
+- **Small events:**
+  - `packages/db/src/migrations.int.test.ts` pins the applied names and their count; it failed on 0017 until both were updated (17 to 18). Structure, not behavior, so it was updated before the RED run that counts.
+  - A split-upload worker test came after GREEN, since the first tests missed `collect`. The break that drops the reason there failed it.
+  - `pnpm test:int -- apps/worker/src/extract.int.test.ts -t "<name>"` ran the whole file (16 tests). Why the name filter did not apply is not confirmed; the file passed either way.
+  - The todo line first said the invoice operation stays at cost 83 before it was checked. The scratch sizes script then printed 83 (and `NEXT` is 5), so the line stands.
+- **The push was refused** (403, no GitHub write access in this session, as for every branch); the branch goes to the user as a git bundle.
+- Files: `packages/llm/src/{extract.ts,index.ts,claude-first.test.ts,extract.test.ts}`, `packages/db/{migrations/0017_claude_handoff.sql,src/schema.ts,src/migrations.int.test.ts}`, `apps/worker/src/{extract.ts,testing.ts,extract.int.test.ts}`, `apps/api/src/{graphql.ts,graphql.int.test.ts}`, `packages/contracts/schema.graphql`, `packages/contracts/src/generated/graphql-resolvers.ts`, `apps/web/lib/{labels.ts,labels.test.ts}`, `README.md`, `docs/{todo,context,memory,migrations,activity-log}.md`.
+- Validation: `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks (llm 59 unit tests, web 115); `pnpm contracts:check`; `pnpm test:int` 145 in 25 suites (from 141); `pnpm e2e` 34 passed with the same 8 PDF-drawing tests failing as on main in this container, lockout alone 1 passed. Not run: `pnpm contracts:breaking` (it diffs only `openapi.yaml`, unchanged here). No live model call.
+- Outstanding:
+  - Shipping it runs the CI eval smoke with live free-model calls, since it changes `packages/llm` and `apps/worker/src/extract.ts` (never Claude in CI).
+  - After the merge, its Release and `pnpm demo:up`, which applies 0017 before the new worker starts. Web and backend can ship in either order: an older web ignores the `claude` change, and an older api sends none.
+  - Each overnight branch adds its entry at the top of this log, so merging them in turn conflicts here; keep both entries.
 
 ### 2026-10-22: Re-bills PR 3 built: the upload page lists files first, uploads them with one button and its progress, and says what follows in toasts (branch upload-preview from rebill-web `42fcd4a`)
 

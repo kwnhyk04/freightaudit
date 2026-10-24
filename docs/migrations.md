@@ -183,6 +183,12 @@ Migrate: apply 0015 before the api of this release. The old api never rejects a 
 
 Migrate: apply 0016 before the api of this release. The old api never makes the move, so the wider rule changes nothing for it. Contract: none needed.
 
+## 0017 Claude hand-off (expand)
+
+`extractions.claude_handoff` (text, nullable) records why the free models read an invoice while Claude reads first: `switched_off`, `daily_budget`, `input_cap` or `extraction_cap` when Claude was never sent it, `billing_error`, `credit_balance`, `spend_limit` or `bad_key_or_model` when Claude refused it (and every worker switched to the free models), or the failed call's class (`429`, `5xx`, `timeout`, `network`, `other`; `ClaudeHandoff` in packages/llm). Null when Claude read it, when Claude is not first, past Claude's end date, and on rows before 0017. No check constraint, as for 0012: a reason added later needs no migration. The api shows it in the audit trail as a `claude` change on the read's last move.
+
+Migrate: apply 0017 before the worker of this release. The old worker never writes the column, and the old api never reads it. Contract: none needed.
+
 ## Tests (`pnpm test:int`)
 
 Each test runs in a throwaway database on the Postgres container that `pnpm test:int` starts for the run.

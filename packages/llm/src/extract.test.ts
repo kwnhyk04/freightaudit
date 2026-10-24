@@ -58,6 +58,7 @@ test('valid output passes on the first call, and the call is recorded with token
     output: null,
     model: 'gemini/gemini-model',
     fallbackReason: null,
+    claudeHandoff: null,
     usage: { inputTokens: 10, outputTokens: 5 },
   });
   expect(calls).toEqual([

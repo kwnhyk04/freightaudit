@@ -61,6 +61,23 @@ test('a 429 on the primary falls back to the fallback model, and the extraction 
   expect((await waitFor(() => finished('extract', invoice.contentSha256))).attemptsMade).toBe(1);
 });
 
+test.each([
+  ['the free model reads it', valid, 'first_pass'],
+  ['no model reads it', (call: FakeCall) => replyWith(call.protocol, 'not json'), 'needs_review'],
+] as const)('Claude reading first with its day spent: %s, and the extraction and the log say why the free models had it', async (_case, reply, step) => {
+  const { env } = await setup(reply);
+  const warnings: object[] = [];
+  env.runWorkers({ modelsUrl: fake!.url, claudeFirst: true, log: { warn: (fields, msg) => void warnings.push({ ...fields, msg }), error: () => {} } });
+  const invoice = await env.upload(await makePdf());
+
+  expect(await savedExtraction(invoice.id)).toMatchObject({ step, claudeHandoff: 'daily_budget' });
+  // Claude was never sent the invoice, so only the free models' calls are recorded.
+  expect((await steps(invoice.id))[0]).toBe(`primary first_pass ${step === 'first_pass' ? 'valid' : 'invalid'}`);
+  expect(warnings).toContainEqual({ invoiceId: invoice.id, claudeHandoff: 'daily_budget', model: expect.stringMatching(/^groq|^gemini/), msg: 'Claude reading first handed the invoice to the free models' });
+  // The line names the reason and the model, never what the document says.
+  expect(JSON.stringify(warnings)).not.toMatch(/Halcyon|Linehaul|143750/);
+});
+
 test('a scan longer than the fallback takes ends needs_review with fallback_page_cap after a primary 429, never a dead letter', async () => {
   const { env } = await setup((call) => (call.model === MODEL_IDS.primary ? quota : valid(call)));
   env.runWorkers({ modelsUrl: fake!.url });
@@ -286,4 +303,15 @@ test('a multi-invoice PDF splits into child jobs, and a part that stays unreadab
   expect((await extractionRows(bad.id))[0]).toMatchObject({ step: 'needs_review' });
   expect(await steps(bad.id)).toEqual(['primary first_pass invalid', 'primary repair invalid', 'fallback fallback invalid']);
   expect(await env.db.select().from(deadLetters)).toEqual([]);
+});
+
+test('a split upload read while Claude reads first keeps why the free models read it, on the upload and on each part', async () => {
+  const { env } = await setup((call) => replyWith(call.protocol, call.pages === 3 ? extraction(1, 3) : extraction()));
+  env.runWorkers({ modelsUrl: fake!.url, claudeFirst: true });
+  const upload = await env.upload(await makePdf(3));
+
+  expect(await savedExtraction(upload.id)).toMatchObject({ step: 'first_pass', claudeHandoff: 'daily_budget', result: { parts: expect.any(Array) } });
+  const parts = await env.db.select({ id: invoices.id }).from(invoices).where(eq(invoices.parentInvoiceId, upload.id));
+  expect(parts).toHaveLength(2);
+  for (const part of parts) expect(await savedExtraction(part.id)).toMatchObject({ claudeHandoff: 'daily_budget' });
 });
