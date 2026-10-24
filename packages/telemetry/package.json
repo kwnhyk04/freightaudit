@@ -19,7 +19,7 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.223.0",
     "@opentelemetry/instrumentation-http": "^0.223.0",
     "@opentelemetry/instrumentation-ioredis": "^0.71.0",
-    "@opentelemetry/instrumentation-pg": "^0.75.0",
+    "@opentelemetry/instrumentation-pg": "^0.76.0",
     "@opentelemetry/sdk-node": "^0.223.0",
     "import-in-the-middle": "^3.0.0"
   },
