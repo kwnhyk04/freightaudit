@@ -36,14 +36,14 @@ async function settle(page: Page) {
   if ((await pages.count()) > 0) await expect(pages).toHaveAttribute('aria-busy', 'false');
 }
 
-// The upload page as the picture shows it, with a file the browser refused, kept in the list until the page reloads.
+// The upload page as the picture shows it, with a file the browser refused, kept in the list of files to upload.
 async function refuse(page: Page) {
   const big = Buffer.alloc(Math.round(6.2 * 1024 * 1024));
   big.set([0xff, 0xd8, 0xff]);
-  const file = page.getByLabel('Invoice file');
+  const file = page.getByLabel('Invoice files');
   await expect(file).toBeEnabled();
   await file.setInputFiles({ name: 'photo-of-invoice.jpg', mimeType: 'image/jpeg', buffer: big });
-  await expect(page.getByRole('row', { name: /photo-of-invoice/ })).toContainText('Not accepted');
+  await expect(page.getByRole('listitem').filter({ hasText: 'photo-of-invoice.jpg' })).toContainText('The file is 6.2 MB; the limit is 4 MB.');
 }
 
 const sample = JSON.parse(readFileSync(new URL('../public/demo/invoices.json', import.meta.url), 'utf8')) as {
@@ -58,12 +58,13 @@ test.describe.configure({ mode: 'serial' });
 // the first one billed, so the detail shows marks and open findings, the possible duplicate first among them.
 test('upload the digital fixture and a byte variant of it', async ({ page }) => {
   await page.goto('/upload');
-  const file = page.getByLabel('Invoice file');
+  const file = page.getByLabel('Invoice files');
   await expect(file).toBeEnabled();
   await file.setInputFiles({ name: 'digital.pdf', mimeType: 'application/pdf', buffer: digital });
+  await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
   await expect(page.getByRole('row', { name: /^digital[.]pdf/ })).toContainText('Done in', { timeout: 45_000 });
-  await expect(file).toBeEnabled();
   await file.setInputFiles({ name: 'digital-copy.pdf', mimeType: 'application/pdf', buffer: Buffer.concat([digital, Buffer.from('\n%copy\n')]) });
+  await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
   await expect(page.getByRole('row', { name: /^digital-copy[.]pdf/ })).toContainText('Done in', { timeout: 45_000 });
 });
 

@@ -5,6 +5,7 @@ query RecentUploads {
         id
         status
         filename
+        number
         currency
         totalCents
         createdAt
@@ -12,6 +13,10 @@ query RecentUploads {
         failureReason
         hold
         shipment {
+          id
+          reference
+        }
+        lineItems {
           id
         }
         discrepancies(first: 100) {
@@ -21,6 +26,12 @@ query RecentUploads {
               status
               expectedCents
               billedCents
+              earlierInvoice {
+                id
+                number
+                filename
+                issuedOn
+              }
             }
           }
         }
@@ -36,4 +47,5 @@ query RecentUploads {
       }
     }
   }
+  uploadAllowlist
 }

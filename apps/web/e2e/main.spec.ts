@@ -15,6 +15,16 @@ async function db<Row>(sql: string) {
   }
 }
 const badge = (page: Page, text: string) => page.locator('.badge', { hasText: text }).first();
+// A file in the upload page's list, by its name.
+const pick = (page: Page, name: string) => page.getByRole('list', { name: 'Files to upload' }).getByRole('listitem').filter({ hasText: name });
+// The upload page's posts to its own server, which carry the files; choosing a file must send none.
+function countUploads(page: Page) {
+  const posts = { count: 0 };
+  page.on('request', (sent) => {
+    if (sent.method() === 'POST' && new URL(sent.url()).pathname === '/upload') posts.count += 1;
+  });
+  return posts;
+}
 const digital = readFileSync(new URL('../../../packages/llm/fixtures/digital.pdf', import.meta.url));
 // Reconciled invoices whose findings are all open charges, so the bulk decisions show; first and last by id, one per
 // test, and further in for the tests that add a possible duplicate.
@@ -91,27 +101,42 @@ test.describe('login', () => {
 });
 
 test.describe('upload', () => {
-  test('refuses before sending what the api refuses; a chosen PDF uploads by itself, stays on the page and its row reaches done', async ({ page, request }) => {
+  test('choosing files only lists them, with size and pages and why one would be refused; Upload sends the rest, which leave the list, and toasts say what follows', async ({ page, request }) => {
     await page.goto('/upload');
-    const file = page.getByLabel('Invoice file');
-    // The input waits for the page to hydrate, since only then is a chosen file checked and sent.
+    const file = page.getByLabel('Invoice files');
+    // The input waits for the page to hydrate, since only then is a chosen file checked and listed.
     await expect(file).toBeEnabled();
-    await file.setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
-    const refused = (name: RegExp) => page.getByRole('row', { name }).getByRole('cell');
-    await expect(refused(/notes[.]txt/)).toHaveText(['notes.txt', 'Not accepted', "It isn't a PDF, PNG or JPG."]);
+    const posts = countUploads(page);
     const big = Buffer.alloc(4 * 1024 * 1024 + 1);
     big.write('%PDF-1.7');
-    await file.setInputFiles({ name: 'big.pdf', mimeType: 'application/pdf', buffer: big });
-    await expect(refused(/big[.]pdf/)).toHaveText(['big.pdf', 'Not accepted', 'The file is 4.0 MB; the limit is 4 MB.']);
-    await file.setInputFiles({ name: 'digital.pdf', mimeType: 'application/pdf', buffer: digital });
-    await expect(page.getByRole('status').filter({ hasText: 'digital.pdf uploaded.' })).toHaveCount(1);
+    await file.setInputFiles([
+      { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') },
+      { name: 'big.pdf', mimeType: 'application/pdf', buffer: big },
+      { name: 'digital.pdf', mimeType: 'application/pdf', buffer: digital },
+    ]);
+    await expect(pick(page, 'notes.txt')).toContainText("It isn't a PDF, PNG or JPG.");
+    await expect(pick(page, 'big.pdf')).toContainText('The file is 4.0 MB; the limit is 4 MB.');
+    await expect(pick(page, 'digital.pdf')).toContainText(/[0-9]+ KB · 1 page/);
+    // The line shows the PDF's first page as a picture. A soft check, so a browser that cannot draw it still uploads the
+    // invoice the tests after this one need.
+    await expect.soft(pick(page, 'digital.pdf').locator('img')).toHaveAttribute('src', /^data:image\/png;base64,/);
+    // Choosing sent nothing, and only the file that can go is counted.
+    expect(posts.count).toBe(0);
+    const toasts = page.locator('.toasts');
+    await expect(toasts).toHaveAttribute('aria-live', 'polite');
+    await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
+    // The uploaded file leaves the list for Recent uploads; the two not sent stay with their reasons.
+    await expect(pick(page, 'digital.pdf')).toHaveCount(0);
+    await expect(pick(page, 'notes.txt')).toContainText("It isn't a PDF, PNG or JPG.");
+    await expect(pick(page, 'big.pdf')).toContainText('The file is 4.0 MB; the limit is 4 MB.');
+    await expect(toasts).toContainText('1 invoice uploaded. Reading now.');
     await expect(page).toHaveURL(/\/upload$/);
-    // A file refused after an upload is announced in place of the upload's result.
-    await expect(file).toBeEnabled();
-    await file.setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
-    await expect(page.getByRole('status')).toHaveText("notes.txt not accepted: It isn't a PDF, PNG or JPG.");
+    expect(posts.count).toBe(1);
+    // Recent uploads read live, and a toast says what was read once the page sees it settle.
     const row = page.getByRole('row', { name: /digital[.]pdf/ });
+    await expect(row).toContainText('Reading…');
     await expect(row).toContainText(/Done in [0-9.]+ s/, { timeout: 45_000 });
+    await expect(toasts).toContainText('Invoice 98211354 read: 3 findings to review');
     // Neither the web nor the api lets anyone keep a copy of the document.
     const viewed = page.waitForResponse((response) => /\/api\/invoices\/[0-9a-f-]{36}\/document$/.test(response.url()));
     await row.getByRole('link', { name: 'digital.pdf' }).click();
@@ -126,27 +151,30 @@ test.describe('upload', () => {
     await expect(page.getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
   });
 
-  test('choosing a file uploaded before says which invoice it already is, with a link to it', async ({ page }) => {
+  test('a file uploaded before says which invoice it already is, on its line and in a toast, with a link to it', async ({ page }) => {
     const again = await duplicateOf('digital.pdf');
     await page.goto('/upload');
-    const file = page.getByLabel('Invoice file');
+    const file = page.getByLabel('Invoice files');
     await expect(file).toBeEnabled();
     await file.setInputFiles({ name: 'digital.pdf', mimeType: 'application/pdf', buffer: digital });
-    // Screen readers hear the plain sentence; the eye sees it with the invoice as a link.
-    await expect(page.getByRole('status')).toHaveText(again.text);
-    const notice = page.locator('form.drop p.notice');
-    await expect(notice).toHaveText(again.text);
-    await notice.getByRole('link', { name: again.name }).click();
+    await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
+    await expect(pick(page, 'digital.pdf')).toContainText(again.text);
+    await expect(page.locator('.toasts')).toContainText(again.text);
+    await pick(page, 'digital.pdf').getByRole('link', { name: again.name }).click();
     await expect(page).toHaveURL(new RegExp(`/invoices/${again.id}$`));
   });
 
-  test('a PNG is accepted and kept as a one-page PDF', async ({ page }) => {
+  test('a PNG is listed with its picture and one page, then kept as a one-page PDF', async ({ page }) => {
     await page.setContent('<p style="font: 32px serif; padding: 40px">Invoice 4242 from a phone</p>');
     const png = await page.screenshot();
     await page.goto('/upload');
-    const file = page.getByLabel('Invoice file');
+    const file = page.getByLabel('Invoice files');
     await expect(file).toBeEnabled();
     await file.setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: png });
+    await expect(pick(page, 'photo.png')).toContainText(/[0-9]+ KB · 1 page/);
+    await expect(pick(page, 'photo.png').locator('img')).toHaveAttribute('src', /^blob:/);
+    await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
+    await expect(pick(page, 'photo.png')).toHaveCount(0);
     await page.getByRole('row', { name: /photo[.]png/ }).getByRole('link', { name: 'photo.png' }).click();
     await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
     await expect(page.getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
@@ -177,9 +205,24 @@ test.describe('upload', () => {
     expect(rows).toEqual([{ extractions: 1, keys: 1 }]);
   });
 
-  test('a file dropped while another uploads is refused out loud, never sent without its bytes', async ({ page }) => {
+  test('a listed file can be removed, and Clear empties the list; nothing is sent', async ({ page }) => {
     await page.goto('/upload');
-    const file = page.getByLabel('Invoice file');
+    const file = page.getByLabel('Invoice files');
+    await expect(file).toBeEnabled();
+    const posts = countUploads(page);
+    await file.setInputFiles(['one.pdf', 'two.pdf', 'three.pdf'].map((name) => ({ name, mimeType: 'application/pdf', buffer: digital })));
+    await expect(page.getByRole('button', { name: 'Upload 3 invoices' })).toBeVisible();
+    await page.getByRole('button', { name: 'Remove two.pdf' }).click();
+    await expect(page.getByRole('list', { name: 'Files to upload' }).getByRole('listitem')).toHaveCount(2);
+    await expect(page.getByRole('button', { name: 'Upload 2 invoices' })).toBeVisible();
+    await page.getByRole('button', { name: 'Clear' }).click();
+    await expect(page.getByRole('list', { name: 'Files to upload' })).toHaveCount(0);
+    expect(posts.count).toBe(0);
+  });
+
+  test('a file dropped while others upload waits in the list for the next Upload, and goes with its bytes', async ({ page }) => {
+    await page.goto('/upload');
+    const file = page.getByLabel('Invoice files');
     await expect(file).toBeEnabled();
     // The first upload is held, so the drop lands while it is still sending.
     let release!: () => void;
@@ -188,43 +231,101 @@ test.describe('upload', () => {
     await page.route('**/upload', async (route) => {
       if (route.request().method() === 'POST') {
         posts += 1;
-        await released;
+        if (posts === 1) await released;
       }
       await route.continue();
     });
-    const status = page.getByRole('status');
     try {
       await file.setInputFiles({ name: 'digital.pdf', mimeType: 'application/pdf', buffer: digital });
-      await expect(status).toHaveText('Uploading digital.pdf');
+      await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
+      await expect(page.getByRole('status').filter({ hasText: 'Uploading 1 of 1…' })).toHaveCount(1);
+      await expect(page.getByRole('button', { name: 'Uploading 1 of 1…' })).toBeDisabled();
       const second = await page.evaluateHandle((bytes) => {
         const transfer = new DataTransfer();
         transfer.items.add(new File([new Uint8Array(bytes)], 'second.pdf', { type: 'application/pdf' }));
         return transfer;
       }, [...digital]);
-      await page.locator('form.drop').dispatchEvent('drop', { dataTransfer: second });
-      await expect(status).toHaveText(/^second[.]pdf not accepted: .*Drop it again[.]$/);
+      await page.locator('.drop').dispatchEvent('drop', { dataTransfer: second });
+      await expect(pick(page, 'second.pdf')).toBeVisible();
     } finally {
       release();
     }
-    // The first upload's own result follows the refusal: digital.pdf was uploaded before, so it is the duplicate warning.
-    await expect(status).toHaveText((await duplicateOf('digital.pdf')).text);
-    await expect(page.getByRole('row', { name: /second[.]pdf/ }).getByRole('cell')).toHaveText(['second.pdf', 'Not accepted', /Drop it again/]);
+    // The first upload ends as before: digital.pdf was uploaded before. The dropped file waits for its own Upload.
+    const again = (await duplicateOf('digital.pdf')).text;
+    await expect(pick(page, 'digital.pdf')).toContainText(again);
     expect(posts).toBe(1);
+    await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
+    // Its bytes went with it: the api knows them as digital.pdf's.
+    await expect(pick(page, 'second.pdf')).toContainText(again);
+    expect(posts).toBe(2);
   });
 
-  test('an upload posted after the session ended goes to sign-in before the server reads the form', async ({ page }) => {
+  test('an upload that gets no answer ends the batch, and the file not sent stays listed; its toast stays until closed; Retry and Upload send it again', async ({ page }) => {
     await page.goto('/upload');
-    await expect(page.getByLabel('Invoice file')).toBeEnabled();
+    const file = page.getByLabel('Invoice files');
+    await expect(file).toBeEnabled();
+    const posts = countUploads(page);
+    await page.route('**/upload', (route) => (route.request().method() === 'POST' ? route.abort() : route.continue()));
+    await file.setInputFiles([
+      { name: 'digital-copy.pdf', mimeType: 'application/pdf', buffer: Buffer.concat([digital, Buffer.from('\n%copy\n')]) },
+      { name: 'digital-next.pdf', mimeType: 'application/pdf', buffer: Buffer.concat([digital, Buffer.from('\n%next\n')]) },
+    ]);
+    await page.getByRole('button', { name: 'Upload 2 invoices' }).click();
+    const failed = page.locator('.toast', { hasText: 'Not uploaded' });
+    await expect(failed).toContainText('digital-copy.pdf: The upload did not reach the server.');
+    await expect(pick(page, 'digital-copy.pdf')).toContainText('Not uploaded: The upload did not reach the server.');
+    // No answer ends the batch: the second file was never sent, and both wait in the list, counted.
+    expect(posts.count).toBe(1);
+    await expect(pick(page, 'digital-next.pdf')).not.toContainText('Not uploaded');
+    await expect(page.getByRole('button', { name: 'Upload 2 invoices' })).toBeVisible();
+    // A success fades after a few seconds; an error stays.
+    await page.waitForTimeout(7_000);
+    await expect(failed).toBeVisible();
+    await failed.getByRole('button', { name: 'Retry' }).click();
+    await expect.poll(() => posts.count).toBe(2);
+    await expect(failed).toHaveCount(1);
+    await failed.getByRole('button', { name: 'Close' }).click();
+    await expect(failed).toHaveCount(0);
+    // The file stays in the list, counted again, until it uploads and leaves. The second goes unsent, so this run adds
+    // only the one invoice the tests after this one count on.
+    await page.getByRole('button', { name: 'Remove digital-next.pdf' }).click();
+    await page.unroute('**/upload');
+    await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
+    await expect(pick(page, 'digital-copy.pdf')).toHaveCount(0);
+    await expect(page.locator('.toasts')).toContainText('1 invoice uploaded. Reading now.');
+  });
+
+  test('on a phone the list of files fits the screen, with every button inside it', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/upload');
+    const file = page.getByLabel('Invoice files');
+    await expect(file).toBeEnabled();
+    await file.setInputFiles([
+      { name: 'a-rather-long-file-name-for-a-phone-screen.pdf', mimeType: 'application/pdf', buffer: digital },
+      { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') },
+    ]);
+    await expect(pick(page, 'notes.txt')).toContainText("It isn't a PDF, PNG or JPG.");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    for (const name of ['Remove notes.txt', 'Upload 1 invoice', 'Clear']) {
+      const box = await page.getByRole('button', { name }).boundingBox();
+      expect(box!.x + box!.width, name).toBeLessThanOrEqual(390);
+    }
+  });
+
+  test('an upload sent after the session ended goes to sign-in, and nothing is uploaded', async ({ page }) => {
+    await page.goto('/upload');
+    const file = page.getByLabel('Invoice files');
+    await expect(file).toBeEnabled();
+    await file.setInputFiles({ name: 'late.pdf', mimeType: 'application/pdf', buffer: Buffer.concat([digital, Buffer.from('\n%late\n')]) });
     await page.context().clearCookies();
-    // With no file, the server would answer "Choose a file to upload." were the form read before the session check.
-    await page.locator('form.drop').evaluate((form: HTMLFormElement) => form.requestSubmit());
+    await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByText('Choose a file to upload.')).toHaveCount(0);
+    expect(await db("SELECT id FROM invoices WHERE filename = 'late.pdf'")).toEqual([]);
   });
 
   test('a sample tapped after the session ended goes to sign-in before the server looks the sample up', async ({ page }) => {
     await page.goto('/upload');
-    await expect(page.getByLabel('Invoice file')).toBeEnabled();
+    await expect(page.getByLabel('Invoice files')).toBeEnabled();
     const sample = page.getByRole('button', { name: 'Clean digital invoice' });
     // A key the server refuses by name, were it looked up before the session check.
     await page.locator('form.sample', { has: sample }).locator('input[name="sample"]').evaluate((input: HTMLInputElement) => {
@@ -234,6 +335,42 @@ test.describe('upload', () => {
     await sample.click();
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByText('Unknown sample.')).toHaveCount(0);
+  });
+});
+
+test.describe('re-bills', () => {
+  // The sample tapped above, g001, reads as digital.pdf's invoice in this run (the recorded fixture), so it bills that
+  // shipment again: each of its lines was already billed on digital.pdf's invoice.
+  test('a re-bill names the invoice that billed its charges first: on its upload row, in its header, findings and charges', async ({ page }) => {
+    const [rebill] = await db<{ id: string; reference: string; lines: number }>(
+      `SELECT i.id, s.reference, (SELECT count(*) FROM invoice_lines l WHERE l.invoice_id = i.id)::int AS lines
+       FROM invoices i JOIN shipments s ON s.id = i.shipment_id WHERE i.filename = 'clean-digital-g001.pdf'`,
+    );
+    const [first] = await db<{ id: string; number: string; issued: string }>(
+      "SELECT id, invoice_number AS number, to_char(invoice_date, 'YYYY-MM-DD') AS issued FROM invoices WHERE filename = 'digital.pdf'",
+    );
+    const name = `invoice ${first!.number}`;
+    const printed = day.format(new Date(`${first!.issued}T00:00:00Z`));
+    const lines = rebill!.lines;
+    await page.goto('/upload');
+    const row = page.getByRole('row', { name: /clean-digital-g001[.]pdf/ });
+    await expect(row).toContainText(`Re-bills ${rebill!.reference}: ${lines} of ${lines} lines already billed on ${name}`);
+    await expect(row.getByRole('link', { name })).toHaveAttribute('href', `/invoices/${first!.id}`);
+    // At 1280 px, where the charges table only just fits, its Expected column now holds words.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(`/invoices/${rebill!.id}`);
+    const header = page.locator('.detail-head');
+    await expect(header).toContainText(`Re-bills shipment ${rebill!.reference}: ${lines} of ${lines} lines were already billed on ${name} (${printed}).`);
+    const texts = await page.locator('.findings .finding-body > p.muted').allTextContents();
+    expect(texts.filter((text) => text.endsWith(` was already billed on ${name} (${printed}) for the same shipment.`))).toHaveLength(lines);
+    const charges = page.locator('table.charges');
+    await expect(page.getByText('Expected is $0 for a charge already billed, on an earlier invoice for this shipment or on an earlier line, so it is not paid twice.')).toBeVisible();
+    await expect(charges.locator('tbody td', { hasText: `Already billed on ${name}` })).toHaveCount(lines);
+    await expect(charges.locator('tbody').getByRole('link', { name })).toHaveCount(lines);
+    expect(await page.locator('.table-wrap', { has: charges }).evaluate((box) => box.scrollWidth - box.clientWidth)).toBe(0);
+    // Each names the first invoice by a link that opens it.
+    await header.getByRole('link', { name }).click();
+    await expect(page).toHaveURL(new RegExp(`/invoices/${first!.id}$`));
   });
 });
 

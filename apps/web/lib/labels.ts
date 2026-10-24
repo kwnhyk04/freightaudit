@@ -121,6 +121,82 @@ export function findingText(
 // A description printed in capitals, as some layouts print every line, reads in sentence case; any other stays as read.
 export const lineLabel = (text: string) => (/[a-z]/.test(text) ? text : `${text.charAt(0)}${text.slice(1).toLowerCase()}`);
 
+// The invoice that billed a re-billed charge first, as the api names it (Discrepancy.earlierInvoice).
+export type EarlierInvoice = { id: string; number: string | null; filename: string; issuedOn: string | null };
+// Where a duplicate charge was billed before: on that earlier invoice, on an earlier line of its own invoice, or on an
+// earlier invoice with no name here (the sample's findings were exported before the api named it).
+export type BilledBefore = { invoice: EarlierInvoice } | { line: number } | { unnamed: true };
+// A sentence whose parts may link to another invoice: the page links each { invoice, text } part to that invoice.
+export type Words = (string | { invoice: string; text: string })[];
+// Where a duplicate charge was billed before. The earlier invoice the api names comes first, since that is the re-bill;
+// else the first earlier line of this invoice with its code; else an earlier invoice, unnamed. Undefined for any other
+// finding, and for a duplicate whose line is not loaded and whose earlier invoice is not named.
+export function billedBefore(
+  finding: { type: DiscrepancyType; lineItem?: { lineNumber: number } | null; earlierInvoice?: EarlierInvoice | null },
+  lines: readonly { lineNumber: number; chargeCode: string | null }[],
+): BilledBefore | undefined {
+  if (finding.type !== 'DUPLICATE_CHARGE') return undefined;
+  if (finding.earlierInvoice) return { invoice: finding.earlierInvoice };
+  const line = lines.find((each) => each.lineNumber === finding.lineItem?.lineNumber);
+  if (!line) return undefined;
+  const earlier = lines.filter((each) => each.lineNumber < line.lineNumber && each.chargeCode !== null && each.chargeCode === line.chargeCode);
+  return earlier.length > 0 ? { line: Math.min(...earlier.map((each) => each.lineNumber)) } : { unnamed: true };
+}
+// An earlier invoice in a sentence, linked: its number, or else its file name, as an exact duplicate upload names it.
+const earlierLink = (earlier: EarlierInvoice) => ({ invoice: earlier.id, text: earlier.number ? `invoice ${earlier.number}` : earlier.filename });
+// Its printed date in brackets, when one was read.
+const printedOn = (earlier: EarlierInvoice) => (earlier.issuedOn ? ` (${uploadDay.format(new Date(`${earlier.issuedOn}T00:00:00Z`))})` : '');
+// A duplicate charge's sentence on the invoice page, naming where it was billed first.
+export function rebilledText(description: string, before: BilledBefore): Words {
+  const label = lineLabel(description);
+  if ('invoice' in before) return [`${label} was already billed on `, earlierLink(before.invoice), `${printedOn(before.invoice)} for the same shipment.`];
+  if ('line' in before) return [`${label} was already billed on line ${before.line} of this invoice.`];
+  return [`${label} was already billed on an earlier invoice for the same shipment.`];
+}
+// The Expected cell of a charge billed before, in place of its $0, while its finding stands: once approved, the charge's
+// billed amount stands and the cell shows money again.
+export function alreadyBilled(finding: { status: DiscrepancyStatus }, before: BilledBefore | undefined): Words | undefined {
+  if (!before || finding.status === 'DISMISSED') return undefined;
+  if ('invoice' in before) return ['Already billed on ', earlierLink(before.invoice)];
+  return ['line' in before ? `Already billed on line ${before.line}` : 'Already billed on an earlier invoice'];
+}
+// The line above a charges table that has such a cell.
+export const ALREADY_BILLED = 'Expected is $0 for a charge already billed, on an earlier invoice for this shipment or on an earlier line, so it is not paid twice.';
+// The earlier invoices of a re-bill's lines: how many lines, and each named invoice once, in the order they come. A
+// repeat on the invoice's own lines is no re-bill.
+function rebilled(befores: readonly BilledBefore[]) {
+  const earlier = befores.filter((before) => !('line' in before));
+  const named = [...new Map(earlier.flatMap((before) => ('invoice' in before ? [[before.invoice.id, before.invoice] as const] : []))).values()];
+  return { count: earlier.length, named };
+}
+// Named invoices in a list: "a", "a and b", "a, b and c".
+function listed(parts: Words[]): Words {
+  return parts.flatMap((part, i) => (i === 0 ? part : [i === parts.length - 1 ? ' and ' : ', ', ...part]));
+}
+// The invoice header's line on a re-bill: how many of its lines an earlier invoice for the shipment billed first, each
+// named with its date, and that the others are checked as usual.
+export function rebillNote(shipment: string, lines: number, befores: readonly BilledBefore[]): Words | undefined {
+  const { count, named } = rebilled(befores);
+  if (count === 0) return undefined;
+  const which: Words =
+    named.length === 0
+      ? ['an earlier invoice']
+      : named.length === 1
+        ? [earlierLink(named[0]!), printedOn(named[0]!)]
+        : ['earlier invoices: ', ...listed(named.map((earlier) => [earlierLink(earlier), printedOn(earlier)]))];
+  const others = lines - count;
+  const rest = others > 0 ? ` The other ${others} ${others === 1 ? 'is' : 'are'} checked against the rate card as usual.` : '';
+  return [`Re-bills shipment ${shipment}: ${count} of ${plural(lines, 'line')} ${count === 1 ? 'was' : 'were'} already billed on `, ...which, `.${rest}`];
+}
+// The same on a recent upload's row, in short: only the charges the api names an earlier invoice for count, since the row
+// has no lines to tell a repeat on the invoice itself from an unnamed earlier invoice.
+function rebillRow(shipment: string, lines: number, earlier: readonly EarlierInvoice[]): Words | undefined {
+  const { count, named } = rebilled(earlier.map((invoice) => ({ invoice })));
+  if (count === 0) return undefined;
+  const which = named.length === 1 ? [earlierLink(named[0]!)] : ['earlier invoices: ', ...listed(named.map((each) => [earlierLink(each)]))];
+  return [`Re-bills ${shipment}: ${count} of ${plural(lines, 'line')} already billed on `, ...which];
+}
+
 // A finding's decision in a charge's words. One closed with its rejected invoice was never decided, whatever its type.
 export const DECISION: Record<DiscrepancyStatus, { label: string; tone: Tone }> = {
   OPEN: { label: 'Open', tone: 'bad' },
@@ -419,29 +495,50 @@ export function trailRows(
 // The upload page's progress steps; a step index says which one is under way.
 export const STEPS = ['Uploaded', 'Reading', 'Checking', 'Checked'] as const;
 const SETTLED = new Set(['reconciled', 'needs_review', 'failed']);
-type Recent = Omit<RecentUploadsQuery['invoices']['edges'][number]['node'], 'id' | 'filename'>;
-export type UploadState = { step?: number; done?: string; result: string; tone: 'ok' | 'warn' | 'bad' | 'accent' | 'faint' };
+type Recent = Omit<RecentUploadsQuery['invoices']['edges'][number]['node'], 'id' | 'filename' | 'number'>;
+export type UploadState = { step?: number; done?: string; result: string; tone: 'ok' | 'warn' | 'bad' | 'accent' | 'faint'; rebill?: Words };
+// A checked upload's result: what holds it, or how far it bills over the rate card.
+function reconciledState(upload: Recent, findings: Recent['discrepancies']['edges'][number]['node'][]): Pick<UploadState, 'result' | 'tone'> {
+  const { standingCents } = invoiceAmounts(upload.totalCents ?? 0, findings);
+  const open = findings.filter((finding) => finding.status === 'OPEN').length;
+  const label = statusLabel('RECONCILED', open, upload.hold);
+  // A possible duplicate bills nothing over the rate card, so its hold says why it waits.
+  const held = upload.hold && HELD[upload.hold];
+  if (held) return { result: `${label}, ${held.toLowerCase()}`, tone: upload.hold === 'CONFIRMED_DUPLICATE' ? 'warn' : 'accent' };
+  if (!upload.shipment) return { result: 'Ready to approve as billed, not checked against the rate card', tone: 'ok' };
+  return standingCents > 0n
+    ? { result: `${label}, +${formatMoney(standingCents, upload.currency)} over the rate card`, tone: 'accent' }
+    : { result: 'Ready to approve, matched the rate card', tone: 'ok' };
+}
+
+// The toast once an upload settles while the page is open: what was read, and what now waits for the reviewer. A failure
+// is an error toast, which stays until closed.
+type Settled = Pick<Recent, 'status' | 'hold' | 'shipment' | 'reviewReason' | 'failureReason' | 'discrepancies'> & { number: string | null; filename: string };
+export function finishedNote(upload: Settled): { text: string; tone: 'ok' | 'bad' } {
+  const name = upload.number ? `Invoice ${upload.number}` : upload.filename;
+  if (upload.status === 'FAILED') return { text: `${name} failed: ${upload.failureReason ? capital(upload.failureReason) : 'Used up its retries'}`, tone: 'bad' };
+  if (upload.status === 'NEEDS_REVIEW') return { text: `${name} read: its reading needs a check`, tone: 'ok' };
+  const open = upload.discrepancies.edges.filter(({ node }) => node.status === 'OPEN').length;
+  if (open > 0) return { text: `${name} read: ${plural(open, 'finding')} to review`, tone: 'ok' };
+  return { text: `${name} read: ${upload.shipment ? 'ready to approve' : 'ready to approve as billed'}`, tone: 'ok' };
+}
+
 // A recent upload: its step while in flight, else how long it took (upload to its first settled status) and the result.
-export function uploadState(upload: Recent, now: number): UploadState {
+export function uploadState(upload: Recent): UploadState {
   const created = Date.parse(upload.createdAt);
   if (IN_FLIGHT.has(upload.status)) {
     const step = upload.status === 'RECEIVED' || upload.status === 'EXTRACTING' ? 1 : 2;
-    return { step, result: `Working, ${duration(now - created)} so far`, tone: 'faint' };
+    return { step, result: step === 1 ? 'Reading…' : 'Checking…', tone: 'faint' };
   }
   const settled = upload.auditTrail.find((entry) => entry.changes.some((change) => change.field === 'status' && SETTLED.has(change.to ?? '')));
   const done = settled ? `Done in ${duration(Date.parse(settled.at) - created)}` : 'Done';
   if (upload.status === 'RECONCILED') {
     const findings = upload.discrepancies.edges.map(({ node }) => node);
-    const { standingCents } = invoiceAmounts(upload.totalCents ?? 0, findings);
-    const open = findings.filter((finding) => finding.status === 'OPEN').length;
-    const label = statusLabel('RECONCILED', open, upload.hold);
-    // A possible duplicate bills nothing over the rate card, so its hold says why it waits.
-    const held = upload.hold && HELD[upload.hold];
-    if (held) return { done, result: `${label}, ${held.toLowerCase()}`, tone: upload.hold === 'CONFIRMED_DUPLICATE' ? 'warn' : 'accent' };
-    if (!upload.shipment) return { done, result: 'Ready to approve as billed, not checked against the rate card', tone: 'ok' };
-    return standingCents > 0n
-      ? { done, result: `${label}, +${formatMoney(standingCents, upload.currency)} over the rate card`, tone: 'accent' }
-      : { done, result: 'Ready to approve, matched the rate card', tone: 'ok' };
+    // A re-bill says so beside its result, whatever else holds it.
+    const earlier = findings.flatMap((finding) => (finding.earlierInvoice ? [finding.earlierInvoice] : []));
+    const rebill = upload.shipment ? rebillRow(upload.shipment.reference, upload.lineItems.length, earlier) : undefined;
+    const state = reconciledState(upload, findings);
+    return { done, ...state, ...(rebill && { rebill }) };
   }
   if (upload.status === 'NEEDS_REVIEW') return { done, result: `${STATUS.NEEDS_REVIEW.label}: ${reviewReason(upload.reviewReason, true)}`, tone: 'warn' };
   if (upload.status === 'FAILED') return { done, result: `Failed: ${upload.failureReason ? capital(upload.failureReason) : 'Used up its retries'}`, tone: 'bad' };

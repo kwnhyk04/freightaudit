@@ -21,7 +21,7 @@
     "@freightaudit/config": "workspace:*",
     "@freightaudit/contracts": "workspace:*",
     "@freightaudit/domain": "workspace:*",
-    "next": "^16.4.0",
+    "next": "^16.4.1",
     "openapi-fetch": "^0.17.0",
     "pdfjs-dist": "6.4.299",
     "react": "^19.3.0",

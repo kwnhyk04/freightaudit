@@ -44,12 +44,16 @@ peerDependencyRules:
   allowedVersions:
     openapi-typescript>typescript: "6"
 
-# Advisories pnpm audit accepts (2026-10-15); both sit in packages/contracts lint and codegen tooling that reads only
-# this repository's files, never in a runtime image. Drop an entry once a fixed version reaches its dependents.
+# Dev-only parents that lag their advisories (2026-10-24): @graphql-eslint 4.4.2 (latest) requires utils ^10, whose
+# last release is vulnerable (GHSA-c4qx-w738-7hr3, fixed 12.0.2), and testcontainers 12.2.1 (latest) pins undici 8.11.2
+# (GHSA-xjj6-f33q-929c, fixed 8.12.2). Drop each override once its parent ships the fix itself.
+overrides:
+  "@graphql-eslint/eslint-plugin>@graphql-tools/utils": ^12.0.2
+  testcontainers>undici: ^8.12.2
+
+# Advisory pnpm audit accepts (2026-10-15); it sits in packages/contracts codegen tooling that reads only this
+# repository's files, never in a runtime image. Drop the entry once a fixed version reaches its dependent.
 auditConfig:
   ignoreGhsas:
     # braces <=3.0.3, stack exhaustion on deeply nested patterns: no fixed release exists (graphql-codegen globs).
     - GHSA-vfj7-8cjw-p6xm
-    # @graphql-tools/utils <=12.0.0, prototype pollution in mergeDeep: fixed only in 12.0.1, and @graphql-eslint 4.4.2
-    # (latest) requires ^10.
-    - GHSA-7mx3-vvmw-hjmv
