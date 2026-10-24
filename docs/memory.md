@@ -109,6 +109,12 @@ From the approved design doc:
 - 2026-10-15: release.yml reruns ci.yml through `workflow_call` as its checks; the eval smoke runs only on pull requests. Reason: one definition of the checks; the smoke comments on a PR and spends free-tier quota.
 - 2026-10-15: Trivy fails only on criticals that have a fix (`--ignore-unfixed`). Reason: an unfixable critical would block every PR with nothing to do but wait; it still shows in the log.
 - 2026-10-15: `pnpm audit --audit-level high` accepts two advisories through `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml`: braces (no fixed release) and @graphql-tools/utils (fixed only in 12.0.1, while @graphql-eslint 4.4.2, the latest, requires ^10). Reason: both sit in contracts lint and codegen tooling that reads only this repository's files.
+- 2026-10-24: new advisories in next, @graphql-tools/utils and undici were fixed without new ignore entries. next went to 16.4.2. The two dev-only ones use scoped pnpm `overrides` in `pnpm-workspace.yaml`, because their parents (@graphql-eslint/eslint-plugin 4.4.2, testcontainers 12.2.1) are the latest releases and still pin the old versions; the utils ignore entry was removed since 12.0.4 is fixed. The user's rule for such cases: upgrade the parent, else an override, else stop and give options. Pitfall: I created the branch while HEAD was on another branch; check `git branch --show-current` before `git checkout -b` (activity log, 2026-10-24).
+- 2026-10-24: The web's fonts come from the repository (`apps/web/app/fonts`, `next/font/local`), not next/font/google.
+  - What happened: CI's docker (web) build on next-security failed 18 times on IBM Plex Sans, with "Can't resolve '@vercel/turbopack-next/internal/font/google/font'" and "next/font/google queries have exactly one entry".
+  - Why: Turbopack builds each Google font file's import query with `qstring`, which splits at `&`. A Sans stylesheet whose font URLs carry an `&` fails exactly so, on 16.4.1 as on 16.4.2 (shown with a mocked response). That Google served such URLs to CI is inferred, not confirmed.
+  - What we did: the user's plan tried a 16.4.1 pin first. Since 16.4.1 fails the same way, step 2 moved the fonts to next/font/local, using the latin files Google served next/font/google, byte for byte, with their OFL license. Next stays at 16.4.2.
+  - Reason: the build no longer depends on a Google response, and the look is unchanged: 26 of 38 screenshots are byte-identical, and the rest differ only in upload times and an animated dot.
 - 2026-10-15: `@freightaudit/config` keeps its lint and test tooling (eslint, typescript, swc, jest, testcontainers) in devDependencies; only zod is a dependency. Reason: production installs of api and worker carried all of it (api image 800 MB, now 486 MB); the presets still resolve it from config's own node_modules in dev installs.
 - 2026-10-15: Images run on `node:24.22.0-alpine3.24` by digest: `turbo prune --docker`, a full install and build, then a clean production-only install; the runtime runs as `node` with `HOST=0.0.0.0` (compose publishes on 127.0.0.1) and a Node `fetch` HEALTHCHECK on `/healthz`. The web image is Next's standalone output. Reason: the user's Dockerfile rules; the musl build of @napi-rs/canvas renders scanned pages (checked on a golden scan).
 - 2026-10-15: The migrations job applies every migration to a fresh database and this change's migrations to a small-seeded snapshot that the base commit's own code built (cached per base commit), then compares `pg_dump --schema-only` of both. Reason: migrations meet existing rows, and the comparison catches an edited applied migration, which the runner (names only) cannot see.
@@ -467,9 +473,15 @@ From the approved design doc:
   - `release.yml` takes `workflow_dispatch` for a push that started no Release, as `7dec271`'s did. `publish` runs only on main, so a run started on another branch never moves `latest`.
   - `ci.yml`'s `BASE_SHA` falls back to zeros. A manual run has neither a PR base nor `event.before`, and an empty value would have sent oasdiff and the migration snapshot to an empty ref. With zeros it skips them, as a branch's first push does. Trade-off: a manual Release does not compare with the previous main; the PR's own CI ran those comparisons against its base.
   - The demo's latency fix is proposed, not built (docs/todo.md): the measurements put most answers above the web's 2.5 s threshold, and the root fix would reverse the egress design.
+- 2026-10-22: The readyz stopgap (branch `readyz-stopgap`; the numbers are the user's, the details the agent's, for the user to confirm at review).
+  - The probe's cache moved to `apps/web/lib/live.ts`, a pure module that takes the clock and the `/readyz` call, as `lib/limiter.ts` takes its clock, so its unit tests do no I/O. `server.ts` keeps the fetch and the `AI_ENABLED` check.
+  - A probe still waiting when an api call fails keeps that call's offline mark. With an 8 s wait, an answer that started before the failure would otherwise mark the backend live for 30 s.
+  - Not done: probes are not shared. Requests that find the answer stale each ask `/readyz` while one waits, now for up to 8 s; the api answers `/readyz` from a 2 s cache.
+  - Reason: the user's request; each choice is the smallest that fits it.
 
 ## Preferences and Instructions
 
+- 2026-10-24: Merging main into a branch (user instruction): first confirm the branch, its commit and a clean tree, else stop and report. Run `git merge main --no-commit`. A docs conflict keeps both sides, with entries in date order. A conflict in a code file stops the merge for the user. Never run `git commit` or `git merge --continue`, since ship concludes the merge. Ask before anything that starts containers or runs e2e.
 - 2026-10-14: The three portfolio projects run in parallel Claude Code sessions on one PC, sharing Docker. Each project has its own port range and compose project name; never prune or remove another project's Docker resources (user setup).
 - 2026-10-13: General coding rules live in `AGENTS.md`. `CLAUDE.md` imports it so Claude Code loads the rules.
 - 2026-10-13: Markdown filenames use kebab-case (for example `docs/migrations.md`).
@@ -724,6 +736,12 @@ From the approved design doc:
   - What we did: diagnosed read-only and changed nothing on the demo. The proposed fix (docs/todo.md) tries the keyless request again until the same deadline, and still fails at once on any answer but 401.
 - 2026-10-21: The web's live check is often slower than its own limit. `isLive` gives `/readyz` 2.5 s (`apps/web/lib/server.ts`), but at a calm moment only 3 of 10 public `/healthz` and `/readyz` requests from this PC answered within 2.5 s, and 2 never connected in 30 s (docs/context.md, Known Limitations). How to apply: a "Live backend offline" banner with the PC up may be this, not an outage; the proposed fix is in docs/todo.md.
 - 2026-10-21: In Git Bash, `docker exec <container> tailscale --socket=/tmp/tailscaled.sock …` fails: MSYS turns `/tmp/…` into `H:/.tmp/…`. Prefix the command with `MSYS_NO_PATHCONV=1`. `scripts/demo.ts` spawns docker from Node, so it is not affected.
+- 2026-10-24: To rerun the web image's build like CI, build its build stage from an LF archive (`git -c core.autocrlf=false archive`), then run `next build` in it at CI's 4 CPUs: `docker run --rm --cpuset-cpus=0-3 <image> sh -c 'cd apps/web && rm -rf .next && node_modules/.bin/next build'`. To include untracked files, archive a tree written through a temporary index (`GIT_INDEX_FILE=<copy of .git/index> git add -A && git write-tree`), which leaves the real index alone.
+- 2026-10-24: Google Fonts serves different files per User-Agent. With a Windows Chrome agent, Sans latin is 45,712 bytes; with next/font/google's Mac Chrome 104 agent, it is 40,240. To match what the site serves, fetch with Next's agent. `NEXT_FONT_GOOGLE_MOCKED_RESPONSES` (a CommonJS file mapping css2 URL to CSS) makes Turbopack read a given stylesheet, which turns a Google-side failure into a repeatable one.
+- 2026-10-24: This session's Bash tool can misread quoting, apparently through an extra eval in its command wrapper (not confirmed).
+  - What happened: a quoted `grep -oE ".{0,160}…"` was brace-expanded into file names. `F=docs/activity-log.md && … grep -c $'\r$' $F` printed 0 on a file whose 2,109 lines all end in CRLF, which led to a false "LF" claim in a log entry (corrected the same day).
+  - What we did: counted CRs with a plain path (`grep -c $'\r$' docs/activity-log.md`) and used the Grep tool for regex windows.
+  - How to apply: check a surprising count another way before writing it down.
 
 ## Rejected Approaches
 
@@ -785,6 +803,10 @@ From the approved design doc:
   - Why: not confirmed. Most likely they came from the computation that entry describes (the 2026-10-15 per-case scores through the harness's `measure`), and only some of its results were written down.
   - What we did: the README pass kept the recorded rows, with that entry as their source, and dropped the others (user rule: name the source or leave the number out).
   - How to apply: write every computed number into the activity log with how it was computed, in the entry that computes it.
+- 2026-10-24: A rare failure that passes locally needs a repeatable trigger before a fix counts as proven.
+  - What happened: the user's plan was to keep the 16.4.1 pin if its Docker build passed. 16.4.2 also passed locally in 55 of 57 runs at CI's CPU count, and both failures came in the first 7 runs, so a passing build proved nothing.
+  - What we did: read the error's source, then built a trigger (a mocked response with an `&` in each font URL) that failed every time. It failed 16.4.1 too, which was the plan's own condition for step 2.
+  - How to apply: when failures cluster in time, look for an outside input first. Test each candidate fix against the trigger, not against a lucky pass.
 
 ## Constraints
 

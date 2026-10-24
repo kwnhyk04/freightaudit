@@ -19,6 +19,135 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-24: main merged into rebill-web for its ship (`git merge main --no-commit`, not committed)
+
+- **Request:** the user's ship stopped on a conflict in `docs/activity-log.md`. The plan:
+  - Merge main (`4e0587c`: #46, #45 and #48) into `rebill-web` at `42fcd4a`.
+  - A docs conflict keeps both sides in date order; a code conflict stops the merge.
+  - No commit and no `git merge --continue`. Ask before anything that starts containers or runs e2e.
+- **Start:** on `rebill-web` at `42fcd4a` with a clean tree and no merge in progress. Local `main` equals `origin/main` (`4e0587c`, not fetched), and the merge base is `c698d9f`. Only the four docs changed on both sides, so no code file could conflict.
+- **The merge:** `git merge main --no-commit` stopped with one conflict, in `docs/activity-log.md`. `docs/context.md`, `docs/memory.md` and `docs/todo.md` merged by themselves.
+- The conflict:
+  - What happened: one hunk at the top of the log. The branch added its 2026-10-22 Re-bills PR 2 entry. Main added three 2026-10-24 entries and the 2026-10-22 readyz stopgap entry.
+  - Why: the log is newest first, so every branch writes at the same place.
+  - What we did: kept both sides, newest first: main's three 2026-10-24 entries, then the branch's 2026-10-22 entry, then main's 2026-10-22 one. The two 2026-10-22 entries go by commit time, since `42fcd4a` is from 18:09:59 UTC on 2026-10-21 and readyz's `73bfa29` from 17:40:47 UTC. I made the change with the Edit tool, copy first, then deleting the original with the markers, so the delete matched only if the copy was exact.
+  - Checks: no marker is left. The file has 2,074 lines, which is the branch's 1,943 plus main's 2,041 minus the base's 1,910. Its lines are exactly the base plus both sides' additions.
+  - Agent mistake: one check reported the log as LF (0 CR lines), and I first wrote that here. The same command form (`F=docs/activity-log.md && … grep -c $'\r$' $F`) still prints 0 on the file, while `grep -c $'\r$' docs/activity-log.md` counts 2,109 of 2,109 lines. So that count was a shell quoting artifact; the file is CRLF throughout, as git writes it here.
+- The auto-merged docs:
+  - What happened: both sides' changes sit in separate places and read correctly. Main's docs still called the readyz stopgap "not merged" and waiting for its ship, although #48 merged it.
+  - Why: they were written before #48 merged.
+  - What we did: marked it merged as `4e0587c` (#48) in docs/todo.md and docs/context.md, and recorded this merge on the PR 2 item.
+- **The demo check the branch asks for** ("ship only once the demo api runs `7dec271` or later"):
+  - Read only, with `docker inspect` on `freightaudit-prod-api-1` and `-worker-1`; nothing was started.
+  - Both run revision `c698d9f`, started 11:55 UTC on 2026-10-24, and `git merge-base --is-ancestor 7dec271 c698d9f` holds. So PR 1 is on the demo, and the todo's "Not on the demo yet" is marked done.
+- **Small events:**
+  - What happened: two shell lines failed. A grep window of 200 characters printed nothing, since the match sat nearer the end. Then `grep -oE` with `{0,160}` read as brace expansion ("No such file or directory"). A long one-liner also hit "unexpected EOF while looking for matching `)'".
+  - Why: the patterns were too wide, or the shell expanded them (not confirmed for the EOF).
+  - What we did: used the Grep tool and shorter commands.
+- Validation, with no containers:
+  - `pnpm install --frozen-lockfile` reported the lockfile up to date.
+  - `pnpm turbo run lint typecheck --force` passed 33 of 33 tasks.
+  - `pnpm turbo run test --filter=@freightaudit/web --force` passed 123 tests in 7 suites: 114, plus the branch's 4 and main's 5.
+  - `pnpm turbo run build --filter=@freightaudit/web... --force` passed 4 of 4 tasks on Next 16.4.2, with the three local font files in `.next/static/media`.
+- Not run: `pnpm e2e` and `pnpm test:int`, which start containers, so the user decides first.
+- Outstanding:
+  - The user's ship concludes the merge.
+  - After it, `pnpm e2e:screenshots` on the PC, since the README's sample shots are out of date (docs/todo.md, PR 2).
+
+### 2026-10-24: main merged into readyz-stopgap for its ship (`git merge main --no-commit`, not committed)
+
+- **Request:** the user's ship stopped on a conflict in `docs/activity-log.md`. The plan:
+  - Merge main into `readyz-stopgap` at `73bfa29`. Main is `5fa96bc`, with #45 and #46 (`e7b0841`, the security update and the local fonts).
+  - A docs conflict keeps both sides in date order; a code conflict stops the merge.
+  - No commit and no `git merge --continue`. Ask before anything that starts containers or runs e2e.
+- **Start:** on `readyz-stopgap` at `73bfa29` with a clean tree. Local `main` equals `origin/main` (`5fa96bc`, not fetched), and the merge base is `c698d9f`.
+- A failed command:
+  - What happened: `git rev-parse --short main origin/main` answered "fatal: Needed a single revision".
+  - Why: `--short` implies `--verify`, which takes one revision.
+  - What we did: asked for each ref on its own.
+- **The merge:** `git merge main --no-commit` stopped with one conflict, in `docs/activity-log.md`. `docs/context.md`, `docs/memory.md` and `docs/todo.md` merged by themselves. No code file conflicted: the branch changed only `apps/web/lib/{live.ts,live.test.ts,server.ts}`, and main changed the layout, the fonts, `apps/web/package.json`, the lockfile, `pnpm-workspace.yaml` and AGENTS.md.
+- The conflict:
+  - What happened: both sides added entries at the top of the log. The branch added its 2026-10-22 readyz entry, and main its two 2026-10-24 next-security entries.
+  - Why: the log is newest first, so every branch writes at the same place.
+  - What we did: kept both in date order, main's two 2026-10-24 entries first, then the branch's 2026-10-22 one. I made the change with the Edit tool in two steps: first a copy of the branch's entry below main's, then deleting the original with the markers. The delete could match only if the copy was exact.
+  - Checks: no marker is left. The file has 2,012 lines, which is the branch's 1,947 plus main's 1,975 minus the base's 1,910. Compared with CRs removed, its lines are exactly the base plus both sides' additions.
+- The auto-merged docs:
+  - What happened: the two sides' changes sit in separate places and read correctly. Main's next-security todo item still said "Part 2, not committed" and waited for the ship, although #46 has merged.
+  - Why: main's docs were written before #46 merged.
+  - What we did: marked next-security merged as `e7b0841` (#46) and moved it to Completed. The readyz item records this merge. context.md's status names #46, and memory records the user's merge rules (Preferences).
+- Validation, with no containers:
+  - `pnpm install --frozen-lockfile` reported the lockfile up to date, with Next 16.4.2.
+  - `pnpm turbo run lint typecheck --force` passed 33 of 33 tasks.
+  - `pnpm turbo run test --filter=@freightaudit/web --force` passed 119 tests in 7 suites.
+  - `pnpm turbo run build --filter=@freightaudit/web... --force` passed 4 of 4 tasks on Next 16.4.2, with the three local font files in `.next/static/media`.
+- Not run: `pnpm e2e` and `pnpm test:int`, which start containers, so the user decides first. The Docker build was not asked for.
+- Outstanding: the user's ship concludes the merge.
+
+### 2026-10-24: next-security, web image: the fonts come from the repository after Turbopack's next/font/google failed CI (branch next-security at `700d61e`, not committed)
+
+- **Request:** CI's docker (web) job failed on next-security. With next 16.4.2, Turbopack reported 18 errors in `apps/web/app/layout.tsx`'s next/font/google fonts: "Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'" and "next/font/google queries have exactly one entry". The plan:
+  - Reproduce it with the Dockerfile first.
+  - Pin next to exactly 16.4.1, and keep that if its Docker build passes.
+  - Only if 16.4.1 fails the same way, serve the fonts with next/font/local, with the same look and a screenshot check.
+- The plain Docker build passed:
+  - What happened: `docker build -f apps/web/Dockerfile` built 16.4.2 with no error. Its context was a `git archive` of HEAD with LF endings, like CI's checkout.
+  - Why: the failure is intermittent (below).
+  - What we did: built the image's build stage (`--target build`) and reran its `next build` with each condition that differs from CI. With no network (`--network none`) it failed another way: "Failed to fetch IBM Plex Mono from Google Fonts", 2 errors. With fonts.gstatic.com blocked it gave 28 "Module not found" and no query error. With CI's 4 CPUs (`--cpuset-cpus=0-3`) it failed with CI's errors exactly: 18 "Module not found", all in IBM Plex Sans's CSS, plus 72 "exactly one entry" lines.
+- How often it failed:
+  - What happened: at 4 CPUs, 16.4.2 failed 2 of 57 runs. With all 16 CPUs it failed 0 of 13. Both failures came within the first 7 runs, then none in 50. 25 alternating rounds of 16.4.2 and 16.4.1 failed 0 times each, and one run with 200 ms of added latency (netem) passed.
+  - Why: failures clustered in time point to an outside condition, not a race.
+  - What we did: read Turbopack's source (`crates/next-core/src/next_font/google/mod.rs` at v16.4.2).
+    - Turbopack puts each font file's URL into a JSON import query built with `qstring::QString::from`.
+    - `font_file_options_from_query_map` bails with "next/font/google queries have exactly one entry" unless that query is one key. `qstring` splits at `&`.
+    - IBM Plex Sans is a variable font: Google's CSS gives 18 faces that share 6 URLs. Mono's 10 faces have 10 URLs, and Mono never failed.
+- The decisive test:
+  - What happened: I fed Turbopack mocked responses through Next's `NEXT_FONT_GOOGLE_MOCKED_RESPONSES`. A Sans stylesheet whose font URLs were in Google's dynamic form (`https://fonts.gstatic.com/l/font?kit=…&skey=…&v=v23`) failed on both 16.4.2 and 16.4.1. Both gave CI's errors exactly: 18 "Module not found" and 72 "exactly one entry" lines. Google's real stylesheet, mocked the same way, passed on both versions.
+  - Why: an `&` in a font URL splits Turbopack's query. That Google served such URLs to CI, and to this PC during the two failures, is inferred from the identical signature, not confirmed. 20 fetches from the container and 12 from the host afterwards all had plain `/s/` URLs.
+  - What we did, step 1: pinned next to exactly 16.4.1. The lockfile changed only `next` and `@next/*`, and the audit passed. Its Docker build passed once, and 0 of 25 runs failed at 4 CPUs.
+  - What we did, step 2: 16.4.1 fails the same way under the trigger, so the pin does not reach the cause. I reverted it (`git checkout -- apps/web/package.json pnpm-lock.yaml`, then `pnpm install`) and followed step 2. Next stays at 16.4.2.
+- Fonts from the repository, in `apps/web/app/fonts/`:
+  - **Files:** `ibm-plex-sans-latin.woff2` (40,240 bytes, the variable font for 400 to 600), `ibm-plex-mono-latin-400.woff2` (10,052 bytes) and `ibm-plex-mono-latin-500.woff2` (10,060 bytes).
+  - **License:** `OFL.txt` is Google Fonts' `ofl/ibmplexsans/OFL.txt` (4,456 bytes). It is identical to Mono's file and to IBM's `LICENSE.txt`, and was downloaded with `curl` as a verbatim copy.
+  - **Source:** the latin `@font-face` URLs of Google's css2 API (Sans v23, Mono v20). I downloaded them with next/font/google's User-Agent, Mac Chrome 104, read from `@next/swc` 16.4.2. Each file has the same sha256 as the preloaded file next/font/google wrote into `.next/static/media` in the build before the change.
+  - **Small event:** my first download used a Windows Chrome User-Agent. Google served other files for it (Sans 45,712 bytes; why not confirmed, likely hinting), so I fetched again with Next's own User-Agent.
+  - **Layout:** `apps/web/app/layout.tsx` uses `localFont` for `plexSans` (one file, `weight: '400 600'`) and `plexMono` (400 and 500), with the same CSS variables, so `globals.css` is unchanged. The consts were first named `sans` and `mono`. next/font/local turns the const name into the CSS family name, and `sans` is a fontconfig alias on Linux, so I renamed them.
+  - **Latin only:** every character of the UI, the sample, the golden set, the seed sources and the fixtures is in the latin subset, checked by code point across 116 data files and the web's source. Google's CSS also offered latin-ext, cyrillic, greek and vietnamese files on demand. Such characters now fall back to system fonts (`ponytail:` in `layout.tsx`).
+  - **Built CSS:** one Sans face (`font-weight: 400 600`) and two Mono faces, with `font-display: swap` and three preloads, as before. The Arial fallbacks differ slightly: Sans size-adjust 101.13% (was 101.17%), Mono 131.49% (was 134.59%). This only matters before the fonts load.
+- Screenshot check:
+  - I ran `pnpm e2e:screenshots` on HEAD with Google fonts, then again with the local fonts. Each run passed 8 of 8 and wrote 38 pictures. A scratch script compared them by bytes and by pixels with `sharp` from `evals/`.
+  - 26 pictures are byte-identical. They include login, the four sample pages in light and dark, findings, needs review, failed, review queue, dead letters and upload.
+  - The other 12 differ only in the fixture's upload time (13:09 and 13:16 UTC, checked in crops) and in the animated dot of rows still being checked.
+  - After each run, `git checkout -- docs/screenshots` restored the pictures to HEAD.
+- The shell's directory slipped once:
+  - What happened: a `cd apps/web && node -p …` left the shell in `apps/web`.
+  - Why: the Bash tool keeps the directory between calls (agent mistake).
+  - What we did: `cd` back to the root in the next call. Nothing ran in `apps/web`.
+- Validation:
+  - **Docker:** the web image built from CI's Dockerfile on 16.4.2. The context was an LF archive of this tree made through a temporary index, with the real index untouched. The build stage's `next build` with no network at 4 CPUs passed 3 of 3. Trivy 0.75.0, run as CI runs it (fixable criticals), exited 0.
+  - **Repository:** `pnpm audit --audit-level high` exited 0 (5 low, 4 moderate). `pnpm turbo run build typecheck lint test --force` passed 44 of 44 tasks, and `pnpm e2e` passed 43 of 43.
+  - **Cleanup:** I removed the six scratch images built this session (`freightaudit-web:repro-1642`, `build-1642`, `1641`, `build-1641`, `local-fonts` and `build-local-fonts`) by tag. No other images or build cache were touched.
+- Correction to the next entry's exposure note:
+  - What happened: `layout.tsx` has an SVG icon as a data URI, and my earlier search for `\.svg` missed `svg+xml`.
+  - Why: the search pattern was too narrow (agent mistake).
+  - What we did: checked how the icon is served. A data URI never goes through `/_next/image`, so the Image Optimization note stands.
+- Outstanding: CI's docker (web) result once the user ships. Turbopack's handling of an `&` in a font URL is an upstream bug, and it has not been reported.
+
+### 2026-10-24: next-security: Next.js and two dev-only packages upgraded past new advisories (branch next-security from main `c698d9f`, not committed)
+
+- **Request:** CI failed `pnpm audit` and the web image's Trivy scan: next 16.4.0 (GHSA-2464-fhr4-w9xw and GHSA-673q-mjm6-r5xr critical, GHSA-p3m5-59mp-jv5r high; fixed in 16.4.1), @graphql-tools/utils up to 12.0.1 (GHSA-c4qx-w738-7hr3) and undici below 8.12.2 (GHSA-xjj6-f33q-929c), both dev-only.
+- Wrong branch at the start:
+  - What happened: I created `next-security` while the checkout was on `commit-message-rule`, not main, so the branch carried that branch's commit.
+  - Why: the session began on `commit-message-rule`; I created the branch before checking where HEAD was. The user said main was clean and to switch to it.
+  - What we did: `git checkout main`, `git rev-parse` showed `next-security` and `commit-message-rule` on the same commit (`038969a`), so `git branch -D next-security` lost nothing, then `git checkout -b next-security` from main `c698d9f`. The `commit-message-rule` branch is untouched.
+- Next: `apps/web/package.json` `next` ^16.4.0 to ^16.4.1; the lockfile resolves 16.4.2. No `eslint-config-next` exists in the repository, so nothing paired to move.
+- Dev-only packages: both parents are at their latest release and still lag (`@graphql-eslint/eslint-plugin` 4.4.2 requires utils ^10, `testcontainers` 12.2.1 pins undici 8.11.2), so a parent upgrade was not possible. Two scoped pnpm overrides in `pnpm-workspace.yaml`: `@graphql-eslint/eslint-plugin>@graphql-tools/utils` ^12.0.2 (now 12.0.4) and `testcontainers>undici` ^8.12.2 (now 8.12.3). No ignore entry added. The old `GHSA-7mx3-vvmw-hjmv` ignore (utils up to 12.0.0) no longer applies at 12.0.4, so I removed it; `GHSA-vfj7-8cjw-p6xm` (braces) stays, no fix exists.
+- Exposure of the live site (advisories read on github.com, 2026-10-24):
+  - Server Actions DoS (GHSA-p3m5-59mp-jv5r): affected. The advisory needs only the App Router with at least one Server Action, no session, no workaround but upgrading. `apps/web/app/actions.ts` has the sign-in, upload and reviewer actions, so the Vercel site was exposed to it.
+  - `use cache` RCE (GHSA-673q-mjm6-r5xr): not used. No `use cache` and no `cacheComponents` anywhere in `apps/web`.
+  - Image Optimization RCE (GHSA-2464-fhr4-w9xw): the advisory does not name a trigger beyond "when SVG files are used" and gives no config condition. `apps/web` has no `next/image`, no `images` block in `next.config.ts` and no SVG file in `public/` or `app/`. The default `/_next/image` route still exists in Next, and the advisory text did not say a default app is safe, so exposure is not confirmed either way; it is likely low.
+- Validation: `pnpm audit --audit-level high` exits 0 (9 left: 5 low, 4 moderate); `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks; `pnpm e2e` 43 of 43. `pnpm test:int` not run: nothing in the api or packages changed except a dev dependency override used by Testcontainers, so CI is the place for it.
+- Outstanding: the Trivy scan of the web image runs only in CI; ask the user for its result. Drop both overrides once their parents ship the fix.
+
 ### 2026-10-22: Re-bills PR 2 built: each duplicate charge names where it was billed first, and a re-bill says so in its header and on its upload row (branch rebill-web from main `c698d9f`)
 
 - **Readings the plan left open** (the user's rule for this overnight session: take the most reasonable reading and note it here):
@@ -51,6 +180,43 @@ Chronological record of development activity, newest first, with small events an
 - Outstanding:
   - Ship only once the demo api runs `7dec271` or later, by its revision label; an older api refuses `earlierInvoice`.
   - After the merge, `pnpm e2e:screenshots` on the PC: the README's sample shots show g056's old sentence and $0.
+
+### 2026-10-22: The readyz stopgap built: the web waits 8 s for `/readyz`, keeps a live answer 30 s and a failed one 5 s (branch readyz-stopgap from main `c698d9f`)
+
+- **Readings the request left open** (the user's rule for this overnight session: take the most reasonable reading and note it here):
+  - Claude commits this branch and was to push it, as the session's instructions say, although AGENTS.md (Git) leaves shipping to the user. No pull request, no merge, no gh. The docs are committed with the branch, since each branch carries its own entry.
+- **The push was refused:**
+  - What happened: `git push -u origin readyz-stopgap` answered 403, "Claude doesn't have GitHub access to kwnhyk04/freightaudit for your organization", and so did a push of this session's own branch. The GitHub connector's `create_branch` answered 403 "Resource not accessible by integration"; it created nothing. Reads (`git ls-remote`, listing branches) work.
+  - Why: this session has no GitHub write access to the repository (the Claude GitHub App or the account link); not confirmed which.
+  - What we did: no retry loop, since it is not a network error. The commit stays local, and each branch goes to the user as a git bundle from the scratchpad (`git fetch <file> <branch>:<branch>`), so nothing is lost if the container is reclaimed. The fix is the user's: reconnect GitHub at claude.ai/connect-github, or install the Claude GitHub App on the repository.
+  - A probe that answers after a failed api call keeps that call's offline mark (docs/memory.md, 2026-10-22). The request did not ask for it; without it, an 8 s probe could undo "offline at once" for 30 s.
+  - Dated 2026-10-22, Taipei's day (docs/memory.md, 2026-10-18); the session ran from 17:13 UTC on 2026-10-21.
+- **Request:** the stopgap from docs/todo.md (Pending), tests first: `/readyz` waited up to 8 s instead of 2.5 s, a live result kept 30 s, a failed one 5 s, and a failed api call still marks the backend offline at once.
+- **This session's environment** (a cloud container, not the PC; nothing on the demo was read or changed):
+  - Node 22 only: Node 24.22.0 (CI's version) installed with the container's nvm, and pnpm 12.11.2 with npm. `pnpm install --frozen-lockfile` passed.
+  - No Docker daemon ran: `dockerd` started by hand, and Docker Hub pulls worked.
+  - Playwright 1.64 expects Chromium revision 1248; the container has 1194 (Chromium 141) and says not to run `playwright install`. Links in the scratchpad map 1248's paths to the 1194 binaries (`PLAYWRIGHT_BROWSERS_PATH`); a test page rendered.
+- **Tests first:** `apps/web/lib/live.test.ts`, 5 tests on a hand-moved clock and a `/readyz` the test answers. Before them, the cache moved from `lib/server.ts` to `lib/live.ts` with today's numbers (2.5 s, 5 s either way), so the tests could import it.
+  - RED: 3 of 5 failed on their values. The wait was 2,500 against 8,000; a live answer was asked again at 29,999 ms; a probe answering after `markOffline` returned live.
+  - The other 2 passed, as they should: they pin kept behavior (a failed answer kept 5 s; the offline mark at once, inside a live answer's 30 s).
+- **Code:** `lib/live.ts` holds the wait and both cache times, and keeps whatever was seen while a probe waited. `lib/server.ts` passes it the fetch and keeps `AI_ENABLED` and React's per-request `cache`.
+- **Deliberate breaks, each failing a test and reverted:** a live answer kept 5 s (1 failed); a failed one kept 30 s (2); the wait back to 2.5 s (1); `markOffline` doing nothing (2); a late probe overwriting the mark (1).
+- **e2e in this container:**
+  - What happened: `pnpm e2e` gave 34 passed, 8 failed and 1 not run (lockout, which depends on the others), on this branch and the same on main `c698d9f` in a scratch worktree.
+  - Why: each of the 8 waits for a drawn PDF page. The browser logged `TypeError: Math.sumPrecise is not a function`: pdf.js 6.4.299 calls it, and Chromium 141 lacks it. `typeof Math.sumPrecise` stayed undefined with `--js-flags=--js-staging` and `--harmony`.
+  - What we did: compared the failing set with main's (identical), and ran lockout alone (`playwright test --project=lockout --no-deps`: 1 passed). CI's Playwright Chromium (1248, 156.0.8078.4) runs the 8; nothing in the repository changed for this.
+- **`pnpm test:int` in this container:**
+  - What happened: the global setup failed at once, "No such image: ghcr.io/shopify/toxiproxy:2.12.0".
+  - Why: this session's egress proxy refuses GHCR's blob host (`pkg-containers.githubusercontent.com`, 403), and Docker Hub has no `shopify/toxiproxy:2.12.0`.
+  - What we did: built toxiproxy v2.12.0 from source (`go install github.com/Shopify/toxiproxy/v2/cmd/server@v2.12.0`, static), wrapped it in a local `FROM scratch` image run as the official one (`/toxiproxy -host=0.0.0.0`), tagged it `ghcr.io/shopify/toxiproxy:2.12.0` in this container only. Main then passed 141 in 25 suites, as recorded for #41. Best because the tests stay as written; CI pulls the real image.
+- **Small events:**
+  - Agent slip: one `cd apps/web && …` moved the session's working directory (docs/memory.md, 2026-10-19). It went back to the root at once, and later runs used a subshell.
+  - Jest printed "Haste module naming collision: @freightaudit/web" for `apps/web/.next/standalone/apps/web/package.json`, a build output; harmless.
+  - A first build of the toxiproxy image on `alpine:3.22` met Docker Hub's 429; `FROM scratch` needs no pull.
+  - The pre-commit hook runs a local gitleaks, else its GHCR image, which this container cannot pull. gitleaks v8.30.1, the hook's pinned version, was built from source (`go install github.com/zricethezav/gitleaks/v8@v8.30.1`) into the scratchpad and put on `PATH`; the hook ran it and found no leaks.
+- Files: `apps/web/lib/{live.ts,live.test.ts,server.ts}`, `docs/{todo,context,memory,deploy,activity-log}.md`.
+- Validation: `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks (web 119 unit tests in 7 suites, from 114 in 6); `pnpm test:int` 141 in 25 suites; `pnpm contracts:check`; `pnpm e2e` 34 passed with the 8 viewer tests failing as on main, lockout alone 1 passed. No live model call.
+- Outstanding: the user ships it; Vercel deploys at the merge, and the demo api needs nothing.
 
 ### 2026-10-21: demo-check-retry built: `demo:up`'s keyless check retries, a Release can be started by hand, and the demo's latency measured (branch demo-check-retry from main `7dec271`, not committed)
 
