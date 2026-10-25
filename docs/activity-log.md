@@ -19,6 +19,38 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-25: docs-batch: the three docs-only branches of 2026-10-22 brought into one branch, with ghsa-ignores' claims rechecked (branch docs-batch from main `d98c8d5`, not committed)
+
+- **Request:** one PR instead of three; the user's ship had stopped on `tailscale-udp-plan` with a docs conflict, and nothing was merged. The plan:
+  - Switch to main, confirm `d98c8d5` or later with a clean tree, then create `docs-batch`.
+  - For `tailscale-udp-plan`, `api-startup-warnings` and `ghsa-ignores` (each one commit on `c698d9f`, docs only), read `git diff c698d9f..<branch>` and bring the changes in by editing, entries in date order, nothing lost. Copy `docs/tailscale-udp-plan.md` as is. No `git merge`, cherry-pick or commit.
+  - ghsa-ignores was written before the security update (#46): check each claim against today's `pnpm-workspace.yaml` and lockfile and correct what is stale. No containers; small choices are the agent's, listed in the report.
+- **Start:** on `tailscale-udp-plan` with a clean tree and no merge in progress. `git switch main` gave `d98c8d5` (#51), equal to `origin/main` (not fetched), with a clean tree; then `git switch -c docs-batch`.
+- **What each branch brought** (commit times are UTC on 2026-10-21, Taipei's 2026-10-22):
+  - `tailscale-udp-plan` (`9fb422f`, 17:43:35): `docs/tailscale-udp-plan.md`, copied with `git restore --source=tailscale-udp-plan --worktree` so its content is the branch's (`git hash-object` gives the branch's blob, `089682f`; CRLF in this checkout like every doc); its log entry; its Pending item, last in Pending as on the branch. The latency item's "the plan is on branch `tailscale-udp-plan`" now points to the file.
+  - `api-startup-warnings` (`efd4416`, 19:30:23): its log entry; its six findings under the startup-warnings item; the 4.12.0 sentence on its Known Limitations line, which main had not changed.
+  - `ghsa-ignores` (`84178e7`, 19:32:17): its log entry, as written; its check under the braces item and its audit sentence, both corrected (below), since #46 had rewritten that item and that line.
+  - Log order, newest first among 2026-10-22: ghsa-ignores, api-startup-warnings, the Claude hand-off (19:26:55), PR 3 (19:03:57), PR 2 (18:09:59), tailscale-udp-plan, readyz (17:40:47).
+- **ghsa-ignores' claims against 2026-10-25's files:**
+  - What happened: it was written on 2026-10-22, before #46 (2026-10-24) changed the ignores and added the overrides.
+  - Held: braces 3.0.3 is still the only braces in the lockfile, still ignored as GHSA-vfj7-8cjw-p6xm, and `pnpm why -r braces` still shows it only through micromatch under @graphql-codegen/cli, @graphql-tools/git-loader and fast-glob. sprintf-js 1.0.3 still comes only through Jest's coverage tooling (`pnpm why -r sprintf-js`). The lockfile still has @graphql-eslint/eslint-plugin 4.4.1. `pnpm audit --audit-level high` exits 0.
+  - Stale, corrected in docs/todo.md and docs/context.md:
+    - "Two ignored": one is left; the @graphql-tools/utils entry (GHSA-7mx3-vvmw-hjmv) went on 2026-10-24.
+    - "The fix cannot reach it without an override": the override `"@graphql-eslint/eslint-plugin>@graphql-tools/utils": ^12.0.2` now brings it in. The lockfile holds only 12.0.4, and 10.11.0 is gone. The override's range answers a newer advisory, GHSA-c4qx-w738-7hr3 (fixed in 12.0.2), so 12.0.1 no longer counts as the fix.
+    - "A plain `pnpm audit` lists one moderate advisory, in sprintf-js": it no longer lists GHSA-hp3w-g68c-fv3c at all (why is not confirmed). It lists 9 others, the 5 low and 4 moderate the 2026-10-24 count gave: fastify 5.12.5 (GHSA-389g-gv7q-r4x8, low, fixed in 5.12.6), and fast-uri 3.1.8 and 4.2.2 (GHSA-w74x-v6f9-j3xg and GHSA-wjr9-j795-jxcr moderate, GHSA-xhq7-xmqj-769h and GHSA-333x-w4r6-6crp low, each on both lines, fixed in 3.1.9 and 4.2.3). `pnpm why -r fast-uri` puts both in the api's, worker's and mock-tms's runtime dependencies, through Fastify and its ajv; so a Pending item asks for the upgrade.
+  - Not rechecked: the registry's latest releases (braces 3.0.3, utils 13.1.1, @graphql-eslint 4.4.2), which stay dated 2026-10-22.
+  - The ghsa-ignores log entry stays as written (AGENTS.md); this entry holds the corrections.
+- **Held for this branch** (docs/memory.md, 2026-10-25): claude-fallback-log's `pnpm test:int` and e2e were left to CI (the user), and it merged as `d98c8d5` (#51), so every CI check passed. docs/todo.md and docs/context.md now call it merged, with its Release and `pnpm demo:up` (0017) next.
+- **Checks:**
+  - Every line the three branches added is in this branch's files, word for word: 20 for tailscale-udp-plan, 24 for api-startup-warnings, and 14 of ghsa-ignores' 19. Its other 5, the four sub-bullets and the audit sentence, are there in corrected form.
+  - No conflict marker; every line of the five touched docs ends in CRLF.
+- **Small events:**
+  - GateGuard asked for facts before `git restore --source` (it reads as destructive); the retry passed.
+  - A first `pnpm why` summary grepped for `name version` and printed only "ound 1": `pnpm why` prints trees of `name@version`. The raw trees were read instead.
+- Files: `docs/tailscale-udp-plan.md` (new), `docs/{activity-log,context,memory,todo}.md`.
+- Validation: docs only. `pnpm audit --audit-level high` exit 0; `pnpm audit` (5 low, 4 moderate); `pnpm why -r` for braces, sprintf-js and fast-uri. No containers, no live model call.
+- Outstanding: the user ships it (docs only, no Release). claude-fallback-log's Release and `pnpm demo:up`, and the fastify and fast-uri upgrade, are in docs/todo.md.
+
 ### 2026-10-25: main merged into claude-fallback-log for its ship, with the two upload-preview decisions recorded (`git merge main --no-commit`, not committed)
 
 - **Request:** the user's ship stopped on conflicts in `README.md`, `docs/activity-log.md`, `docs/context.md` and `docs/memory.md`. The plan:
@@ -244,6 +276,41 @@ Chronological record of development activity, newest first, with small events an
 - Validation: `pnpm audit --audit-level high` exits 0 (9 left: 5 low, 4 moderate); `pnpm turbo run build typecheck lint test --force` 44 of 44 tasks; `pnpm e2e` 43 of 43. `pnpm test:int` not run: nothing in the api or packages changed except a dev dependency override used by Testcontainers, so CI is the place for it.
 - Outstanding: the Trivy scan of the web image runs only in CI; ask the user for its result. Drop both overrides once their parents ship the fix.
 
+### 2026-10-22: The two ignored advisories checked: neither fix reaches its dependents yet, so nothing changed (branch ghsa-ignores from main `c698d9f`, docs only)
+
+- **Readings the request left open** (the user's rule for this overnight session: take the most reasonable reading and note it here):
+  - "Record the date checked" goes into docs/todo.md under the existing item, with what was checked; `pnpm-workspace.yaml` and the lockfile stay as they are ("change nothing"), its comment included.
+  - The date is Taipei's day, as for every entry of this overnight session; the check ran at 2026-10-21 19:31 UTC.
+  - Claude commits this branch, as the session's instructions say, although AGENTS.md (Git) leaves shipping to the user; no pull request, no merge, no gh.
+- **Request:** check whether fixed versions now reach the dependents behind `auditConfig.ignoreGhsas` (braces, @graphql-tools/utils). If yes, upgrade and drop the entries with `pnpm audit` passing; if not, record the date checked and change nothing.
+- **Checked** (`pnpm view <package> time`, `dist-tags` and `dependencies`, and the registry's bulk advisory endpoint that `pnpm audit` uses):
+  - braces: the latest is 3.0.3 (2024-05-21), and GHSA-vfj7-8cjw-p6xm covers `<=3.0.3`. No fixed version exists. `pnpm why -r braces` shows it only through micromatch, from @graphql-codegen/cli, @graphql-tools/git-loader and fast-glob (@graphql-eslint/eslint-plugin, globby).
+  - @graphql-tools/utils: GHSA-7mx3-vvmw-hjmv covers `<=12.0.0`, and releases run to 13.1.1 (2026-10-20). @graphql-eslint/eslint-plugin 4.4.2 (2026-10-14) is still the latest and requires `^10.0.0`; the lockfile has 4.4.1 with 10.11.0. The fix cannot reach it without an override.
+  - `pnpm audit --audit-level high`, CI's command, exits 0 with the two ignored.
+- **Found on the way:** a plain `pnpm audit` exits 1 on one moderate advisory, GHSA-hp3w-g68c-fv3c in sprintf-js `<=1.1.3` (1.0.3 in the lockfile, no patched version), reached only through Jest's coverage tooling (babel-plugin-istanbul, js-yaml, argparse). CI's high level lets it through. Recorded in docs/todo.md and docs/context.md; nothing changed for it.
+- Files: `docs/{todo,context,activity-log}.md`.
+- Validation: `pnpm audit --audit-level high` exit 0. No code changed. No live model call.
+- Outstanding: check again later; an override forcing @graphql-tools/utils 12.0.1+ under @graphql-eslint is possible but untested against its `^10` range, so it waits for the user. Each overnight branch adds its entry at the top of this log, so merging them in turn conflicts here; keep both entries.
+
+### 2026-10-22: The api's two false startup warnings traced to fastify-openapi-glue; the fix needs a library change, so nothing was built (branch api-startup-warnings from main `c698d9f`, docs only)
+
+- **Readings the request left open** (the user's rule for this overnight session: take the most reasonable reading and note it here):
+  - "Fix at the source" is where the warning is decided, openapi-glue's check, not our spec or our parsers. Changing either of those would silence the check without fixing it, so per the request ("if it needs a library change, write what you found and stop") nothing was built.
+  - The findings go into docs/todo.md under the existing item, with the options left for the user.
+  - Claude commits this branch, as the session's instructions say, although AGENTS.md (Git) leaves shipping to the user; no pull request, no merge, no gh.
+- **Request:** the two false startup warnings in docs/todo.md. Fix at the source if possible, tests first; if it needs a library change, write what was found and stop.
+- **Reproduced:** a scratch script started the api with the e2e settings for 6 s. Its only warn lines were the two: "ContentTypeParser for 'application/problem+json' not found" and "ContentTypeParser for 'application/pdf' not found".
+- **Found:**
+  - The text is openapi-glue's (`index.js`, `checkParserValidators`), not Fastify's: a grep of Fastify 5.12.5's `lib/` found no such message.
+  - `lib/Parser.v3.js` `parseContent` adds every media type it reads to one `contentTypes` set, from `makeSchema`'s request body, `parseResponses` and parameters with `content`. The check then warns for each type without a request parser. In `packages/contracts/openapi.yaml`, `application/pdf` (the document) and `application/problem+json` (errors) are responses only; the request bodies are `application/json` and `multipart/form-data`, both parsed.
+  - The registry's latest is 4.12.0 (2026-10-18). Its tarball, unpacked in the scratchpad and diffed against 4.11.5, changes `Parser.js`, `index.js` (a `noValidation` option), the README and the types, but not `Parser.v3.js`, `ParserBase.js` or the check. An upgrade would not help.
+  - No option skips the check. The plugin uses `fastify-plugin`, so it runs in the parent context, and a plugin log level cannot single out its warnings; it would also hide a real missing parser.
+  - A web search found no upstream issue; the project's GitHub issues were not checked, since this session reaches only this repository on GitHub.
+- **Left for the user** (docs/todo.md): an upstream issue or PR so only the request body's media types reach the check, or a local stopgap, parsers for the two types that refuse every body with today's 415. Rejected: parsers that accept them, since the api would take bodies it refuses today.
+- Files: `docs/{todo,context,activity-log}.md`.
+- Validation: none needed for docs; no code changed. The reproduction above is the check. No live model call.
+- Outstanding: the user's choice above. Each overnight branch adds its entry at the top of this log, so merging them in turn conflicts here; keep both entries.
+
 ### 2026-10-22: Claude hand-off recorded: while Claude reads first, why the free models read an invoice is stored, logged and shown in the audit trail (branch claude-fallback-log from main `c698d9f`)
 
 - **Readings the request left open** (the user's rule for this overnight session: take the most reasonable reading and note it here; docs/memory.md, 2026-10-22, has the choices and what was rejected):
@@ -366,6 +433,25 @@ Chronological record of development activity, newest first, with small events an
 - Outstanding:
   - Ship only once the demo api runs `7dec271` or later, by its revision label; an older api refuses `earlierInvoice`.
   - After the merge, `pnpm e2e:screenshots` on the PC: the README's sample shots show g056's old sentence and $0.
+
+### 2026-10-22: Direct UDP for the demo's tailscale node, planned (branch tailscale-udp-plan from main `c698d9f`, docs only)
+
+- **Readings the request left open** (the user's rule for this overnight session: take the most reasonable reading and note it here):
+  - The plan is its own file, `docs/tailscale-udp-plan.md`, since it is long and the decision is the user's; docs/todo.md gets one Pending item that points to it.
+  - "How we'd test it" became four stages, cheapest first, with a stop after the first two if they show a direct path cannot work or would not help.
+  - It recommends staying on the relay until those two stages say otherwise, because the measurements of 2026-10-21 ran from the PC alone and cannot tell which leg is slow.
+  - Nothing in `docs/context.md` changed: a plan changes no state.
+  - Claude commits this branch, as the session's instructions say, although AGENTS.md (Git) leaves shipping to the user; no pull request, no merge, no gh. Dated 2026-10-22, Taipei's day (docs/memory.md, 2026-10-18).
+- **Request:** a plan document only, build nothing: letting the demo's tailscale sidecar make direct UDP connections instead of riding the relay. What opens and to where, what it exposes, how it fits the egress lockdown, how we'd test it, and the option of staying on the relay, against the 2026-10-21 latency (3 of 10 public requests within 2.5 s, 2 of 10 no connection in 30 s).
+- **Read:** `infra/docker-compose.prod.yml`, `infra/squid.conf`, `infra/tailscale/serve.json`, docs/deploy.md, docs/threat-notes.md, docs/context.md, docs/memory.md and the activity log's 2026-10-18 first start and 2026-10-21 latency entries.
+- **Tailscale's documentation could not be read directly:**
+  - What happened: WebFetch of `tailscale.com/kb/1082/firewall-ports` failed with ENOTFOUND, and `curl` through the proxy got 403 for `tailscale.com:443` ("connect_rejected").
+  - Why: this session's egress policy does not allow the host.
+  - What we did: no retry or way around it. The plan cites web search results instead (firewall ports, Funnel, custom DERP servers, Peer Relays, Docker parameters, and a Docker forum thread) and marks what comes from training knowledge. The user can check the plan's quoted points against those pages.
+- **The push was refused:** `git push` answered 403 ("Claude doesn't have GitHub access to kwnhyk04/freightaudit for your organization"), as for every branch in this session; reads work. Why: no GitHub write access in this session, the app or the account link (not confirmed which). What we did: kept the commit local and sent the branch to the user as a git bundle; the fix is reconnecting GitHub at claude.ai/connect-github or installing the Claude GitHub App on the repository.
+- Files: `docs/tailscale-udp-plan.md` (new), `docs/{todo,activity-log}.md`.
+- Validation: none needed; docs only, nothing built or run on the demo. No live model call.
+- Outstanding: the user's review of the plan and its recommendation; then, if wanted, stages 0 and 1 on the PC.
 
 ### 2026-10-22: The readyz stopgap built: the web waits 8 s for `/readyz`, keeps a live answer 30 s and a failed one 5 s (branch readyz-stopgap from main `c698d9f`)
 
