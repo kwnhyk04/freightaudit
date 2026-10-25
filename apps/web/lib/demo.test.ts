@@ -1,5 +1,5 @@
 import type { InvoicesQuery } from '@freightaudit/contracts/graphql';
-import { demoInvoices, demoSummary } from './demo.ts';
+import { demoInvoiceFile, demoInvoices, demoSummary } from './demo.ts';
 
 const files = (data: InvoicesQuery) => data.invoices.edges.map(({ node }) => node.filename);
 
@@ -49,4 +49,11 @@ test('the sample summary counts statuses, open findings and their overcharge, he
     { status: 'REJECTED', count: 1 },
     { status: 'FAILED', count: 1 },
   ]);
+});
+
+test("the landing page's invoice is the sample's g066: one open finding, its linehaul above the rate card", () => {
+  const hero = demoInvoiceFile('g066.pdf');
+  expect(hero).toMatchObject({ carrier: 'Bramblewood Express', number: '76644482', status: 'RECONCILED', openDiscrepancyCount: 1 });
+  expect(hero!.discrepancies.edges.map(({ node }) => [node.type, node.status, node.billedCents - node.expectedCents])).toEqual([['RATE_MISMATCH', 'OPEN', 80_154]]);
+  expect(demoInvoiceFile('nothing.pdf')).toBeUndefined();
 });

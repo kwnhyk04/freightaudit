@@ -13,6 +13,7 @@ The carriers are fictional, and every invoice is synthetic.
 
 **https://freightaudit-bay.vercel.app** (the production domain in `docs/context.md`)
 
+- **The landing page** at that address says what FreightAudit does and shows the official eval results (the report the table below names, through `apps/web/lib/eval-results.json`) beside a sample invoice. It is public, reads only the web server's own files and calls no api.
 - **Without signing in:** open [/demo](https://freightaudit-bay.vercel.app/demo), or "View sample data without signing in" on the login page. It is a read-only sample of 11 golden-set invoices (`apps/web/public/demo/invoices.json`), served without calling the api. Open a digital invoice with a finding: its line is tinted on the PDF and in the charges table, and boxes mark the values the AI read. The review queue and the dead letters are there too.
 - **Signed in:** signing in needs the reviewer password, which is not published. The pages are live while the backend on a personal PC is up. Upload one of the three samples (`apps/web/public/samples/`), watch it get read and checked, then decide its findings, if it has any. When the PC is off or asleep, the pages show the same sample under "Live backend offline, showing sample data".
 
@@ -156,13 +157,14 @@ The web app (`apps/web`, Next.js) is where accounts-payable staff review invoice
 ![The same sample invoice in dark mode](docs/screenshots/ui/demo-invoice-dark.png)
 
 - **Pages:**
-  - Invoices: four cards (open findings, overbilling found, matched the rate card, still processing), a tab per state with its count (Reading needs a check, Billing issues, Ready to approve and the rest), a search by invoice number, PRO number or carrier, and each row's reason for its status with what it billed, what the rate card allows and the difference. 25 a page, newest first, with Previous and Next (`apps/web/components/views.tsx`).
+  - Landing page (`/`, public): the headline, how an invoice goes from upload to decision, the official eval results and the engineering behind them, with a sample invoice from `/demo` and links to the live demo and the sample (`apps/web/components/landing.tsx`).
+  - Invoices: four cards (open findings, overbilling found, matched the rate card, still processing), a tab per state with its count (Reading needs a check, Billing issues, Ready to approve and the rest), a search by invoice number, PRO number or carrier, and each row's invoice, carrier and status, with the status's reason, what it billed, what the rate card allows and the difference. 25 a page, newest first, with Previous and Next (`apps/web/components/views.tsx`).
   - An invoice: the PDF beside the findings, the charges against the rate card, the invoice details and the audit trail in plain words. On a digital PDF, boxes mark the values the AI read where they appear exactly once in its text (`apps/web/lib/marks.ts`), and each line with a finding is tinted; a scan shows none, and says why. While every finding is open, three buttons decide them all at once (approve as billed, dispute, approve at rate card; `apps/web/components/detail.tsx`); each finding can also be decided alone. A charge billed twice says where it was billed first: on an earlier invoice for the same shipment, named with its printed date and linked, or on an earlier line; its Expected cell says the same, and an invoice that bills its shipment again says so under its title (`apps/web/lib/labels.ts`). It refreshes while the pipeline moves the invoice.
   - Review queue: approve a charge or dispute it, with an optional note.
   - Dead letters: replay a failed job.
   - Upload: chosen or dropped files are listed first, each with its first page, size and page count, and a warning for one the api would refuse (on the demo, any file outside the golden set). "Upload N invoices" sends them one at a time with its progress; a file that uploads leaves the list, and one that failed or was not sent stays with its reason. Toasts say what was uploaded, what failed (with Retry when the api was busy, at its rate limit or did not answer) and, once read, what waits for the reviewer (`apps/web/components/upload.tsx`). Recent uploads show their progress and result, and a re-bill names the invoice that billed its lines first. Three golden-set samples upload in one tap (`apps/web/public/samples/`).
 - **Out of needs review:** correct the carrier or PRO number and re-run matching, reject the invoice with a reason (a final status), or approve it as billed, which runs the duplicate lookup first (see Duplicate invoices). The audit trail records every action with who, when and what changed, and every pipeline move, including how the carrier name matched, why a step failed and, while Claude reads first, why the free models read an invoice instead (`extractions.claude_handoff`).
-- **Backend for frontend:** the browser talks only to the Next.js server, which calls the api with `API_KEY`; the key never reaches the browser. Every page, route handler and action checks the session first.
+- **Backend for frontend:** the browser talks only to the Next.js server, which calls the api with `API_KEY`; the key never reaches the browser. Every live page, route handler and action checks the session first; the landing page and the sample are public and never call the api.
 - **Sign-in:** one reviewer, recorded as `reviewer` in the audit trail (`apps/web/lib/server.ts`). The password is checked against `DEMO_PASSWORD_HASH` (argon2id). The session cookie is httpOnly, Secure and SameSite=Lax and lasts 8 hours (`apps/web/lib/session.ts`). Five failed attempts in 15 minutes lock sign-in (`apps/web/lib/limiter.ts`); the count lives in each server instance's memory.
 - **Threats and mitigations:** `docs/threat-notes.md`.
 
@@ -179,6 +181,7 @@ pnpm dev                                        # the UI on the web port in docs
 5. Rebuild the web (`pnpm build`, or its image): the pages read the sample when the web is built.
 
 **End-to-end tests.** `pnpm e2e` builds every package the run needs (pipeline, api, worker and web, with their dependencies), starts this project's Postgres, Redis and MinIO with compose, and seeds its own database (`freightaudit_e2e`). Playwright then runs the recorded-fixture models, the api, the worker, the web and a second web whose api is down, all on loopback, on the ports in `docs/context.md` (Local ports). A taken port stops the run. The suite covers:
+- the public landing page: no redirect, no api call and no key in it, each link, and the same page while the api is down;
 - sign-in, its cookie and sign-out, and the sign-in lockout;
 - uploads: files listed before anything is sent, then a PDF and a PNG read and checked, files refused in the browser, Remove and Clear, a batch's progress and toasts, Retry after no answer, the list at a phone's width, a sample tapped twice making one invoice;
 - a re-bill naming the invoice that billed its charges first, on its upload row, in its header, findings and charges;
@@ -191,15 +194,16 @@ CI runs it in the `e2e` job.
 
 ## Design
 
-The UI was built from mockups that were drawn and approved before the build began. They are in `docs/design/mockups/`, in light, dark and on a phone. `pnpm e2e:screenshots` shoots the same screens at the mockups' sizes into `docs/screenshots/ui/round-1/` (`apps/web/e2e/screenshots.spec.ts`), so the build can be held against them. Below, in light only, each approved mockup is on the left and the built screen on the right.
+The UI was built from mockups that were drawn and approved before the build began: round 1 (the invoice list, an invoice and the upload page) and round 2 (the landing page and the dashboard, approved 2026-10-25). They are in `docs/design/mockups/`, in light, dark and on a phone. `pnpm e2e:screenshots` shoots the same screens at the mockups' sizes into `docs/screenshots/ui/round-1/` and `round-2/` (`apps/web/e2e/screenshots.spec.ts`), so the build can be held against them. Below, in light only, each approved mockup is on the left and the built screen on the right.
 
 | Approved mockup | Built |
 | --- | --- |
 | ![The invoice list, approved mockup](docs/design/mockups/approved-1-invoice-list.png) | ![The invoice list, built](docs/screenshots/ui/round-1/1-invoice-list.png) |
 | ![An invoice, approved mockup](docs/design/mockups/approved-2-invoice-detail.png) | ![An invoice, built](docs/screenshots/ui/round-1/2-invoice-detail.png) |
 | ![The upload page, approved mockup](docs/design/mockups/approved-3-upload.png) | ![The upload page, built](docs/screenshots/ui/round-1/3-upload.png) |
+| ![The landing page, approved mockup](docs/design/mockups/approved-4-landing.png) | ![The landing page, built](docs/screenshots/ui/round-2/4-landing.png) |
 
-The data differ: the mockups show made-up invoices, and the built screens show the invoices the screenshot run seeds and uploads. Where the build departs from the mockups on purpose, `docs/memory.md` says why. For example, the mockups' "approved without a reviewer" texts were reworded, since nothing is approved without a reviewer.
+The data differ: the mockups show made-up invoices, and the built screens show the invoices the screenshot run seeds and uploads. The built landing page takes its results from the official eval report and its invoice from the sample, never the mockup's figures. Where the build departs from the mockups on purpose, `docs/memory.md` says why. For example, the mockups' "approved without a reviewer" texts were reworded, since nothing is approved without a reviewer.
 
 The mockups were drawn with Claude (claude.ai) in a planning chat before the build.
 

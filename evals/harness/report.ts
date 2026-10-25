@@ -4,6 +4,7 @@
 import { existsSync } from 'node:fs';
 import { CLAUDE_EXTRACTION_CAP, CLAUDE_FIRST_MAX_TOKENS, CLAUDE_INPUT_CAP } from '@freightaudit/llm';
 import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { writeLandingResults } from './landing.ts';
 import { failuresOf, type Measured, measure, meets, type Metric, METRICS, scoreCase, type Score } from './metrics.ts';
 import type { Roles, Run, Subset } from './run.ts';
 
@@ -275,6 +276,8 @@ export async function report({ subset, runs, durationMs, setFloors, config }: { 
       const readme = await readFile(README, 'utf8');
       const marked = /<!-- eval:start -->[\s\S]*<!-- eval:end -->/;
       await writeFile(README, marked.test(readme) ? readme.replace(marked, table) : readme.replace(/^(# .*\n)/, `$1\n${table}\n`));
+      // The landing page's results table follows the report the README now names.
+      await writeLandingResults();
     }
   }
   await writeFile(new URL(`../reports/${name}.json`, import.meta.url), `${JSON.stringify(json, (_, value: unknown) => (value instanceof Set ? [...value] : value), 2)}\n`);

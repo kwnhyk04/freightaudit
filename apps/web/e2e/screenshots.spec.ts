@@ -4,11 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 import pg from 'pg';
 
-// pnpm e2e:screenshots: the round-1 screens at the sizes of the approved pictures, into docs/screenshots/ui/round-1/,
-// then every main screen in light and dark at 1440x900 and list and detail on a phone, into docs/screenshots/ui/, for
-// the design review. A phone page that scrolls sideways fails the run.
+// pnpm e2e:screenshots: the round-1 and round-2 screens at the sizes of the approved pictures, into
+// docs/screenshots/ui/round-1/ and round-2/, then every main screen in light and dark at 1440x900 and list and detail on
+// a phone, into docs/screenshots/ui/, for the design review. A phone page that scrolls sideways fails the run.
 const out = new URL('../../../docs/screenshots/ui/', import.meta.url);
 mkdirSync(new URL('round-1/', out), { recursive: true });
+mkdirSync(new URL('round-2/', out), { recursive: true });
 const env = parseEnv(readFileSync(new URL('e2e.env', import.meta.url), 'utf8'));
 const shoot = (page: Page, file: string, fullPage = false) => page.screenshot({ path: fileURLToPath(new URL(file, out)), fullPage });
 const digital = readFileSync(new URL('../../../packages/llm/fixtures/digital.pdf', import.meta.url));
@@ -88,6 +89,26 @@ for (const scheme of ['light', 'dark'] as const) {
     await shoot(page, `round-1/3-upload${suffix}.png`);
   });
 }
+
+// The landing page, whole, as a visitor sees it: the approved picture is 1440 wide and as long as the page.
+for (const scheme of ['light', 'dark'] as const) {
+  test(`round 2, landing page, ${scheme}`, async ({ browser }) => {
+    const visitor = await browser.newPage({ colorScheme: scheme, viewport: { width: 1440, height: 900 }, storageState: { cookies: [], origins: [] } });
+    await visitor.goto('/');
+    await settle(visitor);
+    await shoot(visitor, `round-2/4-landing${scheme === 'dark' ? '-dark' : ''}.png`, true);
+    await visitor.close();
+  });
+}
+
+test('round 2, landing page on a phone, without sideways scrolling', async ({ browser }) => {
+  const visitor = await browser.newPage({ viewport: { width: 390, height: 844 }, storageState: { cookies: [], origins: [] } });
+  await visitor.goto('/');
+  await settle(visitor);
+  expect(await visitor.evaluate(() => document.documentElement.scrollWidth), 'the landing page fits 390 px').toBeLessThanOrEqual(390);
+  await shoot(visitor, 'round-2/4-landing-phone.png', true);
+  await visitor.close();
+});
 
 test('round 1, phone, without sideways scrolling', async ({ page }) => {
   const { copy } = await ids();

@@ -9,6 +9,7 @@ import type { FastifyBaseLogger, FastifyReply, FastifyRequest } from 'fastify';
 import { GraphQLError, GraphQLScalarType, Kind } from 'graphql';
 import { createSchema, createYoga, type Plugin } from 'graphql-yoga';
 import { actorOf } from './actor.ts';
+import { dashboardFigures } from './dashboard.ts';
 import { after, before, connection, cursorAt, pageSize, UUID } from './keyset.ts';
 import { createLoaders, discrepancyColumns, graphqlInvoiceColumns, type Loaders } from './loaders.ts';
 import { fail } from './problem.ts';
@@ -313,6 +314,14 @@ function createResolvers({ db, queues, tenantId, uploadAllowlist }: GraphqlDeps)
           matchedRateCard: added('clean'),
           openDeadLetters: letters!.count,
         };
+      },
+      dashboard(_, { from, to }) {
+        const start = dayStart(from, 'from')!;
+        const end = dayStart(to, 'to')!;
+        if (start > end) throw fail(400, `from (${from}) is after to (${to})`);
+        const days = (end.getTime() - start.getTime()) / 86_400_000 + 1;
+        if (days > 56) throw fail(400, `from (${from}) to (${to}) is ${days} days; the most is 56`);
+        return dashboardFigures(deps, from, to);
       },
       invoice: (_, { id }, { loaders }) => invoiceById(loaders, id),
       async discrepancies(_, args) {

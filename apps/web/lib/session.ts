@@ -29,8 +29,11 @@ export function readToken(token: string | undefined, secret: string, now = Date.
   }
 }
 
-// Where to go after signing in: a path on this site only, never another origin (//host or /\host).
-export const safeNext = (next: unknown) => (typeof next === 'string' && /^\/(?![/\\])/.test(next) ? next : '/invoices');
+// The page sign-in opens when it was asked for no other.
+export const START_PAGE = '/invoices';
+// Where to go after signing in: a path on this site only, never another origin (//host or /\host), and never the
+// landing page at /, which needs no sign-in.
+export const safeNext = (next: unknown) => (typeof next === 'string' && /^\/(?![/\\?#]|$)/.test(next) ? next : START_PAGE);
 
 // Next's rule for its own server actions (next/dist/server/app-render/action-handler.js): a request without an Origin
 // passes, since browsers send one with every cross-site POST; otherwise the Origin's host must equal the first

@@ -79,6 +79,75 @@ export type CarrierMatch =
   /** Equal after normalizing case, spacing and Unicode forms. */
   | 'NORMALIZED';
 
+/** A carrier's invoices in the window that bill above the rate card. */
+export type CarrierOverbilling = {
+  __typename?: 'CarrierOverbilling';
+  carrier: Scalars['String']['output'];
+  /** Its invoices that bill above the rate card. */
+  invoices: Scalars['Int']['output'];
+  overbilledCents: Scalars['Cents']['output'];
+};
+
+/** The overview's figures (Query.dashboard). weeks and carriers are short lists of a fixed most, not pages. */
+export type Dashboard = {
+  __typename?: 'Dashboard';
+  /** The 5 carriers whose invoices in the window bill most above the rate card, ties by name; only those above 0. */
+  carriers: Array<CarrierOverbilling>;
+  pipeline: PipelineNow;
+  /** The same number of days just before the window. */
+  previous: DashboardWindow;
+  /** The 8 weeks, Monday to Sunday in UTC, ending with the week of to, oldest first; a week with no invoice is all 0. */
+  weeks: Array<DashboardWeek>;
+  window: DashboardWindow;
+};
+
+/**
+ * A week's invoices by how they ended, and what they bill above the rate card. Invoices still in the pipeline are in none
+ * of the three counts.
+ */
+export type DashboardWeek = {
+  __typename?: 'DashboardWeek';
+  failed: Scalars['Int']['output'];
+  matchedRateCard: Scalars['Int']['output'];
+  /** Needs review, rejected, or checked but not matched: a discrepancy, no shipment, or a reviewer's correction. */
+  neededReviewer: Scalars['Int']['output'];
+  overbilledCents: Scalars['Cents']['output'];
+  /** The week's Monday. */
+  start: Scalars['Date']['output'];
+};
+
+/** Figures for the invoices received in a window of whole UTC days. */
+export type DashboardWindow = {
+  __typename?: 'DashboardWindow';
+  from: Scalars['Date']['output'];
+  /** Checked or approved invoices matched to a shipment, with no discrepancy at all and no reviewer's correction. */
+  matchedRateCard: Scalars['Int']['output'];
+  /**
+   * What the model calls of the window's invoices cost as billed, split uploads included, per invoice received, in
+   * micro-dollars (1,000,000 is $1), rounded half up: Claude at the cost each call recorded, the free tiers at 0. Null when
+   * none was received.
+   */
+  modelCostPerInvoiceMicroUsd?: Maybe<Scalars['Int']['output']>;
+  /**
+   * What the invoices bill above the rate card: billed less expected over every discrepancy not dismissed, as the invoice
+   * list's difference counts it.
+   */
+  overbilledCents: Scalars['Cents']['output'];
+  /** Invoices that bill above the rate card. */
+  overbilledInvoices: Scalars['Int']['output'];
+  /** The timed invoices' median, nearest rank; null when none is timed. */
+  processingP50Ms?: Maybe<Scalars['Int']['output']>;
+  /** Their 95th percentile, nearest rank; null when none is timed. */
+  processingP95Ms?: Maybe<Scalars['Int']['output']>;
+  received: Scalars['Int']['output'];
+  /**
+   * Invoices the audit trail times, from upload to the pipeline's first move to RECONCILED, NEEDS_REVIEW or FAILED;
+   * invoices from before the audit trail have no moves.
+   */
+  timed: Scalars['Int']['output'];
+  to: Scalars['Date']['output'];
+};
+
 /** A job that used up its retries or met data it cannot process. */
 export type DeadLetter = Node & {
   __typename?: 'DeadLetter';
@@ -478,11 +547,31 @@ export type PageInfo = {
   startCursor?: Maybe<Scalars['String']['output']>;
 };
 
+/** The pipeline now, whatever the window. */
+export type PipelineNow = {
+  __typename?: 'PipelineNow';
+  /** Input and output tokens of Claude's calls since 00:00 UTC. */
+  claudeTokensToday: Scalars['Int']['output'];
+  /** Input and output tokens of the free models' calls since 00:00 UTC. */
+  freeModelTokensToday: Scalars['Int']['output'];
+  /** Dead letters waiting for a replay. */
+  openDeadLetters: Scalars['Int']['output'];
+  /** Invoices received or being read. */
+  waitingToBeRead: Scalars['Int']['output'];
+};
+
 /** Queries for the invoice review UI. */
 export type Query = {
   __typename?: 'Query';
   /** This tenant's carriers by name. A plain list: a tenant has few carriers, and a correction picks one of them. */
   carriers: Array<Carrier>;
+  /**
+   * The overview's figures for the invoices received from one UTC day to another, both included, at most 56 days: the
+   * window itself, the same number of days just before it, the 8 weeks (Monday to Sunday) ending with the week of to, the
+   * window's carriers, and the pipeline now. A split upload counts as its parts. from after to, or a window over 56 days,
+   * is refused.
+   */
+  dashboard: Dashboard;
   /** Dead letters, newest first. */
   deadLetters: DeadLetterConnection;
   /** Discrepancies across all invoices, newest first. */
@@ -509,6 +598,13 @@ export type Query = {
    * any file. The public demo accepts only the golden set's PDFs (UPLOAD_ALLOWLIST), so the web can warn before sending.
    */
   uploadAllowlist?: Maybe<Array<Scalars['String']['output']>>;
+};
+
+
+/** Queries for the invoice review UI. */
+export type QueryDashboardArgs = {
+  from: Scalars['Date']['input'];
+  to: Scalars['Date']['input'];
 };
 
 
@@ -673,7 +769,11 @@ export type ResolversTypes = {
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Carrier: ResolverTypeWrapper<Carrier>;
   CarrierMatch: CarrierMatch;
+  CarrierOverbilling: ResolverTypeWrapper<CarrierOverbilling>;
   Cents: ResolverTypeWrapper<Scalars['Cents']['output']>;
+  Dashboard: ResolverTypeWrapper<Dashboard>;
+  DashboardWeek: ResolverTypeWrapper<DashboardWeek>;
+  DashboardWindow: ResolverTypeWrapper<DashboardWindow>;
   Date: ResolverTypeWrapper<Scalars['Date']['output']>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   DeadLetter: ResolverTypeWrapper<Partial<DeadLetter>>;
@@ -704,6 +804,7 @@ export type ResolversTypes = {
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Node: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Node']>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
+  PipelineNow: ResolverTypeWrapper<PipelineNow>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   RateCardVersion: ResolverTypeWrapper<RateCardVersion>;
   SeenDiscrepancy: SeenDiscrepancy;
@@ -716,7 +817,11 @@ export type ResolversParentTypes = {
   AuditEntry: AuditEntry;
   Boolean: Scalars['Boolean']['output'];
   Carrier: Carrier;
+  CarrierOverbilling: CarrierOverbilling;
   Cents: Scalars['Cents']['output'];
+  Dashboard: Dashboard;
+  DashboardWeek: DashboardWeek;
+  DashboardWindow: DashboardWindow;
   Date: Scalars['Date']['output'];
   DateTime: Scalars['DateTime']['output'];
   DeadLetter: Partial<DeadLetter>;
@@ -740,6 +845,7 @@ export type ResolversParentTypes = {
   Mutation: Record<PropertyKey, never>;
   Node: ResolversInterfaceTypes<ResolversParentTypes>['Node'];
   PageInfo: PageInfo;
+  PipelineNow: PipelineNow;
   Query: Record<PropertyKey, never>;
   RateCardVersion: RateCardVersion;
   SeenDiscrepancy: SeenDiscrepancy;
@@ -763,9 +869,44 @@ export type CarrierResolvers<ContextType = any, ParentType extends ResolversPare
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type CarrierOverbillingResolvers<ContextType = any, ParentType extends ResolversParentTypes['CarrierOverbilling'] = ResolversParentTypes['CarrierOverbilling']> = {
+  carrier?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  invoices?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  overbilledCents?: Resolver<ResolversTypes['Cents'], ParentType, ContextType>;
+};
+
 export interface CentsScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Cents'], any> {
   name: 'Cents';
 }
+
+export type DashboardResolvers<ContextType = any, ParentType extends ResolversParentTypes['Dashboard'] = ResolversParentTypes['Dashboard']> = {
+  carriers?: Resolver<Array<ResolversTypes['CarrierOverbilling']>, ParentType, ContextType>;
+  pipeline?: Resolver<ResolversTypes['PipelineNow'], ParentType, ContextType>;
+  previous?: Resolver<ResolversTypes['DashboardWindow'], ParentType, ContextType>;
+  weeks?: Resolver<Array<ResolversTypes['DashboardWeek']>, ParentType, ContextType>;
+  window?: Resolver<ResolversTypes['DashboardWindow'], ParentType, ContextType>;
+};
+
+export type DashboardWeekResolvers<ContextType = any, ParentType extends ResolversParentTypes['DashboardWeek'] = ResolversParentTypes['DashboardWeek']> = {
+  failed?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  matchedRateCard?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  neededReviewer?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  overbilledCents?: Resolver<ResolversTypes['Cents'], ParentType, ContextType>;
+  start?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
+};
+
+export type DashboardWindowResolvers<ContextType = any, ParentType extends ResolversParentTypes['DashboardWindow'] = ResolversParentTypes['DashboardWindow']> = {
+  from?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
+  matchedRateCard?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  modelCostPerInvoiceMicroUsd?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  overbilledCents?: Resolver<ResolversTypes['Cents'], ParentType, ContextType>;
+  overbilledInvoices?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  processingP50Ms?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  processingP95Ms?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  received?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  timed?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  to?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
+};
 
 export interface DateScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Date'], any> {
   name: 'Date';
@@ -932,8 +1073,16 @@ export type PageInfoResolvers<ContextType = any, ParentType extends ResolversPar
   startCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
+export type PipelineNowResolvers<ContextType = any, ParentType extends ResolversParentTypes['PipelineNow'] = ResolversParentTypes['PipelineNow']> = {
+  claudeTokensToday?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  freeModelTokensToday?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  openDeadLetters?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  waitingToBeRead?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
 export type QueryResolvers<ContextType = any, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   carriers?: Resolver<Array<ResolversTypes['Carrier']>, ParentType, ContextType>;
+  dashboard?: Resolver<ResolversTypes['Dashboard'], ParentType, ContextType, RequireFields<QueryDashboardArgs, 'from' | 'to'>>;
   deadLetters?: Resolver<ResolversTypes['DeadLetterConnection'], ParentType, ContextType, RequireFields<QueryDeadLettersArgs, 'first'>>;
   discrepancies?: Resolver<ResolversTypes['DiscrepancyConnection'], ParentType, ContextType, RequireFields<QueryDiscrepanciesArgs, 'first'>>;
   health?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -964,7 +1113,11 @@ export type ShipmentResolvers<ContextType = any, ParentType extends ResolversPar
 export type Resolvers<ContextType = any> = {
   AuditEntry?: AuditEntryResolvers<ContextType>;
   Carrier?: CarrierResolvers<ContextType>;
+  CarrierOverbilling?: CarrierOverbillingResolvers<ContextType>;
   Cents?: GraphQLScalarType;
+  Dashboard?: DashboardResolvers<ContextType>;
+  DashboardWeek?: DashboardWeekResolvers<ContextType>;
+  DashboardWindow?: DashboardWindowResolvers<ContextType>;
   Date?: GraphQLScalarType;
   DateTime?: GraphQLScalarType;
   DeadLetter?: DeadLetterResolvers<ContextType>;
@@ -985,6 +1138,7 @@ export type Resolvers<ContextType = any> = {
   Mutation?: MutationResolvers<ContextType>;
   Node?: NodeResolvers<ContextType>;
   PageInfo?: PageInfoResolvers<ContextType>;
+  PipelineNow?: PipelineNowResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   RateCardVersion?: RateCardVersionResolvers<ContextType>;
   Shipment?: ShipmentResolvers<ContextType>;

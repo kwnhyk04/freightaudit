@@ -132,9 +132,9 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
             </caption>
             <thead>
               <tr>
-                <th scope="col">Status</th>
                 <th scope="col">Invoice</th>
                 <th scope="col">Carrier</th>
+                <th scope="col">Status</th>
                 <th scope="col">Issued</th>
                 <th scope="col">Received</th>
                 <th scope="col" className="num">
@@ -161,15 +161,15 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
                 return (
                   <tr key={node.id} className="link-row">
                     <td>
-                      <StatusBadge status={node.status} open={node.openDiscrepancyCount} hold={node.hold} matched={matched} />
-                      {reason && <div className="faint reason">{reason}</div>}
-                    </td>
-                    <td>
                       <Link href={`${base}/invoices/${node.id}`} className="id">
                         {node.number ?? node.filename}
                       </Link>
                     </td>
                     <td>{node.carrier ?? <span className="faint">{IN_FLIGHT.has(node.status) ? 'Not matched yet' : 'Not matched'}</span>}</td>
+                    <td>
+                      <StatusBadge status={node.status} open={node.openDiscrepancyCount} hold={node.hold} matched={matched} />
+                      {reason && <div className="faint reason">{reason}</div>}
+                    </td>
                     <td>
                       <Day value={node.issuedOn} />
                     </td>
