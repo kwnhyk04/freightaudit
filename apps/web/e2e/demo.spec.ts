@@ -34,7 +34,7 @@ test('the landing page at / is public and static: no redirect, no api call, no k
   // Signed out, the live demo asks for the password first; the sign-in page's name leads home.
   await page.goto('/');
   await page.getByRole('link', { name: 'Try the live demo' }).click();
-  await expect(page).toHaveURL(/\/login\?next=%2Finvoices$/);
+  await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);
   await page.getByRole('link', { name: 'FreightAudit' }).click();
   await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/$/);
   expect(requests.filter((url) => url.includes(':4000'))).toEqual([]);
@@ -46,6 +46,31 @@ test('the landing page at / is public and static: no redirect, no api call, no k
 test('the invoice list leads with the invoice, then its carrier and status', async ({ page }) => {
   await page.goto('/demo/invoices');
   await expect(page.locator('thead th')).toHaveText(['Invoice', 'Carrier', 'Status', 'Issued', 'Received', 'Open findings', 'Billed', 'Expected', 'Difference']);
+});
+
+test("the sample opens on its invoices, and Overview in its sidebar shows the sample's one week, without cost or tokens", async ({ page }) => {
+  test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(request.url()));
+  await page.goto('/demo');
+  await expect(page).toHaveURL(/\/demo\/invoices$/);
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Overview' }).click();
+  await expect(page).toHaveURL(/\/demo\/dashboard$/);
+  await expect(page.getByRole('status')).toHaveText('Sample data, read-only');
+  await expect(page.getByText('The sample covers one week: its 11 invoices arrived on Oct 17, 2026.')).toBeVisible();
+  await expect(page.locator('.hero-card .hero-figure')).toHaveText('$8,279.22');
+  await expect(page.locator('.hero-card')).toContainText('Across 4 invoices');
+  await expect(page.locator('.stats dt:text-is("Invoices received") + dd')).toHaveText('11');
+  await expect(page.locator('.stats dt:text-is("Model cost per invoice")')).toHaveCount(0);
+  await expect(page.locator('.health dt:text-is("AI tokens today")')).toHaveCount(0);
+  await expect(page.locator('.health dt:text-is("Dead letters") + dd')).toHaveText('1');
+  // The carriers that bill most above the rate card, largest first.
+  await expect(page.locator('.carrier-bars li')).toHaveText([/^Tern & Tide Carriers.*\$7,314\.56$/, /^Bramblewood Express.*\$904\.77$/, /^Quarry Lane Transport.*\$59\.89$/]);
+  // A range stays in the sample.
+  await page.getByRole('navigation', { name: 'Time range' }).getByRole('link', { name: '8 weeks' }).click();
+  await expect(page).toHaveURL(/\/demo\/dashboard[?]range=8w$/);
+  await expect(page.locator('.hero-card dt')).toHaveText('Overbilling found, last 8 weeks');
+  expect(requests.filter((url) => url.includes(':4000'))).toEqual([]);
 });
 
 test('signed out, the sample is public and read-only, and live pages still need a session', async ({ page }) => {
@@ -90,6 +115,8 @@ test('signed out, the sample is public and read-only, and live pages still need 
     await page.goto(path);
     await expect(page).toHaveURL(/\/login/);
   }
+  await page.goto('/dashboard?range=7d');
+  await expect(page).toHaveURL(/\/login\?next=%2Fdashboard%3Frange%3D7d$/);
   expect((await page.request.get('/api/invoices/00000000-0000-0000-0000-000000000000/document')).status()).toBe(401);
   expect(requests.filter((url) => url.includes(':4000'))).toEqual([]);
 });
@@ -120,8 +147,13 @@ test('signed in while the backend is down, the app shows the same sample under t
   await page.goto(`${offline}/login`);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(`${offline}/demo/invoices`);
+  await expect(page).toHaveURL(`${offline}/demo/dashboard`);
   await expect(page.getByRole('status')).toHaveText('Live backend offline, showing sample data');
+  await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
+  // The overview's range goes with it.
+  await page.goto(`${offline}/dashboard?range=8w`);
+  await expect(page).toHaveURL(`${offline}/demo/dashboard?range=8w`);
+  await page.goto(`${offline}/demo/invoices`);
   await expect(page.getByRole('link', { name: 'Upload invoice' })).toHaveCount(0);
   // A live invoice the sample holds opens its twin; any other lands on the sample's list instead of a bare 404.
   if (sample.invoices.edges.length > 0) {

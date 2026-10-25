@@ -79,7 +79,7 @@ test.describe('login', () => {
     await expect(page.locator('.form-error')).toHaveText('Wrong password.');
     await page.getByLabel('Password').fill(PASSWORD);
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/invoices$/);
+    await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/dashboard$/);
     const cookie = (await context.cookies()).find((each) => each.name === '__Host-session');
     expect(cookie).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Lax', path: '/' });
     expect(requests.filter((url) => url.includes(':4000'))).toEqual([]);
@@ -106,9 +106,63 @@ test.describe('landing page', () => {
     await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/$/);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Catch freight overbilling before you pay it.');
     await page.getByRole('link', { name: 'Try the live demo' }).click();
-    await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/invoices$/);
+    await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/dashboard$/);
     await page.goto('/login?next=%2F');
-    await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/invoices$/);
+    await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/dashboard$/);
+  });
+});
+
+test.describe('overview', () => {
+  test("the overview counts what SQL counts here, its ranges are links, and each chart's table holds the chart's values", async ({ page }) => {
+    // This run's uploads settle first, so nothing moves between the query and the page; the seed's in-flight invoices,
+    // all received before October 2026, never move.
+    const moving = async () =>
+      (await db<{ n: number }>("SELECT count(*)::int AS n FROM invoices WHERE status IN ('received', 'extracting', 'extracted', 'reconciling') AND created_at > now() - interval '1 day'"))[0]!.n;
+    await expect.poll(moving, { timeout: 60_000 }).toBe(0);
+    // The default 4 weeks: today and the 27 UTC days before, a split upload counted as its parts; overbilling is what
+    // every finding not dismissed bills above the rate card.
+    const [counted] = await db<{ received: number; overbilled: string; invoices: number; waiting: number; letters: number }>(
+      `WITH midnight AS (SELECT date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' AS at),
+       kept AS (SELECT i.id FROM invoices i, midnight WHERE i.created_at >= midnight.at - interval '27 days' AND i.created_at < midnight.at + interval '1 day'
+         AND NOT EXISTS (SELECT 1 FROM invoices part WHERE part.parent_invoice_id = i.id)),
+       standing AS (SELECT d.invoice_id, sum(d.billed_cents - d.expected_cents) AS cents FROM discrepancies d JOIN kept ON kept.id = d.invoice_id
+         WHERE d.status <> 'dismissed' GROUP BY d.invoice_id)
+       SELECT (SELECT count(*)::int FROM kept) AS received, (SELECT coalesce(sum(cents), 0)::text FROM standing) AS overbilled,
+         (SELECT count(*)::int FROM standing WHERE cents > 0) AS invoices, (SELECT count(*)::int FROM invoices WHERE status IN ('received', 'extracting')) AS waiting,
+         (SELECT count(*)::int FROM dead_letters WHERE replayed_at IS NULL) AS letters`,
+    );
+    const money = (cents: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
+    await page.goto('/dashboard');
+    await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
+    const hero = page.locator('.hero-card');
+    await expect(hero.locator('dt')).toHaveText('Overbilling found, last 4 weeks');
+    await expect(hero.locator('.hero-figure')).toHaveText(money(Number(counted!.overbilled)));
+    await expect(hero).toContainText(`Across ${counted!.invoices} invoice${counted!.invoices === 1 ? '' : 's'}`);
+    await expect(page.locator('.stats dt:text-is("Invoices received") + dd')).toHaveText(String(counted!.received));
+    await expect(page.locator('.health dt:text-is("Waiting to be read") + dd')).toHaveText(String(counted!.waiting));
+    await expect(page.locator('.health dt:text-is("Dead letters") + dd')).toHaveText(String(counted!.letters));
+    // The live overview shows the model cost and today's tokens, which the sample leaves out.
+    await expect(page.locator('.stats dt:text-is("Model cost per invoice")')).toBeVisible();
+    await expect(page.locator('.health dt:text-is("AI tokens today")')).toBeVisible();
+    // Each column's hover text holds the values of its row in the chart's table.
+    for (const name of ['Overbilling found per week', 'Invoices per week, by outcome']) {
+      const card = page.getByRole('region', { name, exact: true });
+      await card.getByText('Show as a table').click();
+      const rows = await card.locator('tbody tr').evaluateAll((trs) => trs.map((tr) => [...tr.querySelectorAll('td.num')].map((td) => td.textContent)));
+      const titles = await card.locator('.stack').evaluateAll((stacks) => stacks.map((stack) => stack.getAttribute('title')!.split(': ')[1]!));
+      expect(rows).toHaveLength(8);
+      expect(titles.map((title) => (title.startsWith('$') ? [title] : title.match(/[0-9]+/g)))).toEqual(rows);
+    }
+    // The range is a link that the address keeps; 4 weeks needs none.
+    const ranges = page.getByRole('navigation', { name: 'Time range' });
+    await expect(ranges.getByRole('link', { name: '4 weeks' })).toHaveAttribute('aria-current', 'page');
+    await ranges.getByRole('link', { name: '7 days' }).click();
+    await expect(page).toHaveURL(/\/dashboard[?]range=7d$/);
+    await expect(hero.locator('dt')).toHaveText('Overbilling found, last 7 days');
+    await expect(ranges.getByRole('link', { name: '7 days' })).toHaveAttribute('aria-current', 'page');
+    await ranges.getByRole('link', { name: '4 weeks' }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(hero.locator('dt')).toHaveText('Overbilling found, last 4 weeks');
   });
 });
 

@@ -221,7 +221,7 @@ export const decideWords = (type: DiscrepancyType) =>
   type === 'DUPLICATE_INVOICE' ? { dismiss: 'Not a duplicate', confirm: 'Confirm duplicate' } : { dismiss: 'Approve charge', confirm: 'Dispute' };
 
 export const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
-const capital = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+export const capital = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 // The api's refusals as sentences: its messages start lower case and stop without a period. The two a page out of date
 // meets on correcting a held invoice say in plain words what happened meanwhile and what to do.
 const PLAIN = new Map([
@@ -324,17 +324,18 @@ export const duration = (ms: number) => {
 };
 
 type Finding = { status: DiscrepancyStatus; billedCents: number; expectedCents: number };
-const amounts = (finding: Finding) => ({
+// A finding as packages/domain counts it, in bigint cents.
+export const findingAmounts = (finding: Finding) => ({
   status: finding.status.toLowerCase() as FindingStatus,
   billedCents: BigInt(finding.billedCents),
   expectedCents: BigInt(finding.expectedCents),
 });
 // Money for review comes from packages/domain, so the UI never adds or subtracts: the invoice's open and standing
 // overcharges and what the rate card allows, and each line's expected amount and difference.
-export const invoiceAmounts = (totalCents: number, findings: Finding[]) => reviewAmounts(BigInt(totalCents), findings.map(amounts));
-export const overcharge = (finding: Finding) => overchargeCents(amounts(finding));
+export const invoiceAmounts = (totalCents: number, findings: Finding[]) => reviewAmounts(BigInt(totalCents), findings.map(findingAmounts));
+export const overcharge = (finding: Finding) => overchargeCents(findingAmounts(finding));
 export function lineAmounts(amountCents: number, finding?: Finding) {
-  const expectedCents = lineExpectedCents(BigInt(amountCents), finding && amounts(finding));
+  const expectedCents = lineExpectedCents(BigInt(amountCents), finding && findingAmounts(finding));
   return { expectedCents, differenceCents: overchargeCents({ billedCents: BigInt(amountCents), expectedCents }) };
 }
 
@@ -494,7 +495,8 @@ export function trailRows(
 
 // The upload page's progress steps; a step index says which one is under way.
 export const STEPS = ['Uploaded', 'Reading', 'Checking', 'Checked'] as const;
-const SETTLED = new Set(['reconciled', 'needs_review', 'failed']);
+// The statuses where the pipeline stops; its first move to one ends an upload's processing time.
+export const SETTLED = new Set(['reconciled', 'needs_review', 'failed']);
 type Recent = Omit<RecentUploadsQuery['invoices']['edges'][number]['node'], 'id' | 'filename' | 'number'>;
 export type UploadState = { step?: number; done?: string; result: string; tone: 'ok' | 'warn' | 'bad' | 'accent' | 'faint'; rebill?: Words };
 // A checked upload's result: what holds it, or how far it bills over the rate card.

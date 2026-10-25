@@ -6,7 +6,7 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Pending
 
-Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push to main should start a Release that publishes main, #41's api included; if none starts, use Run workflow (docs/deploy.md, Troubleshooting). Then `pnpm demo:up`. Both have run since: the demo api and worker run `c698d9f` (revision label, started 11:55 UTC on 2026-10-24, read-only check), so PR 1 runs on the demo. PR 2 and PR 3 of the re-bills plan are merged as `d8938d0` (#49) and `a07b552` (#50). The Claude hand-off record is merged as `d98c8d5` (#51); its Release and `pnpm demo:up`, which applies 0017, come next. The three docs-only branches of 2026-10-22 shipped together as `336a717` (#52). UI round 2, the landing page and the dashboard, is In Progress: A (the api's figures and the landing page) on branch `landing-overview-api`, then B (the dashboard). The stopgap for the demo's latency is merged as `4e0587c` (#48); its root fix is Pending. The security update and the local fonts are merged as `e7b0841` (#46). Claude first is merged as `3c61a1b` (#40) and live on the demo since the user's `pnpm demo:up` on 2026-10-21. The approved mockups are merged as `b33401f` (#39), the README pass as `8d42fe3` (#38), and the follow-ups from #34 as #35, #36 and #37. The full-subset floors for rate-limit waits wait until the Gemini key has its own Google project. Until the user confirms that move, nothing with live Gemini calls runs on 2026-10-20 from 15:00 Taipei until Triage Copilot's exam run ends (docs/memory.md, Constraints); items marked "live Gemini" need such calls.
+Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push to main should start a Release that publishes main, #41's api included; if none starts, use Run workflow (docs/deploy.md, Troubleshooting). Then `pnpm demo:up`. Both have run since: the demo api and worker run `c698d9f` (revision label, started 11:55 UTC on 2026-10-24, read-only check), so PR 1 runs on the demo. PR 2 and PR 3 of the re-bills plan are merged as `d8938d0` (#49) and `a07b552` (#50). The Claude hand-off record is merged as `d98c8d5` (#51) and reached the demo with A's Release and `pnpm demo:up` (below). The three docs-only branches of 2026-10-22 shipped together as `336a717` (#52). UI round 2, the landing page and the dashboard, is In Progress. A (the api's figures and the landing page) shipped as `101f481` (#53) and runs on the demo: the api and worker run `101f481` (revision label, started 10:32 UTC on 2026-10-25, read-only check). B (the overview) is built on branch `overview`, not committed. The stopgap for the demo's latency is merged as `4e0587c` (#48); its root fix is Pending. The security update and the local fonts are merged as `e7b0841` (#46). Claude first is merged as `3c61a1b` (#40) and live on the demo since the user's `pnpm demo:up` on 2026-10-21. The approved mockups are merged as `b33401f` (#39), the README pass as `8d42fe3` (#38), and the follow-ups from #34 as #35, #36 and #37. The full-subset floors for rate-limit waits wait until the Gemini key has its own Google project. Until the user confirms that move, nothing with live Gemini calls runs on 2026-10-20 from 15:00 Taipei until Triage Copilot's exam run ends (docs/memory.md, Constraints); items marked "live Gemini" need such calls.
 
 - [ ] The demo's public latency against the web's 2.5 s offline threshold (measured 2026-10-21). The stopgap was built on branch `readyz-stopgap` from main `c698d9f` (2026-10-22, the user's overnight request) and merged as `4e0587c` (#48): web only, no Release, Vercel deploys at the merge.
   - The numbers (docs/context.md, Known Limitations): only 3 of 10 public `/healthz` and `/readyz` requests answered within 2.5 s, and 2 never connected in 30 s.
@@ -61,7 +61,7 @@ Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push t
   - Drafts: `_design-reference/freightaudit/draft-landing-dashboard` (Oct 17).
   - Rules: real data only, tests first, no live model calls, and light, dark and phone.
   - The plan and its decisions are in the activity log (2026-10-25).
-  - [ ] A, branch `landing-overview-api` from main `336a717`: the api's dashboard figures (expand only) and the public landing page, in one PR. After it come its Release and `pnpm demo:up`.
+  - [x] A, branch `landing-overview-api` from main `336a717`: the api's dashboard figures (expand only) and the public landing page, in one PR. Shipped as `101f481` (#53), so every CI check passed.
     - [x] Domain `dashboardOf` and the api's `dashboard(from, to)`. Tests first: domain unit tests, an api integration test against `dashboardOf`, and the query limits.
     - [x] The landing page at `/`:
       - the results of the official eval report (`evals/reports/2026-10-15.json`);
@@ -76,12 +76,21 @@ Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push t
       - `pnpm e2e` 50 of 50;
       - `pnpm e2e:screenshots` 11 of 11, which re-shot round 1 too, the upload shots of look item 10 included.
       - The user gave the go for the container runs on 2026-10-25; containers were checked before and after, and freightaudit-prod was left alone.
-    - [ ] (user, before ship) Add the five dashboard types to the `strict-id-in-types` exceptions in `packages/contracts/eslint.config.js`. The config-protection hook blocks agents there; the exact line is in the activity log (2026-10-25). Until then, `pnpm lint` fails on `schema.graphql` with 5 errors.
-  - [ ] B, branch `overview` from main once A runs on the demo:
-    - the dashboard at `/dashboard` (live) and `/demo/dashboard` (the sample's one week, one click from the sidebar; `/demo` still opens the invoices);
-    - Overview first in the sidebar, and `/dashboard` as the start page after sign-in;
-    - the invoice list's stats two by two on a phone;
-    - the round-1 upload screenshots shot again: already done in A, since `pnpm e2e:screenshots` shoots every screen. B shoots them again for the sidebar's Overview.
+    - [x] (user, before ship) Add the five dashboard types to the `strict-id-in-types` exceptions in `packages/contracts/eslint.config.js`. The config-protection hook blocks agents there; the exact line is in the activity log (2026-10-25). Done by the user: the line is in (read on 2026-10-25), and the turbo run on B passed 44 of 44.
+    - [x] Its Release and `pnpm demo:up`, by the user. The demo api and worker run `101f481` (revision label, started 10:32 UTC on 2026-10-25; read with `docker inspect --format` only). That run's migrate step comes before them (`scripts/demo.ts`), so #51's 0017 is applied too; this is inferred, not checked in the database.
+  - [ ] B, branch `overview` from main `101f481` (2026-10-25, once A ran on the demo), not committed:
+    - [x] The overview at `/dashboard` (`components/overview.tsx`, `lib/overview.ts`), and the sample's at `/demo/dashboard` (`demoDashboard`: its one week, without cost or tokens). `/demo` still opens the invoices.
+    - [x] Overview first in the sidebar, and `/dashboard` as the start page after sign-in (`START_PAGE`). The live name and "Try live data" lead there; the sample's name leads to its invoices.
+    - [x] Look item 2: on a phone the invoice list's stats sit two by two, in the grid the overview's tiles share.
+    - [x] Look item 10: the round-1 upload shots, shot again by `pnpm e2e:screenshots`. A's run did it first; B's has the sidebar's Overview.
+    - [x] Tests first: 5 unit tests in `lib/overview.test.ts`, 1 in `lib/demo.test.ts` (the sample's overview, counted by hand) and the start page in `lib/auth.test.ts`. Against stubs, 7 of 139 failed, each on its value; then all passed. e2e: the overview against SQL, its ranges and its tables (main); the sample's overview, the `/dashboard` guard and the offline sign-in landing on `/demo/dashboard` (public); three round-2 screenshots.
+    - [x] Deliberate breaks, each failing a unit test and reverted: the range a day too long (2 failed), gridlines in fractions (1), corrections not counted (1), processing timed to the last stop (1), a tiny cost shown as $0.0000 (1).
+    - [x] Checks:
+      - `pnpm turbo run build typecheck lint test`: 44 of 44.
+      - `pnpm e2e`: 52 of 52. Run 1 failed my own overview test on the seed's in-flight invoices, which never move; fixed (activity log).
+      - `pnpm e2e:screenshots`: 14 of 14.
+      - Containers were the same before and after, and freightaudit-prod was left alone.
+    - [ ] (user) Ship. Vercel deploys the web at the merge. The api and worker are unchanged, so no Release or `pnpm demo:up` is needed.
 
 - [ ] docs-batch (user, 2026-10-25): the three docs-only branches of 2026-10-22 in one PR instead of three, on branch `docs-batch` from main `d98c8d5`, not committed. Docs only, so no Release. Shipped as `336a717` (#52).
   - [x] tailscale-udp-plan: `docs/tailscale-udp-plan.md` as is, its log entry and its Pending item. api-startup-warnings: its log entry, its findings under the startup-warnings item and its Known Limitations sentence. ghsa-ignores: its log entry, its check under the braces item and its audit sentence. Log entries in date order.
@@ -100,7 +109,7 @@ Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push t
     - Checks: lint and typecheck 33 of 33 tasks; unit tests api 12, llm 59 and web 131 (the worker has none); the build 11 of 11; `pnpm contracts:check`.
     - Not run here: `pnpm test:int` and e2e. The user left both to CI, which runs them before merge (2026-10-25).
   - [x] Shipped as `d98c8d5` (#51), so every CI check passed, `pnpm test:int` and e2e included. It changes `packages/llm` and `apps/worker/src/extract.ts`, so its CI eval smoke made live free-model calls (never Claude).
-  - [ ] Its Release and `pnpm demo:up`, which applies 0017 before the new worker starts; any order of web and backend works.
+  - [x] Its Release and `pnpm demo:up`, which applies 0017 before the new worker starts; any order of web and backend works. Done with UI round 2 A's (2026-10-25): the demo api and worker run `101f481`, which includes `d98c8d5`, so 0017 ran in that `demo:up`'s migrate step (inferred, not checked in the database).
 - [ ] Re-billed shipments in plain words, and an upload page that previews first (user, 2026-10-21): plan approved, its wording as written. Three PRs in this order, each built once the one before it is on main, and PR 1 on the demo. No live model calls. The plan, its tests and its wording are in the activity log (2026-10-21, planned).
   - [x] PR 1, api: merged as `7dec271` (#41), built on branch `rebill-api` from main `3c61a1b`. No migration, no worker change, no REST change.
     - `Discrepancy.earlierInvoice`: the earliest other invoice of the shipment that billed the line's charge code before it. It is worked out when read, so every stored finding has it, g071's included.
@@ -134,7 +143,7 @@ Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push t
       - Not run: e2e and `pnpm test:int`, which start containers (the user decides).
     - [x] The demo check: the demo api runs `c698d9f`, which includes `7dec271` (revision label, read on 2026-10-24).
     - [x] Shipped as `d8938d0` (#49).
-    - [ ] `pnpm e2e:screenshots` on the PC, since the README's sample shots (g056) now read "Already billed on line 3".
+    - [x] `pnpm e2e:screenshots` on the PC, since the README's sample shots (g056) now read "Already billed on line 3". Done by UI round 2's runs (A, then B, 2026-10-25), which shoot every screen.
   - [ ] PR 3, web, upload preview. After PR 2; no Release. Built on branch `upload-preview` from `rebill-web` `42fcd4a` (2026-10-22, the user's overnight request), merged as `a07b552` (#50), with no other step: the one new api field it reads, `uploadAllowlist`, came with PR 1, which PR 2 already needs on the demo.
     - [x] Choosing or dropping files only lists them: name, size, pages, a first-page thumbnail, Remove, and a warning for a file that will be refused, the golden-set check included through `uploadAllowlist`.
     - [x] "Upload N invoices" with per-file progress ("Uploading 2 of 3…" with a spinner, each line's state), and Clear.
@@ -152,7 +161,7 @@ Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push t
       - Checks: lint and typecheck 33 of 33 tasks, the web's unit tests 130 in 8 suites, and the web build.
       - Not run here: e2e and `pnpm test:int`. The user left e2e to CI, which runs it before merge (2026-10-25).
     - [x] Shipped as `a07b552` (#50), so CI's e2e passed, the three changed upload tests included.
-    - [ ] `pnpm e2e:screenshots` on the PC, since the upload page's round-1 shot shows the old dropzone.
+    - [x] `pnpm e2e:screenshots` on the PC, since the upload page's round-1 shot shows the old dropzone. Done by UI round 2's runs (A, then B, 2026-10-25): look item 10.
 
 ## Completed
 

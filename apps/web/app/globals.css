@@ -21,6 +21,11 @@
   --bad: #b42318;
   --bad-tint: #fcebea;
   --neutral-tint: #eef0f3;
+  /* Chart fills, run through the dataviz palette validator against the card surface in both modes (docs/memory.md):
+     blue for a single series and for invoices that matched, amber for those that needed a reviewer, red for failures. */
+  --chart: #2a78d6;
+  --chart-warn: #eda100;
+  --chart-bad: #b42318;
   --focus: 0 0 0 3px rgb(43 76 126 / 35%);
   --radius: 6px;
   --sans: var(--font-plex-sans), system-ui, sans-serif;
@@ -48,6 +53,9 @@
     --bad: #f59a8e;
     --bad-tint: #331614;
     --neutral-tint: #22272d;
+    --chart: #3987e5;
+    --chart-warn: #c98500;
+    --chart-bad: #d03b3b;
     --focus: 0 0 0 3px rgb(143 176 230 / 40%);
   }
 }
@@ -462,10 +470,11 @@ td .reason {
   margin-top: 4px;
 }
 
-/* The invoices page: four counts in one card, then the tabs beside the search. */
+/* The invoices page: four counts in one card, then the tabs beside the search. The overview's tiles share the card, as
+   many across as --tiles says. */
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--tiles, 4), minmax(0, 1fr));
   margin: 0 0 16px;
   background: var(--surface);
   border: 1px solid var(--rule);
@@ -526,6 +535,271 @@ td .reason {
 .search input {
   width: 200px;
   min-width: 0;
+}
+
+/* The overview: the overbilling figure beside the counts, then the weekly charts, the carriers and the pipeline. */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.segmented a {
+  padding: 5px 12px;
+  color: var(--text-2);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.segmented a + a {
+  border-left: 1px solid var(--rule-strong);
+}
+.segmented a:first-child {
+  border-radius: 5px 0 0 5px;
+}
+.segmented a:last-child {
+  border-radius: 0 5px 5px 0;
+}
+.segmented a:hover {
+  background: var(--sunken);
+  color: var(--text);
+  text-decoration: none;
+}
+.segmented a[aria-current='page'] {
+  background: var(--accent-tint);
+  color: var(--text);
+  font-weight: 600;
+}
+.overview-top {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 8fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.overview-top > dl {
+  margin: 0;
+}
+.hero-card {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 16px 20px;
+}
+.hero-card dt {
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.hero-card dd {
+  margin: 0;
+}
+/* The figure the page leads with keeps proportional digits: it never stands in a column of numbers. */
+.hero-figure {
+  font-size: 48px;
+  line-height: 56px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.hero-figure .num {
+  text-align: left;
+  font-variant-numeric: lining-nums proportional-nums;
+}
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.overview-grid .panel {
+  min-width: 0;
+  margin: 0;
+}
+.overview-grid h2 {
+  margin-bottom: 2px;
+}
+.chart-empty {
+  padding: 24px 0 8px;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend .swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+/* Chart fills; the words beside them keep the text colors. */
+.fill {
+  background: var(--chart);
+}
+.fill.warn {
+  background: var(--chart-warn);
+}
+.fill.bad {
+  background: var(--chart-bad);
+}
+/* Weekly columns: hairline gridlines with their values in a left gutter, columns at most 24 px wide with a rounded top,
+   2 px of the card between stacked parts, and the weeks underneath. */
+.week-chart {
+  margin-top: 8px;
+}
+.plot {
+  position: relative;
+  height: 160px;
+  margin: 20px 0 0 44px;
+}
+.gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--rule);
+}
+.gridline:first-child {
+  border-top-color: var(--rule-strong);
+}
+.gridline span {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: -8px;
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.columns,
+.weeks {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+.columns {
+  position: absolute;
+  inset: 0;
+}
+.column {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+.stack {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  width: min(24px, 60%);
+}
+.stack > span {
+  flex: 1 1 0;
+  min-height: 2px;
+}
+.stack > :last-child {
+  border-radius: 4px 4px 0 0;
+}
+.stack:hover > span {
+  opacity: 0.8;
+}
+.column-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+.weeks {
+  margin: 6px 0 0 44px;
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+  white-space: nowrap;
+}
+.table-view {
+  margin-top: 12px;
+}
+.table-view summary {
+  width: fit-content;
+  color: var(--text-2);
+  font-size: 13px;
+  cursor: pointer;
+}
+.table-view .table-wrap {
+  margin-top: 8px;
+}
+/* Carriers: the name, then a bar as long as its share of the largest, with the amount at its end. */
+.carrier-bars {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.carrier-bars li {
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+.carrier-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.carrier-bar .fill {
+  flex: none;
+  width: calc((100% - 7rem) * var(--share));
+  min-width: 2px;
+  height: 14px;
+  border-radius: 0 4px 4px 0;
+}
+/* The pipeline now: a quiet tile per figure, its state in words beside a dot. */
+.health {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin: 12px 0;
+}
+.health > div {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--sunken);
+}
+.health dt {
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.health dd {
+  margin: 0;
+}
+.health dd.stat {
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 600;
+}
+.health .badge {
+  height: auto;
+  padding: 0;
+  background: none;
+  white-space: normal;
 }
 
 /* Empty and error states say what will appear and what to do next. */
@@ -1328,9 +1602,16 @@ td.wrap {
     grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
   }
 }
+/* Below 1280 px the overview's counts move under its figure, where each keeps room for its line. */
+@media (max-width: 1279px) {
+  .overview-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 @media (max-width: 1023px) {
   .review,
-  .upload {
+  .upload,
+  .overview-grid {
     grid-template-columns: minmax(0, 1fr);
   }
   .doc {
@@ -1358,12 +1639,32 @@ td.wrap {
   .main {
     padding: 16px;
   }
-  /* Phone: the counts stack in their one card, the tabs scroll and the search takes the full width. */
+  /* Phone: the counts sit two by two in their one card, the tabs scroll and the search takes the full width. */
   .stats {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .stats > div + div {
+  .stats > div:nth-child(odd) {
     border-left: 0;
+  }
+  .stats > div:nth-child(n + 3) {
+    border-top: 1px solid var(--rule);
+  }
+  /* The overview's figure shrinks to fit, every other week keeps its name, and carrier names give way to their bars. */
+  .hero-figure {
+    font-size: 40px;
+    line-height: 48px;
+  }
+  .weeks span:nth-child(odd) {
+    visibility: hidden;
+  }
+  .carrier-bars li {
+    grid-template-columns: minmax(0, 8rem) minmax(0, 1fr);
+  }
+  .health {
+    gap: 8px;
+  }
+  .health > div {
+    padding: 10px;
   }
   /* One column: wrapped, a column is as wide as the whole tab strip and the page scrolls. */
   .list-bar {

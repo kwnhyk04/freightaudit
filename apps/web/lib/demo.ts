@@ -1,4 +1,5 @@
 import type {
+  DashboardQuery,
   DeadLettersQuery,
   DeadLetterStatus,
   DiscrepanciesQuery,
@@ -9,10 +10,12 @@ import type {
   InvoiceSummaryQuery,
 } from '@freightaudit/contracts/graphql';
 import { holdOf } from '@freightaudit/contracts/hold';
+import { type DashboardInvoice, dashboardOf, type InvoiceState } from '@freightaudit/domain';
 import deadLetters from '../public/demo/dead-letters.json';
 import discrepancies from '../public/demo/discrepancies.json';
 import details from '../public/demo/invoice-details.json';
-import { type Filter, invoiceAmounts, STATUS } from './labels.ts';
+import { type Filter, findingAmounts, invoiceAmounts, SETTLED, STATUS } from './labels.ts';
+import { type Range, rangeWindow } from './overview.ts';
 
 // The public sample: synthetic golden invoices that scripts/export-demo.ts saved in the shapes the live queries return.
 // Read from these files only, never from the API, and filtered and counted in memory (there are eleven).
@@ -27,6 +30,7 @@ const invoices = Object.values(sample.details)
   .flatMap(({ invoice }) => (invoice ? [invoice] : []))
   .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
 const hold = (invoice: Detail) => holdOf(invoice.status, invoice.discrepancies.edges.map(({ node }) => node));
+const openDeadLetters = sample.deadLetters.deadLetters.edges.filter(({ node }) => node.replayedAt === null).length;
 
 // A list row from the snapshot's detail, which holds every field the list asks for.
 const row = (invoice: Detail): InvoicesQuery['invoices']['edges'][number]['node'] => ({
@@ -87,7 +91,47 @@ export function demoSummary(): InvoiceSummaryQuery['invoiceSummary'] {
     oldestOpenFindingAt: open.map(found).filter((at) => at !== undefined).sort()[0] ?? null,
     openOverchargeCents: Number(invoiceAmounts(0, findings).openCents),
     matchedRateCard: invoices.filter((invoice) => invoice.status === 'RECONCILED' && invoice.discrepancies.edges.length === 0).length,
-    openDeadLetters: sample.deadLetters.deadLetters.edges.filter(({ node }) => node.replayedAt === null).length,
+    openDeadLetters,
+  };
+}
+
+// An invoice as the overview counts it. It settled at the pipeline's first stop, read from its trail as the api reads
+// it: a reviewer's moves name the reviewer.
+function fact(invoice: Detail): DashboardInvoice {
+  const settled = invoice.auditTrail.find(
+    (entry) => !entry.actor && entry.action === 'STATUS_CHANGED' && entry.changes.some((change) => change.field === 'status' && SETTLED.has(change.to ?? '')),
+  );
+  return {
+    receivedAt: new Date(invoice.createdAt),
+    status: invoice.status.toLowerCase() as InvoiceState,
+    carrier: invoice.carrier,
+    shipment: invoice.shipment !== null,
+    corrected: invoice.auditTrail.some((entry) => entry.action === 'CORRECTED'),
+    settledAt: settled ? new Date(settled.at) : null,
+    findings: invoice.discrepancies.edges.map(({ node }) => findingAmounts(node)),
+  };
+}
+// The overview ends on the day the newest invoice arrived, which all eleven share.
+const newest = new Date(invoices[0]!.createdAt);
+export const DEMO_OVERVIEW_NOTE = `The sample covers one week: its ${invoices.length} invoices arrived on ${new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' }).format(newest)}.`;
+
+// The sample's overview, counted by packages/domain as the api counts its database. The sample made no model calls,
+// so its cost and tokens stay empty and the page leaves them out.
+export function demoDashboard(range: Range): DashboardQuery['dashboard'] {
+  const { from, to } = rangeWindow(range, newest);
+  const { window, previous, weeks, carriers } = dashboardOf(invoices.map(fact), from, to);
+  const cents = <Row extends { overbilledCents: bigint }>(row: Row) => ({ ...row, overbilledCents: Number(row.overbilledCents) });
+  return {
+    window: { ...cents(window), modelCostPerInvoiceMicroUsd: null },
+    previous: { received: previous.received, overbilledCents: Number(previous.overbilledCents) },
+    weeks: weeks.map(cents),
+    carriers: carriers.map(cents),
+    pipeline: {
+      waitingToBeRead: invoices.filter((invoice) => invoice.status === 'RECEIVED' || invoice.status === 'EXTRACTING').length,
+      openDeadLetters,
+      claudeTokensToday: 0,
+      freeModelTokensToday: 0,
+    },
   };
 }
 
