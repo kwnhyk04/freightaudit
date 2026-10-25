@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { START_PAGE } from '../lib/session.ts';
 import { NavLinks } from './client.tsx';
 
 // The frame of every page: a skip link, the sidebar with its counts, an optional banner and the work. base is '' for
-// live pages and '/demo' for the read-only sample; counts are missing while they cannot be read.
+// live pages and '/demo' for the read-only sample; counts are missing while they cannot be read. The name leads to the
+// start page, or in the sample to its invoices, where /demo opens.
 export function Shell({
   base,
   signedIn,
@@ -19,6 +21,7 @@ export function Shell({
 }) {
   const sample = base === '/demo';
   const links = [
+    { href: `${base}/dashboard`, label: 'Overview' },
     { href: `${base}/invoices`, label: 'Invoices' },
     { href: `${base}/discrepancies`, label: 'Review queue', count: counts?.openFindings, unit: 'open finding', tone: 'warn' as const },
     { href: `${base}/dead-letters`, label: 'Dead letters', count: counts?.openDeadLetters, unit: 'open dead letter' },
@@ -30,12 +33,12 @@ export function Shell({
         Skip to content
       </a>
       <aside className="sidebar">
-        <Link href={`${base}/invoices`} className="wordmark">
+        <Link href={sample ? '/demo/invoices' : START_PAGE} className="wordmark">
           FreightAudit {sample && <span>sample</span>}
         </Link>
         <NavLinks links={links} />
         <div className="sidebar-foot">
-          {sample && signedIn && <Link href="/invoices">Try live data</Link>}
+          {sample && signedIn && <Link href={START_PAGE}>Try live data</Link>}
           {signedIn ? (
             <form method="post" action="/logout">
               <button className="button small">Sign out</button>

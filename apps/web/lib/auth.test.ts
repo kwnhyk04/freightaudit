@@ -29,7 +29,7 @@ test('a session token holds only while signed with the secret and unexpired', ()
 });
 
 test('after sign-in only a path on this site is followed, and never the landing page, which needs no sign-in', () => {
-  expect(START_PAGE).toBe('/invoices');
+  expect(START_PAGE).toBe('/dashboard');
   expect(safeNext('/invoices/1?status=open')).toBe('/invoices/1?status=open');
   for (const next of ['//evil.example', '/\\evil.example', 'https://evil.example', '', undefined, '/', '/?ref=home']) expect(safeNext(next)).toBe(START_PAGE);
 });

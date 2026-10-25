@@ -1,12 +1,15 @@
 import { notFound, redirect } from 'next/navigation';
 import { InvoiceDetail } from '../../../components/detail.tsx';
+import { Overview } from '../../../components/overview.tsx';
 import { DeadLetterList, DiscrepancyList, InvoiceList } from '../../../components/views.tsx';
-import { demoDeadLetters, demoDiscrepancies, demoInvoice, demoInvoices, demoSummary } from '../../../lib/demo.ts';
+import { DEMO_OVERVIEW_NOTE, demoDashboard, demoDeadLetters, demoDiscrepancies, demoInvoice, demoInvoices, demoSummary } from '../../../lib/demo.ts';
 import { firstParams, listFilter } from '../../../lib/labels.ts';
+import { rangeOf } from '../../../lib/overview.ts';
 
-// Every sample page: the same views as the live ones, from the snapshot files only, with no actions.
+// Every sample page: the same views as the live ones, from the snapshot files only, with no actions. /demo itself opens
+// the invoices, since the sample fills one week of the overview's eight.
 export default async function DemoPage({ params, searchParams }: { params: Promise<{ path?: string[] }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [{ path = [] }, { status: raw, q }] = await Promise.all([params, firstParams(searchParams)]);
+  const [{ path = [] }, { status: raw, q, range }] = await Promise.all([params, firstParams(searchParams)]);
   const [section, id] = path;
   const head = (title: string) => (
     <div className="page-head">
@@ -14,6 +17,10 @@ export default async function DemoPage({ params, searchParams }: { params: Promi
     </div>
   );
   if (!section) redirect('/demo/invoices');
+  if (section === 'dashboard' && !id) {
+    const chosen = rangeOf(range);
+    return <Overview data={demoDashboard(chosen)} range={chosen} base="/demo" note={DEMO_OVERVIEW_NOTE} />;
+  }
   if (section === 'invoices' && !id) {
     const filter = listFilter(raw);
     const search = q?.trim().slice(0, 100) || undefined;

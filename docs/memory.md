@@ -555,6 +555,29 @@ From the approved design doc:
 - 2026-10-25: `/` renders on each request, as every route does, though the landing page reads no session.
   - Why: the root `app/not-found.tsx` reads the session (`currentSession`) to keep a signed-in reviewer's 404 inside the app's frame, and Next renders that boundary with each page. Confirmed: a build with that read skipped and `dynamic = 'error'` on `/` built `/` as static (○); with the read, the build stopped on `cookies()`.
   - What we did: kept it. Making `/` static would cost the signed-in 404's frame, and the page still calls no api and holds no key. Both diagnostic edits were reverted, and `git diff` shows `not-found.tsx` unchanged.
+- 2026-10-25: The overview's chart colors (UI round 2 B; `--chart`, `--chart-warn` and `--chart-bad` in `apps/web/app/globals.css`). Agent's choice under the user's "small decisions" rule, for the user to confirm at review.
+  - What happened: the plan put "Failed" in the app's red beside the draft's blue and orange. The dataviz skill's validator (`validate_palette.js`, run against the card surfaces `#ffffff` and `#191c20`) passed that in light, and failed it in dark.
+    - The app's dark red `#f59a8e` is too light for a chart mark (OKLCH L 0.776; the dark band is 0.48 to 0.67).
+    - Every red inside the band sat too close to the draft's dark orange `#d95926`: normal-vision ΔE 7.1 at best (`#e66767`), against a floor of 15.
+  - What we did: "Needed a reviewer" takes amber, the app's warn tone (the review queue's count, the Reading needs a check badge), in place of orange.
+    - Light: blue `#2a78d6`, amber `#eda100`, red `#b42318` (the app's `--bad`).
+    - Dark: `#3987e5`, `#c98500`, `#d03b3b`.
+    - Every pair passes in both modes, adjacent or not, since a week without reviews puts blue beside red: worst CVD ΔE 26.7 light and 10.2 dark, worst normal-vision 29.6 and 16.9.
+    - Light amber sits at 2.17:1 on white, so the validator asks for relief: the legend and each chart's table give it.
+    - Best because each color keeps a meaning the app already gives it, and the pairs clear every gate.
+- 2026-10-25: The overview as built in B (`apps/web/components/overview.tsx`, `apps/web/lib/overview.ts`). Agent's choices under the user's "small decisions" rule, for the user to confirm at review.
+  - Columns in HTML and CSS, not SVG as the plan said. Text keeps the app's sizes at every width, where an SVG viewBox shrinks its labels on a phone. The rounded tops and the 2 px gaps between stacked parts are plain CSS.
+  - The matched tile's note reads "N of M with nothing for a reviewer", not the plan's "with no finding": a corrected invoice with no finding, such as the sample's g087, does not count as matched.
+  - Labels on the columns:
+    - The latest column carries its total.
+    - The overbilling chart also labels its highest week, unless that week sits beside the latest, where the two would touch on a phone.
+    - The outcome chart labels the latest only, as drawn.
+  - Every column's values show on hover through its title, with no client script; each chart's table holds them for the keyboard and screen readers. On a phone a table scrolls inside a focusable region, as the invoice list's does.
+  - Pipeline health uses the app's badges, keeping the dot and dropping the pill, as drawn: "Clear", "Needs a look", and "Being read" while invoices wait. The tokens tile says "Since 00:00 UTC", since the api counts the UTC day.
+  - In the sample, the health card reads "in the sample", since it is a snapshot, and the cost and token tiles are left out.
+  - On a phone, every other week's name shows under the charts, so the names never touch.
+  - The overview has its own loading frame (empty cards) in place of the list's table skeleton. Sign-in now lands there, and the public path takes 2 to 6 s per new connection (Known Limitations).
+  - Reason: the approved plan and draft, kept wherever they hold. Each change above is either a figure stated more exactly or a layout that works on a phone.
 
 ## Preferences and Instructions
 
@@ -840,6 +863,11 @@ From the approved design doc:
   - What happened: the upload-preview merge skipped it partly over that worry (agent mistake). The claude-fallback-log merge ran it: up to date, and no change in `git status`.
   - Why: the agent assumed the CRLF checkout applied to every file without reading `.gitattributes`.
   - What we did: ran it, and corrected the reason in that day's activity log. How to apply: run it after any merge that touches the schema, the operations or the generated files.
+- 2026-10-25: A quick look at the web on `next dev` (UI round 2 B), and three things that got in the way.
+  - The root `.env` here does not give the web `API_URL`, `API_KEY` or `SESSION_SECRET`, so `next dev` stops on its settings check. Why is not confirmed, since `.env` was not read. For a signed-out look at `/demo` pages, which never call the api, placeholders work: `API_URL=http://127.0.0.1:9`, a 32-character `API_KEY` and `SESSION_SECRET`, and `AI_ENABLED=false`, all on the command line.
+  - `node --env-file=e2e/e2e.env …/next dev` exits with "--env-file= is not allowed in NODE_OPTIONS". Next passes the parent's Node flags to its child through `NODE_OPTIONS`.
+  - Git Bash rewrites an argument that starts with `/`, such as `/demo/dashboard`, into a Windows path (`C:/Program Files/Git/demo/dashboard`). Set `MSYS_NO_PATHCONV=1` for that command.
+  - `next dev` writes `apps/web/AGENTS.md`, Next's agent-rules block, when it sees an agent. It is untracked and not ignored, so ship would commit it. It was removed, since nobody asked for it. How to apply: after an agent's `next dev`, delete it, unless the user decides to keep it.
 
 ## Rejected Approaches
 

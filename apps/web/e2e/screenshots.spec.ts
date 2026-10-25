@@ -4,9 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 import pg from 'pg';
 
-// pnpm e2e:screenshots: the round-1 and round-2 screens at the sizes of the approved pictures, into
-// docs/screenshots/ui/round-1/ and round-2/, then every main screen in light and dark at 1440x900 and list and detail on
-// a phone, into docs/screenshots/ui/, for the design review. A phone page that scrolls sideways fails the run.
+// pnpm e2e:screenshots: the round-1 and round-2 screens (round 2: the landing page and the overview) at the sizes of the
+// approved pictures, into docs/screenshots/ui/round-1/ and round-2/, then every main screen in light and dark at
+// 1440x900 and list and detail on a phone, into docs/screenshots/ui/, for the design review. A phone page that scrolls
+// sideways fails the run.
 const out = new URL('../../../docs/screenshots/ui/', import.meta.url);
 mkdirSync(new URL('round-1/', out), { recursive: true });
 mkdirSync(new URL('round-2/', out), { recursive: true });
@@ -108,6 +109,25 @@ test('round 2, landing page on a phone, without sideways scrolling', async ({ br
   expect(await visitor.evaluate(() => document.documentElement.scrollWidth), 'the landing page fits 390 px').toBeLessThanOrEqual(390);
   await shoot(visitor, 'round-2/4-landing-phone.png', true);
   await visitor.close();
+});
+
+// The overview on this database, signed in, at the approved picture's width; whole, since it can run past 900 px.
+for (const scheme of ['light', 'dark'] as const) {
+  test(`round 2, overview, ${scheme}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/dashboard');
+    await settle(page);
+    await shoot(page, `round-2/5-dashboard${scheme === 'dark' ? '-dark' : ''}.png`, true);
+  });
+}
+
+test('round 2, overview on a phone, without sideways scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/dashboard');
+  await settle(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth), 'the overview fits 390 px').toBeLessThanOrEqual(390);
+  await shoot(page, 'round-2/5-dashboard-phone.png', true);
 });
 
 test('round 1, phone, without sideways scrolling', async ({ page }) => {
