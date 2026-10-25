@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
 import { PASSWORD } from './env.ts';
 
 const sample = JSON.parse(readFileSync(new URL('../public/demo/invoices.json', import.meta.url), 'utf8')) as {
@@ -8,6 +9,44 @@ const sample = JSON.parse(readFileSync(new URL('../public/demo/invoices.json', i
 const sampleId = (file: string) => sample.invoices.edges.find(({ node }) => node.filename === file)!.node.id;
 const offline = `http://127.0.0.1:${process.env.E2E_OFFLINE_PORT ?? 3002}`;
 const unknown = '00000000-0000-4000-8000-000000000000';
+const env = parseEnv(readFileSync(new URL('e2e.env', import.meta.url), 'utf8'));
+const HEADLINE = 'Catch freight overbilling before you pay it.';
+
+test('the landing page at / is public and static: no redirect, no api call, no key in it, and its links lead on', async ({ page }) => {
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(request.url()));
+  const response = await page.goto('/');
+  expect([response!.status(), new URL(page.url()).pathname]).toEqual([200, '/']);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(HEADLINE);
+  expect(await response!.text()).not.toContain(env.API_KEY!);
+  // The results are the official report's; the one target it missed reads as missed.
+  const precision = page.getByRole('row', { name: /^Overcharge precision/ });
+  await expect(precision).toContainText('94.4%');
+  await expect(precision).toContainText('Below target');
+  // The invoice beside the headline is the sample's g066, in the app's own words, and opens there.
+  await expect(page.getByText('Rate card version 2 sets Linehaul at $5,343.60; billed $6,145.14.')).toBeVisible();
+  await page.getByRole('link', { name: 'Open it in the sample' }).click();
+  await expect(page).toHaveURL(`/demo/invoices/${sampleId('g066.pdf')}`);
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', 'https://github.com/kwnhyk04/freightaudit');
+  await page.getByRole('link', { name: 'See sample invoices, no sign-in' }).click();
+  await expect(page).toHaveURL(/\/demo\/invoices$/);
+  // Signed out, the live demo asks for the password first; the sign-in page's name leads home.
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Try the live demo' }).click();
+  await expect(page).toHaveURL(/\/login\?next=%2Finvoices$/);
+  await page.getByRole('link', { name: 'FreightAudit' }).click();
+  await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/$/);
+  expect(requests.filter((url) => url.includes(':4000'))).toEqual([]);
+  // The web whose api is down serves the same page.
+  expect((await page.goto(`${offline}/`))!.status()).toBe(200);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(HEADLINE);
+});
+
+test('the invoice list leads with the invoice, then its carrier and status', async ({ page }) => {
+  await page.goto('/demo/invoices');
+  await expect(page.locator('thead th')).toHaveText(['Invoice', 'Carrier', 'Status', 'Issued', 'Received', 'Open findings', 'Billed', 'Expected', 'Difference']);
+});
 
 test('signed out, the sample is public and read-only, and live pages still need a session', async ({ page }) => {
   const requests: string[] = [];

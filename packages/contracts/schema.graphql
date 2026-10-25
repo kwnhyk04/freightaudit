@@ -38,6 +38,14 @@ type Query {
   invoiceSummary(carrierId: ID, from: Date, to: Date): InvoiceSummary!
 
   """
+  The overview's figures for the invoices received from one UTC day to another, both included, at most 56 days: the
+  window itself, the same number of days just before it, the 8 weeks (Monday to Sunday) ending with the week of to, the
+  window's carriers, and the pipeline now. A split upload counts as its parts. from after to, or a window over 56 days,
+  is refused.
+  """
+  dashboard(from: Date!, to: Date!): Dashboard!
+
+  """
   One invoice, or null when it does not exist.
   """
   invoice(id: ID!): Invoice
@@ -660,6 +668,119 @@ How many invoices have one status.
 type InvoiceStatusCount {
   status: InvoiceStatus!
   count: Int!
+}
+
+"""
+The overview's figures (Query.dashboard). weeks and carriers are short lists of a fixed most, not pages.
+"""
+type Dashboard {
+  window: DashboardWindow!
+  """
+  The same number of days just before the window.
+  """
+  previous: DashboardWindow!
+  """
+  The 8 weeks, Monday to Sunday in UTC, ending with the week of to, oldest first; a week with no invoice is all 0.
+  """
+  weeks: [DashboardWeek!]!
+  """
+  The 5 carriers whose invoices in the window bill most above the rate card, ties by name; only those above 0.
+  """
+  carriers: [CarrierOverbilling!]!
+  pipeline: PipelineNow!
+}
+
+"""
+Figures for the invoices received in a window of whole UTC days.
+"""
+type DashboardWindow {
+  from: Date!
+  to: Date!
+  received: Int!
+  """
+  Checked or approved invoices matched to a shipment, with no discrepancy at all and no reviewer's correction.
+  """
+  matchedRateCard: Int!
+  """
+  What the invoices bill above the rate card: billed less expected over every discrepancy not dismissed, as the invoice
+  list's difference counts it.
+  """
+  overbilledCents: Cents!
+  """
+  Invoices that bill above the rate card.
+  """
+  overbilledInvoices: Int!
+  """
+  Invoices the audit trail times, from upload to the pipeline's first move to RECONCILED, NEEDS_REVIEW or FAILED;
+  invoices from before the audit trail have no moves.
+  """
+  timed: Int!
+  """
+  The timed invoices' median, nearest rank; null when none is timed.
+  """
+  processingP50Ms: Int
+  """
+  Their 95th percentile, nearest rank; null when none is timed.
+  """
+  processingP95Ms: Int
+  """
+  What the model calls of the window's invoices cost as billed, split uploads included, per invoice received, in
+  micro-dollars (1,000,000 is $1), rounded half up: Claude at the cost each call recorded, the free tiers at 0. Null when
+  none was received.
+  """
+  modelCostPerInvoiceMicroUsd: Int
+}
+
+"""
+A week's invoices by how they ended, and what they bill above the rate card. Invoices still in the pipeline are in none
+of the three counts.
+"""
+type DashboardWeek {
+  """
+  The week's Monday.
+  """
+  start: Date!
+  matchedRateCard: Int!
+  """
+  Needs review, rejected, or checked but not matched: a discrepancy, no shipment, or a reviewer's correction.
+  """
+  neededReviewer: Int!
+  failed: Int!
+  overbilledCents: Cents!
+}
+
+"""
+A carrier's invoices in the window that bill above the rate card.
+"""
+type CarrierOverbilling {
+  carrier: String!
+  overbilledCents: Cents!
+  """
+  Its invoices that bill above the rate card.
+  """
+  invoices: Int!
+}
+
+"""
+The pipeline now, whatever the window.
+"""
+type PipelineNow {
+  """
+  Invoices received or being read.
+  """
+  waitingToBeRead: Int!
+  """
+  Dead letters waiting for a replay.
+  """
+  openDeadLetters: Int!
+  """
+  Input and output tokens of Claude's calls since 00:00 UTC.
+  """
+  claudeTokensToday: Int!
+  """
+  Input and output tokens of the free models' calls since 00:00 UTC.
+  """
+  freeModelTokensToday: Int!
 }
 
 """

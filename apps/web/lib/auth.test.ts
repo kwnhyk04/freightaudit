@@ -1,6 +1,6 @@
 import { createLimiter, MAX_FAILURES, WINDOW_MS } from './limiter.ts';
 import { hashPassword, verifyPassword } from './password.ts';
-import { createToken, readToken, safeNext, sameOrigin } from './session.ts';
+import { createToken, readToken, safeNext, sameOrigin, START_PAGE } from './session.ts';
 
 test('a password hash is standard argon2id PHC: the reference vector verifies, and our own hashes round-trip', async () => {
   // phc-winner-argon2's test vector (argon2id, v19, m=65536, t=2, p=1, "password", salt "somesalt"), so any argon2
@@ -28,9 +28,10 @@ test('a session token holds only while signed with the secret and unexpired', ()
   expect(readToken(undefined, secret, now)).toBeUndefined();
 });
 
-test('after sign-in only a path on this site is followed', () => {
+test('after sign-in only a path on this site is followed, and never the landing page, which needs no sign-in', () => {
+  expect(START_PAGE).toBe('/invoices');
   expect(safeNext('/invoices/1?status=open')).toBe('/invoices/1?status=open');
-  for (const next of ['//evil.example', '/\\evil.example', 'https://evil.example', '', undefined]) expect(safeNext(next)).toBe('/invoices');
+  for (const next of ['//evil.example', '/\\evil.example', 'https://evil.example', '', undefined, '/', '/?ref=home']) expect(safeNext(next)).toBe(START_PAGE);
 });
 
 test('sign-out takes a post from this site, or one without an Origin, as Next takes its actions', () => {

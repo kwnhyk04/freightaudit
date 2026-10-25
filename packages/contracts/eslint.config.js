@@ -25,7 +25,7 @@ export default [
         'error',
         {
           exceptions: {
-             types: ['PageInfo', 'ExtractedLine', 'FieldChange', 'InvoiceSummary', 'InvoiceStatusCount'],
+           types: ['PageInfo', 'ExtractedLine', 'FieldChange', 'InvoiceSummary', 'InvoiceStatusCount', 'Dashboard', 'DashboardWindow', 'DashboardWeek', 'CarrierOverbilling', 'PipelineNow'],
             suffixes: ['Connection', 'Edge'],
           },
         },

@@ -92,6 +92,8 @@ export function demoSummary(): InvoiceSummaryQuery['invoiceSummary'] {
 }
 
 export const demoInvoice = (id: string): InvoiceQuery | undefined => sample.details[id];
+// A sample invoice by its golden file name, which stays the same when the sample is exported again; its id does not.
+export const demoInvoiceFile = (filename: string) => invoices.find((invoice) => invoice.filename === filename);
 export const demoDiscrepancies = (status?: DiscrepancyStatus): DiscrepanciesQuery => ({
   discrepancies: { ...sample.discrepancies.discrepancies, edges: sample.discrepancies.discrepancies.edges.filter(({ node }) => !status || node.status === status) },
 });

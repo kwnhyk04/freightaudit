@@ -503,9 +503,62 @@ From the approved design doc:
   - Shown through the audit trail's read entry, as a `claude` change beside the synthetic `carrier` one. Rejected: a new `Extraction` field in the invoice operation, which would take the invoice page from 83 to 84 against `MAX_COST` 88 and leave re-bills PR 2 (its last 5) over the limit; and a new `AuditAction` value, which an older web would not know.
   - Logged at warn, once per invoice after its read, with the invoice id, the reason and the model. The worker's logger has no info level, and a hand-off means the invoice missed the model the demo reads with first. A read that then fails logs nothing; its retry hands off again.
   - Reason: the smallest change that stores, logs and shows the reason without touching the operation's cost or the GraphQL enums.
+- 2026-10-25: UI round 2, the landing page and the dashboard: the plan was approved with the user's changes. The plan is in `docs/activity-log.md` (2026-10-25).
+  - Two PRs, not four. A holds the api's dashboard figures and the landing page (the plan's PR 1 and PR 2), built together and reported once. B holds the dashboard (PR 3) with look items 2 (the invoice list's stats two by two on a phone) and 10 (the round-1 upload screenshots shot again).
+  - Look items 3, 5, 6, 7 and 8 stay as they are, as recommended: no change line on the list's stats; the status tabs keep their look; app badges keep their dot; "Billing issues" stays the app's word; decisions stay in the invoice header.
+  - `/demo` keeps opening `/demo/invoices`, since the sample fills only one of the 8 weeks. The sample dashboard is Overview in the sidebar, with a line saying the sample covers one week.
+  - Small choices taken as recommended:
+    - The route is `/dashboard`, labelled "Overview"; after B it is the start page.
+    - `/` is one landing page for everyone. The default range is 4 weeks, while the charts stay at 8 weeks, as drawn.
+    - Labels: "Invoices received", "Matched the rate card" and "Failed" (in the app's red), and "Model cost per invoice", as billed.
+    - No cap bar and no paid-price cost.
+    - The hero card is the sample's g066, with a link and no buttons.
+    - A new `dashboard` field rather than a bigger `invoiceSummary`.
+    - Sign-out, the 404 pages and the sign-in page's sample link keep their targets.
+    - No chart library.
+  - Reason: the user's decisions and the plan's recommendations.
+- 2026-10-25: The overview's figures, as built in A (`packages/domain/src/dashboard.ts`, `apps/api/src/dashboard.ts`; the agent's readings, for the user to confirm at review).
+  - Overbilling counts every finding that was not dismissed, closed ones included. That is what `reviewAmounts` and the invoice list's Difference count, so the dashboard's total equals the sum of that column for the same invoices.
+    - The plan said "open and confirmed". A closed finding went undecided with its rejected invoice, or as a held invoice's 0-against-0 possible duplicate; the domain already counted it as standing.
+    - `FindingStatus` now names `closed`. The web already cast `CLOSED` to it, so nothing changed at runtime.
+  - Matched the rate card: reconciled or approved, matched to a shipment, no finding in any state, and no `corrected` audit row.
+    - An approval from review has no shipment, so it needed a reviewer.
+    - A corrected reading needed one too, even when it then matched cleanly.
+    - In-flight invoices are in none of the three outcomes.
+  - Processing time runs from upload to the first pipeline move (actor null) to reconciled, needs_review or failed, by nearest rank (`percentile_disc`'s rule). A reviewer's status move (the hold at approval) never counts. Invoices from before 0013 have no moves and are not timed.
+  - A split upload counts as its parts. The upload's own row stays `extracted` forever (`collect` in `apps/worker/src/extract.ts`) and would otherwise count twice. Its model calls still count in the cost.
+  - One implementation: the api reads one row of facts per invoice of the span (`dashboardSpan`, up to 112 days), and `dashboardOf` counts them, as the web's sample will in B. The plan said grouped SQL.
+    - Rejected: grouped SQL beside `dashboardOf`, which would be two versions of each rule, held together only by a test.
+    - The ceiling is marked `ponytail:` in `dashboard.ts`.
+  - Reason: one rule per figure, the one the app already shows, counted in the domain package that owns money math.
+- 2026-10-25: The landing page's claims and their sources (`apps/web/components/landing.tsx`, A).
+  - Each claim and where it comes from:
+    - A batch of up to 500: `apps/api/src/app.ts`, `limits.files`.
+    - Claude Haiku first until November 10, 2026: `docs/deploy.md`, `LLM_CLAUDE_FIRST_UNTIL`.
+    - Nothing approved without a reviewer: README.
+    - Every step in the audit trail: migration 0013.
+    - The 20-invoice subset on pull requests that change extraction: `ci.yml` `eval-changes`.
+    - The weekly full run: `nightly-eval.yml`, Mondays.
+    - Retries with backoff: `packages/pipeline/src/queues.ts`.
+    - No job lost at 3x: `loadtest/system-results.json`.
+    - Breaking-change detection for the REST API only: `packages/contracts/scripts/breaking.ts` runs oasdiff, and GraphQL has none.
+    - One trace per upload through every model call: README, Observability.
+    - Property tests of 1,000 cases: `numRuns: 1_000` in `packages/domain`.
+    - Secrets scanned on every commit: `ci.yml` gitleaks, and `.githooks/pre-commit`.
+    - The public repository: `docs/deploy.md`.
+  - The results table comes from `apps/web/lib/eval-results.json`, which `evals/harness/landing.ts` builds from the report the README names. The labels are the README's: the draft's "False-positive rate, clean invoices" is `false_flag_rate`, counted per clean line.
+  - Left out, for want of a source:
+    - The draft's hero invoice and its numbers; the sample's g066 stands in.
+    - "Clean invoices are approved on their own", which is false.
+    - "on every pull request" for the eval and for GraphQL breaking changes.
+  - Reason: real data only (user instruction, 2026-10-25).
+- 2026-10-25: `/` renders on each request, as every route does, though the landing page reads no session.
+  - Why: the root `app/not-found.tsx` reads the session (`currentSession`) to keep a signed-in reviewer's 404 inside the app's frame, and Next renders that boundary with each page. Confirmed: a build with that read skipped and `dynamic = 'error'` on `/` built `/` as static (○); with the read, the build stopped on `cookies()`.
+  - What we did: kept it. Making `/` static would cost the signed-in 404's frame, and the page still calls no api and holds no key. Both diagnostic edits were reverted, and `git diff` shows `not-found.tsx` unchanged.
 
 ## Preferences and Instructions
 
+- 2026-10-25: Container runs for UI round 2 (user instruction): the user gave the go for `pnpm test:int`, `pnpm e2e` and `pnpm e2e:screenshots`. Containers are checked before and after each run with `docker ps --format`, and the `freightaudit-prod` demo containers are never touched.
 - 2026-10-25: Docs-only work ships together (user instruction): the three docs-only branches of 2026-10-22 went into one PR, `docs-batch`, and a small doc follow-up rides with the next branch rather than a PR of its own. After a merge for ship, the user leaves e2e and `pnpm test:int` to CI, which runs both before merge (upload-preview, claude-fallback-log). How to apply: ask once before tests that start containers; when the user skips them, write "left to CI", and record the result once the merge is confirmed.
 - 2026-10-25: Reading a container's details (user instruction): run `docker inspect` only with `--format`, picking the image, the start time and the revision label, or use `docker ps`. Never print a container's full inspect output. Why: its environment holds the keys, and anything printed stays in the session transcript. What we did: the user set this rule after the rebill-web merge checked which build the demo runs; that check used `--format` only, and the transcript holds no environment block. Both commands below were run on the demo and print only the fields they name: `docker inspect --format '{{.Name}} {{.Config.Image}} {{.State.StartedAt}} {{index .Config.Labels "org.opencontainers.image.revision"}}' freightaudit-prod-api-1 freightaudit-prod-worker-1` shows each container's build, and `docker ps --filter label=com.docker.compose.project=freightaudit-prod --format '{{.Names}} {{.Image}} {{.Status}}'` lists the demo's containers. This widens the 2026-10-18 pitfall on telling what runs.
 - 2026-10-24: Merging main into a branch (user instruction): first confirm the branch, its commit and a clean tree, else stop and report. Run `git merge main --no-commit`. A docs conflict keeps both sides, with entries in date order. A conflict in a code file stops the merge for the user. Never run `git commit` or `git merge --continue`, since ship concludes the merge. Ask before anything that starts containers or runs e2e.

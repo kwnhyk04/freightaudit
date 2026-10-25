@@ -100,6 +100,18 @@ test.describe('login', () => {
   });
 });
 
+test.describe('landing page', () => {
+  test('signed in, / is the same landing page; its demo button and a sign-in back to / both open the start page', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/$/);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Catch freight overbilling before you pay it.');
+    await page.getByRole('link', { name: 'Try the live demo' }).click();
+    await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/invoices$/);
+    await page.goto('/login?next=%2F');
+    await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/invoices$/);
+  });
+});
+
 test.describe('upload', () => {
   test('choosing files only lists them, with size and pages and why one would be refused; Upload sends the rest, which leave the list, and toasts say what follows', async ({ page, request }) => {
     await page.goto('/upload');
@@ -568,7 +580,8 @@ test.describe('list', () => {
       await expect(page).toHaveURL(new RegExp(`[?]status=${key}$`));
       await expect(tabs.getByRole('link', { name: new RegExp(`^${label}`) })).toHaveAttribute('aria-current', 'page');
       await expect(page.getByRole('navigation', { name: 'Pages' })).toContainText(`of ${count}`);
-      const badges = page.locator('tbody td:first-child .badge');
+      // Each row's status pill, in the third column since the invoice and carrier lead (UI round 2).
+      const badges = page.locator('tbody td:nth-child(3) .badge');
       await expect(badges.first()).toBeVisible();
       for (const text of await badges.allTextContents()) expect(text).toMatch(words);
     }

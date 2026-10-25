@@ -1,0 +1,38 @@
+query Dashboard($from: Date!, $to: Date!) {
+  dashboard(from: $from, to: $to) {
+    window {
+      from
+      to
+      received
+      matchedRateCard
+      overbilledCents
+      overbilledInvoices
+      timed
+      processingP50Ms
+      processingP95Ms
+      modelCostPerInvoiceMicroUsd
+    }
+    previous {
+      received
+      overbilledCents
+    }
+    weeks {
+      start
+      matchedRateCard
+      neededReviewer
+      failed
+      overbilledCents
+    }
+    carriers {
+      carrier
+      overbilledCents
+      invoices
+    }
+    pipeline {
+      waitingToBeRead
+      openDeadLetters
+      claudeTokensToday
+      freeModelTokensToday
+    }
+  }
+}

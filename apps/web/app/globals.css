@@ -1085,6 +1085,242 @@ td.wrap {
   display: grid;
   gap: 14px;
 }
+.login .home {
+  color: inherit;
+}
+
+/* The landing page: the public front door, with wider type and no sidebar, in the app's own tokens. */
+.landing-wrap {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.landing-top {
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+}
+.landing-top .landing-wrap {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  min-height: 58px;
+}
+.landing-name {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+}
+.landing-nav {
+  display: flex;
+  gap: 20px;
+}
+.landing-nav a {
+  color: var(--text-2);
+}
+.landing-top .button {
+  margin-left: auto;
+}
+.hero {
+  padding: 64px 0 56px;
+}
+.hero .landing-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 6fr);
+  gap: 40px 56px;
+  align-items: center;
+}
+.eyebrow {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.hero h1 {
+  max-width: 12em;
+  font-size: 40px;
+  line-height: 48px;
+  letter-spacing: -0.01em;
+  margin-bottom: 16px;
+}
+.lead {
+  color: var(--text-2);
+  font-size: 17px;
+  line-height: 28px;
+  max-width: 560px;
+}
+.hero .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 28px 0 20px;
+}
+.button.large {
+  height: 42px;
+  padding: 0 18px;
+  font-size: 14.5px;
+}
+.sample-card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(22 25 29 / 8%);
+  overflow: hidden;
+}
+.sample-head {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.sample-head .row {
+  align-items: center;
+}
+.sample-findings {
+  list-style: none;
+  margin: 0;
+  padding: 0 16px;
+}
+.sample-findings li {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 0;
+}
+.sample-findings li + li {
+  border-top: 1px solid var(--rule);
+}
+.sample-findings .num {
+  text-align: left;
+  font-weight: 600;
+}
+.sample-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.sample-foot {
+  padding: 12px 16px;
+  background: var(--sunken);
+  border-top: 1px solid var(--rule);
+  text-align: right;
+}
+.landing-section {
+  padding: 56px 0;
+  border-top: 1px solid var(--rule);
+}
+.landing-section.plain {
+  background: var(--surface);
+}
+.landing-section h2 {
+  font-size: 26px;
+  line-height: 32px;
+  margin-bottom: 8px;
+}
+.landing-section h3 {
+  font-size: 15px;
+  line-height: 22px;
+  margin: 0 0 6px;
+}
+.landing-section .intro {
+  color: var(--text-2);
+  margin-bottom: 20px;
+}
+.steps-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 24px 0 0;
+  padding: 0;
+}
+.steps-grid li {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 18px;
+}
+.step-number {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--accent);
+  font: 500 12px/16px var(--mono);
+}
+.steps-grid p,
+.engineering p {
+  color: var(--text-2);
+  font-size: 13.5px;
+  line-height: 21px;
+}
+.landing-note {
+  margin-top: 12px;
+}
+.engineering {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px 32px;
+  margin-top: 24px;
+}
+.chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 32px 0 0;
+  padding: 0;
+}
+.chips li {
+  padding: 3px 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+@media (prefers-color-scheme: dark) {
+  .sample-card {
+    box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  }
+}
+@media (max-width: 1023px) {
+  .hero .landing-wrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .steps-grid,
+  .engineering {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* Phone: the sections stack, the in-page links give way to the demo button, and the results table scrolls in its frame. */
+@media (max-width: 720px) {
+  .landing-wrap {
+    padding: 0 16px;
+  }
+  .landing-nav {
+    display: none;
+  }
+  .hero {
+    padding: 32px 0 40px;
+  }
+  .hero h1 {
+    font-size: 30px;
+    line-height: 36px;
+  }
+  .lead {
+    font-size: 16px;
+    line-height: 26px;
+  }
+  .landing-section {
+    padding: 40px 0;
+  }
+  .landing-section h2 {
+    font-size: 22px;
+    line-height: 28px;
+  }
+  .steps-grid,
+  .engineering {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 
 /* Below 1440 px the checks take a little more of the width than the document, so the charges table keeps every column. */
 @media (max-width: 1439px) {

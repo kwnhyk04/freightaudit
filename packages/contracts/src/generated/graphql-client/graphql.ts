@@ -139,6 +139,14 @@ export type CorrectInvoiceMutationVariables = Exact<{
 
 export type CorrectInvoiceMutation = { correctInvoice: { id: string, status: InvoiceStatus } };
 
+export type DashboardQueryVariables = Exact<{
+  from: string;
+  to: string;
+}>;
+
+
+export type DashboardQuery = { dashboard: { window: { from: string, to: string, received: number, matchedRateCard: number, overbilledCents: number, overbilledInvoices: number, timed: number, processingP50Ms: number | null, processingP95Ms: number | null, modelCostPerInvoiceMicroUsd: number | null }, previous: { received: number, overbilledCents: number }, weeks: Array<{ start: string, matchedRateCard: number, neededReviewer: number, failed: number, overbilledCents: number }>, carriers: Array<{ carrier: string, overbilledCents: number, invoices: number }>, pipeline: { waitingToBeRead: number, openDeadLetters: number, claudeTokensToday: number, freeModelTokensToday: number } } };
+
 export type DeadLettersQueryVariables = Exact<{
   first?: number | null | undefined;
   after?: string | null | undefined;
@@ -268,6 +276,46 @@ export const CorrectInvoiceDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<CorrectInvoiceMutation, CorrectInvoiceMutationVariables>;
+export const DashboardDocument = new TypedDocumentString(`
+    query Dashboard($from: Date!, $to: Date!) {
+  dashboard(from: $from, to: $to) {
+    window {
+      from
+      to
+      received
+      matchedRateCard
+      overbilledCents
+      overbilledInvoices
+      timed
+      processingP50Ms
+      processingP95Ms
+      modelCostPerInvoiceMicroUsd
+    }
+    previous {
+      received
+      overbilledCents
+    }
+    weeks {
+      start
+      matchedRateCard
+      neededReviewer
+      failed
+      overbilledCents
+    }
+    carriers {
+      carrier
+      overbilledCents
+      invoices
+    }
+    pipeline {
+      waitingToBeRead
+      openDeadLetters
+      claudeTokensToday
+      freeModelTokensToday
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<DashboardQuery, DashboardQueryVariables>;
 export const DeadLettersDocument = new TypedDocumentString(`
     query DeadLetters($first: Int, $after: String, $status: DeadLetterStatus) {
   deadLetters(first: $first, after: $after, status: $status) {

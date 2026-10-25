@@ -1,7 +1,8 @@
 // An invoice's findings in money. reconcileInvoice reports overcharges only, at most one per line.
 
-// A finding's review state, as discrepancies store it.
-export type FindingStatus = 'open' | 'confirmed' | 'dismissed';
+// A finding's review state, as discrepancies store it. A closed one went undecided with its rejected invoice, or with a
+// held invoice's corrected reading; like every state but dismissed, it stands.
+export type FindingStatus = 'open' | 'confirmed' | 'dismissed' | 'closed';
 export type FindingAmounts = { status: FindingStatus; billedCents: bigint; expectedCents: bigint };
 
 // What a finding bills above the contract.

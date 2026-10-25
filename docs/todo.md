@@ -6,7 +6,7 @@ Each step maps to a Claude Code prompt in the design doc. Done when the check af
 
 ## Pending
 
-Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push to main should start a Release that publishes main, #41's api included; if none starts, use Run workflow (docs/deploy.md, Troubleshooting). Then `pnpm demo:up`. Both have run since: the demo api and worker run `c698d9f` (revision label, started 11:55 UTC on 2026-10-24, read-only check), so PR 1 runs on the demo. PR 2 and PR 3 of the re-bills plan are merged as `d8938d0` (#49) and `a07b552` (#50). The Claude hand-off record is merged as `d98c8d5` (#51); its Release and `pnpm demo:up`, which applies 0017, come next. The three docs-only branches of 2026-10-22 wait in `docs-batch` for one ship (In Progress). The stopgap for the demo's latency is merged as `4e0587c` (#48); its root fix is Pending. The security update and the local fonts are merged as `e7b0841` (#46). Claude first is merged as `3c61a1b` (#40) and live on the demo since the user's `pnpm demo:up` on 2026-10-21. The approved mockups are merged as `b33401f` (#39), the README pass as `8d42fe3` (#38), and the follow-ups from #34 as #35, #36 and #37. The full-subset floors for rate-limit waits wait until the Gemini key has its own Google project. Until the user confirms that move, nothing with live Gemini calls runs on 2026-10-20 from 15:00 Taipei until Triage Copilot's exam run ends (docs/memory.md, Constraints); items marked "live Gemini" need such calls.
+Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push to main should start a Release that publishes main, #41's api included; if none starts, use Run workflow (docs/deploy.md, Troubleshooting). Then `pnpm demo:up`. Both have run since: the demo api and worker run `c698d9f` (revision label, started 11:55 UTC on 2026-10-24, read-only check), so PR 1 runs on the demo. PR 2 and PR 3 of the re-bills plan are merged as `d8938d0` (#49) and `a07b552` (#50). The Claude hand-off record is merged as `d98c8d5` (#51); its Release and `pnpm demo:up`, which applies 0017, come next. The three docs-only branches of 2026-10-22 shipped together as `336a717` (#52). UI round 2, the landing page and the dashboard, is In Progress: A (the api's figures and the landing page) on branch `landing-overview-api`, then B (the dashboard). The stopgap for the demo's latency is merged as `4e0587c` (#48); its root fix is Pending. The security update and the local fonts are merged as `e7b0841` (#46). Claude first is merged as `3c61a1b` (#40) and live on the demo since the user's `pnpm demo:up` on 2026-10-21. The approved mockups are merged as `b33401f` (#39), the README pass as `8d42fe3` (#38), and the follow-ups from #34 as #35, #36 and #37. The full-subset floors for rate-limit waits wait until the Gemini key has its own Google project. Until the user confirms that move, nothing with live Gemini calls runs on 2026-10-20 from 15:00 Taipei until Triage Copilot's exam run ends (docs/memory.md, Constraints); items marked "live Gemini" need such calls.
 
 - [ ] The demo's public latency against the web's 2.5 s offline threshold (measured 2026-10-21). The stopgap was built on branch `readyz-stopgap` from main `c698d9f` (2026-10-22, the user's overnight request) and merged as `4e0587c` (#48): web only, no Release, Vercel deploys at the merge.
   - The numbers (docs/context.md, Known Limitations): only 3 of 10 public `/healthz` and `/readyz` requests answered within 2.5 s, and 2 never connected in 30 s.
@@ -57,10 +57,36 @@ Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push t
 
 ## In Progress
 
-- [ ] docs-batch (user, 2026-10-25): the three docs-only branches of 2026-10-22 in one PR instead of three, on branch `docs-batch` from main `d98c8d5`, not committed. Docs only, so no Release.
+- [ ] UI round 2, the landing page and the dashboard (user, 2026-10-25): the plan is approved with the user's changes and is built in two PRs.
+  - Drafts: `_design-reference/freightaudit/draft-landing-dashboard` (Oct 17).
+  - Rules: real data only, tests first, no live model calls, and light, dark and phone.
+  - The plan and its decisions are in the activity log (2026-10-25).
+  - [ ] A, branch `landing-overview-api` from main `336a717`: the api's dashboard figures (expand only) and the public landing page, in one PR. After it come its Release and `pnpm demo:up`.
+    - [x] Domain `dashboardOf` and the api's `dashboard(from, to)`. Tests first: domain unit tests, an api integration test against `dashboardOf`, and the query limits.
+    - [x] The landing page at `/`:
+      - the results of the official eval report (`evals/reports/2026-10-15.json`);
+      - the six drafts as approved mockups;
+      - `/` public in the proxy, and sign-in never returning to `/`;
+      - the sign-in heading linking home.
+    - [x] The invoice list's columns: Invoice, Carrier, Status, Issued, Received, Open findings, Billed, Expected, Difference.
+    - [x] Checks, all passing but the contracts lint, which waits for the line below:
+      - 43 of 44 turbo tasks (build, typecheck, lint, unit tests);
+      - `pnpm contracts:check`;
+      - `pnpm test:int` 149 in 26 suites;
+      - `pnpm e2e` 50 of 50;
+      - `pnpm e2e:screenshots` 11 of 11, which re-shot round 1 too, the upload shots of look item 10 included.
+      - The user gave the go for the container runs on 2026-10-25; containers were checked before and after, and freightaudit-prod was left alone.
+    - [ ] (user, before ship) Add the five dashboard types to the `strict-id-in-types` exceptions in `packages/contracts/eslint.config.js`. The config-protection hook blocks agents there; the exact line is in the activity log (2026-10-25). Until then, `pnpm lint` fails on `schema.graphql` with 5 errors.
+  - [ ] B, branch `overview` from main once A runs on the demo:
+    - the dashboard at `/dashboard` (live) and `/demo/dashboard` (the sample's one week, one click from the sidebar; `/demo` still opens the invoices);
+    - Overview first in the sidebar, and `/dashboard` as the start page after sign-in;
+    - the invoice list's stats two by two on a phone;
+    - the round-1 upload screenshots shot again: already done in A, since `pnpm e2e:screenshots` shoots every screen. B shoots them again for the sidebar's Overview.
+
+- [ ] docs-batch (user, 2026-10-25): the three docs-only branches of 2026-10-22 in one PR instead of three, on branch `docs-batch` from main `d98c8d5`, not committed. Docs only, so no Release. Shipped as `336a717` (#52).
   - [x] tailscale-udp-plan: `docs/tailscale-udp-plan.md` as is, its log entry and its Pending item. api-startup-warnings: its log entry, its findings under the startup-warnings item and its Known Limitations sentence. ghsa-ignores: its log entry, its check under the braces item and its audit sentence. Log entries in date order.
   - [x] ghsa-ignores' claims checked against 2026-10-25's `pnpm-workspace.yaml` and lockfile; the stale ones corrected here and in docs/context.md (docs/activity-log.md, 2026-10-25).
-  - [ ] The user ships it.
+  - [x] Shipped as `336a717` (#52).
 
 - [ ] Why the free models read an invoice while Claude reads first (user, 2026-10-22, the overnight request): built on branch `claude-fallback-log` from main `c698d9f`, merged as `d98c8d5` (#51). No live model calls.
   - [x] `extractInvoices` keeps the hand-off's reason (`claudeHandoff`): `switched_off`, `daily_budget`, `input_cap` or `extraction_cap` when never sent, the account reason when Claude refused it, or the failure class. Past the end date there is none, since the window is over.
