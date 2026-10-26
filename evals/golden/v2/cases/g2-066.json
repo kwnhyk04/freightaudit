@@ -1,0 +1,99 @@
+{
+  "id": "g2-066",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "repeated_page",
+  "adversarial": true,
+  "traits": [
+    "fax"
+  ],
+  "layouts": [
+    "classic"
+  ],
+  "pages": 2,
+  "scans": [
+    {
+      "profile": "fax",
+      "degrees": -0.45,
+      "noise": 3481770461,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "fax",
+      "degrees": 1.32,
+      "noise": 759933502,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-066.pdf",
+  "shipments": [
+    "1030543583"
+  ],
+  "sha256": "d99b92ab551f96c37cd4c7fde6969b179464e8d60802abef9551dca79211c519",
+  "bytes": 56442,
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "08869703",
+      "invoice_date": "2026-09-02",
+      "due_date": "2026-10-02",
+      "pro_number": "1030543583",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Flatley, Lubowitz and Hettinger",
+        "address": "1908 University Avenue, Fort Lolitatown, WY 99416"
+      },
+      "shipper": {
+        "name": "Fisher - Harvey",
+        "address": "896 August Extension, Sporerland, MI 57032"
+      },
+      "consignee": {
+        "name": "Collins, Bayer and Goyette",
+        "address": "29522 Todd Path, Johnson City, NM 24142"
+      },
+      "weight_lb": 3324,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 454182,
+          "expected_cents": 454182
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 115544,
+          "expected_cents": 115544
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 11283,
+          "expected_cents": 11283
+        },
+        {
+          "line_number": 4,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 20861,
+          "expected_cents": 20861
+        }
+      ],
+      "total_cents": 601870,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

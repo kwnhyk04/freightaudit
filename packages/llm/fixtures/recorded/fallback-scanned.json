@@ -1,17 +1,17 @@
 {
-  "recorded_at": "2026-10-15",
+  "recorded_at": "2026-10-25",
   "exchanges": [
     {
       "method": "POST",
       "path": "/chat/completions",
-      "body_sha256": "696a1532adf57d8e3ccf856701e1abf9b8c4b2b43d1b032440b940078022e35a",
-      "body_bytes": 394143,
+      "body_sha256": "3a64cef4d1672902d89dc0771b62b33cc189f14abd336b223a2f088ed1e330f6",
+      "body_bytes": 394425,
       "status": 200,
       "headers": {},
       "body": {
-        "id": "chatcmpl-8224ac73-3ab6-4bea-b2e1-52437673ea45",
+        "id": "chatcmpl-6dde8c77-3efe-4073-bd49-5cf908f3128f",
         "object": "chat.completion",
-        "created": 1792047918,
+        "created": 1792959878,
         "model": "qwen/qwen3.8-27b",
         "choices": [
           {
@@ -25,19 +25,19 @@
           }
         ],
         "usage": {
-          "queue_time": 0.196604377,
-          "prompt_tokens": 2022,
-          "prompt_time": 0.143798571,
-          "completion_tokens": 175,
-          "completion_time": 0.344087702,
-          "total_tokens": 2197,
-          "total_time": 0.487886273
+          "queue_time": 0.169610833,
+          "prompt_tokens": 2088,
+          "prompt_time": 0.154049323,
+          "completion_tokens": 176,
+          "completion_time": 0.344446878,
+          "total_tokens": 2264,
+          "total_time": 0.498496201
         },
         "usage_breakdown": null,
         "system_fingerprint": "fp_a1293f40b5",
         "x_groq": {
-          "id": "req_01m4z62ag0esgt56411krpa25f",
-          "seed": 1899419875
+          "id": "req_01m5tbs42kepbre8s77f6d328n",
+          "seed": 2032073743
         },
         "service_tier": "on_demand"
       }

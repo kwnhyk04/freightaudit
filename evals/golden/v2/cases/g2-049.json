@@ -1,0 +1,99 @@
+{
+  "id": "g2-049",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "low_res"
+  ],
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_res",
+      "degrees": 1.07,
+      "noise": 296436112,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-049.pdf",
+  "shipments": [
+    "1022038577"
+  ],
+  "sha256": "752fecce7f76100176b2fce9cd2cc098162a154df9a1de9161c4fbb647d5ea58",
+  "bytes": 155947,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "18253377",
+      "invoice_date": "2026-07-27",
+      "due_date": "2026-08-26",
+      "pro_number": "1022038577",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Roberts Group",
+        "address": "94039 Lehner Valleys, Jabaritown, IL 98034"
+      },
+      "shipper": {
+        "name": "Kautzer and Sons",
+        "address": "6787 The Paddocks, Fort Uriahchester, TX 47088"
+      },
+      "consignee": {
+        "name": "Crooks - Hahn",
+        "address": "2374 13th Street, Parker, CO 42778"
+      },
+      "weight_lb": 4387,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 425920,
+          "expected_cents": 425920
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 91189,
+          "expected_cents": 91189
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 8594,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 525703,
+      "overcharges": [
+        {
+          "line_number": 3,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 8594
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 3,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 8594
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "id": "g2-008",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "carrier_form"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-008.pdf",
+  "shipments": [
+    "1008995984"
+  ],
+  "sha256": "66e39bb4233cd35be02431f16c1f6d5a4d541a347bf9921eb114ed576de40984",
+  "bytes": 69664,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "05146486",
+      "invoice_date": "2025-03-20",
+      "due_date": "2025-04-19",
+      "pro_number": "1008995984",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Marks and Sons",
+        "address": "97927 Lubowitz Loop, Fort Macyburgh, MN 33581"
+      },
+      "shipper": {
+        "name": "Cummerata, Reichel and Marks",
+        "address": "802 E Franklin Street, Hayward, NM 34768"
+      },
+      "consignee": {
+        "name": "Murphy, Tillman and Reynolds",
+        "address": "745 Merritt Branch, Wisozkfield, NV 57811"
+      },
+      "weight_lb": 2266,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul transportation",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 329192,
+          "expected_cents": 329192
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel",
+          "charge_code": "FUEL",
+          "amount_cents": 101029,
+          "expected_cents": 101029
+        },
+        {
+          "line_number": 3,
+          "description": "Residential",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 9778,
+          "expected_cents": 9778
+        },
+        {
+          "line_number": 4,
+          "description": "Detention (waiting time)",
+          "charge_code": "DETENTION",
+          "amount_cents": 9843,
+          "expected_cents": 9843
+        },
+        {
+          "line_number": 5,
+          "description": "Limited access fee",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11448,
+          "expected_cents": 11448
+        }
+      ],
+      "total_cents": 461290,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

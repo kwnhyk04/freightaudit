@@ -1,0 +1,86 @@
+{
+  "id": "g2-094",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "upside_down",
+  "adversarial": true,
+  "traits": [
+    "low_res",
+    "title_line"
+  ],
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_res",
+      "degrees": 0.07,
+      "noise": 3970409525,
+      "sideways": false,
+      "flip": true
+    }
+  ],
+  "file": "cases/g2-094.pdf",
+  "shipments": [
+    "1022387013"
+  ],
+  "sha256": "75719fccb1f02342b8aea25581b753a19fd0b47fab0f089bd89833d63cd3586c",
+  "bytes": 152941,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "68672745",
+      "invoice_date": "2026-06-11",
+      "due_date": "2026-07-11",
+      "pro_number": "1022387013",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Robel, Larkin and Hettinger",
+        "address": "678 Moor Lane, Ogden, MD 49552"
+      },
+      "shipper": {
+        "name": "Fahey - Runolfsson",
+        "address": "384 Marguerite Gateway, Fort Hipolito, VT 45427"
+      },
+      "consignee": {
+        "name": "Goodwin - Wilkinson",
+        "address": "279 W High Street, Oshkosh, OK 31047"
+      },
+      "weight_lb": 9006,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 96204,
+          "expected_cents": 96204
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 29525,
+          "expected_cents": 29525
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 2622,
+          "expected_cents": 2622
+        }
+      ],
+      "total_cents": 128351,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "id": "g2-039",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "title_line"
+  ],
+  "layouts": [
+    "carrier_form"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-039.pdf",
+  "shipments": [
+    "1009051417"
+  ],
+  "sha256": "4262174b4ef88160389f7d05918e5ec52e53166ea3f7b539fc0b73d91e8964b6",
+  "bytes": 54498,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "30001711",
+      "invoice_date": "2025-09-29",
+      "due_date": "2025-10-29",
+      "pro_number": "1009051417",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Reinger - Kutch",
+        "address": "374 Dickens Manor, Scottieshire, MD 09752"
+      },
+      "shipper": {
+        "name": "Lebsack - Schmeler",
+        "address": "6810 Gerhold Curve, New Darrel, AR 54963"
+      },
+      "consignee": {
+        "name": "Klein - Weissnat",
+        "address": "8766 2nd Street, Fort Lonieborough, RI 23884"
+      },
+      "weight_lb": 10180,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Line haul freight",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 298384,
+          "expected_cents": 298384
+        },
+        {
+          "line_number": 2,
+          "description": "Diesel fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 78061,
+          "expected_cents": 72955
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 11276,
+          "expected_cents": 11276
+        },
+        {
+          "line_number": 4,
+          "description": "Notify / appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3775,
+          "expected_cents": 3775
+        }
+      ],
+      "total_cents": 391496,
+      "overcharges": [
+        {
+          "line_number": 2,
+          "type": "rate_mismatch",
+          "expected_cents": 72955,
+          "billed_cents": 78061
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 2,
+            "type": "rate_mismatch",
+            "expected_cents": 72955,
+            "billed_cents": 78061
+          }
+        ]
+      }
+    }
+  ]
+}

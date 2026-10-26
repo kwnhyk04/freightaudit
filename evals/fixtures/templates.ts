@@ -26,7 +26,7 @@ export type InvoiceFixture = {
   overcharges: Overcharge[];
 };
 
-const esc = (value: string | number) => String(value).replace(/[&<>"]/g, (char) => `&#${char.charCodeAt(0)};`);
+export const esc = (value: string | number) => String(value).replace(/[&<>"]/g, (char) => `&#${char.charCodeAt(0)};`);
 // Integer cents to text without floats: 123456 becomes 1,234.56 and -123456 becomes -1,234.56.
 export const amount = (cents: number) =>
   `${cents < 0 ? '-' : ''}${Math.trunc(Math.abs(cents) / 100).toLocaleString('en-US')}.${String(Math.abs(cents) % 100).padStart(2, '0')}`;
@@ -34,23 +34,23 @@ export const amount = (cents: number) =>
 export const figure = (inv: Pick<InvoiceFixture, 'currency'>, cents: number) =>
   inv.currency === 'EUR' ? amount(cents).replace(/[,.]/g, (mark) => (mark === ',' ? '.' : ',')) : amount(cents);
 // With the currency's symbol: $1,234.56, C$1,234.56 or 1.234,56 €.
-const money = (inv: InvoiceFixture, cents: number) =>
+export const money = (inv: Pick<InvoiceFixture, 'currency'>, cents: number) =>
   inv.currency === 'EUR' ? `${figure(inv, cents)} €` : `${cents < 0 ? '-' : ''}${inv.currency === 'CAD' ? 'C$' : '$'}${figure(inv, Math.abs(cents))}`;
 // The PRO number between two labels, or nothing when the invoice has none.
-const pro = (inv: InvoiceFixture, before: string, after = '') => (inv.pro_number === null ? '' : `${before}${esc(inv.pro_number)}${after}`);
-const title = (inv: InvoiceFixture, invoice: string, memo: string) => (inv.kind === 'credit_memo' ? memo : invoice);
+export const pro = (inv: InvoiceFixture, before: string, after = '') => (inv.pro_number === null ? '' : `${before}${esc(inv.pro_number)}${after}`);
+export const title = (inv: InvoiceFixture, invoice: string, memo: string) => (inv.kind === 'credit_memo' ? memo : invoice);
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const ymd = (iso: string) => {
   const [year, month, day] = iso.split('-');
   return { year, month, day, mon: MONTHS[Number(month) - 1]! };
 };
-const usDate = (iso: string) => `${ymd(iso).month}/${ymd(iso).day}/${ymd(iso).year}`;
-const longDate = (iso: string) => `${ymd(iso).mon} ${Number(ymd(iso).day)}, ${ymd(iso).year}`;
-const dmyDate = (iso: string) => `${ymd(iso).day}-${ymd(iso).mon.toUpperCase()}-${ymd(iso).year}`;
-const party = (p: Party) => `${esc(p.name)}<br>${esc(p.address)}`;
+export const usDate = (iso: string) => `${ymd(iso).month}/${ymd(iso).day}/${ymd(iso).year}`;
+export const longDate = (iso: string) => `${ymd(iso).mon} ${Number(ymd(iso).day)}, ${ymd(iso).year}`;
+export const dmyDate = (iso: string) => `${ymd(iso).day}-${ymd(iso).mon.toUpperCase()}-${ymd(iso).year}`;
+export const party = (p: Party) => `${esc(p.name)}<br>${esc(p.address)}`;
 
 // A Letter page that has the same size on screen and in print, so the scan raster matches the PDF.
-const page = (css: string, body: string) => `<!doctype html><html><head><meta charset="utf-8"><style>
+export const page = (css: string, body: string) => `<!doctype html><html><head><meta charset="utf-8"><style>
 @page { size: Letter; margin: 0 }
 * { box-sizing: border-box }
 body { margin: 0; width: 8.5in; height: 11in; padding: 0.6in; color: #1d1d1d }

@@ -1,0 +1,93 @@
+{
+  "id": "g2-020",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "fax",
+    "title_line"
+  ],
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "fax",
+      "degrees": 0.62,
+      "noise": 2244741080,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-020.pdf",
+  "shipments": [
+    "1033671588"
+  ],
+  "sha256": "ff33517416f599f74e479f32280ec4ce5cf38ad1ab61188a54c3a55ef6c3a4d5",
+  "bytes": 29925,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "22658380",
+      "invoice_date": "2026-01-04",
+      "due_date": "2026-02-03",
+      "pro_number": "1033671588",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Nienow - Kessler",
+        "address": "4228 Lola Corners, Todbury, LA 29824"
+      },
+      "shipper": {
+        "name": "Stokes, Kulas and Lang",
+        "address": "30073 Marcia Valley, Ramonstad, NC 83423"
+      },
+      "consignee": {
+        "name": "King - Brekke",
+        "address": "58053 Prospect Street, Greenland, WA 35593"
+      },
+      "weight_lb": 2332,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 157584,
+          "expected_cents": 157584
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 48363,
+          "expected_cents": 48363
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 10098,
+          "expected_cents": 10098
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10165,
+          "expected_cents": 10165
+        }
+      ],
+      "total_cents": 226210,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

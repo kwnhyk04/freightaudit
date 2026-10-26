@@ -1,0 +1,135 @@
+{
+  "id": "g2-076",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "packet",
+  "adversarial": false,
+  "traits": [
+    "invoice_not_first",
+    "skew"
+  ],
+  "layouts": [
+    "classic"
+  ],
+  "pages": 6,
+  "scans": [
+    {
+      "profile": "low_res",
+      "degrees": -0.98,
+      "noise": 3737144139,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "skew",
+      "degrees": 5.75,
+      "noise": 2247550513,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": -1.01,
+      "noise": 3164223175,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": 1.18,
+      "noise": 1630313828,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": -1.31,
+      "noise": 3582304441,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": -0.06,
+      "noise": 913213763,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-076.pdf",
+  "shipments": [
+    "1011292494"
+  ],
+  "sha256": "1306ffcc4b6179facde4fe3639c0c197bb8f485847ea6af808f3e98008733c15",
+  "bytes": 1036723,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "17396466",
+      "invoice_date": "2025-10-12",
+      "due_date": "2025-11-11",
+      "pro_number": "1011292494",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Weber - Wisozk",
+        "address": "10557 Jovanny Avenue, South Hermanshire, ME 88394"
+      },
+      "shipper": {
+        "name": "Morissette, Bechtelar and Labadie",
+        "address": "330 Susana Burgs, West Dante, CT 53925"
+      },
+      "consignee": {
+        "name": "Weissnat Inc",
+        "address": "908 Lancaster Road, Bradtkeburgh, IA 81129"
+      },
+      "weight_lb": 11798,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 86480,
+          "expected_cents": 86480
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 15843,
+          "expected_cents": 15843
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12726,
+          "expected_cents": 12726
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 13702,
+          "expected_cents": 13702
+        },
+        {
+          "line_number": 5,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8090,
+          "expected_cents": 8090
+        }
+      ],
+      "total_cents": 136841,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

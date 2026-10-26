@@ -1,0 +1,116 @@
+{
+  "id": "g2-075",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "packet",
+  "adversarial": false,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "carrier_form"
+  ],
+  "pages": 3,
+  "scans": [
+    {
+      "profile": "stamp",
+      "degrees": -0.74,
+      "noise": 3273051744,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": -1.29,
+      "noise": 857457221,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": 0.24,
+      "noise": 554960244,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-075.pdf",
+  "shipments": [
+    "1025491261"
+  ],
+  "sha256": "b5a9b07cd0c63d18f9bf96cd8089133e5fcf1a1f262b497a879efd211141ae14",
+  "bytes": 813715,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "84823163",
+      "invoice_date": "2025-04-03",
+      "due_date": "2025-05-03",
+      "pro_number": "1025491261",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Gerlach - Rice",
+        "address": "620 S East Street, Maxland, OK 39246"
+      },
+      "shipper": {
+        "name": "King - Friesen",
+        "address": "28575 Webster Lock, North Jordon, IN 83886"
+      },
+      "consignee": {
+        "name": "Bosco - Crooks",
+        "address": "26850 Gutmann Island, Sengerton, SC 04381"
+      },
+      "weight_lb": 4365,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Line haul freight",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 346744,
+          "expected_cents": 346744
+        },
+        {
+          "line_number": 2,
+          "description": "Diesel fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 84779,
+          "expected_cents": 84779
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access location",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 9444,
+          "expected_cents": 9444
+        },
+        {
+          "line_number": 4,
+          "description": "Home delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 13833,
+          "expected_cents": 13833
+        },
+        {
+          "line_number": 5,
+          "description": "Notify / appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3775,
+          "expected_cents": 3775
+        }
+      ],
+      "total_cents": 458575,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

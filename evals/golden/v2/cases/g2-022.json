@@ -1,0 +1,78 @@
+{
+  "id": "g2-022",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "skew"
+  ],
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "skew",
+      "degrees": -5.63,
+      "noise": 120681040,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-022.pdf",
+  "shipments": [
+    "1016043894"
+  ],
+  "sha256": "5b5e5afce03a3fa09ff3c16e4cc07c3a8d4b3c301424a706315b7b49f9543b13",
+  "bytes": 269385,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "88887149",
+      "invoice_date": "2026-05-27",
+      "due_date": "2026-06-26",
+      "pro_number": "1016043894",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hansen - Kilback",
+        "address": "671 Misael Drives, Janhaven, FL 32909"
+      },
+      "shipper": {
+        "name": "Schumm, Little and Buckridge",
+        "address": "6168 McCullough Row, North Leslystad, VT 29207"
+      },
+      "consignee": {
+        "name": "Stamm, Mante and Okuneva",
+        "address": "3825 E Broadway Street, Luciennestad, KY 66401"
+      },
+      "weight_lb": 9482,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 133094,
+          "expected_cents": 133094
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 32541,
+          "expected_cents": 32541
+        }
+      ],
+      "total_cents": 165635,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

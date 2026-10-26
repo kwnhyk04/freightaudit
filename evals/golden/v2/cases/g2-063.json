@@ -1,0 +1,116 @@
+{
+  "id": "g2-063",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "repeated_page",
+  "adversarial": true,
+  "traits": [
+    "landscape",
+    "reference_numbers",
+    "rotated_table",
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "landscape"
+  ],
+  "pages": 3,
+  "scans": [
+    {
+      "profile": "stamp",
+      "degrees": -1.17,
+      "noise": 983185584,
+      "sideways": true,
+      "flip": false
+    },
+    {
+      "profile": "stamp",
+      "degrees": 0.22,
+      "noise": 936033813,
+      "sideways": true,
+      "flip": false
+    },
+    {
+      "profile": "stamp",
+      "degrees": -0.98,
+      "noise": 3733777921,
+      "sideways": true,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-063.pdf",
+  "shipments": [
+    "1029252786"
+  ],
+  "sha256": "bf60aa685b88800a807ad41b6e41b13c89bcade36dc208b376c794ba6b426591",
+  "bytes": 1544296,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "10578029",
+      "invoice_date": "2025-10-15",
+      "due_date": "2025-11-14",
+      "pro_number": "1029252786",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Macejkovic, Lakin and Wuckert",
+        "address": "783 S Jackson Street, Port Ira, MS 30418"
+      },
+      "shipper": {
+        "name": "Feeney Inc",
+        "address": "193 Muller-Mosciski Highway, Macejkovicmouth, AK 92399"
+      },
+      "consignee": {
+        "name": "Johnson Group",
+        "address": "7092 Lueilwitz Junctions, South Ferne, MS 41326"
+      },
+      "weight_lb": 6947,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 274204,
+          "expected_cents": 274204
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 67043,
+          "expected_cents": 67043
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 11276,
+          "expected_cents": 11276
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 9444,
+          "expected_cents": 9444
+        }
+      ],
+      "total_cents": 361967,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "0422494456",
+        "po": "PO-11264",
+        "shipped_on": "2025-10-07",
+        "delivered_on": "2025-10-11"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

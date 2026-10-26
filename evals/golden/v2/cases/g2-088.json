@@ -1,0 +1,93 @@
+{
+  "id": "g2-088",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "tricky_number",
+  "adversarial": true,
+  "traits": [
+    "title_line"
+  ],
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-088.pdf",
+  "shipments": [
+    "1001702585"
+  ],
+  "sha256": "4c2bfc0f39f7abd9b237c47dee2ffb4c3d752d57e59898e86763f753f3705634",
+  "bytes": 44686,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "NRL-0091728",
+      "invoice_date": "2025-09-08",
+      "due_date": "2025-10-08",
+      "pro_number": "1001702585",
+      "currency": "USD",
+      "bill_to": {
+        "name": "McClure Inc",
+        "address": "402 Deven Burg, New Karianestead, MO 04669"
+      },
+      "shipper": {
+        "name": "Bernhard, Hammes and Schultz",
+        "address": "190 Zoie Ports, Schaeferfield, AZ 45481"
+      },
+      "consignee": {
+        "name": "Hagenes-Sawayn LLC",
+        "address": "379 Emely Coves, East Josephine, IL 99312"
+      },
+      "weight_lb": 6988,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 430516,
+          "expected_cents": 430516
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 105261,
+          "expected_cents": 105261
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 9444,
+          "expected_cents": 9444
+        },
+        {
+          "line_number": 4,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3775,
+          "expected_cents": 3775
+        },
+        {
+          "line_number": 5,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 13833,
+          "expected_cents": 13833
+        }
+      ],
+      "total_cents": 562829,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

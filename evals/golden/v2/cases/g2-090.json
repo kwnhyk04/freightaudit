@@ -1,0 +1,95 @@
+{
+  "id": "g2-090",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "tricky_number",
+  "adversarial": true,
+  "traits": [
+    "fax",
+    "landscape",
+    "reference_numbers",
+    "rotated_table",
+    "title_line"
+  ],
+  "layouts": [
+    "landscape"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "fax",
+      "degrees": -0.13,
+      "noise": 3925679495,
+      "sideways": true,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-090.pdf",
+  "shipments": [
+    "1014618474"
+  ],
+  "sha256": "5961894252ca8684438b323da3ab9998d286ce39effee7344c071ccd20461889",
+  "bytes": 68938,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "4444-0004",
+      "invoice_date": "2025-06-29",
+      "due_date": "2025-07-29",
+      "pro_number": "1014618474",
+      "currency": "USD",
+      "bill_to": {
+        "name": "DuBuque - Johnson",
+        "address": "779 Pfannerstill Point, Placentia, NH 36641"
+      },
+      "shipper": {
+        "name": "Streich and Sons",
+        "address": "354 Cleveland Street, Fort Levi, MA 04906"
+      },
+      "consignee": {
+        "name": "Price - Jaskolski",
+        "address": "5267 Hills-Powlowski Well, Midland, MS 52551"
+      },
+      "weight_lb": 470,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 456100,
+          "expected_cents": 456100
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 111516,
+          "expected_cents": 111516
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 11276,
+          "expected_cents": 11276
+        }
+      ],
+      "total_cents": 578892,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "4710434469",
+        "po": "PO-89393",
+        "shipped_on": "2025-06-25",
+        "delivered_on": "2025-06-27"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

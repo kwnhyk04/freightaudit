@@ -1,0 +1,110 @@
+{
+  "id": "g2-035",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "continued_page",
+    "reference_numbers",
+    "subtotal_tax",
+    "title_line"
+  ],
+  "layouts": [
+    "continued"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-035.pdf",
+  "shipments": [
+    "1009605747"
+  ],
+  "sha256": "fc5735ade3829301c3b4b2619bfb73fc0d87388a2d28e8544d4358275aff3d5d",
+  "bytes": 68580,
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "25700184",
+      "invoice_date": "2025-08-31",
+      "due_date": "2025-09-30",
+      "pro_number": "1009605747",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Bernier, Bosco and Bartoletti",
+        "address": "912 Desmond Harbors, Gleasonbury, FL 50104"
+      },
+      "shipper": {
+        "name": "Connelly, Quitzon and Hintz",
+        "address": "2175 E Broadway, Lake Herminio, MN 94675"
+      },
+      "consignee": {
+        "name": "Kuhn, Emard-Shields and Crist",
+        "address": "2900 Casey Key, Toyburgh, WA 97743"
+      },
+      "weight_lb": 1655,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 283570,
+          "expected_cents": 283570
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 72140,
+          "expected_cents": 72140
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 19759
+        },
+        {
+          "line_number": 4,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 395228,
+      "overcharges": [
+        {
+          "line_number": 4,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 19759
+        }
+      ],
+      "subtotal_cents": 395228,
+      "tax_cents": 0,
+      "refs": {
+        "bol": "3928838365",
+        "po": "PO-33957",
+        "shipped_on": "2025-08-21",
+        "delivered_on": "2025-08-26"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 4,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 19759
+          }
+        ]
+      }
+    }
+  ]
+}

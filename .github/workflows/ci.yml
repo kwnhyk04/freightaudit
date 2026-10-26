@@ -347,7 +347,7 @@ jobs:
       # The eval PDFs are plain git files; each must match the sha256 its set's manifest records.
       - name: Check every PDF against its manifest
         run: |
-          for set in evals/golden/v1 evals/comparison/v1; do
+          for set in evals/golden/v1 evals/golden/v2 evals/comparison/v1; do
             jq -r --arg dir "$set" '.cases[] | "\(.sha256)  \($dir)/\(.file)"' "$set/manifest.json" | sha256sum --check --strict --quiet
           done
 

@@ -1,0 +1,86 @@
+{
+  "id": "g2-095",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "missing_pro",
+  "adversarial": true,
+  "traits": [
+    "factoring_remit",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-095.pdf",
+  "shipments": [
+    "1025182420"
+  ],
+  "sha256": "c76619c0ed1a1597a02b00917007e991f73eda37d6f4a2b0156b76e95c45efa2",
+  "bytes": 56388,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "15101329",
+      "invoice_date": "2025-05-04",
+      "due_date": "2025-06-03",
+      "pro_number": null,
+      "currency": "USD",
+      "bill_to": {
+        "name": "McClure - Bradtke",
+        "address": "173 Savanna Views, Olivemouth, WA 24397"
+      },
+      "shipper": {
+        "name": "Swift, Durgan and Hodkiewicz",
+        "address": "707 Josefa Land, Taliaberg, UT 00015"
+      },
+      "consignee": {
+        "name": "Nienow, West and Huels",
+        "address": "5464 Stoney Lane, Port Mariannestead, AZ 33869"
+      },
+      "weight_lb": 3689,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 175620,
+          "expected_cents": 175620
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 32174,
+          "expected_cents": 32174
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12726,
+          "expected_cents": 12726
+        }
+      ],
+      "total_cents": 220520,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Kunde Capital Funding",
+        "address": "P.O. Box 15193, Coryfield, LA 69356"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "needs_review",
+        "reason": "no_shipment_match",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "id": "g2-011",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "factoring_remit",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-011.pdf",
+  "shipments": [
+    "1021444652"
+  ],
+  "sha256": "d02377c7bf795191df7620f93ee39ad24ffdeec24642318fc7e5d0b7f7f8a3c2",
+  "bytes": 55565,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "08485195",
+      "invoice_date": "2025-03-12",
+      "due_date": "2025-04-11",
+      "pro_number": "1021444652",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Lindgren - Bogisich",
+        "address": "71943 Commerce Street, Kemmerstead, DE 76872"
+      },
+      "shipper": {
+        "name": "Miller, Stiedemann and Beier",
+        "address": "813 Tremayne Mill, Keshawntown, OK 18596"
+      },
+      "consignee": {
+        "name": "Kautzer LLC",
+        "address": "16152 Cole Garden, Kenyaborough, VA 63565"
+      },
+      "weight_lb": 1951,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 235079,
+          "expected_cents": 235079
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 72146,
+          "expected_cents": 72146
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 2539,
+          "expected_cents": 2539
+        }
+      ],
+      "total_cents": 309764,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Prohaska Capital Funding",
+        "address": "P.O. Box 27665, Riceborough, PA 01539"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

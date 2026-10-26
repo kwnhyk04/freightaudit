@@ -1,9 +1,11 @@
-// Turns eval runs into evals/reports/<date>[-<subset>].json and .md: every target of docs/context.md met or missed, the
-// regression floors of evals/thresholds.json beside them, and on a full run the eval table that opens the README. The
-// exit code is 2 when a quota stop left cases unrun, 1 when a metric breaks its floor, else 0.
+// Turns eval runs into evals/reports/<date>[-<version>][-<subset>].json and .md: every target of docs/context.md met or
+// missed, the regression floors of evals/thresholds[-<version>].json beside them, and on a full run of the default set
+// the eval table that opens the README. The exit code is 2 when a quota stop left cases unrun, 1 when a metric breaks
+// its floor, else 0.
 import { existsSync } from 'node:fs';
 import { CLAUDE_EXTRACTION_CAP, CLAUDE_FIRST_MAX_TOKENS, CLAUDE_INPUT_CAP } from '@freightaudit/llm';
 import { readdir, readFile, writeFile } from 'node:fs/promises';
+import type { GoldenCase } from '../golden/build.ts';
 import { writeLandingResults } from './landing.ts';
 import { failuresOf, type Measured, measure, meets, type Metric, METRICS, scoreCase, type Score } from './metrics.ts';
 import type { Roles, Run, Subset } from './run.ts';
@@ -13,7 +15,6 @@ import type { Roles, Run, Subset } from './run.ts';
 // set the floor, or is "design target" for a floor set to the target by such a reason.
 type Floor = { min?: number; max?: number; from: string };
 type Thresholds = { _rules?: string } & Partial<Record<Subset, Record<string, Floor>>>;
-const THRESHOLDS = new URL('../thresholds.json', import.meta.url);
 const RULES =
   "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). Exception: the ci subset gates extraction latency p95 on its design target (12,000 ms), not a derived floor: with n = 20 its p95 is effectively the slowest single case, and its interval is too wide for a floor tighter than the target to separate regressions from noise (docs/memory.md, 2026-10-16). Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
 const README = new URL('../../README.md', import.meta.url);
@@ -111,15 +112,58 @@ const usage = (runs: Run[]) => {
 const pins = (roles: Roles) => Object.entries(roles).map(([role, { provider, model }]) => `${role} ${provider}/${model}`).join(', ');
 
 // A full run is the official report and has the date alone; a labelled configuration always names its subset and itself.
-export const reportName = (subset: Subset, date: string, config?: string) => (config ? `${date}-${subset}-${config}` : subset === 'full' ? date : `${date}-${subset}`);
+// A later set version follows the date, its dev reports carry the prompt they read with, so a before and an after on one
+// day never overwrite each other, and repeated reads (--repeat) add their count.
+export function reportName(subset: Subset, date: string, config?: string, { version = 'v1', promptHash, repeat = 1 }: { version?: string; promptHash?: string; repeat?: number } = {}) {
+  const times = repeat > 1 ? `-x${repeat}` : '';
+  if (version === 'v1') return `${config ? `${date}-${subset}-${config}` : subset === 'full' ? date : `${date}-${subset}`}${times}`;
+  const prompt = subset === 'dev' && promptHash ? [promptHash.slice(0, 6)] : [];
+  return `${[date, version, ...(subset === 'full' && !config ? [] : [subset]), ...prompt, ...(config ? [config] : [])].join('-')}${times}`;
+}
+// The set CI gates on, whose full runs write the README's table and the landing page's results.
+export const DEFAULT_GOLDEN = 'v1';
+// v1's floors keep their file; each later version has its own, under the same rules.
+export const thresholdsFile = (version: string) => (version === 'v1' ? 'thresholds.json' : `thresholds-${version}.json`);
+// The newest official report of a set version: a full run's, named by its date alone (and the version after v1).
+export const latestOfficial = (files: string[], version: string) =>
+  files.filter((file) => new RegExp(`^\\d{4}-\\d{2}-\\d{2}${version === 'v1' ? '' : `-${version}`}\\.json$`).test(file)).sort().at(-1);
+export const readmeIntro = ({ version, cases, date, served, name }: { version: string; cases: number; date: string; served: string; name: string }) =>
+  `Golden set ${version} (${cases} synthetic invoices, ground truth from the generator), measured ${date} with ${served}. ${cases} cases give wide intervals; misses are listed as misses. Full report: \`evals/reports/${name}.md\`.`;
+export const writesReadme = ({ subset, version, config, stopped }: { subset: Subset; version: string; config?: string | undefined; stopped?: string | undefined }) =>
+  subset === 'full' && !stopped && !config && version === DEFAULT_GOLDEN;
+
+export type Breakdown = { by: 'kind' | 'trait'; name: string; cases: number; header: [number, number]; carrier: [number, number]; count: [number, number]; outcome: [number, number] };
+// Per kind, then per trait: cases (reads, with --repeat), header fields, the carrier, invoices read against the truth and
+// outcomes, so a fix for one kind of miss shows where it lands.
+export function byKindAndTrait(cases: Pick<GoldenCase, 'id' | 'kind' | 'traits'>[], scores: Score[]): Breakdown[] {
+  const scoreOf = new Map(scores.map((score) => [score.id, score]));
+  const rows = new Map<string, Breakdown>();
+  const add = (by: Breakdown['by'], name: string, score: Score) => {
+    const row: Breakdown = rows.get(`${by}:${name}`) ?? { by, name, cases: 0, header: [0, 0], carrier: [0, 0], count: [0, 0], outcome: [0, 0] };
+    row.cases += 1;
+    row.header = [row.header[0] + score.header.correct, row.header[1] + score.header.total];
+    row.carrier = [row.carrier[0] + score.fields.carrier, row.carrier[1] + score.outcomes.total];
+    row.count = [row.count[0] + (score.invoices.read === score.invoices.truth ? 1 : 0), row.count[1] + 1];
+    row.outcome = [row.outcome[0] + score.outcomes.ok, row.outcome[1] + score.outcomes.total];
+    rows.set(`${by}:${name}`, row);
+  };
+  for (const golden of cases) {
+    const score = scoreOf.get(golden.id);
+    if (!score) continue;
+    add('kind', golden.kind, score);
+    for (const trait of golden.traits ?? []) add('trait', trait, score);
+  }
+  const all = [...rows.values()];
+  return [...all.filter((row) => row.by === 'kind'), ...all.filter((row) => row.by === 'trait').sort((a, b) => a.name.localeCompare(b.name))];
+}
 
 const REPORTS = new URL('../reports/', import.meta.url);
 const largest = (values: number[]) => (values.length > 0 ? Math.max(...values).toLocaleString('en-US') : 'none');
 
-// A labelled run beside the latest official free run on the cases both read, then Claude's largest calls and invoices
-// against the caps it ran under.
+// A labelled run beside the latest official free run of its own set version on the cases both read, then Claude's
+// largest calls and invoices against the caps it ran under.
 async function beside(scores: Score[], run: Run) {
-  const official = (await readdir(REPORTS)).filter((file) => /^\d{4}-\d{2}-\d{2}\.json$/.test(file)).sort().at(-1);
+  const official = latestOfficial(await readdir(REPORTS), run.version);
   const lines = ['', `## Beside the official free run (${official ?? 'none found'})`, ''];
   if (official) {
     const ids = new Set(scores.map((score) => score.id));
@@ -153,7 +197,9 @@ async function beside(scores: Score[], run: Run) {
 
 export async function report({ subset, runs, durationMs, setFloors, config }: { subset: Subset; runs: Run[]; durationMs: number; setFloors: boolean; config?: string | undefined }) {
   const date = new Date().toISOString().slice(0, 10);
-  const name = reportName(subset, date, config);
+  const { version, promptHash, repeat } = runs[0]!;
+  const name = reportName(subset, date, config, { version, promptHash, repeat });
+  const thresholdsUrl = new URL(`../${thresholdsFile(version)}`, import.meta.url);
   const stopped = runs.find((run) => run.stopped)?.stopped;
   // A comparison scores only the cases every run finished, so both columns cover the same invoices.
   const done = (golden: { id: string }) => (subset === 'compare' ? runs.every((run) => run.results.has(golden.id)) : true);
@@ -186,7 +232,7 @@ export async function report({ subset, runs, durationMs, setFloors, config }: { 
     const [{ run, scores }] = scored as [(typeof scored)[number]];
     const measured: Measured[] = measure(scores);
     const ceiling = throughput(scores, run.roles);
-    const thresholds: Thresholds = existsSync(THRESHOLDS) ? (JSON.parse(await readFile(THRESHOLDS, 'utf8')) as Thresholds) : {};
+    const thresholds: Thresholds = existsSync(thresholdsUrl) ? (JSON.parse(await readFile(thresholdsUrl, 'utf8')) as Thresholds) : {};
     // A labelled configuration is never held to the official floors and never sets them.
     const floors = config ? {} : (thresholds[subset] ??= {});
     const suggestions: string[] = [];
@@ -209,10 +255,14 @@ export async function report({ subset, runs, durationMs, setFloors, config }: { 
     });
     if (setFloors) {
       thresholds._rules ??= RULES;
-      await writeFile(THRESHOLDS, `${JSON.stringify(thresholds, null, 2)}\n`);
+      await writeFile(thresholdsUrl, `${JSON.stringify(thresholds, null, 2)}\n`);
     }
-    const wide = subset === 'full' ? '90 cases give wide intervals: read each measurement with its 95% interval.' : `${scores.length} cases give very wide intervals; this subset guards against regressions, it does not measure the targets.`;
-    lines.push(`# Extraction eval: ${subset} (${date})`, '', `Golden set v1, ${head(run, scores)} Took ${Math.round(durationMs / 1000)} s.`, '', wide, '');
+    const wide =
+      subset === 'full'
+        ? `${scores.length} cases give wide intervals: read each measurement with its 95% interval.`
+        : `${scores.length} ${(repeat ?? 1) > 1 ? 'reads' : 'cases'} give very wide intervals; this subset guards against regressions, it does not measure the targets.`;
+    const reads = (repeat ?? 1) > 1 ? ` Each case read ${repeat} times, each read in its own environment; the tables count reads.` : '';
+    lines.push(`# Extraction eval: ${subset} (${date})`, '', `Golden set ${version}, ${head(run, scores)} Took ${Math.round(durationMs / 1000)} s.${reads}`, '', wide, '');
     if (stopped) lines.push(`**Stopped early on a spent quota (${stopped}); rerun the same command to resume from the cache.**`, '');
     lines.push('| Metric | Design target | Target | Floor | Floor | Measured | 95% CI | n |', '| --- | --- | --- | --- | --- | --- | --- | --- |');
     for (const { m, metric, floorBound, floorOk } of rows) {
@@ -226,8 +276,10 @@ export async function report({ subset, runs, durationMs, setFloors, config }: { 
       "Extraction latency counts the calls that returned a reply (first pass, repair, fallback), each from its request to its answer, without the time spent waiting on a provider's rate limit: on free tiers those waits measure the provider plan, not the pipeline, so the rate-limit rows count them, and failed or timed-out calls, apart. End-to-end latency is measured from upload to final status under this run's own throttling and concurrency, not under normal load; throughput is the ceiling the pinned roles' free-tier per-minute limits allow at the measured calls and tokens per invoice, not a load test. The k6 load test measures both (README, Load test).",
     );
     if (suggestions.length > 0) lines.push('', '## Floors to tighten', '', ...suggestions.map((text) => `- ${text}`));
-    const misses = scores.filter((s) => s.header.correct < s.header.total || s.lines.fp + s.lines.fn > 0 || s.overcharges.fp + s.overcharges.fn > 0 || s.outcomes.ok < s.outcomes.total);
+    const misses = scores.filter((s) => s.header.correct < s.header.total || s.lines.fp + s.lines.fn > 0 || s.overcharges.fp + s.overcharges.fn > 0 || s.outcomes.ok < s.outcomes.total || s.invoices.read !== s.invoices.truth);
     const kinds = new Map(run.cases.map((golden) => [golden.id, golden.kind]));
+    const traits = new Map(run.cases.map((golden) => [golden.id, golden.traits?.join(', ') || '-']));
+    const share = ([ok, all]: [number, number]) => `${ok}/${all}`;
     const failures = failuresOf(
       run.cases.map((golden) => golden.id),
       run.results,
@@ -241,15 +293,28 @@ export async function report({ subset, runs, durationMs, setFloors, config }: { 
         '| --- | --- | --- | --- | --- | --- |',
         ...failures.map((f) => `| ${f.id} | ${f.provider} | ${f.model} | ${cell(f.class)} | ${f.status ?? '-'} | ${cell(f.message)} |`),
       );
-    lines.push('', '## Cases with any miss', '', '| Case | Kind | Path | Header fields | Lines tp/fp/fn | Findings tp/fp/fn | Outcome | Status |', '| --- | --- | --- | --- | --- | --- | --- | --- |');
+    const breakdown = byKindAndTrait(run.cases, scores);
+    lines.push(
+      '',
+      '## By kind and trait',
+      '',
+      'Each row counts the cases of one kind, or with one trait (what makes a case hard); a case has one kind and any number of traits.',
+      '',
+      '| By | Name | Cases | Header fields | Carrier | Invoices read right | Outcome |',
+      '| --- | --- | --- | --- | --- | --- | --- |',
+      ...breakdown.map((row) => `| ${row.by} | ${row.name} | ${row.cases} | ${share(row.header)} | ${share(row.carrier)} | ${share(row.count)} | ${share(row.outcome)} |`),
+    );
+    lines.push('', '## Cases with any miss', '', '| Case | Kind | Traits | Path | Header fields | Invoices read | Lines tp/fp/fn | Findings tp/fp/fn | Outcome | Status |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
     for (const s of misses) {
       const result = run.results.get(s.id)!;
-      lines.push(`| ${s.id} | ${kinds.get(s.id)} | ${s.path} | ${s.header.correct}/${s.header.total} | ${s.lines.tp}/${s.lines.fp}/${s.lines.fn} | ${s.overcharges.tp}/${s.overcharges.fp}/${s.overcharges.fn} | ${s.outcomes.ok}/${s.outcomes.total} | ${result.status}${result.error ? ` (${result.error})` : ''} |`);
+      lines.push(
+        `| ${s.id} | ${kinds.get(s.id)} | ${traits.get(s.id)} | ${s.path} | ${s.header.correct}/${s.header.total} | ${s.invoices.read} of ${s.invoices.truth} | ${s.lines.tp}/${s.lines.fp}/${s.lines.fn} | ${s.overcharges.tp}/${s.overcharges.fp}/${s.overcharges.fn} | ${s.outcomes.ok}/${s.outcomes.total} | ${result.status}${result.error ? ` (${result.error})` : ''} |`,
+      );
     }
     if (config) lines.push(...(await beside(scores, run)));
-    Object.assign(json, { config: config ?? null, golden: 'v1', promptHash: run.promptHash, pins: pins(run.roles), cases: scores.length, computed: run.computed, metrics: measured, throughputPerHour: ceiling ?? null, floors, failures, scores });
+    Object.assign(json, { config: config ?? null, golden: version, repeat: repeat ?? 1, promptHash: run.promptHash, pins: pins(run.roles), cases: scores.length, computed: run.computed, metrics: measured, throughputPerHour: ceiling ?? null, floors, failures, breakdown, scores });
 
-    if (subset === 'full' && !stopped && !config) {
+    if (writesReadme({ subset, version, config, stopped })) {
       // Every pinned role with the model version the provider reported serving, or that it was never called.
       const served = Object.entries(run.roles)
         .map(([role, { provider, model }]) => {
@@ -262,7 +327,7 @@ export async function report({ subset, runs, durationMs, setFloors, config }: { 
         '<!-- eval:start -->',
         '## Eval results',
         '',
-        `Golden set v1 (90 synthetic invoices, ground truth from the generator), measured ${date} with ${served}. 90 cases give wide intervals; misses are listed as misses. Full report: \`evals/reports/${name}.md\`.`,
+        readmeIntro({ version, cases: scores.length, date, served, name }),
         '',
         '| Metric | Target | Measured | 95% CI | Met | Model | Date |',
         '| --- | --- | --- | --- | --- | --- | --- |',

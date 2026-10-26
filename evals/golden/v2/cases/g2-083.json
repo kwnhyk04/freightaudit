@@ -1,0 +1,79 @@
+{
+  "id": "g2-083",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "credit_memo",
+  "adversarial": true,
+  "traits": [
+    "skew"
+  ],
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "skew",
+      "degrees": 3.6,
+      "noise": 3877588309,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-083.pdf",
+  "shipments": [
+    "1007768539"
+  ],
+  "sha256": "0ecf5128cc1e03842f40ddfb9be836e83933eb2ebdb2f106817fb56cd53ece0b",
+  "bytes": 250912,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "CM149026",
+      "invoice_date": "2026-03-16",
+      "due_date": "2026-04-15",
+      "pro_number": "1007768539",
+      "currency": "USD",
+      "kind": "credit_memo",
+      "bill_to": {
+        "name": "Hickle - Russel",
+        "address": "4897 Emilia Plain, North Madelynboro, ME 68224"
+      },
+      "shipper": {
+        "name": "Raynor, Heathcote and Effertz",
+        "address": "25020 Lexi Via, Deckowberg, PA 41882"
+      },
+      "consignee": {
+        "name": "Wisoky LLC",
+        "address": "3512 Kautzer Lights, Cadenfield, PA 63509"
+      },
+      "weight_lb": 5015,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Detention credit",
+          "charge_code": "DETENTION",
+          "amount_cents": -10165,
+          "expected_cents": -10165
+        },
+        {
+          "line_number": 2,
+          "description": "Linehaul credit",
+          "charge_code": "LINEHAUL",
+          "amount_cents": -288975,
+          "expected_cents": -288975
+        }
+      ],
+      "total_cents": -299140,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

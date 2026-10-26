@@ -1,0 +1,90 @@
+{
+  "id": "g2-059",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "repeated_page",
+  "adversarial": true,
+  "traits": [
+    "carrier_wording",
+    "copy_label",
+    "early_pay_discount",
+    "title_line"
+  ],
+  "layouts": [
+    "carrier_form"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-059.pdf",
+  "shipments": [
+    "1019670796"
+  ],
+  "sha256": "796ca1d63f509187cca793db241a7ebf7abbc0b20bc982e365e8529ee42d418d",
+  "bytes": 129059,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "51603081",
+      "invoice_date": "2026-05-25",
+      "due_date": "2026-06-24",
+      "pro_number": "1019670796",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Tremblay, Graham and King",
+        "address": "80374 Cruickshank Valley, Lake Ricardo, CO 47978"
+      },
+      "shipper": {
+        "name": "Wilkinson, Jakubowski and Cummerata",
+        "address": "1040 Abshire Harbors, Blickburgh, ID 95387"
+      },
+      "consignee": {
+        "name": "Romaguera - Morar",
+        "address": "77775 Elliott Square, South Warren, AZ 54912"
+      },
+      "weight_lb": 10133,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul transportation",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 591150,
+          "expected_cents": 591150
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel",
+          "charge_code": "FUEL",
+          "amount_cents": 181424,
+          "expected_cents": 181424
+        },
+        {
+          "line_number": 3,
+          "description": "Detention (waiting time)",
+          "charge_code": "DETENTION",
+          "amount_cents": 10165,
+          "expected_cents": 10165
+        },
+        {
+          "line_number": 4,
+          "description": "Appt. delivery",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 2622,
+          "expected_cents": 2622
+        }
+      ],
+      "total_cents": 785361,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

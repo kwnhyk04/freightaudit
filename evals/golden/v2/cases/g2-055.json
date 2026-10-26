@@ -1,0 +1,142 @@
+{
+  "id": "g2-055",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "duplicate_invoice",
+  "adversarial": false,
+  "traits": [
+    "factoring_remit",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-055.pdf",
+  "shipments": [
+    "1002074778"
+  ],
+  "sha256": "ccb1df169748ab2cb53cdc8e623ac054cb173729f4bbe9ede9d3bbf658879192",
+  "bytes": 54714,
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "18865696",
+      "invoice_date": "2025-03-08",
+      "due_date": "2025-04-07",
+      "pro_number": "1002074778",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Pfeffer, Robel and Lynch",
+        "address": "7370 Erling Lake, Dunwoody, MO 79576"
+      },
+      "shipper": {
+        "name": "Quigley, Bernhard and Rau",
+        "address": "221 Chanelle Falls, Miami Beach, FL 99527"
+      },
+      "consignee": {
+        "name": "Kihn, Heller and Pfannerstill",
+        "address": "449 E 11th Street, Menifee, MD 29572"
+      },
+      "weight_lb": 937,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 500690,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 127376,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10687,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 658512,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 500690
+        },
+        {
+          "line_number": 2,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 127376
+        },
+        {
+          "line_number": 3,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 19759
+        },
+        {
+          "line_number": 4,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 10687
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Collins Capital Funding",
+        "address": "P.O. Box 25403, New Katrinaview, MS 87286"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 500690
+          },
+          {
+            "line_number": 2,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 127376
+          },
+          {
+            "line_number": 3,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 19759
+          },
+          {
+            "line_number": 4,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 10687
+          }
+        ]
+      }
+    }
+  ]
+}

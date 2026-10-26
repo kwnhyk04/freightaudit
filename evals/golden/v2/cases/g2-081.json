@@ -1,0 +1,93 @@
+{
+  "id": "g2-081",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "partial_credit",
+  "adversarial": true,
+  "traits": [
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "stamp",
+      "degrees": -1.14,
+      "noise": 652883423,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-081.pdf",
+  "shipments": [
+    "1027700662"
+  ],
+  "sha256": "f0c31423076235b23397d7732dbce98a4fb0216efde9bc14f1bb1612d2c0a0da",
+  "bytes": 507540,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "87722581",
+      "invoice_date": "2026-09-01",
+      "due_date": "2026-10-01",
+      "pro_number": "1027700662",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Aufderhar - Cummerata",
+        "address": "21893 Dibbert Rapid, Breitenbergchester, OK 70910"
+      },
+      "shipper": {
+        "name": "Champlin LLC",
+        "address": "97667 Kunde Rest, Mission Viejo, NE 53521"
+      },
+      "consignee": {
+        "name": "Heller - Wisoky",
+        "address": "51385 Nightingale Close, Orrinboro, IN 52176"
+      },
+      "weight_lb": 4038,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 556950,
+          "expected_cents": 556950
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 170928,
+          "expected_cents": 170928
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 2622,
+          "expected_cents": 2622
+        },
+        {
+          "line_number": 4,
+          "description": "Delivery appointment adjustment (credit)",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": -445,
+          "expected_cents": -445
+        }
+      ],
+      "total_cents": 730055,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "id": "g2-077",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "packet",
+  "adversarial": false,
+  "traits": [
+    "low_contrast",
+    "title_line"
+  ],
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 5,
+  "scans": [
+    {
+      "profile": "low_contrast",
+      "degrees": 1.42,
+      "noise": 1163750888,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": -0.58,
+      "noise": 1978610752,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": -0.4,
+      "noise": 4185636562,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": -1.15,
+      "noise": 99121191,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": 0.13,
+      "noise": 1735468423,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-077.pdf",
+  "shipments": [
+    "1010049211"
+  ],
+  "sha256": "2289d8533c1fc0b44f3e78b5d59c09c9e3d3a53d0c2e073825c6f46fc29a71f3",
+  "bytes": 684926,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "99212446",
+      "invoice_date": "2025-07-02",
+      "due_date": "2025-08-01",
+      "pro_number": "1010049211",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Leffler - Goyette",
+        "address": "1176 Leanna Lane, Lubowitzport, UT 84408"
+      },
+      "shipper": {
+        "name": "Christiansen and Sons",
+        "address": "286 W South Street, Cobyside, CT 65385"
+      },
+      "consignee": {
+        "name": "Witting and Sons",
+        "address": "941 The Spinney, Redondo Beach, NV 43384"
+      },
+      "weight_lb": 2406,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 351940,
+          "expected_cents": 351940
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 64475,
+          "expected_cents": 64475
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3486,
+          "expected_cents": 3486
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 13702,
+          "expected_cents": 13702
+        }
+      ],
+      "total_cents": 433603,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

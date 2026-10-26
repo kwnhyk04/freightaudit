@@ -1,0 +1,95 @@
+{
+  "id": "g2-084",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "revised_invoice",
+  "adversarial": true,
+  "traits": [
+    "landscape",
+    "reference_numbers",
+    "title_line"
+  ],
+  "layouts": [
+    "landscape"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-084.pdf",
+  "shipments": [
+    "1000332598"
+  ],
+  "sha256": "8b590c3965fe0bef9a9a1762c22777118ed384cdfcf9ccd603f724f0e42951dc",
+  "bytes": 55339,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "28335353",
+      "invoice_date": "2025-10-29",
+      "due_date": "2025-11-28",
+      "pro_number": "1000332598",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Herman Group",
+        "address": "3874 Roob Fork, Farrellshire, NC 60574"
+      },
+      "shipper": {
+        "name": "Armstrong Group",
+        "address": "5423 Ashlee Court, Gabetown, MA 20297"
+      },
+      "consignee": {
+        "name": "Halvorson-King Group",
+        "address": "1627 Zulauf Lane, New Juliastead, ME 73428"
+      },
+      "weight_lb": 1574,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 182880,
+          "expected_cents": 182880
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 39155,
+          "expected_cents": 39155
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 4709,
+          "expected_cents": 4709
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14245,
+          "expected_cents": 14245
+        }
+      ],
+      "total_cents": 240989,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "5910683382",
+        "po": "PO-96790",
+        "shipped_on": "2025-10-21",
+        "delivered_on": "2025-10-25"
+      },
+      "revised_from": "52992258",
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

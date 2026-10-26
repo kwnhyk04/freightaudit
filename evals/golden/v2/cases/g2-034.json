@@ -1,0 +1,116 @@
+{
+  "id": "g2-034",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "title_line"
+  ],
+  "layouts": [
+    "carrier_form"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-034.pdf",
+  "shipments": [
+    "1017002093"
+  ],
+  "sha256": "9599f56bd9d0f3795ce29c7550a4964c349dac22b6f6ce117dfe74eb8093b142",
+  "bytes": 55758,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "31323163",
+      "invoice_date": "2026-06-06",
+      "due_date": "2026-07-06",
+      "pro_number": "1017002093",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Wilkinson, Kohler and Hettinger",
+        "address": "3401 Bailey Crest, Cutler Bay, VT 62380"
+      },
+      "shipper": {
+        "name": "Carroll - Leannon",
+        "address": "7367 1st Street, Lakintown, UT 50946"
+      },
+      "consignee": {
+        "name": "Heathcote - Kemmer",
+        "address": "206 Runolfsson Place, Port Lena, MA 57723"
+      },
+      "weight_lb": 1174,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Line haul freight",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 186902,
+          "expected_cents": 186902
+        },
+        {
+          "line_number": 2,
+          "description": "Diesel fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 45698,
+          "expected_cents": 45698
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 11635,
+          "expected_cents": 11635
+        },
+        {
+          "line_number": 4,
+          "description": "Home delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 14274,
+          "expected_cents": 14274
+        },
+        {
+          "line_number": 5,
+          "description": "Notify / appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3895,
+          "expected_cents": 3895
+        },
+        {
+          "line_number": 6,
+          "description": "Inside delivery charge",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 14612,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 277016,
+      "overcharges": [
+        {
+          "line_number": 6,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 14612
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 6,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 14612
+          }
+        ]
+      }
+    }
+  ]
+}

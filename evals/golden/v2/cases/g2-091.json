@@ -1,0 +1,88 @@
+{
+  "id": "g2-091",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "handwritten",
+  "adversarial": true,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "carrier_form"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "stamp",
+      "degrees": 0.3,
+      "noise": 175844305,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-091.pdf",
+  "shipments": [
+    "1014436337"
+  ],
+  "sha256": "e9d0d997c27cf91cd90efda37d6c01db1ce937c539ef2df0a09654599e130737",
+  "bytes": 502937,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "65093094",
+      "invoice_date": "2026-02-27",
+      "due_date": "2026-03-29",
+      "pro_number": "1014436337",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Wunsch - Flatley",
+        "address": "2582 Garden Street, White Plains, AZ 33508"
+      },
+      "shipper": {
+        "name": "Roberts, Wunsch and Barton",
+        "address": "968 S Monroe Street, South Alejandroboro, MO 85252"
+      },
+      "consignee": {
+        "name": "Kirlin - McDermott",
+        "address": "84798 Nicolas Crescent, Wichita, RI 19545"
+      },
+      "weight_lb": 1348,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul transportation",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 62100,
+          "expected_cents": 62100
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel",
+          "charge_code": "FUEL",
+          "amount_cents": 19058,
+          "expected_cents": 19058
+        },
+        {
+          "line_number": 3,
+          "description": "Residential",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 10098,
+          "expected_cents": 10098
+        }
+      ],
+      "total_cents": 91256,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

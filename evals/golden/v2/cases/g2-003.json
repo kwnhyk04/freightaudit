@@ -1,0 +1,88 @@
+{
+  "id": "g2-003",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "title_line"
+  ],
+  "layouts": [
+    "carrier_form"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-003.pdf",
+  "shipments": [
+    "1022648340"
+  ],
+  "sha256": "c6fb67ab822e8eec6301f8eb88098d940c1c3eb43bddd4cce359379142ed398d",
+  "bytes": 54012,
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "37259868",
+      "invoice_date": "2025-12-28",
+      "due_date": "2026-01-27",
+      "pro_number": "1022648340",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Quigley - Greenholt-Gutmann",
+        "address": "567 Clifton Road, Stephenside, HI 89287"
+      },
+      "shipper": {
+        "name": "Quigley - Dietrich",
+        "address": "9024 Coronation Avenue, South Zeldaside, MS 52157"
+      },
+      "consignee": {
+        "name": "Orn-Prohaska - Baumbach",
+        "address": "432 W Monroe Street, Baumbach-Lebsackfurt, UT 90082"
+      },
+      "weight_lb": 10768,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Transportation",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 164656,
+          "expected_cents": 164656
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel adjustment",
+          "charge_code": "FUEL",
+          "amount_cents": 41888,
+          "expected_cents": 41888
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 19759
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate delivery",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12946,
+          "expected_cents": 12946
+        }
+      ],
+      "total_cents": 239249,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -51,11 +51,16 @@ export const failuresOf = (ids: string[], results: Map<string, CaseResult>) =>
 // One case as the harness caches it.
 export type CaseResult = { id: string; status: string; error: string | null; e2eMs: number; invoices: PredictedInvoice[]; calls: CallRow[] };
 
+const FIELDS = ['carrier', 'invoice_number', 'invoice_date', 'pro_number', 'currency', 'total_cents'] as const;
 export type Score = {
   id: string;
   path: 'digital' | 'scanned';
   pages: number;
   header: { correct: number; total: number };
+  // Right readings of each header field, out of header.total / 6, so a misread shows which field it was.
+  fields: Record<(typeof FIELDS)[number], number>;
+  // Invoices the truth holds and the pipeline ended with: a repeated page read twice shows as 1 against 2.
+  invoices: { truth: number; read: number };
   lines: { tp: number; fp: number; fn: number };
   arithmetic: { ok: number; total: number };
   overcharges: { tp: number; fp: number; fn: number; recovered: number; planted: number; cleanLines: number };
@@ -79,18 +84,16 @@ const norm = (value: unknown) => String(value ?? '').trim().replace(/\s+/g, ' ')
 const int = (value: unknown) => (typeof value === 'number' && Number.isInteger(value) ? value : null);
 
 // Header fields compared one by one: the carrier without regard to case or spacing, the rest exactly.
-function headerHits(truth: GoldenCase['invoices'][number], read: Read | null) {
-  if (!read) return 0;
-  return [
-    norm(read.carrier) === norm(truth.carrier),
-    String(read.invoice_number ?? '') === truth.invoice_number,
-    String(read.invoice_date ?? '') === truth.invoice_date,
-    (read.pro_number ?? null) === truth.pro_number,
-    String(read.currency ?? '') === truth.currency,
-    int(read.total_cents) === truth.total_cents,
-  ].filter(Boolean).length;
+function headerHits(truth: GoldenCase['invoices'][number], read: Read | null): Record<(typeof FIELDS)[number], boolean> {
+  return {
+    carrier: !!read && norm(read.carrier) === norm(truth.carrier),
+    invoice_number: !!read && String(read.invoice_number ?? '') === truth.invoice_number,
+    invoice_date: !!read && String(read.invoice_date ?? '') === truth.invoice_date,
+    pro_number: !!read && (read.pro_number ?? null) === truth.pro_number,
+    currency: !!read && String(read.currency ?? '') === truth.currency,
+    total_cents: !!read && int(read.total_cents) === truth.total_cents,
+  };
 }
-const HEADER_FIELDS = 6;
 
 // Multiset match of items by key: how many of `found` match `wanted`, and what is left on each side.
 export function match<T, U>(wanted: T[], found: U[], keyOfWanted: (item: T) => string, keyOfFound: (item: U) => string) {
@@ -134,6 +137,8 @@ export function scoreCase(truth: GoldenCase, result: CaseResult): Score {
     path: truth.path,
     pages: truth.pages,
     header: { correct: 0, total: 0 },
+    fields: { carrier: 0, invoice_number: 0, invoice_date: 0, pro_number: 0, currency: 0, total_cents: 0 },
+    invoices: { truth: truth.invoices.length, read: result.invoices.length },
     lines: { tp: 0, fp: 0, fn: 0 },
     arithmetic: { ok: 0, total: 0 },
     overcharges: { tp: 0, fp: 0, fn: 0, recovered: 0, planted: 0, cleanLines: 0 },
@@ -168,8 +173,12 @@ export function scoreCase(truth: GoldenCase, result: CaseResult): Score {
     score.overcharges.planted += planted.reduce((sum, over) => sum + over.billed_cents - over.expected_cents, 0);
     if (!want) continue;
     score.overcharges.cleanLines += want.line_items.length - planted.length;
-    score.header.total += HEADER_FIELDS;
-    score.header.correct += headerHits(want, read);
+    score.header.total += FIELDS.length;
+    const hits = headerHits(want, read);
+    for (const field of FIELDS) {
+      score.fields[field] += hits[field] ? 1 : 0;
+      score.header.correct += hits[field] ? 1 : 0;
+    }
     score.arithmetic.total += 1;
     score.arithmetic.ok += arithmeticHolds(read) ? 1 : 0;
     score.outcomes.total += 1;

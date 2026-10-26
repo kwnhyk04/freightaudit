@@ -1,0 +1,92 @@
+{
+  "id": "g2-062",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "repeated_page",
+  "adversarial": true,
+  "traits": [
+    "factoring_remit",
+    "fax",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 2,
+  "scans": [
+    {
+      "profile": "fax",
+      "degrees": 0.81,
+      "noise": 373105105,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "fax",
+      "degrees": -1.13,
+      "noise": 251446126,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-062.pdf",
+  "shipments": [
+    "1028500481"
+  ],
+  "sha256": "f5dc1712bbb8b31bbc42de35326a930abdc6e30c574f06b29e3e97e1ab9b2d0e",
+  "bytes": 58176,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "09533947",
+      "invoice_date": "2025-05-03",
+      "due_date": "2025-06-02",
+      "pro_number": "1028500481",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Lockman LLC",
+        "address": "8749 Washington Street, Jovannyshire, MS 25459"
+      },
+      "shipper": {
+        "name": "Hickle Group",
+        "address": "434 Poplar Street, Lake Aleenshire, CT 28342"
+      },
+      "consignee": {
+        "name": "Wisoky - Daugherty",
+        "address": "9465 Julien Plaza, Scottyboro, OH 28153"
+      },
+      "weight_lb": 968,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 430992,
+          "expected_cents": 430992
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 92275,
+          "expected_cents": 92275
+        }
+      ],
+      "total_cents": 523267,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Moen Capital Funding",
+        "address": "P.O. Box 52361, Carlosberg, NJ 39929"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

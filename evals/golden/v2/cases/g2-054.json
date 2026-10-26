@@ -1,0 +1,136 @@
+{
+  "id": "g2-054",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "duplicate_invoice",
+  "adversarial": false,
+  "traits": [
+    "title_line"
+  ],
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-054.pdf",
+  "shipments": [
+    "1017374286"
+  ],
+  "sha256": "c73c0c1b5919f24bb56055b8fb3931482dd2fde0313a297018388ee00ed36e75",
+  "bytes": 44452,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "43723290",
+      "invoice_date": "2026-04-16",
+      "due_date": "2026-05-16",
+      "pro_number": "1017374286",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Schowalter Inc",
+        "address": "14063 Kuhlman Bridge, Pearland, DE 38142"
+      },
+      "shipper": {
+        "name": "Flatley and Sons",
+        "address": "75229 Ruecker Drive, Peabody, OK 62377"
+      },
+      "consignee": {
+        "name": "Farrell - Towne",
+        "address": "3770 Hayes Viaduct, Gleichnerfurt, CA 00554"
+      },
+      "weight_lb": 11131,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 374520,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 68612,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8587,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14544,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 466263,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 374520
+        },
+        {
+          "line_number": 2,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 68612
+        },
+        {
+          "line_number": 3,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 8587
+        },
+        {
+          "line_number": 4,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 14544
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 374520
+          },
+          {
+            "line_number": 2,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 68612
+          },
+          {
+            "line_number": 3,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 8587
+          },
+          {
+            "line_number": 4,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 14544
+          }
+        ]
+      }
+    }
+  ]
+}

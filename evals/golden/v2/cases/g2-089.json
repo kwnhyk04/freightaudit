@@ -1,0 +1,99 @@
+{
+  "id": "g2-089",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "tricky_number",
+  "adversarial": true,
+  "traits": [
+    "factoring_remit",
+    "low_res",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_res",
+      "degrees": -0.55,
+      "noise": 4175790316,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-089.pdf",
+  "shipments": [
+    "1015101533"
+  ],
+  "sha256": "9bbcc2b606d93ef38cc09b1295b86aec572facdf353ef3e83296b40c7c0e97b4",
+  "bytes": 157977,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "90000009",
+      "invoice_date": "2025-05-06",
+      "due_date": "2025-06-05",
+      "pro_number": "1015101533",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Sipes - West",
+        "address": "191 Cade Fall, Turnerfurt, WV 06168"
+      },
+      "shipper": {
+        "name": "Reichert, Runte and Wolff",
+        "address": "3153 Kessler Landing, Brookhaven, NJ 00669"
+      },
+      "consignee": {
+        "name": "O'Kon - Bernier",
+        "address": "965 Tate Loop, Trentworth, NV 61424"
+      },
+      "weight_lb": 9674,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 234768,
+          "expected_cents": 234768
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 43009,
+          "expected_cents": 43009
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12726,
+          "expected_cents": 12726
+        },
+        {
+          "line_number": 4,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3486,
+          "expected_cents": 3486
+        }
+      ],
+      "total_cents": 293989,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Kunde Capital Funding",
+        "address": "P.O. Box 69919, South Deon, LA 35863"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

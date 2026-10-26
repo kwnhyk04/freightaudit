@@ -98,7 +98,7 @@ async function scan(png: Buffer, degrees: number, noiseSeed: number) {
 
 // Chromium stamps the render time into /CreationDate and /ModDate; pin both to the invoice date.
 // The replacement has the same length, so the cross-reference offsets stay valid.
-const pinDates = (pdf: Buffer, isoDay: string) =>
+export const pinDates = (pdf: Buffer, isoDay: string) =>
   Buffer.from(
     pdf.toString('latin1').replace(/\/(CreationDate|ModDate) \(D:\d{14}/g, (_, key: string) => `/${key} (D:${isoDay.replaceAll('-', '')}000000`),
     'latin1',

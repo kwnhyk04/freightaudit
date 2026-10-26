@@ -1,0 +1,86 @@
+{
+  "id": "g2-018",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "low_contrast",
+    "title_line"
+  ],
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_contrast",
+      "degrees": 0.44,
+      "noise": 2791187910,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-018.pdf",
+  "shipments": [
+    "1035714690"
+  ],
+  "sha256": "6da86f4e5d4beec9243f9f21cfc862771e41edf4e13f29d68659ccc6d596f4fe",
+  "bytes": 66772,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "53833953",
+      "invoice_date": "2026-03-18",
+      "due_date": "2026-04-17",
+      "pro_number": "1035714690",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Wiza, Farrell and Barrows",
+        "address": "525 Howe Well, Trujillo Alto, AZ 05803"
+      },
+      "shipper": {
+        "name": "Hegmann, Okuneva and Bruen",
+        "address": "160 Hickory Street, North Ericberg, NV 60845"
+      },
+      "consignee": {
+        "name": "Spencer, Daugherty and Sawayn",
+        "address": "548 Ash Road, Watsicaberg, KS 19460"
+      },
+      "weight_lb": 1450,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 122025,
+          "expected_cents": 122025
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 22355,
+          "expected_cents": 22355
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 13508,
+          "expected_cents": 13508
+        }
+      ],
+      "total_cents": 157888,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

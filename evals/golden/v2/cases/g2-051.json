@@ -1,0 +1,92 @@
+{
+  "id": "g2-051",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "stamp"
+  ],
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "stamp",
+      "degrees": -0.79,
+      "noise": 3065889791,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-051.pdf",
+  "shipments": [
+    "1028643023"
+  ],
+  "sha256": "52b2c60b4e0acc165b0ea096cc688d47566547e19688a747a25820e29029efec",
+  "bytes": 456470,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "41495005",
+      "invoice_date": "2026-01-11",
+      "due_date": "2026-02-10",
+      "pro_number": "1028643023",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Braun, Bashirian and Toy",
+        "address": "97709 Jaden Rapid, Leannonville, SD 20162"
+      },
+      "shipper": {
+        "name": "Morar Group",
+        "address": "26262 University Avenue, Rennerchester, WV 98841"
+      },
+      "consignee": {
+        "name": "VonRueden and Sons",
+        "address": "981 Castle Road, Stromanstead, KS 39865"
+      },
+      "weight_lb": 2909,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 391324,
+          "expected_cents": 391324
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 89646,
+          "expected_cents": 83782
+        }
+      ],
+      "total_cents": 480970,
+      "overcharges": [
+        {
+          "line_number": 2,
+          "type": "rate_mismatch",
+          "expected_cents": 83782,
+          "billed_cents": 89646
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 2,
+            "type": "rate_mismatch",
+            "expected_cents": 83782,
+            "billed_cents": 89646
+          }
+        ]
+      }
+    }
+  ]
+}

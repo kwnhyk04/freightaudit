@@ -1,0 +1,92 @@
+{
+  "id": "g2-032",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "low_contrast"
+  ],
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_contrast",
+      "degrees": 0.43,
+      "noise": 3003390864,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-032.pdf",
+  "shipments": [
+    "1030218904"
+  ],
+  "sha256": "8727c7ee2a198ba033a943822f9aae4b7b02ea3b46f3fa651b168062d09d7f7b",
+  "bytes": 79450,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "45903347",
+      "invoice_date": "2026-07-25",
+      "due_date": "2026-08-24",
+      "pro_number": "1030218904",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Ullrich, Swift and Prohaska-Jones",
+        "address": "8017 Valley Road, Lake Freddie, IA 85799"
+      },
+      "shipper": {
+        "name": "Anderson Inc",
+        "address": "950 Stokes Tunnel, Barnstable Town, SC 78742"
+      },
+      "consignee": {
+        "name": "Mraz and Sons",
+        "address": "5689 Bernier Square, Brookhaven, AL 84103"
+      },
+      "weight_lb": 11669,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 193575,
+          "expected_cents": 193575
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 59408,
+          "expected_cents": 59408
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11823,
+          "expected_cents": 11823
+        },
+        {
+          "line_number": 4,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 10098,
+          "expected_cents": 10098
+        }
+      ],
+      "total_cents": 274904,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

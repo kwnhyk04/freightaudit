@@ -2,7 +2,7 @@
 // dev, test and ci splits, or evals/comparison/v1, 15 scans for the primary model comparison drawn with another seed and
 // other shipments, so choosing a model never looks at the test split. Ground truth comes from the generator, never
 // from hand labels. A version is never rebuilt in place: a changed set is the next version.
-// Usage: node golden/build.ts --set golden|comparison
+// Usage: node golden/build.ts --set golden|comparison, or --version v2 for golden set v2 (golden/v2.ts).
 import { faker } from '@faker-js/faker';
 import { CHARGE_CODES, type ChargeCode } from '@freightaudit/db';
 import { buildSeed, type Overcharge } from '@freightaudit/db/scripts/seed';
@@ -11,8 +11,9 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { PDFDocument } from 'pdf-lib';
-import { assertPrinted, day, makeInvoice, party, printPdf, scanPdf, type Template, TEMPLATE_NAMES, withPage } from '../fixtures/generate-invoices.ts';
+import { assertPrinted, day, makeInvoice, party, printPdf, scanPdf, TEMPLATE_NAMES, withPage } from '../fixtures/generate-invoices.ts';
 import { handwriting, type InvoiceFixture, SUPPORTING, TEMPLATES } from '../fixtures/templates.ts';
+import { buildV2 } from './v2.ts';
 
 type Path = 'digital' | 'scanned';
 type Split = 'dev' | 'test' | 'comparison';
@@ -33,15 +34,19 @@ type Kind =
 type Group = { kind: Kind; path: Path; count: number; dev?: number; ci?: number };
 // What the pipeline must end with for an invoice: its status, the review reason, and every overcharge it must find.
 export type Expected = { status: 'reconciled' | 'needs_review'; reason?: string; overcharges: InvoiceFixture['overcharges'] };
-export type TruthInvoice = InvoiceFixture & { first_page: number; subtotal_cents: null; tax_cents: null; expected: Expected };
+// Subtotal and tax as printed: null when the invoice prints none, as no v1 layout does.
+export type TruthInvoice = InvoiceFixture & { first_page: number; subtotal_cents: number | null; tax_cents: number | null; expected: Expected };
 export type GoldenCase = {
   id: string;
   split: Split;
   ci: boolean;
   path: Path;
-  kind: Kind;
+  // A v1 Kind, or one of golden/v2.ts.
+  kind: string;
   adversarial: boolean;
-  layouts: Template[];
+  // What makes a v2 case hard (its layouts and noise), for the report's breakdown; v1 cases have none.
+  traits?: string[];
+  layouts: string[];
   pages: number;
   file: string;
   sha256: string;
@@ -91,8 +96,10 @@ const sha256 = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest(
 const reconciled = (inv: InvoiceFixture): Expected => ({ status: 'reconciled', overcharges: inv.overcharges });
 
 async function main() {
-  const { values } = parseArgs({ options: { set: { type: 'string', default: 'golden' } } });
+  const { values } = parseArgs({ options: { set: { type: 'string', default: 'golden' }, version: { type: 'string', default: 'v1' } } });
   if (values.set !== 'golden' && values.set !== 'comparison') throw new Error('--set must be golden or comparison');
+  if (values.version === 'v2' && values.set === 'golden') return buildV2();
+  if (values.version !== 'v1') throw new Error('--version must be v1, or v2 for the golden set');
   const set = SETS[values.set];
   const root = new URL(`${values.set}/v1/`, new URL('../', import.meta.url));
   if (existsSync(root)) throw new Error(`${values.set}/v1 exists; a version is never rebuilt in place, build the next one instead`);

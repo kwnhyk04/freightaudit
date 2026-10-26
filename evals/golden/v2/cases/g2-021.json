@@ -1,0 +1,99 @@
+{
+  "id": "g2-021",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "stamp"
+  ],
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "stamp",
+      "degrees": -1.05,
+      "noise": 64686392,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-021.pdf",
+  "shipments": [
+    "1009724532"
+  ],
+  "sha256": "8bfce1a5646c2ba05ed7a8731a7f5b7ac7574b9930ee8bfaea3a0b2063b70e5a",
+  "bytes": 492960,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "32094561",
+      "invoice_date": "2025-02-24",
+      "due_date": "2025-03-26",
+      "pro_number": "1009724532",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Collier and Sons",
+        "address": "44272 Schultz Mountains, Port Deechester, SD 06592"
+      },
+      "shipper": {
+        "name": "Smith - Connelly",
+        "address": "80308 W State Street, Hackensack, NM 03249"
+      },
+      "consignee": {
+        "name": "Bechtelar - Shanahan",
+        "address": "4270 Alan Roads, McKenziefort, LA 25004"
+      },
+      "weight_lb": 3815,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 327556,
+          "expected_cents": 327556
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 80087,
+          "expected_cents": 80087
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 11276,
+          "expected_cents": 11276
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 9444,
+          "expected_cents": 9444
+        },
+        {
+          "line_number": 5,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 13833,
+          "expected_cents": 13833
+        }
+      ],
+      "total_cents": 442196,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

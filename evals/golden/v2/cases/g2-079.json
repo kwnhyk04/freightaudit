@@ -1,0 +1,89 @@
+{
+  "id": "g2-079",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "partial_credit",
+  "adversarial": true,
+  "traits": [
+    "continued_page",
+    "reference_numbers",
+    "subtotal_tax",
+    "title_line"
+  ],
+  "layouts": [
+    "continued"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-079.pdf",
+  "shipments": [
+    "1015687539"
+  ],
+  "sha256": "2ade112169dc3083afcff270e8b59521150d12453945f7732c08f240882687ff",
+  "bytes": 69378,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "15410237",
+      "invoice_date": "2025-03-26",
+      "due_date": "2025-04-25",
+      "pro_number": "1015687539",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Kovacek Inc",
+        "address": "532 River Road, Lake Danielleview, MS 30570"
+      },
+      "shipper": {
+        "name": "Rau LLC",
+        "address": "603 N Broadway Street, Eleazarmouth, IN 63328"
+      },
+      "consignee": {
+        "name": "Hamill - Maggio",
+        "address": "75085 Berge Skyway, North Gloriacester, AL 85627"
+      },
+      "weight_lb": 1624,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 333172,
+          "expected_cents": 333172
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 81461,
+          "expected_cents": 81461
+        },
+        {
+          "line_number": 3,
+          "description": "Fuel surcharge adjustment (credit)",
+          "charge_code": "FUEL",
+          "amount_cents": -5702,
+          "expected_cents": -5702
+        }
+      ],
+      "total_cents": 408931,
+      "overcharges": [],
+      "subtotal_cents": 408931,
+      "tax_cents": 0,
+      "refs": {
+        "bol": "2285439775",
+        "po": "PO-84857",
+        "shipped_on": "2025-03-16",
+        "delivered_on": "2025-03-21"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

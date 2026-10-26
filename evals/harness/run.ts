@@ -1,7 +1,8 @@
 // The extraction eval: runs eval cases through the real worker (extract, repair, fallback, reconcile) against the small
 // seed in throwaway Postgres and Redis, with one pinned model per role from the environment. The provider 429 fallback
 // is off, so a 429 waits and retries; each case's result is cached, so a quota stop resumes later instead of starting
-// over. Usage: pnpm eval --suite extraction --subset ci|dev|full|compare [--fresh] [--set-floors] [--concurrency 4]
+// over. Usage: pnpm eval --suite extraction --subset ci|dev|test|full|compare [--golden v1|v2] [--repeat <n>] [--fresh]
+// [--set-floors] [--concurrency 4] [--config claude-primary]
 import { LLM_SETTINGS, llmRoles, type LlmRole, settings } from '@freightaudit/config/env';
 import { createPool, deadLetters, discrepancies, extractions, invoiceLines, invoices, llmCalls, tenants } from '@freightaudit/db';
 import { migrate } from '@freightaudit/db/migrate';
@@ -32,12 +33,16 @@ import { GenericContainer, type StartedTestContainer, Wait } from 'testcontainer
 import { z } from 'zod';
 import type { GoldenCase, Manifest } from '../golden/build.ts';
 import { type CallRow, type CaseResult, type PredictedInvoice, type Read, replied } from './metrics.ts';
-import { report } from './report.ts';
+import { DEFAULT_GOLDEN, report } from './report.ts';
 
 export type Roles = Record<'primary' | 'text' | 'fallback', LlmRole>;
 export type Subset = 'dev' | 'test' | 'ci' | 'full' | 'compare';
 export type Run = {
   label: string;
+  // The golden set's version, from its manifest.
+  version: string;
+  // How many reads of each case this run merges (--repeat); 1 when absent.
+  repeat?: number;
   // A labelled configuration such as claude-primary, which names the report and never touches floors or the README.
   config?: string | undefined;
   roles: Roles;
@@ -255,6 +260,8 @@ async function callsOf(env: Environment, invoiceIds: string[]): Promise<CallRow[
 // Runs every selected case not yet cached for these pins, prompt and set version, `concurrency` at a time.
 export async function evaluate({
   set,
+  version = 'v1',
+  repeat = 1,
   subset,
   label,
   roles,
@@ -266,6 +273,10 @@ export async function evaluate({
   environment = (r: Roles) => startEnvironment(r, {}, claude),
 }: {
   set: 'golden' | 'comparison';
+  // The set's version: golden v1 or v2; the comparison set has v1 only.
+  version?: string;
+  // Which read of each case this is (--repeat): read 1 keeps the plain cache key, each later read has its own.
+  repeat?: number;
   subset: Subset;
   label: string;
   roles: Roles;
@@ -279,14 +290,14 @@ export async function evaluate({
   cachedOnly?: boolean;
   environment?: (roles: Roles) => Promise<Environment>;
 }): Promise<Run> {
-  const root = new URL(`../${set}/v1/`, import.meta.url);
+  const root = new URL(`../${set}/${version}/`, import.meta.url);
   const manifest = JSON.parse(await readFile(new URL('manifest.json', root), 'utf8')) as Manifest;
   const inSubset = (entry: Manifest['cases'][number]) => (subset === 'dev' || subset === 'test' ? entry.split === subset : subset === 'ci' ? entry.ci : true);
   const chosen = manifest.cases.filter((entry) => (only ? only.includes(entry.id) : inSubset(entry)));
   const cases = await Promise.all(chosen.map(async (entry) => JSON.parse(await readFile(new URL(`cases/${entry.id}.json`, root), 'utf8')) as GoldenCase));
   // Claude first, with its caps, is part of what a cached result was read with.
   const first = claude && `${claude.provider}/${claude.model} first, ${CLAUDE_FIRST_MAX_TOKENS} out, ${CLAUDE_INPUT_CAP} in, ${CLAUDE_EXTRACTION_CAP} an invoice`;
-  const key = sha256(JSON.stringify({ set, version: manifest.version, pins: pinsOf(roles), prompt: PROMPT_HASH, ...(first ? { claude: first } : {}) })).slice(0, 12);
+  const key = sha256(JSON.stringify({ set, version: manifest.version, pins: pinsOf(roles), prompt: PROMPT_HASH, ...(first ? { claude: first } : {}), ...(repeat > 1 ? { repeat } : {}) })).slice(0, 12);
   const cache = new URL(`../.cache/${set}-${manifest.version}/${key}/`, import.meta.url);
   await mkdir(cache, { recursive: true });
   // A cached result is reused only for the same set version, every pinned provider/model and the prompt hash (the
@@ -334,7 +345,29 @@ export async function evaluate({
       await env.close();
     }
   }
-  return { label, roles, cases, results, stopped, computed: cachedOnly ? 0 : todo.length, key, promptHash: PROMPT_HASH };
+  return { label, version: manifest.version, roles, cases, results, stopped, computed: cachedOnly ? 0 : todo.length, key, promptHash: PROMPT_HASH };
+}
+
+// --repeat reads each dev case n times, to measure a misread that comes and goes; the held-out test split is read once,
+// and floors never come from repeated reads.
+export function checkRepeat({ repeat, subset, setFloors }: { repeat: number; subset: Subset; setFloors: boolean }) {
+  if (!Number.isInteger(repeat) || repeat < 1) throw new Error('--repeat must be a whole number of 1 or more');
+  if (repeat > 1 && subset !== 'dev') throw new Error('--repeat reads the dev split only');
+  if (repeat > 1 && setFloors) throw new Error('--repeat never sets floors');
+}
+
+// Repeated reads as one run: read 1 under each case's id, read r under <id>#r, so every read scores on its own.
+export function mergeReads(runs: Run[]): Run {
+  if (runs.length === 1) return runs[0]!;
+  const tag = (id: string, r: number) => (r === 0 ? id : `${id}#${r + 1}`);
+  return {
+    ...runs[0]!,
+    repeat: runs.length,
+    cases: runs.flatMap((run, r) => run.cases.map((golden) => ({ ...golden, id: tag(golden.id, r) }))),
+    results: new Map(runs.flatMap((run, r) => [...run.results].map(([id, result]): [string, CaseResult] => [tag(id, r), { ...result, id: tag(id, r) }]))),
+    stopped: runs.find((run) => run.stopped)?.stopped,
+    computed: runs.reduce((sum, run) => sum + run.computed, 0),
+  };
 }
 
 async function main() {
@@ -347,12 +380,18 @@ async function main() {
       concurrency: { type: 'string', default: '4' },
       cached: { type: 'boolean', default: false },
       config: { type: 'string' },
+      golden: { type: 'string', default: DEFAULT_GOLDEN },
+      repeat: { type: 'string', default: '1' },
     },
   });
   if (values.config !== undefined && values.config !== 'claude-primary') throw new Error('--config must be claude-primary');
   if (values.suite !== 'extraction') throw new Error('--suite must be extraction');
   if (!['dev', 'test', 'ci', 'full', 'compare'].includes(values.subset)) throw new Error('--subset must be dev, test, ci, full or compare');
+  if (values.golden !== 'v1' && values.golden !== 'v2') throw new Error('--golden must be v1 or v2');
   const subset = values.subset as Subset;
+  if (subset === 'compare' && values.golden !== 'v1') throw new Error('--subset compare reads comparison v1, beside golden v1');
+  const repeat = Number(values.repeat);
+  checkRepeat({ repeat, subset, setFloors: values['set-floors'] });
   const { roles, problems } = configuredRoles();
   const unpriced = Object.values(roles).flatMap(({ provider, model }) => (hasPrice(provider, model) ? [] : [`${provider}/${model} has no entry in packages/llm/prices.json`]));
   if (problems.length + unpriced.length > 0) throw new Error([...problems, ...unpriced].join('\n'));
@@ -368,7 +407,14 @@ async function main() {
       : [{ label: values.config ?? 'pinned', roles, claude }];
   const runs: Run[] = [];
   for (const plan of plans) {
-    runs.push(await evaluate({ set: subset === 'compare' ? 'comparison' : 'golden', subset, ...plan, fresh: values.fresh, concurrency: Number(values.concurrency), cachedOnly: values.cached }));
+    // Each read starts its own environment, since a job id is the PDF's hash and runs once per Redis; a quota stop ends
+    // the reads there.
+    const reads: Run[] = [];
+    for (let r = 1; r <= repeat && !reads.at(-1)?.stopped; r++) {
+      const set = subset === 'compare' ? 'comparison' : 'golden';
+      reads.push(await evaluate({ set, version: values.golden, repeat: r, subset, ...plan, fresh: values.fresh, concurrency: Number(values.concurrency), cachedOnly: values.cached }));
+    }
+    runs.push(mergeReads(reads));
   }
   process.exit(await report({ subset, runs, durationMs: Date.now() - started, setFloors: values['set-floors'], config: values.config }));
 }

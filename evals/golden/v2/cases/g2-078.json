@@ -1,0 +1,149 @@
+{
+  "id": "g2-078",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "packet",
+  "adversarial": false,
+  "traits": [
+    "invoice_not_first",
+    "low_res"
+  ],
+  "layouts": [
+    "modern"
+  ],
+  "pages": 8,
+  "scans": [
+    {
+      "profile": "low_res",
+      "degrees": -0.39,
+      "noise": 3959847989,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": 0.7,
+      "noise": 2981031281,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": 0.94,
+      "noise": 4191336465,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": -1.16,
+      "noise": 2925130273,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": 1.42,
+      "noise": 917501928,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": 1.46,
+      "noise": 1890038640,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": -0.53,
+      "noise": 3971464018,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": -0.27,
+      "noise": 1992377919,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-078.pdf",
+  "shipments": [
+    "1013090107"
+  ],
+  "sha256": "99a5f6e56baeae6b64a201145f904d57c4b01e4afe39b7a9423bdd5d2273ae36",
+  "bytes": 1223933,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "47339766",
+      "invoice_date": "2026-03-27",
+      "due_date": "2026-04-26",
+      "pro_number": "1013090107",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Wolf, Towne and Klocko",
+        "address": "54001 Second Avenue, Morissetteberg, MD 96384"
+      },
+      "shipper": {
+        "name": "Hills and Sons",
+        "address": "73530 W Chestnut Street, Davie, HI 84948"
+      },
+      "consignee": {
+        "name": "Harvey - Kautzer",
+        "address": "58572 Bernadine Passage, West Covina, WA 89126"
+      },
+      "weight_lb": 2570,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 55055,
+          "expected_cents": 55055
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 11787,
+          "expected_cents": 11787
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 16915,
+          "expected_cents": 16915
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 15239,
+          "expected_cents": 15239
+        },
+        {
+          "line_number": 5,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10125,
+          "expected_cents": 10125
+        }
+      ],
+      "total_cents": 109121,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

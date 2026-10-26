@@ -1,0 +1,115 @@
+{
+  "id": "g2-043",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "landscape",
+    "reference_numbers",
+    "title_line"
+  ],
+  "layouts": [
+    "landscape"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-043.pdf",
+  "shipments": [
+    "1011332089"
+  ],
+  "sha256": "fa527cda2c50e05b64780f86df438e26e6387d1709ae217d15784af5921ef4b8",
+  "bytes": 54960,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "45219177",
+      "invoice_date": "2025-07-16",
+      "due_date": "2025-08-15",
+      "pro_number": "1011332089",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Dare - Gleichner",
+        "address": "37967 Carolyne Ville, New Wilburn, WA 17511"
+      },
+      "shipper": {
+        "name": "Ratke, Mills and Renner",
+        "address": "220 Pearline Field, Langstead, OK 00980"
+      },
+      "consignee": {
+        "name": "Schuster Group",
+        "address": "379 Kariane Orchard, Stephanieside, ME 64233"
+      },
+      "weight_lb": 7453,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 364684,
+          "expected_cents": 364684
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 89165,
+          "expected_cents": 89165
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 9444,
+          "expected_cents": 9444
+        },
+        {
+          "line_number": 4,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 13833,
+          "expected_cents": 13833
+        },
+        {
+          "line_number": 5,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 10035,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 487161,
+      "overcharges": [
+        {
+          "line_number": 5,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 10035
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "9881964116",
+        "po": "PO-02472",
+        "shipped_on": "2025-07-07",
+        "delivered_on": "2025-07-11"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 5,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 10035
+          }
+        ]
+      }
+    }
+  ]
+}

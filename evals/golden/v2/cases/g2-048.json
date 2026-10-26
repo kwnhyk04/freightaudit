@@ -1,0 +1,109 @@
+{
+  "id": "g2-048",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "continued_page",
+    "reference_numbers",
+    "skew",
+    "subtotal_tax",
+    "title_line"
+  ],
+  "layouts": [
+    "continued"
+  ],
+  "pages": 2,
+  "scans": [
+    {
+      "profile": "skew",
+      "degrees": 4.34,
+      "noise": 2779505524,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "skew",
+      "degrees": 5.5,
+      "noise": 2686947747,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-048.pdf",
+  "shipments": [
+    "1034075457"
+  ],
+  "sha256": "383d561f85e8f5ba60c59c8edd9552bbe836d102bf2214f06200cf4b1d5958b8",
+  "bytes": 509245,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "46110178",
+      "invoice_date": "2026-05-22",
+      "due_date": "2026-06-21",
+      "pro_number": "1034075457",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Beahan, Brekke and Friesen",
+        "address": "781 Torp Fields, East Joshuashire, ID 39769"
+      },
+      "shipper": {
+        "name": "Hermann LLC",
+        "address": "86859 Wilderman Glens, Dustyport, MT 92888"
+      },
+      "consignee": {
+        "name": "DuBuque - Kilback",
+        "address": "9054 Gorczany Plaza, Rauworth, KS 38112"
+      },
+      "weight_lb": 7252,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 375160,
+          "expected_cents": 310050
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 75807,
+          "expected_cents": 75807
+        }
+      ],
+      "total_cents": 450967,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "rate_mismatch",
+          "expected_cents": 310050,
+          "billed_cents": 375160
+        }
+      ],
+      "subtotal_cents": 450967,
+      "tax_cents": 0,
+      "refs": {
+        "bol": "6348953837",
+        "po": "PO-06291",
+        "shipped_on": "2026-05-20",
+        "delivered_on": "2026-05-21"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "rate_mismatch",
+            "expected_cents": 310050,
+            "billed_cents": 375160
+          }
+        ]
+      }
+    }
+  ]
+}

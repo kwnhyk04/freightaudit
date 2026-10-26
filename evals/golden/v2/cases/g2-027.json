@@ -1,0 +1,85 @@
+{
+  "id": "g2-027",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "low_contrast"
+  ],
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_contrast",
+      "degrees": 0.68,
+      "noise": 1728069331,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-027.pdf",
+  "shipments": [
+    "1015125290"
+  ],
+  "sha256": "2a8357008caf0fde94907dea86fa820cabf7bc8795c6b900f2ebc5a2001b3f74",
+  "bytes": 71417,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "17277785",
+      "invoice_date": "2026-07-04",
+      "due_date": "2026-08-03",
+      "pro_number": "1015125290",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Koepp Inc",
+        "address": "499 Rice Drives, Port Chester, OK 42360"
+      },
+      "shipper": {
+        "name": "Zieme Group",
+        "address": "639 Block Spurs, New Kiannaview, NJ 62307"
+      },
+      "consignee": {
+        "name": "Farrell, Roob and Considine",
+        "address": "27982 Bailey Field, Joelfield, WI 78447"
+      },
+      "weight_lb": 11376,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 87780,
+          "expected_cents": 87780
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 18794,
+          "expected_cents": 18794
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 16915,
+          "expected_cents": 16915
+        }
+      ],
+      "total_cents": 123489,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

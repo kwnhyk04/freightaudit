@@ -1,0 +1,94 @@
+{
+  "id": "g2-033",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "landscape",
+    "reference_numbers",
+    "title_line"
+  ],
+  "layouts": [
+    "landscape"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-033.pdf",
+  "shipments": [
+    "1030559421"
+  ],
+  "sha256": "7c6ead90046de8859527a087b57d1e41bf13398335afa7730ed40d12e68841ad",
+  "bytes": 53722,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "38316989",
+      "invoice_date": "2025-05-30",
+      "due_date": "2025-06-29",
+      "pro_number": "1030559421",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Wyman Inc",
+        "address": "421 Lenny Mills, Jeraldboro, OH 42164"
+      },
+      "shipper": {
+        "name": "Prohaska Inc",
+        "address": "6298 Third Street, North Marvinport, KY 42268"
+      },
+      "consignee": {
+        "name": "Quigley - Ankunding",
+        "address": "1790 Stracke Isle, South Raymundo, NC 15646"
+      },
+      "weight_lb": 9763,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 511728,
+          "expected_cents": 511728
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 132568,
+          "expected_cents": 109561
+        }
+      ],
+      "total_cents": 644296,
+      "overcharges": [
+        {
+          "line_number": 2,
+          "type": "rate_mismatch",
+          "expected_cents": 109561,
+          "billed_cents": 132568
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "1401413503",
+        "po": "PO-78490",
+        "shipped_on": "2025-05-20",
+        "delivered_on": "2025-05-25"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 2,
+            "type": "rate_mismatch",
+            "expected_cents": 109561,
+            "billed_cents": 132568
+          }
+        ]
+      }
+    }
+  ]
+}

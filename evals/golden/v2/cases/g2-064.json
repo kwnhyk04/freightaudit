@@ -1,0 +1,109 @@
+{
+  "id": "g2-064",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "repeated_page",
+  "adversarial": true,
+  "traits": [
+    "continued_page",
+    "reference_numbers",
+    "skew",
+    "subtotal_tax",
+    "title_line"
+  ],
+  "layouts": [
+    "continued"
+  ],
+  "pages": 3,
+  "scans": [
+    {
+      "profile": "skew",
+      "degrees": -4.34,
+      "noise": 2720834123,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "skew",
+      "degrees": -4.95,
+      "noise": 4092531954,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "skew",
+      "degrees": -5.45,
+      "noise": 1971889238,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-064.pdf",
+  "shipments": [
+    "1035572148"
+  ],
+  "sha256": "e064f3561ba67b9679ff0d240edb97efd4da062a96d8f0a625aa0665db5f856d",
+  "bytes": 758324,
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "72476071",
+      "invoice_date": "2025-11-07",
+      "due_date": "2025-12-07",
+      "pro_number": "1035572148",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Sporer - Kilback",
+        "address": "288 Bradford Ports, Lake Nestor, WA 57928"
+      },
+      "shipper": {
+        "name": "Rowe Group",
+        "address": "41642 E South Street, Jackson, CT 98580"
+      },
+      "consignee": {
+        "name": "Carter and Sons",
+        "address": "762 Kozey Ports, New Unique, OK 30467"
+      },
+      "weight_lb": 10281,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 422450,
+          "expected_cents": 422450
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 107471,
+          "expected_cents": 107471
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 19759
+        }
+      ],
+      "total_cents": 549680,
+      "overcharges": [],
+      "subtotal_cents": 549680,
+      "tax_cents": 0,
+      "refs": {
+        "bol": "3154538648",
+        "po": "PO-32834",
+        "shipped_on": "2025-11-06",
+        "delivered_on": "2025-11-06"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

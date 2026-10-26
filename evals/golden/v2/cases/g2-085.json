@@ -1,0 +1,89 @@
+{
+  "id": "g2-085",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "revised_invoice",
+  "adversarial": true,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "title_line"
+  ],
+  "layouts": [
+    "carrier_form"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-085.pdf",
+  "shipments": [
+    "1027724419"
+  ],
+  "sha256": "2d0cc5e9bcc5b8e11ae416f928877d4253abe8da0b77e7828038fe11767919c5",
+  "bytes": 72896,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "03022555",
+      "invoice_date": "2026-01-03",
+      "due_date": "2026-02-02",
+      "pro_number": "1027724419",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Parisian Inc",
+        "address": "16325 Tillman Canyon, Rockville, OR 11329"
+      },
+      "shipper": {
+        "name": "Macejkovic, Rogahn and Upton",
+        "address": "89911 Seamus Parkway, Leuschkeville, FL 84520"
+      },
+      "consignee": {
+        "name": "Heidenreich Inc",
+        "address": "86540 Riverside Avenue, Lake Whitney, WV 00228"
+      },
+      "weight_lb": 9331,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul transportation",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 390668,
+          "expected_cents": 390668
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel",
+          "charge_code": "FUEL",
+          "amount_cents": 119896,
+          "expected_cents": 119896
+        },
+        {
+          "line_number": 3,
+          "description": "Residential",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 9778,
+          "expected_cents": 9778
+        },
+        {
+          "line_number": 4,
+          "description": "Detention (waiting time)",
+          "charge_code": "DETENTION",
+          "amount_cents": 9843,
+          "expected_cents": 9843
+        }
+      ],
+      "total_cents": 530185,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "revised_from": "42711852",
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

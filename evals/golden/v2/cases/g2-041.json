@@ -1,0 +1,100 @@
+{
+  "id": "g2-041",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "title_line"
+  ],
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-041.pdf",
+  "shipments": [
+    "1008497087"
+  ],
+  "sha256": "e35323eb85d3eddf560de7723f91bb709d8cc322117843b0066f764d85afad0f",
+  "bytes": 42894,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "74612700",
+      "invoice_date": "2025-12-20",
+      "due_date": "2026-01-19",
+      "pro_number": "1008497087",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Johns - Lynch",
+        "address": "562 Liza Loop, Port Daryl, IL 24827"
+      },
+      "shipper": {
+        "name": "Conroy - Durgan",
+        "address": "977 E 1st Street, Lake Luciobury, CO 82819"
+      },
+      "consignee": {
+        "name": "Crist, Wiegand and Turcotte",
+        "address": "3066 Hayes Islands, Warren, NC 36130"
+      },
+      "weight_lb": 7424,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 351112,
+          "expected_cents": 351112
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 85847,
+          "expected_cents": 85847
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 9444,
+          "expected_cents": 9444
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 9444,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 455847,
+      "overcharges": [
+        {
+          "line_number": 4,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 9444
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 4,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 9444
+          }
+        ]
+      }
+    }
+  ]
+}

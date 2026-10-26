@@ -1,0 +1,80 @@
+{
+  "id": "g2-061",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "repeated_page",
+  "adversarial": true,
+  "traits": [
+    "copy_label",
+    "factoring_remit",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-061.pdf",
+  "shipments": [
+    "1025697155"
+  ],
+  "sha256": "daad964a26035ca9d378a7e8f4847f76ca0203f13c738cd5ebb0de617f0ac7ee",
+  "bytes": 106060,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "77771978",
+      "invoice_date": "2025-08-03",
+      "due_date": "2025-09-02",
+      "pro_number": "1025697155",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Runolfsdottir - Predovic",
+        "address": "48602 Elsa Trace, Port Tyrique, IA 74422"
+      },
+      "shipper": {
+        "name": "Effertz-Haley and Sons",
+        "address": "4519 Hyatt Trace, Athens-Clarke County, DE 94225"
+      },
+      "consignee": {
+        "name": "Heidenreich LLC",
+        "address": "49212 General Mall, New Juanita, IL 00548"
+      },
+      "weight_lb": 11867,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 478720,
+          "expected_cents": 478720
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 117047,
+          "expected_cents": 117047
+        }
+      ],
+      "total_cents": 595767,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Greenholt Capital Funding",
+        "address": "P.O. Box 38572, Coral Gables, NV 09041"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

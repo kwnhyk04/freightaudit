@@ -1,0 +1,162 @@
+{
+  "id": "g2-073",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "multi_invoice",
+  "adversarial": true,
+  "traits": [
+    "low_res",
+    "title_line"
+  ],
+  "layouts": [
+    "remit",
+    "compact"
+  ],
+  "pages": 2,
+  "scans": [
+    {
+      "profile": "low_res",
+      "degrees": 0.59,
+      "noise": 2517473902,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_res",
+      "degrees": -1.32,
+      "noise": 3300638522,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-073.pdf",
+  "shipments": [
+    "1013771141",
+    "1017896940"
+  ],
+  "sha256": "df30ad6cd164de9495613172bc7ca9de0fc52b97a529a57cbbd1491181180d01",
+  "bytes": 313871,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "57386868",
+      "invoice_date": "2026-08-22",
+      "due_date": "2026-09-21",
+      "pro_number": "1013771141",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Howell Inc",
+        "address": "361 Botsford Knolls, Sengerton, LA 21867"
+      },
+      "shipper": {
+        "name": "Metz, Harber and Homenick-Walter",
+        "address": "6690 Christiana Wells, Sioux Falls, NJ 43349"
+      },
+      "consignee": {
+        "name": "Schuppe - Stark",
+        "address": "8553 Phillip Ramp, Elgin, CA 53501"
+      },
+      "weight_lb": 4568,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 239250,
+          "expected_cents": 239250
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 43831,
+          "expected_cents": 43831
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8587,
+          "expected_cents": 8587
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14544,
+          "expected_cents": 14544
+        }
+      ],
+      "total_cents": 306212,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    },
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "46508734",
+      "invoice_date": "2025-11-02",
+      "due_date": "2025-12-02",
+      "pro_number": "1017896940",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hilpert Inc",
+        "address": "433 Hand Fords, Eugeniachester, IL 19960"
+      },
+      "shipper": {
+        "name": "Nolan LLC",
+        "address": "5042 Hirthe Locks, Fort Mathildechester, AR 77329"
+      },
+      "consignee": {
+        "name": "Fay, Bogisich and Hickle-Steuber",
+        "address": "91502 Mayert Falls, Murazikchester, VT 54167"
+      },
+      "weight_lb": 1971,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 409490,
+          "expected_cents": 409490
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 104174,
+          "expected_cents": 104174
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 19759
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12946,
+          "expected_cents": 12946
+        }
+      ],
+      "total_cents": 546369,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 2,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

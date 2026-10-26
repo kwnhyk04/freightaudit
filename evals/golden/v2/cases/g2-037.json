@@ -1,0 +1,99 @@
+{
+  "id": "g2-037",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "factoring_remit",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-037.pdf",
+  "shipments": [
+    "1016827875"
+  ],
+  "sha256": "1ccae866e197f6e87fe0b21dbcac90273e43f2c68754d13d2afe94b733eff9cf",
+  "bytes": 54922,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "18124858",
+      "invoice_date": "2026-04-02",
+      "due_date": "2026-05-02",
+      "pro_number": "1016827875",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hilpert Inc",
+        "address": "38393 Airport Road, Port Addison, NH 77888"
+      },
+      "shipper": {
+        "name": "Labadie Group",
+        "address": "6107 Marcia Corner, Jupiter, ID 12007"
+      },
+      "consignee": {
+        "name": "Klocko, Vandervort-Labadie and Stroman",
+        "address": "468 Cheryl Wells, South Lucy, AK 99890"
+      },
+      "weight_lb": 10919,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 535440,
+          "expected_cents": 535440
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 98093,
+          "expected_cents": 98093
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 11034,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 644567,
+      "overcharges": [
+        {
+          "line_number": 3,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 11034
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Frami Capital Funding",
+        "address": "P.O. Box 38950, Port Imelda, CO 91586"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 3,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 11034
+          }
+        ]
+      }
+    }
+  ]
+}

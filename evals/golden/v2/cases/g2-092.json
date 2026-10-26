@@ -1,0 +1,109 @@
+{
+  "id": "g2-092",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "handwritten",
+  "adversarial": true,
+  "traits": [
+    "continued_page",
+    "reference_numbers",
+    "skew",
+    "subtotal_tax",
+    "title_line"
+  ],
+  "layouts": [
+    "continued"
+  ],
+  "pages": 2,
+  "scans": [
+    {
+      "profile": "skew",
+      "degrees": -3.63,
+      "noise": 498325898,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "skew",
+      "degrees": 3.89,
+      "noise": 3132723019,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-092.pdf",
+  "shipments": [
+    "1032182816"
+  ],
+  "sha256": "86c3e34644c0529192fbca4eed9a6ca35150b9815f510c6212f315a6a7685f64",
+  "bytes": 514553,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "24350016",
+      "invoice_date": "2025-02-09",
+      "due_date": "2025-03-11",
+      "pro_number": "1032182816",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Zieme - Marquardt",
+        "address": "734 Bashirian Course, Giovannyfurt, OR 26270"
+      },
+      "shipper": {
+        "name": "Farrell, Reichert and Powlowski",
+        "address": "6286 The Ridgeway, Cullenville, PA 69092"
+      },
+      "consignee": {
+        "name": "Gleichner - Jaskolski",
+        "address": "302 Okuneva Roads, East Annabellebury, PA 42383"
+      },
+      "weight_lb": 10286,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 412290,
+          "expected_cents": 412290
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 75532,
+          "expected_cents": 75532
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8090,
+          "expected_cents": 8090
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12726,
+          "expected_cents": 12726
+        }
+      ],
+      "total_cents": 508638,
+      "overcharges": [],
+      "subtotal_cents": 508638,
+      "tax_cents": 0,
+      "refs": {
+        "bol": "9280287058",
+        "po": "PO-78305",
+        "shipped_on": "2025-02-04",
+        "delivered_on": "2025-02-06"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

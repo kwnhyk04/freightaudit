@@ -1,0 +1,85 @@
+{
+  "id": "g2-001",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "factoring_remit",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-001.pdf",
+  "shipments": [
+    "1030844505"
+  ],
+  "sha256": "47a62705215fa10ff65222e8e11ac0bb6fd58e8a08b7f0c87c8ec55ae57af865",
+  "bytes": 55804,
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "38984895",
+      "invoice_date": "2026-07-11",
+      "due_date": "2026-08-10",
+      "pro_number": "1030844505",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Reilly-Boehm LLC",
+        "address": "8889 Wellington Road, Greenwood, NM 27714"
+      },
+      "shipper": {
+        "name": "Kerluke LLC",
+        "address": "202 N Franklin Street, Dooleybury, VT 68139"
+      },
+      "consignee": {
+        "name": "Bruen Group",
+        "address": "6184 Purdy Tunnel, South Kelly, IA 92330"
+      },
+      "weight_lb": 624,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 375222,
+          "expected_cents": 375222
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 95456,
+          "expected_cents": 95456
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 13668,
+          "expected_cents": 13668
+        }
+      ],
+      "total_cents": 484346,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Halvorson Capital Funding",
+        "address": "P.O. Box 75532, South Stephonmouth, UT 80369"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

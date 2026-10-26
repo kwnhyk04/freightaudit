@@ -82,7 +82,8 @@ export const EXTRACTION_JSON_SCHEMA = modelSchema(z.toJSONSchema(extractionSchem
 
 const PROMPT = `You read freight carrier invoices. The document holds one invoice or several in a row; each page comes as its text layer or as an image.
 Reply with JSON that matches the schema.
-- first_page is the 1-based page where each invoice starts; list the invoices in page order.
+- first_page is the 1-based page where each invoice starts; list the invoices in page order. The first invoice starts on page 1: pages before it, such as a bill of lading or a cover sheet, belong to it.
+- A page that repeats an invoice already listed (the same invoice number again, as a second copy or a page scanned twice) belongs to that invoice; list each invoice once.
 - Copy carrier, invoice_number and pro_number exactly as printed; pro_number is null when the invoice has none.
 - invoice_date is the printed invoice date written as YYYY-MM-DD.
 - Amounts are integer cents of the printed figure: 1,234.56 becomes 123456. Copy them; never compute or correct them.

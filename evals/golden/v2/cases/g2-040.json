@@ -1,0 +1,111 @@
+{
+  "id": "g2-040",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "continued_page",
+    "reference_numbers",
+    "stamp",
+    "subtotal_tax",
+    "title_line"
+  ],
+  "layouts": [
+    "continued"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-040.pdf",
+  "shipments": [
+    "1034946547"
+  ],
+  "sha256": "d1da02e85038679abe40fec60856239d501fd606953ed980b51aaba8ce3f579d",
+  "bytes": 82049,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "01759046",
+      "invoice_date": "2025-10-10",
+      "due_date": "2025-11-09",
+      "pro_number": "1034946547",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hane, Bergstrom and Quigley",
+        "address": "863 Emerald Circles, Russelville, NH 82924"
+      },
+      "shipper": {
+        "name": "Daugherty - Simonis",
+        "address": "1051 Clemmie Island, Johnpaulland, NC 86747"
+      },
+      "consignee": {
+        "name": "Kiehn - Rempel",
+        "address": "655 State Road, South Ayden, TN 35678"
+      },
+      "weight_lb": 10809,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 544794,
+          "expected_cents": 544794
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 167197,
+          "expected_cents": 167197
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11448,
+          "expected_cents": 11448
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 11421,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 734860,
+      "overcharges": [
+        {
+          "line_number": 4,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 11421
+        }
+      ],
+      "subtotal_cents": 734860,
+      "tax_cents": 0,
+      "refs": {
+        "bol": "1690885384",
+        "po": "PO-54345",
+        "shipped_on": "2025-10-08",
+        "delivered_on": "2025-10-09"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 4,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 11421
+          }
+        ]
+      }
+    }
+  ]
+}

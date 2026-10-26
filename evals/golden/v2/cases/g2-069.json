@@ -1,0 +1,106 @@
+{
+  "id": "g2-069",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "repeated_page",
+  "adversarial": true,
+  "traits": [
+    "low_contrast"
+  ],
+  "layouts": [
+    "modern"
+  ],
+  "pages": 2,
+  "scans": [
+    {
+      "profile": "low_contrast",
+      "degrees": 0.82,
+      "noise": 921996522,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_contrast",
+      "degrees": 0.72,
+      "noise": 1291439169,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-069.pdf",
+  "shipments": [
+    "1008378302"
+  ],
+  "sha256": "340db726d0cb184e01cab46b623c7f505b028c8dab4e451c6b17ebcb940a952c",
+  "bytes": 130622,
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "83964498",
+      "invoice_date": "2026-04-28",
+      "due_date": "2026-05-28",
+      "pro_number": "1008378302",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Swift Inc",
+        "address": "979 Hermann Squares, South Casimer, WA 19706"
+      },
+      "shipper": {
+        "name": "Schneider - Douglas",
+        "address": "75138 White Village, Auerfort, AK 37321"
+      },
+      "consignee": {
+        "name": "Streich - Gislason",
+        "address": "100 Yasmine Plains, Hansenton, IL 28950"
+      },
+      "weight_lb": 5651,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 346494,
+          "expected_cents": 346494
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 88148,
+          "expected_cents": 88148
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 20861,
+          "expected_cents": 20861
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 11283,
+          "expected_cents": 11283
+        },
+        {
+          "line_number": 5,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 12441,
+          "expected_cents": 12441
+        }
+      ],
+      "total_cents": 479227,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}
