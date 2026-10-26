@@ -1,0 +1,95 @@
+{
+  "id": "g2-097",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "non_usd",
+  "adversarial": true,
+  "traits": [
+    "landscape",
+    "reference_numbers",
+    "title_line"
+  ],
+  "layouts": [
+    "landscape"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-097.pdf",
+  "shipments": [
+    "1036015612"
+  ],
+  "sha256": "c32892b70fba5833b17957cfceb528bb22f79ebd4d29ac405fef07e2a8514b75",
+  "bytes": 54076,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "56134468",
+      "invoice_date": "2025-06-16",
+      "due_date": "2025-07-16",
+      "pro_number": "1036015612",
+      "currency": "CAD",
+      "bill_to": {
+        "name": "Hodkiewicz, Block and Schaefer",
+        "address": "88185 S 4th Street, Trantowshire, VT 49650"
+      },
+      "shipper": {
+        "name": "Little - Jacobson",
+        "address": "89168 Jones Valleys, East Francisco, TX 78451"
+      },
+      "consignee": {
+        "name": "Daniel LLC",
+        "address": "180 Shea Dale, Kelsieburgh, KY 08890"
+      },
+      "weight_lb": 6812,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 280323,
+          "expected_cents": 280323
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 68538,
+          "expected_cents": 68538
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 15448,
+          "expected_cents": 15448
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 12938,
+          "expected_cents": 12938
+        }
+      ],
+      "total_cents": 377247,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "5810725322",
+        "po": "PO-31390",
+        "shipped_on": "2025-06-07",
+        "delivered_on": "2025-06-11"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "needs_review",
+        "reason": "unsupported_currency: CAD",
+        "overcharges": []
+      }
+    }
+  ]
+}

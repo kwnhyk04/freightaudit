@@ -1,0 +1,104 @@
+{
+  "id": "g2-057",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "duplicate_invoice",
+  "adversarial": false,
+  "traits": [
+    "low_res"
+  ],
+  "layouts": [
+    "boxed"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_res",
+      "degrees": 1.4,
+      "noise": 1739625368,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-057.pdf",
+  "shipments": [
+    "1012329883"
+  ],
+  "sha256": "fedec796d61723b9e464b6e2b68eaa77dfc09bf5e33506aefb86592f2cbeeac2",
+  "bytes": 159156,
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "85280065",
+      "invoice_date": "2026-06-14",
+      "due_date": "2026-07-14",
+      "pro_number": "1012329883",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Stokes LLC",
+        "address": "11884 Schmidt Road, Port Amiya, MS 94645"
+      },
+      "shipper": {
+        "name": "Harber, Torp and Kautzer",
+        "address": "362 Commerce Street, Carmichael, MS 01490"
+      },
+      "consignee": {
+        "name": "Leffler - Block",
+        "address": "844 S West Street, Port Lane, LA 37249"
+      },
+      "weight_lb": 11236,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 16927,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 4306,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 21233,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 16927
+        },
+        {
+          "line_number": 2,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 4306
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 16927
+          },
+          {
+            "line_number": 2,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 4306
+          }
+        ]
+      }
+    }
+  ]
+}

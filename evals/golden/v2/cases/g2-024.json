@@ -1,0 +1,109 @@
+{
+  "id": "g2-024",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "landscape",
+    "low_res",
+    "reference_numbers",
+    "rotated_table",
+    "title_line"
+  ],
+  "layouts": [
+    "landscape"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_res",
+      "degrees": -0.22,
+      "noise": 844739772,
+      "sideways": true,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-024.pdf",
+  "shipments": [
+    "1027352226"
+  ],
+  "sha256": "1e26c0bdcbac1efb7fba3d85b112589bf2829b7ef1b16079cd6fbb5ae3c56f8d",
+  "bytes": 165845,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "44776258",
+      "invoice_date": "2026-03-29",
+      "due_date": "2026-04-28",
+      "pro_number": "1027352226",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Little, Durgan and Aufderhar",
+        "address": "372 Mraz Walk, East Yazminburgh, IL 70875"
+      },
+      "shipper": {
+        "name": "Blick LLC",
+        "address": "4343 Chapel Street, Joaquinville, CA 94662"
+      },
+      "consignee": {
+        "name": "Will and Sons",
+        "address": "139 Riverside Avenue, Hamillton, OR 89361"
+      },
+      "weight_lb": 2602,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 353570,
+          "expected_cents": 353570
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 86448,
+          "expected_cents": 86448
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 11635,
+          "expected_cents": 11635
+        },
+        {
+          "line_number": 4,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 14274,
+          "expected_cents": 14274
+        },
+        {
+          "line_number": 5,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3895,
+          "expected_cents": 3895
+        }
+      ],
+      "total_cents": 469822,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "4500998323",
+        "po": "PO-16099",
+        "shipped_on": "2026-03-26",
+        "delivered_on": "2026-03-27"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

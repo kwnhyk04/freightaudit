@@ -1,0 +1,79 @@
+{
+  "id": "g2-010",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "title_line"
+  ],
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-010.pdf",
+  "shipments": [
+    "1014792692"
+  ],
+  "sha256": "61fda5cb7a202fa410a95d52d85da4f9a3c41da342254f765d868f1c938644a3",
+  "bytes": 45143,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "32877767",
+      "invoice_date": "2026-09-11",
+      "due_date": "2026-10-11",
+      "pro_number": "1014792692",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Monahan, Harber and Leuschke",
+        "address": "2070 S 10th Street, Lurlineburgh, CO 24525"
+      },
+      "shipper": {
+        "name": "Goyette, Gulgowski and Spinka",
+        "address": "908 Tess Roads, St. Charles, ME 90431"
+      },
+      "consignee": {
+        "name": "Bartell - Corwin",
+        "address": "32273 Tyrone Green, State College, AR 76203"
+      },
+      "weight_lb": 270,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 448612,
+          "expected_cents": 448612
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 96048,
+          "expected_cents": 96048
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 16915,
+          "expected_cents": 16915
+        }
+      ],
+      "total_cents": 561575,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "id": "g2-067",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "repeated_page",
+  "adversarial": true,
+  "traits": [
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 3,
+  "scans": [
+    {
+      "profile": "stamp",
+      "degrees": -1.17,
+      "noise": 2353749456,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "stamp",
+      "degrees": 0.07,
+      "noise": 1850949328,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "stamp",
+      "degrees": -0.9,
+      "noise": 3567640168,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-067.pdf",
+  "shipments": [
+    "1036942135"
+  ],
+  "sha256": "ae3ef9fbd2e9e4d974acbcd9db5147bf616e0acca6d82a4a2dcc901a9cdbd308",
+  "bytes": 1479364,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "37190276",
+      "invoice_date": "2026-02-21",
+      "due_date": "2026-03-23",
+      "pro_number": "1036942135",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Langosh, Marvin and Conn",
+        "address": "398 Bay Street, Waipahu, LA 59213"
+      },
+      "shipper": {
+        "name": "Dare, Price and Welch",
+        "address": "3646 D'Amore Harbor, Roseboro, MO 30133"
+      },
+      "consignee": {
+        "name": "Koepp - Wintheiser",
+        "address": "7077 Mary Street, Koreyborough, VT 41252"
+      },
+      "weight_lb": 7212,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 492322,
+          "expected_cents": 492322
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 105406,
+          "expected_cents": 105406
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 15239,
+          "expected_cents": 15239
+        },
+        {
+          "line_number": 4,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 16915,
+          "expected_cents": 16915
+        },
+        {
+          "line_number": 5,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10125,
+          "expected_cents": 10125
+        }
+      ],
+      "total_cents": 640007,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

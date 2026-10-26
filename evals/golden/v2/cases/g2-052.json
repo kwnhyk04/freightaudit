@@ -1,0 +1,100 @@
+{
+  "id": "g2-052",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "skew",
+    "title_line"
+  ],
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "skew",
+      "degrees": -3.25,
+      "noise": 633236028,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-052.pdf",
+  "shipments": [
+    "1028611347"
+  ],
+  "sha256": "49d832c4ff154c10590ffa1376af8b47cb6b1bc9ea7df754f795040a81a766b8",
+  "bytes": 268179,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "57417168",
+      "invoice_date": "2026-01-05",
+      "due_date": "2026-02-04",
+      "pro_number": "1028611347",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Cormier, Langworth and Bayer",
+        "address": "217 E Central Avenue, Providencistad, NE 66185"
+      },
+      "shipper": {
+        "name": "Mertz Group",
+        "address": "78529 Ari Lane, Waco, OK 82558"
+      },
+      "consignee": {
+        "name": "Klein LLC",
+        "address": "741 Lindgren Streets, Townefort, IA 01880"
+      },
+      "weight_lb": 10313,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 92568,
+          "expected_cents": 92568
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 22633,
+          "expected_cents": 22633
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 11786,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 126987,
+      "overcharges": [
+        {
+          "line_number": 3,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 11786
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 3,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 11786
+          }
+        ]
+      }
+    }
+  ]
+}

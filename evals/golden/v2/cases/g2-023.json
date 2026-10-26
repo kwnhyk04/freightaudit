@@ -1,0 +1,99 @@
+{
+  "id": "g2-023",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "factoring_remit",
+    "low_contrast",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_contrast",
+      "degrees": -1.28,
+      "noise": 3601226156,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-023.pdf",
+  "shipments": [
+    "1005131512"
+  ],
+  "sha256": "a19bb6ee261942ddf00eeea7c097f948f04260befec6731da588f86906f2b679",
+  "bytes": 73490,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "97932140",
+      "invoice_date": "2026-01-06",
+      "due_date": "2026-02-05",
+      "pro_number": "1005131512",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Schiller LLC",
+        "address": "81686 Hills Track, Concord, SC 88739"
+      },
+      "shipper": {
+        "name": "Lowe-Windler LLC",
+        "address": "16598 Schuppe Summit, New Kayworth, LA 69511"
+      },
+      "consignee": {
+        "name": "Beier - Grimes",
+        "address": "551 Riverside Drive, Darronland, WV 09710"
+      },
+      "weight_lb": 1387,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 68761,
+          "expected_cents": 68761
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 16812,
+          "expected_cents": 16812
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3895,
+          "expected_cents": 3895
+        },
+        {
+          "line_number": 4,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 14274,
+          "expected_cents": 14274
+        }
+      ],
+      "total_cents": 103742,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Simonis Capital Funding",
+        "address": "P.O. Box 13913, Russland, VA 62763"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

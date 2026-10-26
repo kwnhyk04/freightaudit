@@ -1,0 +1,104 @@
+{
+  "id": "g2-087",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "tricky_number",
+  "adversarial": true,
+  "traits": [
+    "continued_page",
+    "reference_numbers",
+    "stamp",
+    "subtotal_tax",
+    "title_line"
+  ],
+  "layouts": [
+    "continued"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-087.pdf",
+  "shipments": [
+    "1009193959"
+  ],
+  "sha256": "c4838e8abce5a958327810a6621e842b3b2456503c950eb84b06865cde85fec2",
+  "bytes": 82236,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "00212981",
+      "invoice_date": "2026-07-08",
+      "due_date": "2026-08-07",
+      "pro_number": "1009193959",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Larson Inc",
+        "address": "81554 Ernest Branch, South Mozelle, RI 47288"
+      },
+      "shipper": {
+        "name": "Haley, Cremin and Hilll",
+        "address": "35890 Hartmann Way, East Johanfield, NC 62717"
+      },
+      "consignee": {
+        "name": "Senger LLC",
+        "address": "33514 Park Place, Lianaport, MS 41787"
+      },
+      "weight_lb": 8370,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 276600,
+          "expected_cents": 276600
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 50673,
+          "expected_cents": 50673
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14544,
+          "expected_cents": 14544
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 13508,
+          "expected_cents": 13508
+        },
+        {
+          "line_number": 5,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3700,
+          "expected_cents": 3700
+        }
+      ],
+      "total_cents": 359025,
+      "overcharges": [],
+      "subtotal_cents": 359025,
+      "tax_cents": 0,
+      "refs": {
+        "bol": "8337342803",
+        "po": "PO-70356",
+        "shipped_on": "2026-07-02",
+        "delivered_on": "2026-07-05"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "id": "g2-045",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "factoring_remit",
+    "low_res",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_res",
+      "degrees": 0.27,
+      "noise": 1207913507,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-045.pdf",
+  "shipments": [
+    "1004284179"
+  ],
+  "sha256": "9595ab2fa97ad3442308047df835326a660fd1e5fd97ae9f0ea1e3d2878e4e58",
+  "bytes": 157419,
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "94235534",
+      "invoice_date": "2026-05-03",
+      "due_date": "2026-06-02",
+      "pro_number": "1004284179",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hilpert LLC",
+        "address": "11958 Schiller Alley, Lake Lily, NH 89578"
+      },
+      "shipper": {
+        "name": "Dooley Inc",
+        "address": "873 Walter Bypass, Port Kathleenfield, CA 22544"
+      },
+      "consignee": {
+        "name": "Larson, Simonis and Schiller",
+        "address": "571 Ozella Lakes, Harrisburgh, FL 95412"
+      },
+      "weight_lb": 568,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 236346,
+          "expected_cents": 218839
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 65892,
+          "expected_cents": 65892
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 12357,
+          "expected_cents": 12357
+        },
+        {
+          "line_number": 4,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 16619,
+          "expected_cents": 16619
+        }
+      ],
+      "total_cents": 331214,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "rate_mismatch",
+          "expected_cents": 218839,
+          "billed_cents": 236346
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Reichert Capital Funding",
+        "address": "P.O. Box 86234, Port Rooseveltfurt, KS 17328"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "rate_mismatch",
+            "expected_cents": 218839,
+            "billed_cents": 236346
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "id": "g2-005",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "title_line"
+  ],
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-005.pdf",
+  "shipments": [
+    "1020288478"
+  ],
+  "sha256": "36cedaeaedca551c4af9dbdbf4c7de46de6361ab51419423ce90585de72610d4",
+  "bytes": 45840,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "27857312",
+      "invoice_date": "2025-01-25",
+      "due_date": "2025-02-24",
+      "pro_number": "1020288478",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Reynolds LLC",
+        "address": "28173 Sammie Mall, Stoltenberghaven, NV 95059"
+      },
+      "shipper": {
+        "name": "Ferry, Kertzmann and Balistreri",
+        "address": "480 Felipa Manor, Bernierstad, WI 53540"
+      },
+      "consignee": {
+        "name": "Glover - Marvin",
+        "address": "6333 Main Street, South Brandonstead, NM 03453"
+      },
+      "weight_lb": 11289,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 103964,
+          "expected_cents": 103964
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 19046,
+          "expected_cents": 19046
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12726,
+          "expected_cents": 12726
+        }
+      ],
+      "total_cents": 135736,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

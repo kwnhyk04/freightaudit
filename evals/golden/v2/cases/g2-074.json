@@ -1,0 +1,246 @@
+{
+  "id": "g2-074",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "multi_invoice",
+  "adversarial": true,
+  "traits": [
+    "factoring_remit",
+    "fax",
+    "landscape",
+    "multi_column",
+    "reference_numbers",
+    "rotated_table",
+    "title_line"
+  ],
+  "layouts": [
+    "boxed",
+    "two_column",
+    "landscape"
+  ],
+  "pages": 3,
+  "scans": [
+    {
+      "profile": "fax",
+      "degrees": -0.32,
+      "noise": 329459909,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "fax",
+      "degrees": -1.48,
+      "noise": 1368269109,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "fax",
+      "degrees": -1.3,
+      "noise": 318712581,
+      "sideways": true,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-074.pdf",
+  "shipments": [
+    "1024596414",
+    "1008140732",
+    "1031961084"
+  ],
+  "sha256": "3af70f9708536ee56ee00980832c99a1c69903258664696537856673422d26d6",
+  "bytes": 142571,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "77280645",
+      "invoice_date": "2026-01-28",
+      "due_date": "2026-02-27",
+      "pro_number": "1024596414",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Blick, Steuber-Stokes and Gerlach",
+        "address": "971 Wiza-Mills Plaza, Lake Janie, WY 11588"
+      },
+      "shipper": {
+        "name": "Wolff - Klocko",
+        "address": "172 Front Street, Jeannestad, MN 14072"
+      },
+      "consignee": {
+        "name": "Osinski, Ledner and Goldner",
+        "address": "3896 Ira Viaduct, Fort Howellborough, UT 76481"
+      },
+      "weight_lb": 9400,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 335970,
+          "expected_cents": 335970
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 82145,
+          "expected_cents": 82145
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 14274,
+          "expected_cents": 14274
+        }
+      ],
+      "total_cents": 432389,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    },
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "81987769",
+      "invoice_date": "2025-06-05",
+      "due_date": "2025-07-05",
+      "pro_number": "1008140732",
+      "currency": "USD",
+      "bill_to": {
+        "name": "McDermott, Hamill and Lubowitz",
+        "address": "58582 Damien Place, Orlocester, MO 79552"
+      },
+      "shipper": {
+        "name": "Funk, Mills and Krajcik",
+        "address": "3972 Meadow Drive, Alvertabury, ND 30639"
+      },
+      "consignee": {
+        "name": "Fahey - Hansen",
+        "address": "8644 Weimann Groves, Edworth, FL 92477"
+      },
+      "weight_lb": 1770,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 309270,
+          "expected_cents": 309270
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 56658,
+          "expected_cents": 56658
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3486,
+          "expected_cents": 3486
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 13702,
+          "expected_cents": 13702
+        }
+      ],
+      "total_cents": 383116,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Hickle Capital Funding",
+        "address": "P.O. Box 48463, Terriport, KY 38264"
+      },
+      "first_page": 2,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    },
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "06616970",
+      "invoice_date": "2026-06-10",
+      "due_date": "2026-07-10",
+      "pro_number": "1031961084",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Feest, Gerlach and Gulgowski",
+        "address": "8945 Harvey Underpass, Huntington Beach, TN 19383"
+      },
+      "shipper": {
+        "name": "Boehm - Murray",
+        "address": "6138 Gary Camp, Mobile, PA 31199"
+      },
+      "consignee": {
+        "name": "Okuneva, Stokes and Bednar",
+        "address": "4333 Darla Way, Diegoton, MO 65116"
+      },
+      "weight_lb": 1235,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 513696,
+          "expected_cents": 513696
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 154674,
+          "expected_cents": 154674
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 16026,
+          "expected_cents": 16026
+        },
+        {
+          "line_number": 4,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 16619,
+          "expected_cents": 16619
+        },
+        {
+          "line_number": 5,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 6399,
+          "expected_cents": 6399
+        }
+      ],
+      "total_cents": 707414,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "1803137351",
+        "po": "PO-37055",
+        "shipped_on": "2026-06-03",
+        "delivered_on": "2026-06-06"
+      },
+      "first_page": 3,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

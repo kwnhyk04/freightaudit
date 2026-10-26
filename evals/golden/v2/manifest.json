@@ -1,0 +1,3135 @@
+{
+  "set": "golden",
+  "version": "v2",
+  "created": "2026-10-25",
+  "seed": 43,
+  "scale": "small",
+  "cases": [
+    {
+      "id": "g2-001",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "factoring_remit",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-001.pdf",
+      "shipments": [
+        "1030844505"
+      ],
+      "sha256": "47a62705215fa10ff65222e8e11ac0bb6fd58e8a08b7f0c87c8ec55ae57af865",
+      "bytes": 55804
+    },
+    {
+      "id": "g2-002",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "landscape",
+        "reference_numbers",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-002.pdf",
+      "shipments": [
+        "1014863963"
+      ],
+      "sha256": "8541bb93e3e509742a9afeebe7a4635e8e2bb90349b9f4578474b5c7e44580af",
+      "bytes": 53958
+    },
+    {
+      "id": "g2-003",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-003.pdf",
+      "shipments": [
+        "1022648340"
+      ],
+      "sha256": "c6fb67ab822e8eec6301f8eb88098d940c1c3eb43bddd4cce359379142ed398d",
+      "bytes": 54012
+    },
+    {
+      "id": "g2-004",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "stamp",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-004.pdf",
+      "shipments": [
+        "1004505911"
+      ],
+      "sha256": "24c8d6c50d97af1b8e371f145920e85f71de8041dc49bb1583ecd4c669d6dc7d",
+      "bytes": 80463
+    },
+    {
+      "id": "g2-005",
+      "split": "test",
+      "ci": true,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-005.pdf",
+      "shipments": [
+        "1020288478"
+      ],
+      "sha256": "36cedaeaedca551c4af9dbdbf4c7de46de6361ab51419423ce90585de72610d4",
+      "bytes": 45840
+    },
+    {
+      "id": "g2-006",
+      "split": "test",
+      "ci": true,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "factoring_remit",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-006.pdf",
+      "shipments": [
+        "1025966401"
+      ],
+      "sha256": "177a9b3e0193b7f342b88710a628c0011640228e27cacf5918e45de931d833d8",
+      "bytes": 56883
+    },
+    {
+      "id": "g2-007",
+      "split": "test",
+      "ci": true,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "landscape",
+        "reference_numbers",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-007.pdf",
+      "shipments": [
+        "1005915493"
+      ],
+      "sha256": "0648e5f73d998755e723140156e29035bc544eee1cc1980f29f74d57dd091c7e",
+      "bytes": 53210
+    },
+    {
+      "id": "g2-008",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-008.pdf",
+      "shipments": [
+        "1008995984"
+      ],
+      "sha256": "66e39bb4233cd35be02431f16c1f6d5a4d541a347bf9921eb114ed576de40984",
+      "bytes": 69664
+    },
+    {
+      "id": "g2-009",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-009.pdf",
+      "shipments": [
+        "1032388710"
+      ],
+      "sha256": "54bf9e43e7e8c2b9e266ddb8b3c433ea4072b28f9ac439bfde1160cc02d52e0d",
+      "bytes": 68884
+    },
+    {
+      "id": "g2-010",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-010.pdf",
+      "shipments": [
+        "1014792692"
+      ],
+      "sha256": "61fda5cb7a202fa410a95d52d85da4f9a3c41da342254f765d868f1c938644a3",
+      "bytes": 45143
+    },
+    {
+      "id": "g2-011",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "factoring_remit",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-011.pdf",
+      "shipments": [
+        "1021444652"
+      ],
+      "sha256": "d02377c7bf795191df7620f93ee39ad24ffdeec24642318fc7e5d0b7f7f8a3c2",
+      "bytes": 55565
+    },
+    {
+      "id": "g2-012",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "landscape",
+        "reference_numbers",
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-012.pdf",
+      "shipments": [
+        "1008085299"
+      ],
+      "sha256": "65798936872f09317dc302ba646edebf2627d0349fa6e3063e59aa40568152ff",
+      "bytes": 68376
+    },
+    {
+      "id": "g2-013",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-013.pdf",
+      "shipments": [
+        "1018102834"
+      ],
+      "sha256": "1978230e1325698c3449bb62f71c34b25a1c0d663ba4f76a9319481e9c6d147b",
+      "bytes": 54533
+    },
+    {
+      "id": "g2-014",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-014.pdf",
+      "shipments": [
+        "1008362464"
+      ],
+      "sha256": "a6f51b363042f3c2225d4882367451a99b834915f1135950bc3ec88805404f95",
+      "bytes": 68355
+    },
+    {
+      "id": "g2-015",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-015.pdf",
+      "shipments": [
+        "1014705583"
+      ],
+      "sha256": "e87cfcfb3e8546751682460398deb4001ce62a2689ee0cc8ebff36a68174e646",
+      "bytes": 43757
+    },
+    {
+      "id": "g2-016",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "factoring_remit",
+        "multi_column",
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-016.pdf",
+      "shipments": [
+        "1018490865"
+      ],
+      "sha256": "1018112b70c90fcab0c00a7e9eafcff29b8b915257a9d5c3b8d8d06db490330b",
+      "bytes": 69928
+    },
+    {
+      "id": "g2-017",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "skew"
+      ],
+      "layouts": [
+        "classic"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "skew",
+          "degrees": -4.42,
+          "noise": 1611783525,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-017.pdf",
+      "shipments": [
+        "1006430228"
+      ],
+      "sha256": "4e6479e11250229cb96bcaa00f1386d658062f73f1444a2a9c8a33c7c2ace33d",
+      "bytes": 263761
+    },
+    {
+      "id": "g2-018",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "low_contrast",
+        "title_line"
+      ],
+      "layouts": [
+        "ledger"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_contrast",
+          "degrees": 0.44,
+          "noise": 2791187910,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-018.pdf",
+      "shipments": [
+        "1035714690"
+      ],
+      "sha256": "6da86f4e5d4beec9243f9f21cfc862771e41edf4e13f29d68659ccc6d596f4fe",
+      "bytes": 66772
+    },
+    {
+      "id": "g2-019",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "low_res"
+      ],
+      "layouts": [
+        "modern"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_res",
+          "degrees": 0.41,
+          "noise": 1860422827,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-019.pdf",
+      "shipments": [
+        "1009138526"
+      ],
+      "sha256": "96fd0f6a5f43fb01f8dc3ec44d934e31f4f6c0446082baa57f7184d2f43e66c4",
+      "bytes": 144046
+    },
+    {
+      "id": "g2-020",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "fax",
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "fax",
+          "degrees": 0.62,
+          "noise": 2244741080,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-020.pdf",
+      "shipments": [
+        "1033671588"
+      ],
+      "sha256": "ff33517416f599f74e479f32280ec4ce5cf38ad1ab61188a54c3a55ef6c3a4d5",
+      "bytes": 29925
+    },
+    {
+      "id": "g2-021",
+      "split": "test",
+      "ci": true,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "stamp"
+      ],
+      "layouts": [
+        "compact"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "stamp",
+          "degrees": -1.05,
+          "noise": 64686392,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-021.pdf",
+      "shipments": [
+        "1009724532"
+      ],
+      "sha256": "8bfce1a5646c2ba05ed7a8731a7f5b7ac7574b9930ee8bfaea3a0b2063b70e5a",
+      "bytes": 492960
+    },
+    {
+      "id": "g2-022",
+      "split": "test",
+      "ci": true,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "skew"
+      ],
+      "layouts": [
+        "boxed"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "skew",
+          "degrees": -5.63,
+          "noise": 120681040,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-022.pdf",
+      "shipments": [
+        "1016043894"
+      ],
+      "sha256": "5b5e5afce03a3fa09ff3c16e4cc07c3a8d4b3c301424a706315b7b49f9543b13",
+      "bytes": 269385
+    },
+    {
+      "id": "g2-023",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "factoring_remit",
+        "low_contrast",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_contrast",
+          "degrees": -1.28,
+          "noise": 3601226156,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-023.pdf",
+      "shipments": [
+        "1005131512"
+      ],
+      "sha256": "a19bb6ee261942ddf00eeea7c097f948f04260befec6731da588f86906f2b679",
+      "bytes": 73490
+    },
+    {
+      "id": "g2-024",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "landscape",
+        "low_res",
+        "reference_numbers",
+        "rotated_table",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_res",
+          "degrees": -0.22,
+          "noise": 844739772,
+          "sideways": true,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-024.pdf",
+      "shipments": [
+        "1027352226"
+      ],
+      "sha256": "1e26c0bdcbac1efb7fba3d85b112589bf2829b7ef1b16079cd6fbb5ae3c56f8d",
+      "bytes": 165845
+    },
+    {
+      "id": "g2-025",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "fax",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "fax",
+          "degrees": -0.98,
+          "noise": 2287558914,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-025.pdf",
+      "shipments": [
+        "1032372872"
+      ],
+      "sha256": "bb115bc0a3002ea1a7385495fbf12101491f19b67b45871510a800a61a4de464",
+      "bytes": 28879
+    },
+    {
+      "id": "g2-026",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "stamp",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 2,
+      "scans": [
+        {
+          "profile": "stamp",
+          "degrees": 0.61,
+          "noise": 1928849530,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "stamp",
+          "degrees": 1.34,
+          "noise": 3247243293,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-026.pdf",
+      "shipments": [
+        "1025451666"
+      ],
+      "sha256": "41eebabcf4a94b8eb206259e771c170c3bbb093267ec1dac5dfe9d718da078b8",
+      "bytes": 984757
+    },
+    {
+      "id": "g2-027",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "low_contrast"
+      ],
+      "layouts": [
+        "classic"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_contrast",
+          "degrees": 0.68,
+          "noise": 1728069331,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-027.pdf",
+      "shipments": [
+        "1015125290"
+      ],
+      "sha256": "2a8357008caf0fde94907dea86fa820cabf7bc8795c6b900f2ebc5a2001b3f74",
+      "bytes": 71417
+    },
+    {
+      "id": "g2-028",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "low_res",
+        "title_line"
+      ],
+      "layouts": [
+        "ledger"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_res",
+          "degrees": 0.5,
+          "noise": 3167528044,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-028.pdf",
+      "shipments": [
+        "1034170485"
+      ],
+      "sha256": "3fe559edcddebcb6b6ab4bbc12d2664dcd089368259a0001ea3c0051f65376d1",
+      "bytes": 152966
+    },
+    {
+      "id": "g2-029",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "fax"
+      ],
+      "layouts": [
+        "modern"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "fax",
+          "degrees": -0.15,
+          "noise": 1152905661,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-029.pdf",
+      "shipments": [
+        "1021737655"
+      ],
+      "sha256": "87640b992a430f05494f05d3366187618257b1ef12624b252ba0c596eecb7645",
+      "bytes": 25950
+    },
+    {
+      "id": "g2-030",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "stamp",
+          "degrees": -1.42,
+          "noise": 2030511352,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-030.pdf",
+      "shipments": [
+        "1014507608"
+      ],
+      "sha256": "1eff3e9b57da7b7970626707508106abb8ebba048d1445284a182fc37f946cc8",
+      "bytes": 508753
+    },
+    {
+      "id": "g2-031",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "skew"
+      ],
+      "layouts": [
+        "compact"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "skew",
+          "degrees": -5.95,
+          "noise": 3061880106,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-031.pdf",
+      "shipments": [
+        "1001362068"
+      ],
+      "sha256": "cc68e2ff6fac9bc0d164c0919cdd7383411540aad5cde62fe183165ee3830e90",
+      "bytes": 255088
+    },
+    {
+      "id": "g2-032",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "clean",
+      "adversarial": false,
+      "traits": [
+        "low_contrast"
+      ],
+      "layouts": [
+        "boxed"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_contrast",
+          "degrees": 0.43,
+          "noise": 3003390864,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-032.pdf",
+      "shipments": [
+        "1030218904"
+      ],
+      "sha256": "8727c7ee2a198ba033a943822f9aae4b7b02ea3b46f3fa651b168062d09d7f7b",
+      "bytes": 79450
+    },
+    {
+      "id": "g2-033",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "landscape",
+        "reference_numbers",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-033.pdf",
+      "shipments": [
+        "1030559421"
+      ],
+      "sha256": "7c6ead90046de8859527a087b57d1e41bf13398335afa7730ed40d12e68841ad",
+      "bytes": 53722
+    },
+    {
+      "id": "g2-034",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-034.pdf",
+      "shipments": [
+        "1017002093"
+      ],
+      "sha256": "9599f56bd9d0f3795ce29c7550a4964c349dac22b6f6ce117dfe74eb8093b142",
+      "bytes": 55758
+    },
+    {
+      "id": "g2-035",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-035.pdf",
+      "shipments": [
+        "1009605747"
+      ],
+      "sha256": "fc5735ade3829301c3b4b2619bfb73fc0d87388a2d28e8544d4358275aff3d5d",
+      "bytes": 68580
+    },
+    {
+      "id": "g2-036",
+      "split": "test",
+      "ci": true,
+      "path": "digital",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-036.pdf",
+      "shipments": [
+        "1031327564"
+      ],
+      "sha256": "32e313987306ddd47b9ac06ec5b24636e2966e169b14827fd80aacc9b6ddac7b",
+      "bytes": 57918
+    },
+    {
+      "id": "g2-037",
+      "split": "test",
+      "ci": true,
+      "path": "digital",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "factoring_remit",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-037.pdf",
+      "shipments": [
+        "1016827875"
+      ],
+      "sha256": "1ccae866e197f6e87fe0b21dbcac90273e43f2c68754d13d2afe94b733eff9cf",
+      "bytes": 54922
+    },
+    {
+      "id": "g2-038",
+      "split": "test",
+      "ci": true,
+      "path": "digital",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "landscape",
+        "reference_numbers",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-038.pdf",
+      "shipments": [
+        "1022474122"
+      ],
+      "sha256": "43201ab99121eacb4525c55ac2ced8115ed9fbd7fb1ab70f1c8ba8b6686e9e5c",
+      "bytes": 53563
+    },
+    {
+      "id": "g2-039",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-039.pdf",
+      "shipments": [
+        "1009051417"
+      ],
+      "sha256": "4262174b4ef88160389f7d05918e5ec52e53166ea3f7b539fc0b73d91e8964b6",
+      "bytes": 54498
+    },
+    {
+      "id": "g2-040",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "stamp",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-040.pdf",
+      "shipments": [
+        "1034946547"
+      ],
+      "sha256": "d1da02e85038679abe40fec60856239d501fd606953ed980b51aaba8ce3f579d",
+      "bytes": 82049
+    },
+    {
+      "id": "g2-041",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-041.pdf",
+      "shipments": [
+        "1008497087"
+      ],
+      "sha256": "e35323eb85d3eddf560de7723f91bb709d8cc322117843b0066f764d85afad0f",
+      "bytes": 42894
+    },
+    {
+      "id": "g2-042",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "factoring_remit",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-042.pdf",
+      "shipments": [
+        "1016653657"
+      ],
+      "sha256": "7eeb4603460ddf09f5a6e71105e5a64cde0416e06e641ea06231eb1dccf3ea21",
+      "bytes": 55090
+    },
+    {
+      "id": "g2-043",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "landscape",
+        "reference_numbers",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-043.pdf",
+      "shipments": [
+        "1011332089"
+      ],
+      "sha256": "fa527cda2c50e05b64780f86df438e26e6387d1709ae217d15784af5921ef4b8",
+      "bytes": 54960
+    },
+    {
+      "id": "g2-044",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-044.pdf",
+      "shipments": [
+        "1001734261"
+      ],
+      "sha256": "8f4e9f6c86c68dc7e3132265f1e4779f0d154d718256a2bb170df269f97ad987",
+      "bytes": 69846
+    },
+    {
+      "id": "g2-045",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "factoring_remit",
+        "low_res",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_res",
+          "degrees": 0.27,
+          "noise": 1207913507,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-045.pdf",
+      "shipments": [
+        "1004284179"
+      ],
+      "sha256": "9595ab2fa97ad3442308047df835326a660fd1e5fd97ae9f0ea1e3d2878e4e58",
+      "bytes": 157419
+    },
+    {
+      "id": "g2-046",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "fax",
+        "landscape",
+        "reference_numbers",
+        "rotated_table",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "fax",
+          "degrees": 0.83,
+          "noise": 3755715147,
+          "sideways": true,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-046.pdf",
+      "shipments": [
+        "1033172691"
+      ],
+      "sha256": "74bd820536b6fafda92476431ac1dd4e5bafdb18733b66ce7c6c3e2b5c76107e",
+      "bytes": 74699
+    },
+    {
+      "id": "g2-047",
+      "split": "test",
+      "ci": true,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "stamp",
+          "degrees": -0.02,
+          "noise": 4021621686,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-047.pdf",
+      "shipments": [
+        "1036466995"
+      ],
+      "sha256": "a1688013da08d9ccd6996f9a4f2dfc9a25e831584c4291fdda2bf8b26e5894fc",
+      "bytes": 503395
+    },
+    {
+      "id": "g2-048",
+      "split": "test",
+      "ci": true,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "skew",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 2,
+      "scans": [
+        {
+          "profile": "skew",
+          "degrees": 4.34,
+          "noise": 2779505524,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "skew",
+          "degrees": 5.5,
+          "noise": 2686947747,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-048.pdf",
+      "shipments": [
+        "1034075457"
+      ],
+      "sha256": "383d561f85e8f5ba60c59c8edd9552bbe836d102bf2214f06200cf4b1d5958b8",
+      "bytes": 509245
+    },
+    {
+      "id": "g2-049",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "low_res"
+      ],
+      "layouts": [
+        "classic"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_res",
+          "degrees": 1.07,
+          "noise": 296436112,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-049.pdf",
+      "shipments": [
+        "1022038577"
+      ],
+      "sha256": "752fecce7f76100176b2fce9cd2cc098162a154df9a1de9161c4fbb647d5ea58",
+      "bytes": 155947
+    },
+    {
+      "id": "g2-050",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "fax",
+        "title_line"
+      ],
+      "layouts": [
+        "ledger"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "fax",
+          "degrees": -0.23,
+          "noise": 2986065343,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-050.pdf",
+      "shipments": [
+        "1035009899"
+      ],
+      "sha256": "3de9458b636b06af0e3fddccc99377ec28cae483067a5c7c09c936166ae998ff",
+      "bytes": 23621
+    },
+    {
+      "id": "g2-051",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "stamp"
+      ],
+      "layouts": [
+        "modern"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "stamp",
+          "degrees": -0.79,
+          "noise": 3065889791,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-051.pdf",
+      "shipments": [
+        "1028643023"
+      ],
+      "sha256": "52b2c60b4e0acc165b0ea096cc688d47566547e19688a747a25820e29029efec",
+      "bytes": 456470
+    },
+    {
+      "id": "g2-052",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "overcharge",
+      "adversarial": false,
+      "traits": [
+        "skew",
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "skew",
+          "degrees": -3.25,
+          "noise": 633236028,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-052.pdf",
+      "shipments": [
+        "1028611347"
+      ],
+      "sha256": "49d832c4ff154c10590ffa1376af8b47cb6b1bc9ea7df754f795040a81a766b8",
+      "bytes": 268179
+    },
+    {
+      "id": "g2-053",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "duplicate_invoice",
+      "adversarial": false,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-053.pdf",
+      "shipments": [
+        "1009597828"
+      ],
+      "sha256": "cf56d260cfd9dbb5c1229bce1ad01a8c6985248e78bee6fc8e534ec8ed4e7880",
+      "bytes": 68479
+    },
+    {
+      "id": "g2-054",
+      "split": "test",
+      "ci": true,
+      "path": "digital",
+      "kind": "duplicate_invoice",
+      "adversarial": false,
+      "traits": [
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-054.pdf",
+      "shipments": [
+        "1017374286"
+      ],
+      "sha256": "c73c0c1b5919f24bb56055b8fb3931482dd2fde0313a297018388ee00ed36e75",
+      "bytes": 44452
+    },
+    {
+      "id": "g2-055",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "duplicate_invoice",
+      "adversarial": false,
+      "traits": [
+        "factoring_remit",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-055.pdf",
+      "shipments": [
+        "1002074778"
+      ],
+      "sha256": "ccb1df169748ab2cb53cdc8e623ac054cb173729f4bbe9ede9d3bbf658879192",
+      "bytes": 54714
+    },
+    {
+      "id": "g2-056",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "duplicate_invoice",
+      "adversarial": false,
+      "traits": [
+        "low_contrast"
+      ],
+      "layouts": [
+        "compact"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_contrast",
+          "degrees": -0.72,
+          "noise": 1871085970,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-056.pdf",
+      "shipments": [
+        "1012266531"
+      ],
+      "sha256": "01d8e7f7bfcccd1dd1678c466654237cd88b275c2a2d8c4b322c2d71c5bcd82a",
+      "bytes": 66770
+    },
+    {
+      "id": "g2-057",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "duplicate_invoice",
+      "adversarial": false,
+      "traits": [
+        "low_res"
+      ],
+      "layouts": [
+        "boxed"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_res",
+          "degrees": 1.4,
+          "noise": 1739625368,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-057.pdf",
+      "shipments": [
+        "1012329883"
+      ],
+      "sha256": "fedec796d61723b9e464b6e2b68eaa77dfc09bf5e33506aefb86592f2cbeeac2",
+      "bytes": 159156
+    },
+    {
+      "id": "g2-058",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "repeated_page",
+      "adversarial": true,
+      "traits": [
+        "copy_label",
+        "landscape",
+        "reference_numbers",
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-058.pdf",
+      "shipments": [
+        "1005796708"
+      ],
+      "sha256": "527f078a748a672e5c941b335d5f7ef01d4e26eb7c934de5c0c5da9e48955d3c",
+      "bytes": 130480
+    },
+    {
+      "id": "g2-059",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "repeated_page",
+      "adversarial": true,
+      "traits": [
+        "carrier_wording",
+        "copy_label",
+        "early_pay_discount",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-059.pdf",
+      "shipments": [
+        "1019670796"
+      ],
+      "sha256": "796ca1d63f509187cca793db241a7ebf7abbc0b20bc982e365e8529ee42d418d",
+      "bytes": 129059
+    },
+    {
+      "id": "g2-060",
+      "split": "test",
+      "ci": true,
+      "path": "digital",
+      "kind": "repeated_page",
+      "adversarial": true,
+      "traits": [
+        "copy_label",
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-060.pdf",
+      "shipments": [
+        "1033338990"
+      ],
+      "sha256": "fda95673e5a56e6095ebbe05a2b1aee2a25177d0ec9d6a3258dbfa5c7ce179cb",
+      "bytes": 105201
+    },
+    {
+      "id": "g2-061",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "repeated_page",
+      "adversarial": true,
+      "traits": [
+        "copy_label",
+        "factoring_remit",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-061.pdf",
+      "shipments": [
+        "1025697155"
+      ],
+      "sha256": "daad964a26035ca9d378a7e8f4847f76ca0203f13c738cd5ebb0de617f0ac7ee",
+      "bytes": 106060
+    },
+    {
+      "id": "g2-062",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "repeated_page",
+      "adversarial": true,
+      "traits": [
+        "factoring_remit",
+        "fax",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 2,
+      "scans": [
+        {
+          "profile": "fax",
+          "degrees": 0.81,
+          "noise": 373105105,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "fax",
+          "degrees": -1.13,
+          "noise": 251446126,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-062.pdf",
+      "shipments": [
+        "1028500481"
+      ],
+      "sha256": "f5dc1712bbb8b31bbc42de35326a930abdc6e30c574f06b29e3e97e1ab9b2d0e",
+      "bytes": 58176
+    },
+    {
+      "id": "g2-063",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "repeated_page",
+      "adversarial": true,
+      "traits": [
+        "landscape",
+        "reference_numbers",
+        "rotated_table",
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 3,
+      "scans": [
+        {
+          "profile": "stamp",
+          "degrees": -1.17,
+          "noise": 983185584,
+          "sideways": true,
+          "flip": false
+        },
+        {
+          "profile": "stamp",
+          "degrees": 0.22,
+          "noise": 936033813,
+          "sideways": true,
+          "flip": false
+        },
+        {
+          "profile": "stamp",
+          "degrees": -0.98,
+          "noise": 3733777921,
+          "sideways": true,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-063.pdf",
+      "shipments": [
+        "1029252786"
+      ],
+      "sha256": "bf60aa685b88800a807ad41b6e41b13c89bcade36dc208b376c794ba6b426591",
+      "bytes": 1544296
+    },
+    {
+      "id": "g2-064",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "repeated_page",
+      "adversarial": true,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "skew",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 3,
+      "scans": [
+        {
+          "profile": "skew",
+          "degrees": -4.34,
+          "noise": 2720834123,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "skew",
+          "degrees": -4.95,
+          "noise": 4092531954,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "skew",
+          "degrees": -5.45,
+          "noise": 1971889238,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-064.pdf",
+      "shipments": [
+        "1035572148"
+      ],
+      "sha256": "e064f3561ba67b9679ff0d240edb97efd4da062a96d8f0a625aa0665db5f856d",
+      "bytes": 758324
+    },
+    {
+      "id": "g2-065",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "repeated_page",
+      "adversarial": true,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "low_contrast",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 2,
+      "scans": [
+        {
+          "profile": "low_contrast",
+          "degrees": -1.46,
+          "noise": 1129666519,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_contrast",
+          "degrees": -0.53,
+          "noise": 3434452043,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-065.pdf",
+      "shipments": [
+        "1036752079"
+      ],
+      "sha256": "cf4d8145f928978e937326b0fe832e01f91ae327a884052a710fb8790f5009c3",
+      "bytes": 149314
+    },
+    {
+      "id": "g2-066",
+      "split": "test",
+      "ci": true,
+      "path": "scanned",
+      "kind": "repeated_page",
+      "adversarial": true,
+      "traits": [
+        "fax"
+      ],
+      "layouts": [
+        "classic"
+      ],
+      "pages": 2,
+      "scans": [
+        {
+          "profile": "fax",
+          "degrees": -0.45,
+          "noise": 3481770461,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "fax",
+          "degrees": 1.32,
+          "noise": 759933502,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-066.pdf",
+      "shipments": [
+        "1030543583"
+      ],
+      "sha256": "d99b92ab551f96c37cd4c7fde6969b179464e8d60802abef9551dca79211c519",
+      "bytes": 56442
+    },
+    {
+      "id": "g2-067",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "repeated_page",
+      "adversarial": true,
+      "traits": [
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "ledger"
+      ],
+      "pages": 3,
+      "scans": [
+        {
+          "profile": "stamp",
+          "degrees": -1.17,
+          "noise": 2353749456,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "stamp",
+          "degrees": 0.07,
+          "noise": 1850949328,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "stamp",
+          "degrees": -0.9,
+          "noise": 3567640168,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-067.pdf",
+      "shipments": [
+        "1036942135"
+      ],
+      "sha256": "ae3ef9fbd2e9e4d974acbcd9db5147bf616e0acca6d82a4a2dcc901a9cdbd308",
+      "bytes": 1479364
+    },
+    {
+      "id": "g2-068",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "repeated_page",
+      "adversarial": true,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "skew",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 3,
+      "scans": [
+        {
+          "profile": "skew",
+          "degrees": -5.62,
+          "noise": 3748037478,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "skew",
+          "degrees": -5.11,
+          "noise": 3194306538,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "skew",
+          "degrees": 5.87,
+          "noise": 2458966213,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-068.pdf",
+      "shipments": [
+        "1022909667"
+      ],
+      "sha256": "17c6cdfc2d1f82bbcb1d8786a551494baa5b331716c7dd62f75ac2c1e1207169",
+      "bytes": 759054
+    },
+    {
+      "id": "g2-069",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "repeated_page",
+      "adversarial": true,
+      "traits": [
+        "low_contrast"
+      ],
+      "layouts": [
+        "modern"
+      ],
+      "pages": 2,
+      "scans": [
+        {
+          "profile": "low_contrast",
+          "degrees": 0.82,
+          "noise": 921996522,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_contrast",
+          "degrees": 0.72,
+          "noise": 1291439169,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-069.pdf",
+      "shipments": [
+        "1008378302"
+      ],
+      "sha256": "340db726d0cb184e01cab46b623c7f505b028c8dab4e451c6b17ebcb940a952c",
+      "bytes": 130622
+    },
+    {
+      "id": "g2-070",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "multi_invoice",
+      "adversarial": true,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "landscape",
+        "reference_numbers",
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape",
+        "carrier_form"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-070.pdf",
+      "shipments": [
+        "1008821766",
+        "1002217320"
+      ],
+      "sha256": "66f4b6a0a6b6f53f177d2a33dbb59646b5e8f9d7048a24dcb2cad53fe5ff4bbe",
+      "bytes": 116009
+    },
+    {
+      "id": "g2-071",
+      "split": "test",
+      "ci": true,
+      "path": "digital",
+      "kind": "multi_invoice",
+      "adversarial": true,
+      "traits": [
+        "continued_page",
+        "factoring_remit",
+        "multi_column",
+        "reference_numbers",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued",
+        "remit",
+        "two_column"
+      ],
+      "pages": 4,
+      "scans": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "file": "cases/g2-071.pdf",
+      "shipments": [
+        "1001615476",
+        "1005709599",
+        "1001583800"
+      ],
+      "sha256": "aeb5365e8da4fdd3a023380d3057d206bbb7d5e53c8d277086cbb39f581e45c7",
+      "bytes": 163824
+    },
+    {
+      "id": "g2-072",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "multi_invoice",
+      "adversarial": true,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "landscape",
+        "reference_numbers",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape",
+        "carrier_form"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-072.pdf",
+      "shipments": [
+        "1021024945",
+        "1012670400"
+      ],
+      "sha256": "ada31efc9d1fdadd00bfa944b4bad2ac57d6b327678e8169dce57d5c9ee88d22",
+      "bytes": 105480
+    },
+    {
+      "id": "g2-073",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "multi_invoice",
+      "adversarial": true,
+      "traits": [
+        "low_res",
+        "title_line"
+      ],
+      "layouts": [
+        "remit",
+        "compact"
+      ],
+      "pages": 2,
+      "scans": [
+        {
+          "profile": "low_res",
+          "degrees": 0.59,
+          "noise": 2517473902,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": -1.32,
+          "noise": 3300638522,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-073.pdf",
+      "shipments": [
+        "1013771141",
+        "1017896940"
+      ],
+      "sha256": "df30ad6cd164de9495613172bc7ca9de0fc52b97a529a57cbbd1491181180d01",
+      "bytes": 313871
+    },
+    {
+      "id": "g2-074",
+      "split": "test",
+      "ci": true,
+      "path": "scanned",
+      "kind": "multi_invoice",
+      "adversarial": true,
+      "traits": [
+        "factoring_remit",
+        "fax",
+        "landscape",
+        "multi_column",
+        "reference_numbers",
+        "rotated_table",
+        "title_line"
+      ],
+      "layouts": [
+        "boxed",
+        "two_column",
+        "landscape"
+      ],
+      "pages": 3,
+      "scans": [
+        {
+          "profile": "fax",
+          "degrees": -0.32,
+          "noise": 329459909,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "fax",
+          "degrees": -1.48,
+          "noise": 1368269109,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "fax",
+          "degrees": -1.3,
+          "noise": 318712581,
+          "sideways": true,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-074.pdf",
+      "shipments": [
+        "1024596414",
+        "1008140732",
+        "1031961084"
+      ],
+      "sha256": "3af70f9708536ee56ee00980832c99a1c69903258664696537856673422d26d6",
+      "bytes": 142571
+    },
+    {
+      "id": "g2-075",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "packet",
+      "adversarial": false,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 3,
+      "scans": [
+        {
+          "profile": "stamp",
+          "degrees": -0.74,
+          "noise": 3273051744,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": -1.29,
+          "noise": 857457221,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": 0.24,
+          "noise": 554960244,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-075.pdf",
+      "shipments": [
+        "1025491261"
+      ],
+      "sha256": "b5a9b07cd0c63d18f9bf96cd8089133e5fcf1a1f262b497a879efd211141ae14",
+      "bytes": 813715
+    },
+    {
+      "id": "g2-076",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "packet",
+      "adversarial": false,
+      "traits": [
+        "invoice_not_first",
+        "skew"
+      ],
+      "layouts": [
+        "classic"
+      ],
+      "pages": 6,
+      "scans": [
+        {
+          "profile": "low_res",
+          "degrees": -0.98,
+          "noise": 3737144139,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "skew",
+          "degrees": 5.75,
+          "noise": 2247550513,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": -1.01,
+          "noise": 3164223175,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": 1.18,
+          "noise": 1630313828,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": -1.31,
+          "noise": 3582304441,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": -0.06,
+          "noise": 913213763,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-076.pdf",
+      "shipments": [
+        "1011292494"
+      ],
+      "sha256": "1306ffcc4b6179facde4fe3639c0c197bb8f485847ea6af808f3e98008733c15",
+      "bytes": 1036723
+    },
+    {
+      "id": "g2-077",
+      "split": "test",
+      "ci": true,
+      "path": "scanned",
+      "kind": "packet",
+      "adversarial": false,
+      "traits": [
+        "low_contrast",
+        "title_line"
+      ],
+      "layouts": [
+        "ledger"
+      ],
+      "pages": 5,
+      "scans": [
+        {
+          "profile": "low_contrast",
+          "degrees": 1.42,
+          "noise": 1163750888,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": -0.58,
+          "noise": 1978610752,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": -0.4,
+          "noise": 4185636562,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": -1.15,
+          "noise": 99121191,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": 0.13,
+          "noise": 1735468423,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-077.pdf",
+      "shipments": [
+        "1010049211"
+      ],
+      "sha256": "2289d8533c1fc0b44f3e78b5d59c09c9e3d3a53d0c2e073825c6f46fc29a71f3",
+      "bytes": 684926
+    },
+    {
+      "id": "g2-078",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "packet",
+      "adversarial": false,
+      "traits": [
+        "invoice_not_first",
+        "low_res"
+      ],
+      "layouts": [
+        "modern"
+      ],
+      "pages": 8,
+      "scans": [
+        {
+          "profile": "low_res",
+          "degrees": -0.39,
+          "noise": 3959847989,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": 0.7,
+          "noise": 2981031281,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": 0.94,
+          "noise": 4191336465,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": -1.16,
+          "noise": 2925130273,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": 1.42,
+          "noise": 917501928,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": 1.46,
+          "noise": 1890038640,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": -0.53,
+          "noise": 3971464018,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "low_res",
+          "degrees": -0.27,
+          "noise": 1992377919,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-078.pdf",
+      "shipments": [
+        "1013090107"
+      ],
+      "sha256": "99a5f6e56baeae6b64a201145f904d57c4b01e4afe39b7a9423bdd5d2273ae36",
+      "bytes": 1223933
+    },
+    {
+      "id": "g2-079",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "partial_credit",
+      "adversarial": true,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-079.pdf",
+      "shipments": [
+        "1015687539"
+      ],
+      "sha256": "2ade112169dc3083afcff270e8b59521150d12453945f7732c08f240882687ff",
+      "bytes": 69378
+    },
+    {
+      "id": "g2-080",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "partial_credit",
+      "adversarial": true,
+      "traits": [
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-080.pdf",
+      "shipments": [
+        "1030599016"
+      ],
+      "sha256": "1365563556f89bddea32b0f69a08b7b41246417fc937441cd32d06fe18dca349",
+      "bytes": 61073
+    },
+    {
+      "id": "g2-081",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "partial_credit",
+      "adversarial": true,
+      "traits": [
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "stamp",
+          "degrees": -1.14,
+          "noise": 652883423,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-081.pdf",
+      "shipments": [
+        "1027700662"
+      ],
+      "sha256": "f0c31423076235b23397d7732dbce98a4fb0216efde9bc14f1bb1612d2c0a0da",
+      "bytes": 507540
+    },
+    {
+      "id": "g2-082",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "credit_memo",
+      "adversarial": true,
+      "traits": [
+        "factoring_remit",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-082.pdf",
+      "shipments": [
+        "1014745178"
+      ],
+      "sha256": "8dc5646e2cb22f07d211da4ad97c7da2a1764318c49421d1c5a9e3dd6cb99cbf",
+      "bytes": 54503
+    },
+    {
+      "id": "g2-083",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "credit_memo",
+      "adversarial": true,
+      "traits": [
+        "skew"
+      ],
+      "layouts": [
+        "compact"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "skew",
+          "degrees": 3.6,
+          "noise": 3877588309,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-083.pdf",
+      "shipments": [
+        "1007768539"
+      ],
+      "sha256": "0ecf5128cc1e03842f40ddfb9be836e83933eb2ebdb2f106817fb56cd53ece0b",
+      "bytes": 250912
+    },
+    {
+      "id": "g2-084",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "revised_invoice",
+      "adversarial": true,
+      "traits": [
+        "landscape",
+        "reference_numbers",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-084.pdf",
+      "shipments": [
+        "1000332598"
+      ],
+      "sha256": "8b590c3965fe0bef9a9a1762c22777118ed384cdfcf9ccd603f724f0e42951dc",
+      "bytes": 55339
+    },
+    {
+      "id": "g2-085",
+      "split": "test",
+      "ci": false,
+      "path": "digital",
+      "kind": "revised_invoice",
+      "adversarial": true,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-085.pdf",
+      "shipments": [
+        "1027724419"
+      ],
+      "sha256": "2d0cc5e9bcc5b8e11ae416f928877d4253abe8da0b77e7828038fe11767919c5",
+      "bytes": 72896
+    },
+    {
+      "id": "g2-086",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "revised_invoice",
+      "adversarial": true,
+      "traits": [
+        "low_contrast"
+      ],
+      "layouts": [
+        "boxed"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_contrast",
+          "degrees": 1.27,
+          "noise": 1953428117,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-086.pdf",
+      "shipments": [
+        "1014024549"
+      ],
+      "sha256": "ab3bcab9281e9bf12a27b83c8d3d6798ce3c9cced63db890362b2545ae719e4a",
+      "bytes": 81623
+    },
+    {
+      "id": "g2-087",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "tricky_number",
+      "adversarial": true,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "stamp",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 2,
+      "scans": [
+        null,
+        null
+      ],
+      "file": "cases/g2-087.pdf",
+      "shipments": [
+        "1009193959"
+      ],
+      "sha256": "c4838e8abce5a958327810a6621e842b3b2456503c950eb84b06865cde85fec2",
+      "bytes": 82236
+    },
+    {
+      "id": "g2-088",
+      "split": "test",
+      "ci": true,
+      "path": "digital",
+      "kind": "tricky_number",
+      "adversarial": true,
+      "traits": [
+        "title_line"
+      ],
+      "layouts": [
+        "remit"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-088.pdf",
+      "shipments": [
+        "1001702585"
+      ],
+      "sha256": "4c2bfc0f39f7abd9b237c47dee2ffb4c3d752d57e59898e86763f753f3705634",
+      "bytes": 44686
+    },
+    {
+      "id": "g2-089",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "tricky_number",
+      "adversarial": true,
+      "traits": [
+        "factoring_remit",
+        "low_res",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_res",
+          "degrees": -0.55,
+          "noise": 4175790316,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-089.pdf",
+      "shipments": [
+        "1015101533"
+      ],
+      "sha256": "9bbcc2b606d93ef38cc09b1295b86aec572facdf353ef3e83296b40c7c0e97b4",
+      "bytes": 157977
+    },
+    {
+      "id": "g2-090",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "tricky_number",
+      "adversarial": true,
+      "traits": [
+        "fax",
+        "landscape",
+        "reference_numbers",
+        "rotated_table",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "fax",
+          "degrees": -0.13,
+          "noise": 3925679495,
+          "sideways": true,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-090.pdf",
+      "shipments": [
+        "1014618474"
+      ],
+      "sha256": "5961894252ca8684438b323da3ab9998d286ce39effee7344c071ccd20461889",
+      "bytes": 68938
+    },
+    {
+      "id": "g2-091",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "handwritten",
+      "adversarial": true,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "stamp",
+          "degrees": 0.3,
+          "noise": 175844305,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-091.pdf",
+      "shipments": [
+        "1014436337"
+      ],
+      "sha256": "e9d0d997c27cf91cd90efda37d6c01db1ce937c539ef2df0a09654599e130737",
+      "bytes": 502937
+    },
+    {
+      "id": "g2-092",
+      "split": "test",
+      "ci": true,
+      "path": "scanned",
+      "kind": "handwritten",
+      "adversarial": true,
+      "traits": [
+        "continued_page",
+        "reference_numbers",
+        "skew",
+        "subtotal_tax",
+        "title_line"
+      ],
+      "layouts": [
+        "continued"
+      ],
+      "pages": 2,
+      "scans": [
+        {
+          "profile": "skew",
+          "degrees": -3.63,
+          "noise": 498325898,
+          "sideways": false,
+          "flip": false
+        },
+        {
+          "profile": "skew",
+          "degrees": 3.89,
+          "noise": 3132723019,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-092.pdf",
+      "shipments": [
+        "1032182816"
+      ],
+      "sha256": "86c3e34644c0529192fbca4eed9a6ca35150b9815f510c6212f315a6a7685f64",
+      "bytes": 514553
+    },
+    {
+      "id": "g2-093",
+      "split": "dev",
+      "ci": false,
+      "path": "scanned",
+      "kind": "upside_down",
+      "adversarial": true,
+      "traits": [
+        "low_contrast"
+      ],
+      "layouts": [
+        "classic"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_contrast",
+          "degrees": -1.28,
+          "noise": 3702568706,
+          "sideways": false,
+          "flip": true
+        }
+      ],
+      "file": "cases/g2-093.pdf",
+      "shipments": [
+        "1006390633"
+      ],
+      "sha256": "afa9a6796b462271ef0dac118158eec5903ecf601df3e96b9090b8167e73754e",
+      "bytes": 72675
+    },
+    {
+      "id": "g2-094",
+      "split": "test",
+      "ci": false,
+      "path": "scanned",
+      "kind": "upside_down",
+      "adversarial": true,
+      "traits": [
+        "low_res",
+        "title_line"
+      ],
+      "layouts": [
+        "ledger"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "low_res",
+          "degrees": 0.07,
+          "noise": 3970409525,
+          "sideways": false,
+          "flip": true
+        }
+      ],
+      "file": "cases/g2-094.pdf",
+      "shipments": [
+        "1022387013"
+      ],
+      "sha256": "75719fccb1f02342b8aea25581b753a19fd0b47fab0f089bd89833d63cd3586c",
+      "bytes": 152941
+    },
+    {
+      "id": "g2-095",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "missing_pro",
+      "adversarial": true,
+      "traits": [
+        "factoring_remit",
+        "multi_column",
+        "title_line"
+      ],
+      "layouts": [
+        "two_column"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-095.pdf",
+      "shipments": [
+        "1025182420"
+      ],
+      "sha256": "c76619c0ed1a1597a02b00917007e991f73eda37d6f4a2b0156b76e95c45efa2",
+      "bytes": 56388
+    },
+    {
+      "id": "g2-096",
+      "split": "test",
+      "ci": true,
+      "path": "scanned",
+      "kind": "missing_pro",
+      "adversarial": true,
+      "traits": [
+        "fax"
+      ],
+      "layouts": [
+        "modern"
+      ],
+      "pages": 1,
+      "scans": [
+        {
+          "profile": "fax",
+          "degrees": -0.97,
+          "noise": 203689271,
+          "sideways": false,
+          "flip": false
+        }
+      ],
+      "file": "cases/g2-096.pdf",
+      "shipments": [
+        "1012116070"
+      ],
+      "sha256": "f836b26509086d3619c8363d0b92c6bcb9d811fcd394246c7a24e9e87225061d",
+      "bytes": 25398
+    },
+    {
+      "id": "g2-097",
+      "split": "dev",
+      "ci": false,
+      "path": "digital",
+      "kind": "non_usd",
+      "adversarial": true,
+      "traits": [
+        "landscape",
+        "reference_numbers",
+        "title_line"
+      ],
+      "layouts": [
+        "landscape"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-097.pdf",
+      "shipments": [
+        "1036015612"
+      ],
+      "sha256": "c32892b70fba5833b17957cfceb528bb22f79ebd4d29ac405fef07e2a8514b75",
+      "bytes": 54076
+    },
+    {
+      "id": "g2-098",
+      "split": "test",
+      "ci": true,
+      "path": "digital",
+      "kind": "non_usd",
+      "adversarial": true,
+      "traits": [
+        "carrier_wording",
+        "early_pay_discount",
+        "stamp",
+        "title_line"
+      ],
+      "layouts": [
+        "carrier_form"
+      ],
+      "pages": 1,
+      "scans": [
+        null
+      ],
+      "file": "cases/g2-098.pdf",
+      "shipments": [
+        "1012155665"
+      ],
+      "sha256": "8a43b849552515de798788d56667d85a9537a96855da9e36bf9f2361dd951682",
+      "bytes": 68727
+    }
+  ]
+}

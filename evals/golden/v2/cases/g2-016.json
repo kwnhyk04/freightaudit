@@ -1,0 +1,79 @@
+{
+  "id": "g2-016",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "factoring_remit",
+    "multi_column",
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-016.pdf",
+  "shipments": [
+    "1018490865"
+  ],
+  "sha256": "1018112b70c90fcab0c00a7e9eafcff29b8b915257a9d5c3b8d8d06db490330b",
+  "bytes": 69928,
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "39320596",
+      "invoice_date": "2025-02-17",
+      "due_date": "2025-03-19",
+      "pro_number": "1018490865",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Larson-Lind, White and Connelly",
+        "address": "83471 Brakus Parks, Perth Amboy, ME 88394"
+      },
+      "shipper": {
+        "name": "Hessel Group",
+        "address": "560 East Avenue, Twin Falls, ID 28181"
+      },
+      "consignee": {
+        "name": "Cummings - Renner",
+        "address": "10900 Torphy Flats, Santa Cruz, DE 86939"
+      },
+      "weight_lb": 2613,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 214160,
+          "expected_cents": 214160
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 64484,
+          "expected_cents": 64484
+        }
+      ],
+      "total_cents": 278644,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Hilll Capital Funding",
+        "address": "P.O. Box 66681, West Maximillia, RI 47911"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

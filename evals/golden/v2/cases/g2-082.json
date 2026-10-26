@@ -1,0 +1,79 @@
+{
+  "id": "g2-082",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "credit_memo",
+  "adversarial": true,
+  "traits": [
+    "factoring_remit",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-082.pdf",
+  "shipments": [
+    "1014745178"
+  ],
+  "sha256": "8dc5646e2cb22f07d211da4ad97c7da2a1764318c49421d1c5a9e3dd6cb99cbf",
+  "bytes": 54503,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "CM582121",
+      "invoice_date": "2025-08-05",
+      "due_date": "2025-09-04",
+      "pro_number": "1014745178",
+      "currency": "USD",
+      "kind": "credit_memo",
+      "bill_to": {
+        "name": "Rath, Marquardt and Lind",
+        "address": "6354 Ernesto Common, Russelchester, MA 40197"
+      },
+      "shipper": {
+        "name": "Pouros LLC",
+        "address": "6009 Amara Cove, West Eleanorechester, KY 17796"
+      },
+      "consignee": {
+        "name": "Schmidt and Sons",
+        "address": "470 Liliane Hollow, North Katarina, NM 22945"
+      },
+      "weight_lb": 10563,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul credit",
+          "charge_code": "LINEHAUL",
+          "amount_cents": -195565,
+          "expected_cents": -195565
+        },
+        {
+          "line_number": 2,
+          "description": "Liftgate service credit",
+          "charge_code": "LIFTGATE",
+          "amount_cents": -12101,
+          "expected_cents": -12101
+        }
+      ],
+      "total_cents": -207666,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "D'Amore Capital Funding",
+        "address": "P.O. Box 21605, Kaciboro, OR 54038"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

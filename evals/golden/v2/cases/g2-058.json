@@ -1,0 +1,83 @@
+{
+  "id": "g2-058",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "repeated_page",
+  "adversarial": true,
+  "traits": [
+    "copy_label",
+    "landscape",
+    "reference_numbers",
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "landscape"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-058.pdf",
+  "shipments": [
+    "1005796708"
+  ],
+  "sha256": "527f078a748a672e5c941b335d5f7ef01d4e26eb7c934de5c0c5da9e48955d3c",
+  "bytes": 130480,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "11972205",
+      "invoice_date": "2025-01-26",
+      "due_date": "2025-02-25",
+      "pro_number": "1005796708",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Bartoletti Inc",
+        "address": "8962 Hayden Estate, Scarlettville, AK 26601"
+      },
+      "shipper": {
+        "name": "Yundt, Schowalter and Marvin",
+        "address": "213 Station Road, North Rolandborough, DE 53099"
+      },
+      "consignee": {
+        "name": "Gibson and Sons",
+        "address": "208 Blanda Parkways, Fort Miraclefurt, OR 54858"
+      },
+      "weight_lb": 10308,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 152424,
+          "expected_cents": 152424
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 46779,
+          "expected_cents": 46779
+        }
+      ],
+      "total_cents": 199203,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "5252408658",
+        "po": "PO-34651",
+        "shipped_on": "2025-01-23",
+        "delivered_on": "2025-01-24"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

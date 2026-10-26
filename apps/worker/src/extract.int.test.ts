@@ -6,6 +6,7 @@ import { resetDev } from '@freightaudit/pipeline/scripts/reset';
 import { resumeExtract } from '@freightaudit/pipeline/scripts/resume-extract';
 import { UnrecoverableError, Worker } from 'bullmq';
 import { asc, eq } from 'drizzle-orm';
+import { PDFDocument } from 'pdf-lib';
 import { createTestEnv, extraction, type FakeCall, fakeModels, makePdf, MODEL_IDS, replyWith, waitFor } from './testing.ts';
 import { failFast } from './workers.ts';
 
@@ -306,9 +307,13 @@ test('a multi-invoice PDF splits into child jobs, and a part that stays unreadab
 });
 
 test('a split upload read while Claude reads first keeps why the free models read it, on the upload and on each part', async () => {
-  const { env } = await setup((call) => replyWith(call.protocol, call.pages === 3 ? extraction(1, 3) : extraction()));
+  // Two pages of different sizes, so the parts differ, and Claude's input estimate stays well under its cap: the day's
+  // budget (0 here) is what hands the upload and each part to the free models.
+  const { env } = await setup((call) => replyWith(call.protocol, call.pages === 2 ? extraction(1, 2) : extraction()));
   env.runWorkers({ modelsUrl: fake!.url, claudeFirst: true });
-  const upload = await env.upload(await makePdf(3));
+  const pdf = await PDFDocument.load(await makePdf(2));
+  pdf.getPage(1).setSize(612, 700);
+  const upload = await env.upload(await pdf.save());
 
   expect(await savedExtraction(upload.id)).toMatchObject({ step: 'first_pass', claudeHandoff: 'daily_budget', result: { parts: expect.any(Array) } });
   const parts = await env.db.select({ id: invoices.id }).from(invoices).where(eq(invoices.parentInvoiceId, upload.id));

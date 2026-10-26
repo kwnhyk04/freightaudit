@@ -1,0 +1,83 @@
+{
+  "id": "g2-004",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "continued_page",
+    "reference_numbers",
+    "stamp",
+    "subtotal_tax",
+    "title_line"
+  ],
+  "layouts": [
+    "continued"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-004.pdf",
+  "shipments": [
+    "1004505911"
+  ],
+  "sha256": "24c8d6c50d97af1b8e371f145920e85f71de8041dc49bb1583ecd4c669d6dc7d",
+  "bytes": 80463,
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "57100390",
+      "invoice_date": "2025-11-29",
+      "due_date": "2025-12-29",
+      "pro_number": "1004505911",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Ebert Inc",
+        "address": "1271 Irwin Dale, Methuen Town, AL 40008"
+      },
+      "shipper": {
+        "name": "Anderson, Kuhlman and Sawayn",
+        "address": "86480 Walsh Falls, South Kellyberg, TN 21028"
+      },
+      "consignee": {
+        "name": "Quigley-Keebler - Simonis",
+        "address": "897 Treutel Keys, Lake Pierreboro, IN 10255"
+      },
+      "weight_lb": 2674,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 141522,
+          "expected_cents": 141522
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 36003,
+          "expected_cents": 36003
+        }
+      ],
+      "total_cents": 177525,
+      "overcharges": [],
+      "subtotal_cents": 177525,
+      "tax_cents": 0,
+      "refs": {
+        "bol": "3777300679",
+        "po": "PO-34466",
+        "shipped_on": "2025-11-22",
+        "delivered_on": "2025-11-25"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

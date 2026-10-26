@@ -1,0 +1,88 @@
+{
+  "id": "g2-025",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "fax",
+    "title_line"
+  ],
+  "layouts": [
+    "carrier_form"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "fax",
+      "degrees": -0.98,
+      "noise": 2287558914,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-025.pdf",
+  "shipments": [
+    "1032372872"
+  ],
+  "sha256": "bb115bc0a3002ea1a7385495fbf12101491f19b67b45871510a800a61a4de464",
+  "bytes": 28879,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "96792347",
+      "invoice_date": "2026-08-03",
+      "due_date": "2026-09-02",
+      "pro_number": "1032372872",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Tremblay Inc",
+        "address": "5549 Gabe Ville, East Pennyside, OH 55957"
+      },
+      "shipper": {
+        "name": "Orn, Crist and McLaughlin",
+        "address": "6640 Fern River, South Annie, MI 94328"
+      },
+      "consignee": {
+        "name": "Cronin and Sons",
+        "address": "369 Alanna Light, West Alannaville, SD 63436"
+      },
+      "weight_lb": 7106,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul transportation",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 234030,
+          "expected_cents": 234030
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel",
+          "charge_code": "FUEL",
+          "amount_cents": 71824,
+          "expected_cents": 71824
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access fee",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11823,
+          "expected_cents": 11823
+        }
+      ],
+      "total_cents": 317677,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

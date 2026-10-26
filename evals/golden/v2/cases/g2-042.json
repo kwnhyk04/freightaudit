@@ -1,0 +1,99 @@
+{
+  "id": "g2-042",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "factoring_remit",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-042.pdf",
+  "shipments": [
+    "1016653657"
+  ],
+  "sha256": "7eeb4603460ddf09f5a6e71105e5a64cde0416e06e641ea06231eb1dccf3ea21",
+  "bytes": 55090,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "56147041",
+      "invoice_date": "2026-05-02",
+      "due_date": "2026-06-01",
+      "pro_number": "1016653657",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Runolfsdottir, Farrell and Walsh",
+        "address": "7988 Heller Walks, Bethanyport, OR 14590"
+      },
+      "shipper": {
+        "name": "Murazik-Rodriguez - O'Kon",
+        "address": "73121 The Green, West Kevin, SD 75696"
+      },
+      "consignee": {
+        "name": "Hand, Kshlerin and Bernhard",
+        "address": "8032 Vivianne Orchard, Port Jayce, SC 23195"
+      },
+      "weight_lb": 4770,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 350243,
+          "expected_cents": 327330
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 80032,
+          "expected_cents": 80032
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 14274,
+          "expected_cents": 14274
+        }
+      ],
+      "total_cents": 444549,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "rate_mismatch",
+          "expected_cents": 327330,
+          "billed_cents": 350243
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Predovic Capital Funding",
+        "address": "P.O. Box 96960, Myahmouth, WY 60578"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "rate_mismatch",
+            "expected_cents": 327330,
+            "billed_cents": 350243
+          }
+        ]
+      }
+    }
+  ]
+}

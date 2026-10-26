@@ -1,0 +1,122 @@
+{
+  "id": "g2-038",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "landscape",
+    "reference_numbers",
+    "title_line"
+  ],
+  "layouts": [
+    "landscape"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-038.pdf",
+  "shipments": [
+    "1022474122"
+  ],
+  "sha256": "43201ab99121eacb4525c55ac2ced8115ed9fbd7fb1ab70f1c8ba8b6686e9e5c",
+  "bytes": 53563,
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "21158824",
+      "invoice_date": "2025-05-19",
+      "due_date": "2025-06-18",
+      "pro_number": "1022474122",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Wiza, Willms and Luettgen",
+        "address": "1790 Purdy Ranch, Aidenmouth, CA 19345"
+      },
+      "shipper": {
+        "name": "Hudson, Klocko and Fisher",
+        "address": "94331 Waterloo Road, Bloomington, VA 21550"
+      },
+      "consignee": {
+        "name": "Schmidt - Romaguera",
+        "address": "558 Elijah Route, Lake Bessie, WI 82960"
+      },
+      "weight_lb": 1461,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 115967,
+          "expected_cents": 115967
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 29502,
+          "expected_cents": 29502
+        },
+        {
+          "line_number": 3,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 19759
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10687,
+          "expected_cents": 10687
+        },
+        {
+          "line_number": 5,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12946,
+          "expected_cents": 12946
+        },
+        {
+          "line_number": 6,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 208620,
+      "overcharges": [
+        {
+          "line_number": 6,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 19759
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "7750306261",
+        "po": "PO-58597",
+        "shipped_on": "2025-05-16",
+        "delivered_on": "2025-05-17"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 6,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 19759
+          }
+        ]
+      }
+    }
+  ]
+}

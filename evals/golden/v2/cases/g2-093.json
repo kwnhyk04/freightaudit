@@ -1,0 +1,92 @@
+{
+  "id": "g2-093",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "upside_down",
+  "adversarial": true,
+  "traits": [
+    "low_contrast"
+  ],
+  "layouts": [
+    "classic"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_contrast",
+      "degrees": -1.28,
+      "noise": 3702568706,
+      "sideways": false,
+      "flip": true
+    }
+  ],
+  "file": "cases/g2-093.pdf",
+  "shipments": [
+    "1006390633"
+  ],
+  "sha256": "afa9a6796b462271ef0dac118158eec5903ecf601df3e96b9090b8167e73754e",
+  "bytes": 72675,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "43439003",
+      "invoice_date": "2026-01-28",
+      "due_date": "2026-02-27",
+      "pro_number": "1006390633",
+      "currency": "USD",
+      "bill_to": {
+        "name": "McCullough, Sipes and Smitham",
+        "address": "46965 Franey Haven, South Blaise, ME 48381"
+      },
+      "shipper": {
+        "name": "Braun - Reinger",
+        "address": "7020 Castle Street, Poinciana, LA 04067"
+      },
+      "consignee": {
+        "name": "Fisher - Lemke",
+        "address": "583 Mraz Light, Kuvalisfurt, SC 53848"
+      },
+      "weight_lb": 10457,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 409890,
+          "expected_cents": 409890
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 100218,
+          "expected_cents": 100218
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 14274,
+          "expected_cents": 14274
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 11635,
+          "expected_cents": 11635
+        }
+      ],
+      "total_cents": 536017,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+{
+  "id": "g2-072",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "multi_invoice",
+  "adversarial": true,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "landscape",
+    "reference_numbers",
+    "title_line"
+  ],
+  "layouts": [
+    "landscape",
+    "carrier_form"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-072.pdf",
+  "shipments": [
+    "1021024945",
+    "1012670400"
+  ],
+  "sha256": "ada31efc9d1fdadd00bfa944b4bad2ac57d6b327678e8169dce57d5c9ee88d22",
+  "bytes": 105480,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "92203916",
+      "invoice_date": "2025-09-18",
+      "due_date": "2025-10-18",
+      "pro_number": "1021024945",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Herzog - Rohan",
+        "address": "907 Pierre Roads, East Cliffordfort, MN 76301"
+      },
+      "shipper": {
+        "name": "Glover - Keeling",
+        "address": "726 Main Avenue, Joannboro, PA 71729"
+      },
+      "consignee": {
+        "name": "Gutkowski, Schulist and Kuphal",
+        "address": "7115 Castle Close, Bergnaumbury, NM 10443"
+      },
+      "weight_lb": 6775,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 89864,
+          "expected_cents": 89864
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 16463,
+          "expected_cents": 16463
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8090,
+          "expected_cents": 8090
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 13702,
+          "expected_cents": 13702
+        },
+        {
+          "line_number": 5,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3486,
+          "expected_cents": 3486
+        }
+      ],
+      "total_cents": 131605,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "9245351568",
+        "po": "PO-76499",
+        "shipped_on": "2025-09-12",
+        "delivered_on": "2025-09-15"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    },
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "20840505",
+      "invoice_date": "2025-10-02",
+      "due_date": "2025-11-01",
+      "pro_number": "1012670400",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Corwin - Simonis",
+        "address": "51080 Schultz Ferry, Bahringershire, AK 99470"
+      },
+      "shipper": {
+        "name": "Hand-Schulist and Sons",
+        "address": "74710 Haley Estates, New Rossieboro, NH 81177"
+      },
+      "consignee": {
+        "name": "Bergnaum and Sons",
+        "address": "47492 Koelpin Ridges, Lowell, NV 16465"
+      },
+      "weight_lb": 2022,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul transportation",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 460864,
+          "expected_cents": 460864
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel",
+          "charge_code": "FUEL",
+          "amount_cents": 141439,
+          "expected_cents": 141439
+        },
+        {
+          "line_number": 3,
+          "description": "Residential",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 9778,
+          "expected_cents": 9778
+        },
+        {
+          "line_number": 4,
+          "description": "Detention (waiting time)",
+          "charge_code": "DETENTION",
+          "amount_cents": 9843,
+          "expected_cents": 9843
+        },
+        {
+          "line_number": 5,
+          "description": "Limited access fee",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11448,
+          "expected_cents": 11448
+        }
+      ],
+      "total_cents": 633372,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 2,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "id": "g2-060",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "repeated_page",
+  "adversarial": true,
+  "traits": [
+    "copy_label",
+    "title_line"
+  ],
+  "layouts": [
+    "remit"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-060.pdf",
+  "shipments": [
+    "1033338990"
+  ],
+  "sha256": "fda95673e5a56e6095ebbe05a2b1aee2a25177d0ec9d6a3258dbfa5c7ce179cb",
+  "bytes": 105201,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "22541189",
+      "invoice_date": "2025-01-26",
+      "due_date": "2025-02-25",
+      "pro_number": "1033338990",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Schulist, Sauer and Ebert",
+        "address": "6680 Grange Avenue, Iraport, ND 06493"
+      },
+      "shipper": {
+        "name": "Auer, Yundt and Christiansen",
+        "address": "71380 Rita Estate, New Zoraberg, MI 26050"
+      },
+      "consignee": {
+        "name": "Cummerata-Walker, Jaskolski and Morar",
+        "address": "63092 Breitenberg Neck, Jaredland, ND 40075"
+      },
+      "weight_lb": 5973,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 372640,
+          "expected_cents": 372640
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 91110,
+          "expected_cents": 91110
+        }
+      ],
+      "total_cents": 463750,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

@@ -1,10 +1,11 @@
 {
-  "recorded_at": "2026-10-15",
+  "recorded_at": "2026-10-25",
   "exchanges": [
     {
       "method": "POST",
       "path": "/v1beta/models/gemini-3.5-flash-lite:generateContent",
-      "body_sha256": "de2edf4d2786635e4497f43d231ba85b48282c63c61708f8fc58f73daede7e4f",
+      "body_sha256": "710ac2ac5c4eb445766fda4ace586e7bc5936fddff8a06775fded7f6bca1ce85",
+      "body_bytes": 394329,
       "status": 200,
       "headers": {},
       "body": {
@@ -14,7 +15,7 @@
               "parts": [
                 {
                   "text": "{\n  \"invoices\": [\n    {\n      \"first_page\": 1,\n      \"carrier\": \"Nimbus Road Lines\",\n      \"invoice_number\": \"67554172\",\n      \"invoice_date\": \"2025-06-18\",\n      \"pro_number\": \"0619993094\",\n      \"currency\": \"USD\",\n      \"line_items\": [\n        {\n          \"line_number\": 1,\n          \"description\": \"Linehaul\",\n          \"charge_code\": \"LINEHAUL\",\n          \"amount_cents\": 176357\n        },\n        {\n          \"line_number\": 2,\n          \"description\": \"Fuel surcharge\",\n          \"charge_code\": \"FUEL\",\n          \"amount_cents\": 11345\n        }\n      ],\n      \"subtotal_cents\": null,\n      \"tax_cents\": null,\n      \"total_cents\": 187702\n    }\n  ]\n}",
-                  "thoughtSignature": "EmAKXgFpFH0TEprtxWZLWbBnwmfxgWJfvWrsRlYrgRayw6DPngnIqmLyavkIO4OAMEFD1ILUbhtWdbhYqQ7heda2wu0O5dqcT/EfLE08f6s7zhBLKPsld/AWVg5HIUF9+JI="
+                  "thoughtSignature": "EmAKXgFpFH0TUtw3nBTPaVuVfZXdM8SLIlVlVVffWk7OeGv+M4V48KlquMyoe8L7RdIB7VPMqb/gtt9od4KhGBezGdjjtnldduUPFkWludZsyDRFx9U8jxNFiKdjO7xsWPk="
                 }
               ],
               "role": "model"
@@ -24,23 +25,23 @@
           }
         ],
         "usageMetadata": {
-          "promptTokenCount": 1325,
+          "promptTokenCount": 1390,
           "candidatesTokenCount": 245,
-          "totalTokenCount": 1570,
+          "totalTokenCount": 1635,
           "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 288
+            },
             {
               "modality": "IMAGE",
               "tokenCount": 1102
-            },
-            {
-              "modality": "TEXT",
-              "tokenCount": 223
             }
           ],
           "serviceTier": "standard"
         },
         "modelVersion": "gemini-3.5-flash-lite",
-        "responseId": "eFfQaqCkLqvrrfcPpNfcqQ0"
+        "responseId": "g2Xeao3DAdLs2roPjpvm0QI"
       }
     }
   ]

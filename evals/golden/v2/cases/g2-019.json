@@ -1,0 +1,99 @@
+{
+  "id": "g2-019",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "low_res"
+  ],
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_res",
+      "degrees": 0.41,
+      "noise": 1860422827,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-019.pdf",
+  "shipments": [
+    "1009138526"
+  ],
+  "sha256": "96fd0f6a5f43fb01f8dc3ec44d934e31f4f6c0446082baa57f7184d2f43e66c4",
+  "bytes": 144046,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "00700861",
+      "invoice_date": "2026-07-31",
+      "due_date": "2026-08-30",
+      "pro_number": "1009138526",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Schinner - Beatty",
+        "address": "933 Davis Street, Gennaroworth, AR 05400"
+      },
+      "shipper": {
+        "name": "Russel, Hessel and Johns",
+        "address": "83392 Augustine Shoal, Fort Luciousberg, AL 18374"
+      },
+      "consignee": {
+        "name": "Russel - Luettgen",
+        "address": "195 S 3rd Street, South Luisahaven, MS 61693"
+      },
+      "weight_lb": 9111,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 94334,
+          "expected_cents": 94334
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 23065,
+          "expected_cents": 23065
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 14274,
+          "expected_cents": 14274
+        },
+        {
+          "line_number": 4,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3895,
+          "expected_cents": 3895
+        },
+        {
+          "line_number": 5,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 9745,
+          "expected_cents": 9745
+        }
+      ],
+      "total_cents": 145313,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

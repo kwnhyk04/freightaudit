@@ -1,0 +1,99 @@
+{
+  "id": "g2-031",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "skew"
+  ],
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "skew",
+      "degrees": -5.95,
+      "noise": 3061880106,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-031.pdf",
+  "shipments": [
+    "1001362068"
+  ],
+  "sha256": "cc68e2ff6fac9bc0d164c0919cdd7383411540aad5cde62fe183165ee3830e90",
+  "bytes": 255088,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "22436099",
+      "invoice_date": "2026-06-20",
+      "due_date": "2026-07-20",
+      "pro_number": "1001362068",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Johns Group",
+        "address": "66920 County Road, Klockoside, MS 02829"
+      },
+      "shipper": {
+        "name": "Wisozk and Sons",
+        "address": "229 S Center Street, West Jessycatown, VA 00514"
+      },
+      "consignee": {
+        "name": "Ondricka - Bergnaum",
+        "address": "424 Edmond Forges, Neilhaven, SC 08631"
+      },
+      "weight_lb": 3938,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 460516,
+          "expected_cents": 460516
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 98596,
+          "expected_cents": 98596
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 5037,
+          "expected_cents": 5037
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 15239,
+          "expected_cents": 15239
+        },
+        {
+          "line_number": 5,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 16915,
+          "expected_cents": 16915
+        }
+      ],
+      "total_cents": 596303,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

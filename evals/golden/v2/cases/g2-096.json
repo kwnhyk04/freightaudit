@@ -1,0 +1,79 @@
+{
+  "id": "g2-096",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "missing_pro",
+  "adversarial": true,
+  "traits": [
+    "fax"
+  ],
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "fax",
+      "degrees": -0.97,
+      "noise": 203689271,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-096.pdf",
+  "shipments": [
+    "1012116070"
+  ],
+  "sha256": "f836b26509086d3619c8363d0b92c6bcb9d811fcd394246c7a24e9e87225061d",
+  "bytes": 25398,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "70778347",
+      "invoice_date": "2026-01-03",
+      "due_date": "2026-02-02",
+      "pro_number": null,
+      "currency": "USD",
+      "bill_to": {
+        "name": "Reinger, Huels and Pouros",
+        "address": "6423 East Street, Palo Alto, FL 38361"
+      },
+      "shipper": {
+        "name": "Muller-Hermann - Goldner",
+        "address": "6958 Nolan Gateway, Fort Napoleon, CO 41501"
+      },
+      "consignee": {
+        "name": "Conroy - Lesch",
+        "address": "34450 Schiller Loop, Altamonte Springs, MT 90101"
+      },
+      "weight_lb": 1492,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 468730,
+          "expected_cents": 468730
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 85871,
+          "expected_cents": 85871
+        }
+      ],
+      "total_cents": 554601,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "needs_review",
+        "reason": "no_shipment_match",
+        "overcharges": []
+      }
+    }
+  ]
+}

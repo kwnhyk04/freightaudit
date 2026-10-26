@@ -1,0 +1,103 @@
+{
+  "id": "g2-009",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "continued_page",
+    "reference_numbers",
+    "subtotal_tax",
+    "title_line"
+  ],
+  "layouts": [
+    "continued"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-009.pdf",
+  "shipments": [
+    "1032388710"
+  ],
+  "sha256": "54bf9e43e7e8c2b9e266ddb8b3c433ea4072b28f9ac439bfde1160cc02d52e0d",
+  "bytes": 68884,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "49353986",
+      "invoice_date": "2025-09-27",
+      "due_date": "2025-10-27",
+      "pro_number": "1032388710",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Bailey, Reilly and Leuschke",
+        "address": "267 Haley View, Lake Anniemouth, NJ 70793"
+      },
+      "shipper": {
+        "name": "Johnston, Wilkinson and Reinger",
+        "address": "1789 E Center Street, Port Ernestinechester, WA 59926"
+      },
+      "consignee": {
+        "name": "Renner, Brakus and Powlowski",
+        "address": "43294 King Street, Fort Codyhaven, WA 48823"
+      },
+      "weight_lb": 2286,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 154500,
+          "expected_cents": 154500
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 33078,
+          "expected_cents": 33078
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 4709,
+          "expected_cents": 4709
+        },
+        {
+          "line_number": 4,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 9465,
+          "expected_cents": 9465
+        },
+        {
+          "line_number": 5,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 15812,
+          "expected_cents": 15812
+        }
+      ],
+      "total_cents": 217564,
+      "overcharges": [],
+      "subtotal_cents": 217564,
+      "tax_cents": 0,
+      "refs": {
+        "bol": "4357993567",
+        "po": "PO-58600",
+        "shipped_on": "2025-09-18",
+        "delivered_on": "2025-09-22"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

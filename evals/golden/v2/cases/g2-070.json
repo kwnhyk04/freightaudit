@@ -1,0 +1,146 @@
+{
+  "id": "g2-070",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "multi_invoice",
+  "adversarial": true,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "landscape",
+    "reference_numbers",
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "landscape",
+    "carrier_form"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-070.pdf",
+  "shipments": [
+    "1008821766",
+    "1002217320"
+  ],
+  "sha256": "66f4b6a0a6b6f53f177d2a33dbb59646b5e8f9d7048a24dcb2cad53fe5ff4bbe",
+  "bytes": 116009,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "17588571",
+      "invoice_date": "2025-10-13",
+      "due_date": "2025-11-12",
+      "pro_number": "1008821766",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Kuhlman - Quigley-Quigley",
+        "address": "81609 Nader Court, New Colton, AL 47233"
+      },
+      "shipper": {
+        "name": "Heller, Denesik-Parisian and Kohler",
+        "address": "720 Ruthie Gardens, Beahanhaven, AK 66855"
+      },
+      "consignee": {
+        "name": "Wehner-Simonis and Sons",
+        "address": "9630 Kenna Bridge, Jerrodtown, GA 29343"
+      },
+      "weight_lb": 416,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 178150,
+          "expected_cents": 178150
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 38142,
+          "expected_cents": 38142
+        }
+      ],
+      "total_cents": 216292,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "0879666657",
+        "po": "PO-54454",
+        "shipped_on": "2025-10-08",
+        "delivered_on": "2025-10-10"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    },
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "66800091",
+      "invoice_date": "2026-06-21",
+      "due_date": "2026-07-21",
+      "pro_number": "1002217320",
+      "currency": "USD",
+      "bill_to": {
+        "name": "O'Hara and Sons",
+        "address": "26666 Leannon Stravenue, Janisfield, SC 21852"
+      },
+      "shipper": {
+        "name": "Sauer, Hackett and Stanton",
+        "address": "4902 Cliff Road, West Scott, NE 10675"
+      },
+      "consignee": {
+        "name": "Cummings, Greenfelder-Green and Ankunding",
+        "address": "755 Dina Garden, Catalina Foothills, AK 64397"
+      },
+      "weight_lb": 4642,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul transportation",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 24254,
+          "expected_cents": 24254
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel",
+          "charge_code": "FUEL",
+          "amount_cents": 7444,
+          "expected_cents": 7444
+        },
+        {
+          "line_number": 3,
+          "description": "Detention (waiting time)",
+          "charge_code": "DETENTION",
+          "amount_cents": 10165,
+          "expected_cents": 10165
+        },
+        {
+          "line_number": 4,
+          "description": "Residential",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 10098,
+          "expected_cents": 10098
+        }
+      ],
+      "total_cents": 51961,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 2,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

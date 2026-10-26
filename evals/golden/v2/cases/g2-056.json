@@ -1,0 +1,142 @@
+{
+  "id": "g2-056",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "duplicate_invoice",
+  "adversarial": false,
+  "traits": [
+    "low_contrast"
+  ],
+  "layouts": [
+    "compact"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "low_contrast",
+      "degrees": -0.72,
+      "noise": 1871085970,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-056.pdf",
+  "shipments": [
+    "1012266531"
+  ],
+  "sha256": "01d8e7f7bfcccd1dd1678c466654237cd88b275c2a2d8c4b322c2d71c5bcd82a",
+  "bytes": 66770,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "97771344",
+      "invoice_date": "2026-04-06",
+      "due_date": "2026-05-06",
+      "pro_number": "1012266531",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Mosciski - Hudson",
+        "address": "465 Mallory Crossing, Azusa, OK 15935"
+      },
+      "shipper": {
+        "name": "Hoeger - Mayert",
+        "address": "418 Derby Road, Glenview, MI 61589"
+      },
+      "consignee": {
+        "name": "Sawayn Group",
+        "address": "70979 Nathan Ferry, New Carey, NC 08683"
+      },
+      "weight_lb": 1752,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 423463,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 72503,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14544,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 13508,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 524018,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 423463
+        },
+        {
+          "line_number": 2,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 72503
+        },
+        {
+          "line_number": 3,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 14544
+        },
+        {
+          "line_number": 4,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 13508
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 423463
+          },
+          {
+            "line_number": 2,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 72503
+          },
+          {
+            "line_number": 3,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 14544
+          },
+          {
+            "line_number": 4,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 13508
+          }
+        ]
+      }
+    }
+  ]
+}

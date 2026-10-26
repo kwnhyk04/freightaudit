@@ -1,0 +1,87 @@
+{
+  "id": "g2-036",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-036.pdf",
+  "shipments": [
+    "1031327564"
+  ],
+  "sha256": "32e313987306ddd47b9ac06ec5b24636e2966e169b14827fd80aacc9b6ddac7b",
+  "bytes": 57918,
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "29594154",
+      "invoice_date": "2025-04-11",
+      "due_date": "2025-05-11",
+      "pro_number": "1031327564",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Bednar - Keeling",
+        "address": "53341 Rempel Common, Harrisbury, NM 05871"
+      },
+      "shipper": {
+        "name": "Jerde - Lueilwitz",
+        "address": "63032 Schmidt Village, Jonesboro, TN 89081"
+      },
+      "consignee": {
+        "name": "Sauer, Bins and Skiles",
+        "address": "8305 Brandt Road, Allanfort, NM 27106"
+      },
+      "weight_lb": 3736,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 597870,
+          "expected_cents": 511000
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 153862,
+          "expected_cents": 153862
+        }
+      ],
+      "total_cents": 751732,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "rate_mismatch",
+          "expected_cents": 511000,
+          "billed_cents": 597870
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "rate_mismatch",
+            "expected_cents": 511000,
+            "billed_cents": 597870
+          }
+        ]
+      }
+    }
+  ]
+}

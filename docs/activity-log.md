@@ -19,6 +19,99 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-26: R7, Haiku on v2's test split with the final prompt (branch golden-set-v2, not committed)
+
+- **Request:** "Yes to the page-1 rule. Go for R7. Then report." (user, 2026-10-26, on the report of the entry below). The page-1 rule is now the user's decision (docs/memory.md, 2026-10-26).
+- **A wait before the run:**
+  - What happened: the go came on Monday at 04:54 UTC (12:54 Taipei). The plan keeps every run that can call Gemini out of Monday mornings UTC, and R7 can: Claude-first hands scans of 4 pages or more to the free chain (R1b: Gemini 3 calls, Groq's qwen 9).
+  - Why: the weekly full run (`nightly-eval.yml`, cron `23 3 * * 1`, `timeout-minutes: 120`) takes free quota from the same keys (Gemini's is treated as shared until the key moves, docs/memory.md, Constraints) and could still have been running.
+  - What we did: a background wait in this session until 12:00 UTC, then the checks and R7. R7 has time (Claude runs end by 2026-11-10), and a 429 in the weekly run would cost the user a rerun.
+- **Estimate,** before the run: R1b's 72 Claude calls (188,462 in, 21,709 out), each with about 80 more input tokens for the two new rules (R3's 2,833 a call against R1a's 2,752). So about 195K in and 22K out, about $0.030 (the plan: about $0.035), and about 12 free-chain calls. Claude spend after it: about $0.125 of the user's $0.20.
+
+### 2026-10-26: Golden set v2, its evals and the 6b prompt fix (branch golden-set-v2 from main `364de0b`, not committed)
+
+- **Request:** golden set v2 (docs/todo.md, "Golden set v2" and the dev case for a carrier name beside a title line): a new version beside v1, harder layouts, real-world noise, more adversarial cases, dev cases for the 6b test-split findings, tests first, Claude Haiku first and one free-model run for v2's floors. The plan was approved on 2026-10-26 with the user's changes:
+  - yes to all five open questions;
+  - the tuning rounds (R3) on Haiku with `--repeat 3` on dev, and the free before (R2) and after (R5) with `--repeat 3`;
+  - "Build PR 1 and PR 2 together on golden-set-v2 and report once at the end; I'll ship them as one PR";
+  - R1a, R1b, R2, R3, R4, R5 and R6 without asking, each within its estimate, Claude total under $0.20, Claude runs before 2026-11-10, and no retry after a quota stop (exit 2);
+  - the go for `pnpm test:int`, `pnpm e2e` and `pnpm e2e:screenshots`;
+  - stop and report only if an estimate grows, a hook refuses, anything needs a key, or a recorded test reads a fixture differently.
+- **Start:** `git fetch origin main`: main and origin/main both `364de0b` (#54), with a clean tree. Then `git switch -c golden-set-v2`.
+- **Tests first:** eight new test files, written before the code: `golden/v2.test.ts` (the plan), `golden/v2-set.test.ts` (the committed set), `fixtures/templates-v2.test.ts`, `fixtures/scan-v2.int.test.ts`, `harness/report.test.ts`, `harness/run.test.ts`, `harness/v2-answer-key.int.test.ts`, and two tests in `harness/metrics.test.ts`.
+  - Red, against stubs with the real signatures: 20 of 38 evals unit tests failed, each on its value (metrics 2, report 4, run 3, templates 7, plan 3), and the committed-set test on its missing manifest. No suite failed to load.
+- **The build:** `pnpm --filter @freightaudit/evals golden --set golden --version v2` wrote 98 cases, 20,766,405 bytes in all; the largest is g2-063 (a stamped three-pass repeated scan), 1,544,296 bytes, under the api's 4 MiB.
+  - What happened: the first build stopped at g2-066 with "invoice 1 does not show 6,018.70".
+  - Why: a repeated-page scan variant took only page 1 of the two-page `continued` layout, so the total was never printed. The printed-values check did its job.
+  - What we did: repeats other than the page-2 variant take one-page layouts (`oneLayout` in `golden/v2.ts`). The builder refuses an existing version, so the partial `evals/golden/v2/` (130 files of g2-001 to g2-065, untracked, no manifest) was listed, then removed with `rm -r`, and the set built again in full.
+- **A plant removed:** the plan test found 8 overcharged invoices in the ci subset against the plan's 6. Why: I had planted a rate mismatch on each three-invoice case, which the approved plan does not have. What we did: multi-invoice cases plant nothing, as planned.
+- **Small events:**
+  - The GateGuard hook asked for facts before each first edit or creation of a file, and before the first Bash; I gave them and retried each time.
+  - Typecheck: a seeded invoice number can be null, so the set of numbers takes only the non-empty ones.
+  - Lint: an unused `Template` import in `build.ts` and three unused destructured names in `v2-set.test.ts`, fixed.
+  - `pnpm test:int evals/` ran the whole integration suite, not the evals tests alone (why not confirmed); it passed, so nothing was rerun.
+  - The Read tool could not render a PDF (no poppler here). A scratch script in the scratchpad rendered pages with the pipeline's own `readPages`, as the model receives them; the fax, stamp and faded scans were looked at, and are hard but legible.
+- **Checks so far:** evals unit tests 38 of 38, typecheck and lint clean; `pnpm test:int` 151 of 151 in 28 suites, the two new integration tests included. Containers were the same 18 before and after, and no test container was left.
+- **Deliberate breaks,** each failing a test and reverted: the v1-shipment exclusion dropped (1 failed); a repeated page's truth as two invoices (2); the carrier scored by containment (1); the version dropped from the run's root (1).
+- **Before the first live run:**
+  - Haiku's list price on its source page (platform.claude.com, pricing) is still $0.10 in and $0.50 out per million tokens for prompts up to 100,000 tokens, as in `packages/llm/prices.json`.
+  - Triage Copilot check, read-only: its three dev containers were up (postgres, elasticmq, toxiproxy), but no process ran from its folder (process list by name and start time only). Sunday 19:50 UTC, so no Monday-morning weekly run. The check ran again before each later run that can call Gemini, with the same result.
+- **R1a, Haiku on dev** (`pnpm --filter @freightaudit/evals eval --suite extraction --subset dev --golden v2 --config claude-primary`, current prompt `19f0c19627c4`; report `evals/reports/2026-10-25-v2-dev-19f0c1-claude-primary.md`):
+  - 34 of 34 cases, $0.0168 billed (estimate about $0.02). Claude 40 calls, 110,081 in and 11,620 out (estimate about 135K tokens); the free chain 4 calls (Gemini 2, qwen 2, so escalation 0.059); 0 failed calls.
+  - Header accuracy 1.000 digital and 0.981 scanned, line F1 1.000 and 0.972, overcharge precision 0.875, recall 1.000, false flags 0.017, outcome 0.944.
+  - The title line: carrier right on 31 of 31 title-line invoices. The repeated page: g2-062 (a fax of a two-column page scanned twice) was read as two invoices, with two false duplicate findings, 6b's g080 miss on dev. Other misses: g2-020 (fax, a line misread, needs_review), g2-076 (a packet with the invoice second, needs_review), g2-093 (upside down, one header field).
+  - Claude's caps: a call reached the 560-token output cap; the largest input was 6,373 of 7,100.
+- **R1b, Haiku on test** (same command with `--subset test`; report `evals/reports/2026-10-25-v2-test-claude-primary.md`), a measurement only: its misses are not read for the fix.
+  - 64 of 64 cases, $0.0297 billed (estimate about $0.035). Claude 72 calls, 188,462 in and 21,709 out (estimate about 250K tokens); the free chain 12 calls (qwen 9, Gemini 3); 1 failed call.
+  - Header accuracy 1.000 digital and 0.895 scanned, line F1 1.000 and 0.897, overcharge precision 1.000, recall 0.960, false flags 0.000, outcome 0.870, escalation 0.125.
+  - Claude spend after R1a and R1b: $0.0465 of the user's $0.20.
+- **R2, the free models on dev, three reads, the before** (`--subset dev --golden v2 --repeat 3`, prompt `19f0c19627c4`; report `evals/reports/2026-10-25-v2-dev-19f0c1-x3.md`): exit 0, 102 reads, 0 failed calls.
+  - Groq `openai/gpt-oss-120b` 57 calls, 52,140 in and 40,883 out (estimate about 100K tokens). Gemini 78 calls against an estimate of about 60: a page read as several invoices splits, and each part is read again.
+  - Outcome 0.944, overcharge precision 0.542, header accuracy 1.000 digital and 0.991 scanned, line F1 0.927 scanned, escalation 0.000.
+  - The title line: carrier right in 93 of 93 title-line readings (and 31 of 31 on Haiku in R1a). 6b's title-line misread did not appear on dev.
+  - The repeated page: 12 of 18 reads right. g2-063 (one page scanned three times) was read as three invoices in each read, with 8 false findings each; g2-065 (scanned twice) as two, with 3. The digital copies were read right, 6 of 6.
+  - g2-076 (a 6-page packet, the invoice second) ended needs_review in every read, and on Haiku in R1a, with every field read right. Why (from the code, not confirmed per call): the prompt says `first_page` is where an invoice starts, page 2 here, while extraction's check requires the first invoice to start on page 1; the repair keeps page 2, and a scan over 3 pages has no fallback (`fallback_page_cap`).
+- **The fix, from dev only** (`EXTRACTION_PROMPT` in `packages/llm/src/extract.ts`, prompt `4e59f1910cbe`):
+  - "The first invoice starts on page 1: pages before it, such as a bill of lading or a cover sheet, belong to it." (g2-076; a v2 dev finding beyond 6b, for the user to confirm.)
+  - "A page that repeats an invoice already listed (the same invoice number again, as a second copy or a page scanned twice) belongs to that invoice; list each invoice once." (6b's g080, on dev as g2-062, g2-063 and g2-065.)
+  - No title-line rule: dev showed no title misread on either model, and the plan's rule is no evidence, no change. 6b's title-line finding stays a v1 test-split observation.
+- **R3, round 1 on Haiku** (`--subset dev --golden v2 --config claude-primary --repeat 3`, prompt `4e59f1910cbe`; report `evals/reports/2026-10-25-v2-dev-4e59f1-claude-primary-x3.md`): exit 0, 102 reads, 0 failed calls, $0.0485 billed (estimate about $0.05).
+  - Repeated pages read right in 18 of 18 reads, packets ended right in 6 of 6 (g2-076 included), overcharge precision 1.000, outcome 0.972, escalation 0.029.
+  - Left: g2-020 (a fax, one line misread, needs_review) and g2-093 (upside down, one header field) in every read; neither is what the fix addresses.
+  - Claude's caps with the longer prompt: the largest call 549 tokens out (cap 560) and 6,465 in (cap 7,100).
+  - One round was enough, so no second; Claude spend after it, $0.0950.
+- **R6, Haiku on dev with the final prompt:** the round's first reads, rebuilt from the cache with no calls (`--cached`; report `evals/reports/2026-10-25-v2-dev-4e59f1-claude-primary.md`): 34 cases, outcome 0.972 (R1a 0.944), precision 1.000 (R1a 0.875), repeated pages 6 of 6 (R1a 5 of 6), packets 2 of 2 (R1a 1 of 2).
+- **R4, the four cassettes re-recorded** (`LLM_RECORD=1 node --experimental-vm-modules node_modules/jest/bin/jest.js packages/llm/src/recorded.int.test.ts --selectProjects integration`): 4 of 4 passed against the live Groq, Gemini and qwen. `groq-digital`, `gemini-scanned`, `fallback-scanned` and `gemini-long-scan` changed in their request digests, ids and token counts only: each new reply's invoices equal the old reply's, field for field (compared with a node one-liner over `git show HEAD:` and the new file). So no recorded test reads its fixture differently.
+- **R5, the free models on dev, three reads, the after** (`--subset dev --golden v2 --repeat 3`, prompt `4e59f1910cbe`; report `evals/reports/2026-10-25-v2-dev-4e59f1-x3.md`): exit 0 (no quota stop), 102 reads, 0 failed calls. Groq 57 calls, 54,309 in and 39,827 out; Gemini 58 calls (R2 78, since nothing splits now). The one miss, g2-046 (a fax of a landscape page fed sideways, its PRO misread, needs_review), missed the same way in all three of R2's reads, so it is not from the fix.
+- **Before and after, dev only** (the test split was not run for the fix):
+
+  | Measure | Free before (R2) | Free after (R5) | Haiku before (R1a) | Haiku after (R6) |
+  | --- | --- | --- | --- | --- |
+  | Reads | 102 (34 x 3) | 102 (34 x 3) | 34 | 34 |
+  | Repeated pages read as one invoice | 12 of 18 | 18 of 18 | 5 of 6 | 6 of 6 |
+  | Packets ending as expected | 3 of 6 | 6 of 6 | 1 of 2 | 2 of 2 |
+  | Overcharge precision | 0.542 | 1.000 | 0.875 | 1.000 |
+  | Outcome accuracy | 0.944 | 0.972 | 0.944 | 0.972 |
+  | Line F1, scanned | 0.927 | 1.000 | 0.972 | 0.986 |
+  | Carrier right on title lines | 93 of 93 | 93 of 93 | 31 of 31 | 31 of 31 |
+  - A mistake, caught before it stayed: I first wrote 0.981 in the last column of the F1 row without reading it. Why: typed ahead of the number. What we did: read it from the R6 report's JSON (0.986) and corrected the row before going on.
+- **Tests after the fix and the cassettes:** `pnpm e2e` 52 of 52 (its recorded model server answers from the re-recorded cassettes). `pnpm test:int` failed 1 of 151:
+  - What happened: "a split upload read while Claude reads first keeps why the free models read it, on the upload and on each part" (`apps/worker/src/extract.int.test.ts`) expected the hand-off `daily_budget` and got `input_cap`.
+  - Why: the test uploads 3 blank pages, sent as images. With the old prompt its input estimate sat about 150 tokens under Claude's 7,100 cap, and the new rules' roughly 280 characters (about 190 tokens at the gate's 1.5 characters a token) put it over. The gate checks the input cap before the day's budget, as built. Real cases still fit: R3's largest real input with the new prompt was 6,465.
+  - What we did: the test keeps its intent (the day's budget, 0 in tests, hands on the upload and each part) with a 2-page upload. A first try with two equal blank pages split into two identical parts, which the content hash keeps as one, so the second page now has another size (612 x 700 points). The file then passed 16 of 16. Caps unchanged.
+- **Final checks:**
+  - `pnpm test:int` 151 of 151 in 28 suites; `pnpm e2e` 52 of 52.
+  - `pnpm turbo run build typecheck lint test --force` first failed `@freightaudit/web#typecheck` (22 of 28 tasks). What happened: the web's typecheck alone then passed. Why: not confirmed; likely `next build` and `next typegen` writing the web's generated route types at the same moment, since `--force` ran both at once. What we did: `pnpm turbo run build` (11 of 11), then `pnpm turbo run typecheck lint test --force` (42 of 42).
+  - Docs still CRLF throughout (line counts equal CR counts in the five files edited).
+  - Containers: the same before and after each run (freightaudit 10, filinglens 5; Triage Copilot's three dev containers stopped during the evening, not by me), and no test container left.
+- **Files:** `evals/golden/v2/**` (98 PDFs, 98 answer keys, the manifest), `evals/golden/{v2.ts,v2.test.ts,v2-set.test.ts,build.ts}`, `evals/fixtures/{templates-v2.ts,templates-v2.test.ts,scan-v2.ts,scan-v2.int.test.ts,templates.ts,generate-invoices.ts}`, `evals/harness/{metrics.ts,metrics.test.ts,report.ts,report.test.ts,run.ts,run.test.ts,v2-answer-key.int.test.ts}`, ten reports in `evals/reports/2026-10-25-v2-*`, `packages/llm/src/extract.ts`, the four cassettes in `packages/llm/fixtures/recorded/`, `apps/worker/src/extract.int.test.ts`, `.github/workflows/ci.yml`, README.md, docs/*.
+- **Outstanding:**
+  - Ship PR 1 and 2 as one PR (user). Its CI eval smoke runs v1's ci subset on the free models with the new prompt, against v1's floors.
+  - R7 (Haiku on test with the final prompt, about $0.035) waits for the user's word; Claude spend so far $0.0950.
+  - PR 3: the official free run on v2 sets its floors, then CI, the weekly run, the README table and the landing page move to v2.
+  - Findings left on dev, not addressed: g2-020 (a fax, one line misread) and g2-046 (a sideways fax, its PRO misread on the free models).
+- A small event: `pnpm test:int evals/` earlier ran every suite, because the script ends with `--selectProjects integration contract`, which takes the extra word as one more project name (not confirmed in Jest's source). Jest run directly with the file first filters as meant.
+
 ### 2026-10-25: UI round 2, B: the overview, its sample, and look items 2 and 10 (branch overview from main `101f481`, not committed)
 
 - **Request:** "A is merged and the demo is updated. Build B as planned (the dashboard, plus look items 2 and 10), report once at the end. Check the demo api's revision with docker inspect --format first. Take your recommended option on small decisions and list them." The plan's B and its rules are in A's entry below and in docs/memory.md (2026-10-25).

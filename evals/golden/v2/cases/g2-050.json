@@ -1,0 +1,121 @@
+{
+  "id": "g2-050",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "fax",
+    "title_line"
+  ],
+  "layouts": [
+    "ledger"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "fax",
+      "degrees": -0.23,
+      "noise": 2986065343,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-050.pdf",
+  "shipments": [
+    "1035009899"
+  ],
+  "sha256": "3de9458b636b06af0e3fddccc99377ec28cae483067a5c7c09c936166ae998ff",
+  "bytes": 23621,
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "34869844",
+      "invoice_date": "2025-07-11",
+      "due_date": "2025-08-10",
+      "pro_number": "1035009899",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Miller, Langworth and Keebler",
+        "address": "65795 Wendy Avenue, Jevonport, KS 32169"
+      },
+      "shipper": {
+        "name": "Deckow Group",
+        "address": "4419 Sipes Way, Thompsonboro, MO 66895"
+      },
+      "consignee": {
+        "name": "Williamson LLC",
+        "address": "94265 Highfield Close, East Mindy, KY 65124"
+      },
+      "weight_lb": 6128,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 358770,
+          "expected_cents": 358770
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 91271,
+          "expected_cents": 91271
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10687,
+          "expected_cents": 10687
+        },
+        {
+          "line_number": 4,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 19759
+        },
+        {
+          "line_number": 5,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11784,
+          "expected_cents": 11784
+        },
+        {
+          "line_number": 6,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10687,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 502958,
+      "overcharges": [
+        {
+          "line_number": 6,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 10687
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 6,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 10687
+          }
+        ]
+      }
+    }
+  ]
+}

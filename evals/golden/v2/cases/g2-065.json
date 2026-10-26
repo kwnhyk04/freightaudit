@@ -1,0 +1,95 @@
+{
+  "id": "g2-065",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "repeated_page",
+  "adversarial": true,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "low_contrast",
+    "title_line"
+  ],
+  "layouts": [
+    "carrier_form"
+  ],
+  "pages": 2,
+  "scans": [
+    {
+      "profile": "low_contrast",
+      "degrees": -1.46,
+      "noise": 1129666519,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "low_contrast",
+      "degrees": -0.53,
+      "noise": 3434452043,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-065.pdf",
+  "shipments": [
+    "1036752079"
+  ],
+  "sha256": "cf4d8145f928978e937326b0fe832e01f91ae327a884052a710fb8790f5009c3",
+  "bytes": 149314,
+  "invoices": [
+    {
+      "carrier": "Quarry Lane Transport",
+      "invoice_number": "72717049",
+      "invoice_date": "2025-11-26",
+      "due_date": "2025-12-26",
+      "pro_number": "1036752079",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Paucek, Goodwin and Johns",
+        "address": "866 W 1st Street, Fort Garnettfield, OK 90240"
+      },
+      "shipper": {
+        "name": "Emard and Sons",
+        "address": "733 Pearl Street, West Jettfort, AK 83983"
+      },
+      "consignee": {
+        "name": "Funk, Bayer and Bernhard",
+        "address": "469 Deshaun Ways, Fort Shanelle, CT 85409"
+      },
+      "weight_lb": 8199,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Base freight",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 393100,
+          "expected_cents": 393100
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel adj. (FSC)",
+          "charge_code": "FUEL",
+          "amount_cents": 118362,
+          "expected_cents": 118362
+        },
+        {
+          "line_number": 3,
+          "description": "Call for appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 5989,
+          "expected_cents": 5989
+        }
+      ],
+      "total_cents": 517451,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

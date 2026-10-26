@@ -1,0 +1,117 @@
+{
+  "id": "g2-044",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "carrier_form"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-044.pdf",
+  "shipments": [
+    "1001734261"
+  ],
+  "sha256": "8f4e9f6c86c68dc7e3132265f1e4779f0d154d718256a2bb170df269f97ad987",
+  "bytes": 69846,
+  "invoices": [
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "83353951",
+      "invoice_date": "2026-05-29",
+      "due_date": "2026-06-28",
+      "pro_number": "1001734261",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Friesen - Goyette",
+        "address": "96943 Mayert Glens, Port Dorthy, MO 36573"
+      },
+      "shipper": {
+        "name": "Padberg - Koelpin",
+        "address": "673 Johanna Crescent, North Dewitt, FL 28513"
+      },
+      "consignee": {
+        "name": "Murray, Ferry and Gulgowski",
+        "address": "3648 Bernardo Shores, Greenwood, SC 37567"
+      },
+      "weight_lb": 3613,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Transportation",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 403614,
+          "expected_cents": 403614
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel adjustment",
+          "charge_code": "FUEL",
+          "amount_cents": 102679,
+          "expected_cents": 102679
+        },
+        {
+          "line_number": 3,
+          "description": "Ltd access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 12441,
+          "expected_cents": 12441
+        },
+        {
+          "line_number": 4,
+          "description": "Liftgate delivery",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 13668,
+          "expected_cents": 13668
+        },
+        {
+          "line_number": 5,
+          "description": "Waiting time",
+          "charge_code": "DETENTION",
+          "amount_cents": 11283,
+          "expected_cents": 11283
+        },
+        {
+          "line_number": 6,
+          "description": "Waiting time",
+          "charge_code": "DETENTION",
+          "amount_cents": 11283,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 554968,
+      "overcharges": [
+        {
+          "line_number": 6,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 11283
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 6,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 11283
+          }
+        ]
+      }
+    }
+  ]
+}

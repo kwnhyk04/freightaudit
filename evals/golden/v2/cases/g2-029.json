@@ -1,0 +1,85 @@
+{
+  "id": "g2-029",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "fax"
+  ],
+  "layouts": [
+    "modern"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "fax",
+      "degrees": -0.15,
+      "noise": 1152905661,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-029.pdf",
+  "shipments": [
+    "1021737655"
+  ],
+  "sha256": "87640b992a430f05494f05d3366187618257b1ef12624b252ba0c596eecb7645",
+  "bytes": 25950,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "38676217",
+      "invoice_date": "2025-03-22",
+      "due_date": "2025-04-21",
+      "pro_number": "1021737655",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hansen Group",
+        "address": "3011 Windmill Close, North Pietro, IN 76405"
+      },
+      "shipper": {
+        "name": "Lockman - Nader",
+        "address": "68855 Daugherty Extensions, Lake Van, KS 58807"
+      },
+      "consignee": {
+        "name": "Mertz, Metz and Conroy",
+        "address": "23441 Northfield Road, New Jazmynview, HI 94414"
+      },
+      "weight_lb": 2466,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 345978,
+          "expected_cents": 345978
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 106181,
+          "expected_cents": 106181
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11448,
+          "expected_cents": 11448
+        }
+      ],
+      "total_cents": 463607,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

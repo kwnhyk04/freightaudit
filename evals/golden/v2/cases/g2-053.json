@@ -1,0 +1,165 @@
+{
+  "id": "g2-053",
+  "split": "dev",
+  "ci": false,
+  "path": "digital",
+  "kind": "duplicate_invoice",
+  "adversarial": false,
+  "traits": [
+    "continued_page",
+    "reference_numbers",
+    "subtotal_tax",
+    "title_line"
+  ],
+  "layouts": [
+    "continued"
+  ],
+  "pages": 2,
+  "scans": [
+    null,
+    null
+  ],
+  "file": "cases/g2-053.pdf",
+  "shipments": [
+    "1009597828"
+  ],
+  "sha256": "cf56d260cfd9dbb5c1229bce1ad01a8c6985248e78bee6fc8e534ec8ed4e7880",
+  "bytes": 68479,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "85347153",
+      "invoice_date": "2025-03-15",
+      "due_date": "2025-04-14",
+      "pro_number": "1009597828",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Reilly - Abshire",
+        "address": "4328 Willms Lock, Littleton, TX 52826"
+      },
+      "shipper": {
+        "name": "O'Kon - Howell",
+        "address": "16197 Liliane Drives, Lake Heber, IA 15865"
+      },
+      "consignee": {
+        "name": "Schinner-Auer, Price and Deckow",
+        "address": "8720 Littel Fields, O'Fallon, TX 07406"
+      },
+      "weight_lb": 535,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 332026,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 101899,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 2539,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 4,
+          "description": "Limited access delivery",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 11448,
+          "expected_cents": 0
+        },
+        {
+          "line_number": 5,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 16043,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 463955,
+      "overcharges": [
+        {
+          "line_number": 1,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 332026
+        },
+        {
+          "line_number": 2,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 101899
+        },
+        {
+          "line_number": 3,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 2539
+        },
+        {
+          "line_number": 4,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 11448
+        },
+        {
+          "line_number": 5,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 16043
+        }
+      ],
+      "subtotal_cents": 463955,
+      "tax_cents": 0,
+      "refs": {
+        "bol": "3822027194",
+        "po": "PO-71414",
+        "shipped_on": "2025-02-12",
+        "delivered_on": "2025-02-27"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 1,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 332026
+          },
+          {
+            "line_number": 2,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 101899
+          },
+          {
+            "line_number": 3,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 2539
+          },
+          {
+            "line_number": 4,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 11448
+          },
+          {
+            "line_number": 5,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 16043
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "id": "g2-047",
+  "split": "test",
+  "ci": true,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "carrier_wording",
+    "early_pay_discount",
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "carrier_form"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "stamp",
+      "degrees": -0.02,
+      "noise": 4021621686,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-047.pdf",
+  "shipments": [
+    "1036466995"
+  ],
+  "sha256": "a1688013da08d9ccd6996f9a4f2dfc9a25e831584c4291fdda2bf8b26e5894fc",
+  "bytes": 503395,
+  "invoices": [
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "75394733",
+      "invoice_date": "2025-03-12",
+      "due_date": "2025-04-11",
+      "pro_number": "1036466995",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Renner, Murphy and Swaniawski",
+        "address": "633 Durgan Walk, West Sarai, MS 59343"
+      },
+      "shipper": {
+        "name": "Ryan, Olson and Goldner",
+        "address": "507 Kelly Greens, Lenorecester, SC 63573"
+      },
+      "consignee": {
+        "name": "Jaskolski - Stark",
+        "address": "91459 Mulberry Street, Goodwinstead, SC 06033"
+      },
+      "weight_lb": 6997,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Line haul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 144610,
+          "expected_cents": 144610
+        },
+        {
+          "line_number": 2,
+          "description": "FSC",
+          "charge_code": "FUEL",
+          "amount_cents": 30961,
+          "expected_cents": 30961
+        },
+        {
+          "line_number": 3,
+          "description": "Limited access",
+          "charge_code": "LIMITED_ACCESS",
+          "amount_cents": 14245,
+          "expected_cents": 14245
+        },
+        {
+          "line_number": 4,
+          "description": "FSC",
+          "charge_code": "FUEL",
+          "amount_cents": 30961,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 220777,
+      "overcharges": [
+        {
+          "line_number": 4,
+          "type": "duplicate_charge",
+          "expected_cents": 0,
+          "billed_cents": 30961
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 4,
+            "type": "duplicate_charge",
+            "expected_cents": 0,
+            "billed_cents": 30961
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "id": "g2-080",
+  "split": "test",
+  "ci": false,
+  "path": "digital",
+  "kind": "partial_credit",
+  "adversarial": true,
+  "traits": [
+    "stamp",
+    "title_line"
+  ],
+  "layouts": [
+    "remit"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-080.pdf",
+  "shipments": [
+    "1030599016"
+  ],
+  "sha256": "1365563556f89bddea32b0f69a08b7b41246417fc937441cd32d06fe18dca349",
+  "bytes": 61073,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "53014087",
+      "invoice_date": "2025-12-23",
+      "due_date": "2026-01-22",
+      "pro_number": "1030599016",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Heidenreich, Steuber and Zboncak",
+        "address": "626 Muller Well, West Robertobury, MS 80747"
+      },
+      "shipper": {
+        "name": "Hammes, Wunsch and Harber",
+        "address": "45369 Kunze Harbor, Stiedemannborough, AL 64889"
+      },
+      "consignee": {
+        "name": "Marquardt, Kovacek and Hintz",
+        "address": "6179 David Meadow, Scottsdale, MN 08704"
+      },
+      "weight_lb": 3049,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 191520,
+          "expected_cents": 191520
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 35086,
+          "expected_cents": 35086
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 8090,
+          "expected_cents": 8090
+        },
+        {
+          "line_number": 4,
+          "description": "Fuel surcharge adjustment (credit)",
+          "charge_code": "FUEL",
+          "amount_cents": -4210,
+          "expected_cents": -4210
+        }
+      ],
+      "total_cents": 230486,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

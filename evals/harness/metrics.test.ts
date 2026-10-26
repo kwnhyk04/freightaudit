@@ -50,6 +50,27 @@ test('a misread line, a missed finding and a false one each count against the ri
   expect(scoreCase(golden, result({ read: null, findings: [] }))).toMatchObject({ header: { correct: 0 }, lines: { tp: 0, fn: 2 }, arithmetic: { ok: 0 } });
 });
 
+test('each header field counts on its own, and the invoices read are kept beside the truth', () => {
+  // 6b's remit misread: the title line read as the carrier.
+  const titled = scoreCase(golden, result({ read: { ...read, carrier: 'Halcyon Ridge Freight — Freight Bill' } }));
+  expect(titled.header).toEqual({ correct: 5, total: 6 });
+  expect(titled.fields).toEqual({ carrier: 0, invoice_number: 1, invoice_date: 1, pro_number: 1, currency: 1, total_cents: 1 });
+  expect(titled.invoices).toEqual({ truth: 1, read: 1 });
+  // 6b's repeated page read as two invoices: the second is extra, so its lines and findings count as false.
+  const twice = result();
+  twice.invoices.push({ ...twice.invoices[0]!, findings: [{ line_number: 1, type: 'duplicate_charge', expected_cents: 0, billed_cents: 100_000 }] });
+  const doubled = scoreCase(golden, twice);
+  expect(doubled.invoices).toEqual({ truth: 1, read: 2 });
+  expect(doubled.lines).toEqual({ tp: 2, fp: 2, fn: 0 });
+  expect(doubled.overcharges).toMatchObject({ tp: 1, fp: 1, fn: 0 });
+  expect(doubled.outcomes).toEqual({ ok: 1, total: 1 });
+});
+
+test('a printed subtotal and tax in the truth are never scored', () => {
+  const printed = { ...golden, invoices: [{ ...golden.invoices[0]!, subtotal_cents: 120_000, tax_cents: 0 }] } as GoldenCase;
+  expect(scoreCase(printed, result())).toMatchObject({ header: { correct: 6, total: 6 }, arithmetic: { ok: 1, total: 1 }, fields: { total_cents: 1 } });
+});
+
 test('extraction latency sums only the calls that returned a reply, repairs included; waits and failed calls count apart', () => {
   const call = result().calls[0]!;
   const calls = [

@@ -1,16 +1,17 @@
 {
-  "recorded_at": "2026-10-14",
+  "recorded_at": "2026-10-25",
   "exchanges": [
     {
       "method": "POST",
       "path": "/chat/completions",
-      "body_sha256": "11b969a2163df21b718312c4743e004f1e59b7c17aef238cfd3bdfa1c4f37517",
+      "body_sha256": "1743e2244ce3481ef42dee81ad0488b8cf8b7e3e2db3949369f9b7880d99af3f",
+      "body_bytes": 2991,
       "status": 200,
       "headers": {},
       "body": {
-        "id": "chatcmpl-0b7cdea1-503e-4ce6-a609-d260e120347b",
+        "id": "chatcmpl-4eb1bcf4-fb6e-4fc2-9de2-abaaf758f93f",
         "object": "chat.completion",
-        "created": 1792013046,
+        "created": 1792959874,
         "model": "openai/gpt-oss-120b",
         "choices": [
           {
@@ -18,29 +19,29 @@
             "message": {
               "role": "assistant",
               "content": "{\"invoices\":[{\"first_page\":1,\"carrier\":\"Halcyon Ridge Freight\",\"invoice_number\":\"98211354\",\"invoice_date\":\"2025-08-27\",\"pro_number\":\"2612347155\",\"currency\":\"USD\",\"line_items\":[{\"line_number\":1,\"description\":\"Linehaul\",\"charge_code\":\"LINEHAUL\",\"amount_cents\":66059},{\"line_number\":2,\"description\":\"Fuel surcharge\",\"charge_code\":\"FUEL\",\"amount_cents\":3806},{\"line_number\":3,\"description\":\"Liftgate service\",\"charge_code\":\"LIFTGATE\",\"amount_cents\":21989},{\"line_number\":4,\"description\":\"Inside delivery\",\"charge_code\":\"INSIDE_DELIVERY\",\"amount_cents\":16025},{\"line_number\":5,\"description\":\"Delivery appointment\",\"charge_code\":\"APPOINTMENT\",\"amount_cents\":18432}],\"subtotal_cents\":null,\"tax_cents\":null,\"total_cents\":126311}]}",
-              "reasoning": "We need to produce JSON per schema. One invoice. Fields: carrier, currency, first_page, invoice_date (YYYY-MM-DD), invoice_number, pro_number, line_items (list with line_number, description, charge_code, amount_cents), subtotal_cents, tax_cents, total_cents.\n\nWe have carrier: \"Halcyon Ridge Freight\". Currency: likely USD (since Total Due (USD)). So \"USD\". first_page: 1.\n\ninvoice_number: \"98211354\". invoice_date: printed \"08/27/2025\" => \"2025-08-27\". pro_number: \"2612347155\". line items: 5 lines.\n\nWe need amount_cents: convert $660.59 => 66059 cents. $38.06 => 3806. $219.89 => 21989. $160.25 => 16025. $184.32 => 18432.\n\nDescriptions: as printed after line number? \"Linehaul\", \"Fuel surcharge\", \"Liftgate service\", \"Inside delivery\", \"Delivery appointment\". charge_code: map to given codes. For each line, we have code column: \"LINEHAUL\", \"FUEL\", \"LIFTGATE\", \"INSIDE_DELIVERY\", \"APPOINTMENT\". So charge_code accordingly.\n\nsubtotal_cents: Not printed. There's no subtotal line. So null. tax_cents: none printed, null. total_cents: $1,263.11 => 126311 cents.\n\nMake sure JSON compact, all fields present.\n\nSchema requires line_items array of objects with required fields line_number, description, charge_code, amount_cents.\n\nLet's construct.\n\n"
+              "reasoning": "We need to produce JSON per schema. One invoice. Determine fields:\n\ncarrier: \"Halcyon Ridge Freight\"\ninvoice_number: \"98211354\"\ninvoice_date: format YYYY-MM-DD from \"08/27/2025\" => \"2025-08-27\"\npro_number: \"2612347155\"\ncurrency: likely \"USD\" (since Total Due (USD)). Use \"USD\".\nfirst_page: 1\nline_items: list each line with line_number, description, charge_code, amount_cents.\n\nLines:\n\n1 Linehaul LINEHAUL $660.59 => amount_cents = 66059? Actually 660.59 *100 = 66059. description: \"Linehaul\". charge_code: \"LINEHAUL\". line_number 1.\n\n2 Fuel surcharge FUEL $38.06 => amount_cents 3806. description \"Fuel surcharge\". charge_code \"FUEL\". line_number 2.\n\n3 Liftgate service LIFTGATE $219.89 => amount_cents 21989. description \"Liftgate service\". charge_code \"LIFTGATE\". line_number 3.\n\n4 Inside delivery INSIDE_DELIVERY $160.25 => amount_cents 16025. description \"Inside delivery\". charge_code \"INSIDE_DELIVERY\". line_number 4.\n\n5 Delivery appointment APPOINTMENT $184.32 => amount_cents 18432. description \"Delivery appointment\". charge_code \"APPOINTMENT\". line_number 5.\n\nSubtotal_cents: Not printed. There's no subtotal line. So null.\n\nTax_cents: Not printed. null.\n\ntotal_cents: $1,263.11 => 126311 cents.\n\nCheck formatting: amounts have commas? $1,263.11 => 126311.\n\nNow produce JSON:\n\n{\n \"invoices\": [\n   {\n     \"first_page\":1,\n     \"carrier\":\"Halcyon Ridge Freight\",\n     \"invoice_number\":\"98211354\",\n     \"invoice_date\":\"2025-08-27\",\n     \"pro_number\":\"2612347155\",\n     \"currency\":\"USD\",\n     \"line_items\":[\n       {\"line_number\":1,\"description\":\"Linehaul\",\"charge_code\":\"LINEHAUL\",\"amount_cents\":66059},\n       {\"line_number\":2,\"description\":\"Fuel surcharge\",\"charge_code\":\"FUEL\",\"amount_cents\":3806},\n       {\"line_number\":3,\"description\":\"Liftgate service\",\"charge_code\":\"LIFTGATE\",\"amount_cents\":21989},\n       {\"line_number\":4,\"description\":\"Inside delivery\",\"charge_code\":\"INSIDE_DELIVERY\",\"amount_cents\":16025},\n       {\"line_number\":5,\"description\":\"Delivery appointment\",\"charge_code\":\"APPOINTMENT\",\"amount_cents\":18432}\n     ],\n     \"subtotal_cents\":null,\n     \"tax_cents\":null,\n     \"total_cents\":126311\n   }\n ]\n}\n\nMake sure JSON compact (no spaces? but can have spaces). Provide as single line? \"compact\" means no pretty printing, but okay.\n\nWill output."
             },
             "logprobs": null,
             "finish_reason": "stop"
           }
         ],
         "usage": {
-          "queue_time": 0.357751058,
-          "prompt_tokens": 792,
-          "prompt_time": 0.249468597,
-          "completion_tokens": 547,
-          "completion_time": 1.1422690229999999,
-          "total_tokens": 1339,
-          "total_time": 1.39173762,
+          "queue_time": 0.400651125,
+          "prompt_tokens": 857,
+          "prompt_time": 0.03898611,
+          "completion_tokens": 832,
+          "completion_time": 1.733960521,
+          "total_tokens": 1689,
+          "total_time": 1.772946631,
           "completion_tokens_details": {
-            "reasoning_tokens": 344
+            "reasoning_tokens": 629
           }
         },
         "usage_breakdown": null,
-        "system_fingerprint": "fp_64b2f1c926",
+        "system_fingerprint": "fp_e1a78f200e",
         "x_groq": {
-          "id": "req_01m4y4t2wqewpvzgfy27h0jc42",
-          "seed": 938632330
+          "id": "req_01m5tbryzmeh3bggz2xtwatk2k",
+          "seed": 1529288144
         },
         "service_tier": "on_demand"
       }

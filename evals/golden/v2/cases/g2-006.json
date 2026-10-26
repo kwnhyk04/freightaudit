@@ -1,0 +1,92 @@
+{
+  "id": "g2-006",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "clean",
+  "adversarial": false,
+  "traits": [
+    "factoring_remit",
+    "multi_column",
+    "title_line"
+  ],
+  "layouts": [
+    "two_column"
+  ],
+  "pages": 1,
+  "scans": [
+    null
+  ],
+  "file": "cases/g2-006.pdf",
+  "shipments": [
+    "1025966401"
+  ],
+  "sha256": "177a9b3e0193b7f342b88710a628c0011640228e27cacf5918e45de931d833d8",
+  "bytes": 56883,
+  "invoices": [
+    {
+      "carrier": "Nimbus Road Lines",
+      "invoice_number": "57565939",
+      "invoice_date": "2026-06-16",
+      "due_date": "2026-07-16",
+      "pro_number": "1025966401",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Gislason - Cremin",
+        "address": "74790 Keenan Views, Port Fordcester, WY 17794"
+      },
+      "shipper": {
+        "name": "Predovic Group",
+        "address": "7295 Hoppe Glens, Port Iraborough, UT 17127"
+      },
+      "consignee": {
+        "name": "Haley and Sons",
+        "address": "40532 Honeysuckle Close, North Malika, CA 50090"
+      },
+      "weight_lb": 1347,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 224978,
+          "expected_cents": 224978
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 55007,
+          "expected_cents": 55007
+        },
+        {
+          "line_number": 3,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 14274,
+          "expected_cents": 14274
+        },
+        {
+          "line_number": 4,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 3895,
+          "expected_cents": 3895
+        }
+      ],
+      "total_cents": 298154,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Haag Capital Funding",
+        "address": "P.O. Box 05195, Pourosfield, MD 85223"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

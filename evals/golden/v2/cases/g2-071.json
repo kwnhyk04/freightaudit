@@ -1,0 +1,214 @@
+{
+  "id": "g2-071",
+  "split": "test",
+  "ci": true,
+  "path": "digital",
+  "kind": "multi_invoice",
+  "adversarial": true,
+  "traits": [
+    "continued_page",
+    "factoring_remit",
+    "multi_column",
+    "reference_numbers",
+    "subtotal_tax",
+    "title_line"
+  ],
+  "layouts": [
+    "continued",
+    "remit",
+    "two_column"
+  ],
+  "pages": 4,
+  "scans": [
+    null,
+    null,
+    null,
+    null
+  ],
+  "file": "cases/g2-071.pdf",
+  "shipments": [
+    "1001615476",
+    "1005709599",
+    "1001583800"
+  ],
+  "sha256": "aeb5365e8da4fdd3a023380d3057d206bbb7d5e53c8d277086cbb39f581e45c7",
+  "bytes": 163824,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "18963737",
+      "invoice_date": "2026-06-02",
+      "due_date": "2026-07-02",
+      "pro_number": "1001615476",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Funk, Donnelly and Simonis-McKenzie",
+        "address": "3266 Birch Grove, Beckerchester, OK 07912"
+      },
+      "shipper": {
+        "name": "Kerluke, Yost and Jakubowski",
+        "address": "20728 University Drive, Kautzerboro, KS 08434"
+      },
+      "consignee": {
+        "name": "Ankunding - Hegmann",
+        "address": "335 Medhurst Crescent, Jarrettcester, MS 07803"
+      },
+      "weight_lb": 2962,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 211431,
+          "expected_cents": 211431
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 64888,
+          "expected_cents": 64888
+        },
+        {
+          "line_number": 3,
+          "description": "Delivery appointment",
+          "charge_code": "APPOINTMENT",
+          "amount_cents": 2622,
+          "expected_cents": 2622
+        }
+      ],
+      "total_cents": 278941,
+      "overcharges": [],
+      "subtotal_cents": 278941,
+      "tax_cents": 0,
+      "refs": {
+        "bol": "0132814303",
+        "po": "PO-05799",
+        "shipped_on": "2026-05-25",
+        "delivered_on": "2026-05-29"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    },
+    {
+      "carrier": "Copperline Haulage",
+      "invoice_number": "56866832",
+      "invoice_date": "2025-08-31",
+      "due_date": "2025-09-30",
+      "pro_number": "1005709599",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Hilpert - Tillman",
+        "address": "92139 Korey River, Loweburgh, HI 73938"
+      },
+      "shipper": {
+        "name": "Kertzmann, Conroy and Parisian",
+        "address": "36632 S Park Street, Alfordchester, TX 40659"
+      },
+      "consignee": {
+        "name": "Bailey - Raynor",
+        "address": "569 Alanna Orchard, North Las Vegas, OK 79773"
+      },
+      "weight_lb": 3306,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 165732,
+          "expected_cents": 165732
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 42162,
+          "expected_cents": 42162
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10687,
+          "expected_cents": 10687
+        },
+        {
+          "line_number": 4,
+          "description": "Inside delivery",
+          "charge_code": "INSIDE_DELIVERY",
+          "amount_cents": 19759,
+          "expected_cents": 19759
+        }
+      ],
+      "total_cents": 238340,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "first_page": 3,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    },
+    {
+      "carrier": "Halcyon Ridge Freight",
+      "invoice_number": "55620404",
+      "invoice_date": "2026-04-28",
+      "due_date": "2026-05-28",
+      "pro_number": "1001583800",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Padberg, Muller and Stokes",
+        "address": "6335 8th Avenue, Ernestmouth, OR 92002"
+      },
+      "shipper": {
+        "name": "Swaniawski, Auer-Hagenes and Schultz",
+        "address": "525 Maple Avenue, Lake Ceasar, OR 69653"
+      },
+      "consignee": {
+        "name": "Von Inc",
+        "address": "7803 Cherry Tree Close, Port Elda, IA 26868"
+      },
+      "weight_lb": 8743,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 531754,
+          "expected_cents": 531754
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 113849,
+          "expected_cents": 113849
+        },
+        {
+          "line_number": 3,
+          "description": "Detention",
+          "charge_code": "DETENTION",
+          "amount_cents": 10125,
+          "expected_cents": 10125
+        }
+      ],
+      "total_cents": 655728,
+      "overcharges": [],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "factor": {
+        "name": "Hackett Capital Funding",
+        "address": "P.O. Box 99005, West Leoborough, ND 16513"
+      },
+      "first_page": 4,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}

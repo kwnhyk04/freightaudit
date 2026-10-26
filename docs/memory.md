@@ -578,6 +578,22 @@ From the approved design doc:
   - On a phone, every other week's name shows under the charts, so the names never touch.
   - The overview has its own loading frame (empty cards) in place of the list's table skeleton. Sign-in now lands there, and the public path takes 2 to 6 s per new connection (Known Limitations).
   - Reason: the approved plan and draft, kept wherever they hold. Each change above is either a figure stated more exactly or a layout that works on a phone.
+- 2026-10-26: Golden set v2 (`evals/golden/v2`, built by `evals/golden/v2.ts` through `pnpm golden --set golden --version v2`; plan approved by the user with changes, docs/activity-log.md 2026-10-26). The design, and the agent's choices under the user's "small decisions" rule, for the user to confirm at review:
+  - 98 cases (48 digital, 50 scanned): dev 34, test 64, a ci subset of 20 from test (11 digital, 9 scanned, 6 overcharged invoices). Every kind has dev and test cases. 37 are adversarial (repeated page, multi-invoice, partial credit, credit memo, revised, tricky number, handwritten, upside down, missing PRO, non-USD); packets are not, as in v1.
+  - Seed 43, ids `g2-001` to `g2-098`. No shipment that golden v1 or comparison v1 bills, so no v2 dev case repeats a v1 test invoice; every printed invoice number is unique, the seed's included.
+  - Four new layouts, each with the carrier and a document title on one line (6b's remit misread): `two_column` (with a factoring company as payee), `landscape` (BOL, PO, ship and delivery dates as distractors; fed sideways when scanned), `carrier_form` (each carrier's own charge wording, credits in parentheses, an early-payment amount), `continued` (two pages, the total only on page 2). Digital cases take these four and remit; scans take all ten.
+  - Five scan profiles, in turn: skew 3 to 6 degrees, faded print, 96 dpi, fax (two-tone, standard resolution, a header line), and a colour scan with a stamp. Stamps fall 3 to 9 days after their invoice and fax headers 1 to 9 days, never on a date the case prints. A quarter of the digital cases carry a stamp in the text layer.
+  - Every PDF is within the api's 4 MiB and 20 pages (`LIMITS` in `golden/v2.ts`, a copy of `packages/contracts/src/limits.ts` since evals do not depend on contracts). v1's 9.6 MiB packet could not be uploaded.
+  - PROs print as the shipment stores them; dashed PROs would test matching, not reading.
+  - All randomness is drawn in the plan, so the render is a pure function of it, and `v2-set.test.ts` checks the committed set against a fresh plan. v1's templates, `scanPdf` and `pnpm fixtures` are unchanged.
+  - The harness takes `--golden v1|v2` (default v1 until CI moves) and `--repeat <n>` (dev only, never with floors; each read in its own environment, since a job id is the PDF's hash). v2's floors will live in `evals/thresholds-v2.json`; report names carry `v2`, and dev reports the prompt's hash. Scores keep each header field's hit and the invoices read, and reports gain a "By kind and trait" table. No new floored metric.
+  - Reason: the user's request and README line 101's list; each choice keeps the set fair (every truth value printed, every expected outcome reproduced by the real pipeline) and v1 untouched.
+- 2026-10-26: The extraction prompt's 6b fix (`EXTRACTION_PROMPT`, prompt `4e59f1910cbe`), chosen from v2's dev split only, before and after in docs/activity-log.md (2026-10-26):
+  - A repeated page or a copy is one invoice: "list each invoice once". On dev the free models read repeated pages right in 12 of 18 reads before and 18 of 18 after; overcharge precision went from 0.542 to 1.000.
+  - The first invoice starts on page 1, pages before it belong to it. The prompt said `first_page` is where an invoice starts, while extraction's check wants the first invoice on page 1, so a packet with a bill of lading first could not be read validly (g2-076, needs_review in every read before, right in every read after). A v2 finding beyond 6b, added by the agent; for the user to confirm. Confirmed by the user on 2026-10-26 ("Yes to the page-1 rule").
+  - No title-line rule: v2's dev split showed no title line read as the carrier on either model (93 of 93 free readings, 31 of 31 on Haiku), and the plan's rule is no evidence, no change.
+  - The four cassettes whose requests carry the prompt were re-recorded (R4); every new reply reads its fixture exactly as before.
+  - Reason: the approved plan's step 4, general rules only, no carrier names or case text.
 
 ## Preferences and Instructions
 

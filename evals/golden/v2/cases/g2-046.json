@@ -1,0 +1,116 @@
+{
+  "id": "g2-046",
+  "split": "dev",
+  "ci": false,
+  "path": "scanned",
+  "kind": "overcharge",
+  "adversarial": false,
+  "traits": [
+    "fax",
+    "landscape",
+    "reference_numbers",
+    "rotated_table",
+    "title_line"
+  ],
+  "layouts": [
+    "landscape"
+  ],
+  "pages": 1,
+  "scans": [
+    {
+      "profile": "fax",
+      "degrees": 0.83,
+      "noise": 3755715147,
+      "sideways": true,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-046.pdf",
+  "shipments": [
+    "1033172691"
+  ],
+  "sha256": "74bd820536b6fafda92476431ac1dd4e5bafdb18733b66ce7c6c3e2b5c76107e",
+  "bytes": 74699,
+  "invoices": [
+    {
+      "carrier": "Bramblewood Express",
+      "invoice_number": "72489638",
+      "invoice_date": "2025-01-22",
+      "due_date": "2025-02-21",
+      "pro_number": "1033172691",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Tremblay - Runolfsdottir",
+        "address": "712 School Road, Boston, ME 62791"
+      },
+      "shipper": {
+        "name": "Wyman - Braun",
+        "address": "350 Xander Row, Gunnarcester, OH 49384"
+      },
+      "consignee": {
+        "name": "Stokes, Mitchell and Cremin",
+        "address": "887 Jazmin Extensions, Kaylashire, KY 32688"
+      },
+      "weight_lb": 7722,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 381520,
+          "expected_cents": 381520
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 69894,
+          "expected_cents": 69894
+        },
+        {
+          "line_number": 3,
+          "description": "Liftgate service",
+          "charge_code": "LIFTGATE",
+          "amount_cents": 12726,
+          "expected_cents": 12726
+        },
+        {
+          "line_number": 4,
+          "description": "Residential delivery",
+          "charge_code": "RESIDENTIAL",
+          "amount_cents": 14287,
+          "expected_cents": 0
+        }
+      ],
+      "total_cents": 478427,
+      "overcharges": [
+        {
+          "line_number": 4,
+          "type": "uncontracted_charge",
+          "expected_cents": 0,
+          "billed_cents": 14287
+        }
+      ],
+      "subtotal_cents": null,
+      "tax_cents": null,
+      "refs": {
+        "bol": "0964942205",
+        "po": "PO-09531",
+        "shipped_on": "2025-01-17",
+        "delivered_on": "2025-01-19"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": [
+          {
+            "line_number": 4,
+            "type": "uncontracted_charge",
+            "expected_cents": 0,
+            "billed_cents": 14287
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "id": "g2-068",
+  "split": "test",
+  "ci": false,
+  "path": "scanned",
+  "kind": "repeated_page",
+  "adversarial": true,
+  "traits": [
+    "continued_page",
+    "reference_numbers",
+    "skew",
+    "subtotal_tax",
+    "title_line"
+  ],
+  "layouts": [
+    "continued"
+  ],
+  "pages": 3,
+  "scans": [
+    {
+      "profile": "skew",
+      "degrees": -5.62,
+      "noise": 3748037478,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "skew",
+      "degrees": -5.11,
+      "noise": 3194306538,
+      "sideways": false,
+      "flip": false
+    },
+    {
+      "profile": "skew",
+      "degrees": 5.87,
+      "noise": 2458966213,
+      "sideways": false,
+      "flip": false
+    }
+  ],
+  "file": "cases/g2-068.pdf",
+  "shipments": [
+    "1022909667"
+  ],
+  "sha256": "17c6cdfc2d1f82bbcb1d8786a551494baa5b331716c7dd62f75ac2c1e1207169",
+  "bytes": 759054,
+  "invoices": [
+    {
+      "carrier": "Tern & Tide Carriers",
+      "invoice_number": "83361963",
+      "invoice_date": "2025-10-22",
+      "due_date": "2025-11-21",
+      "pro_number": "1022909667",
+      "currency": "USD",
+      "bill_to": {
+        "name": "Boyer Inc",
+        "address": "906 Vine Street, Turnermouth, FL 65235"
+      },
+      "shipper": {
+        "name": "O'Conner, Hermann and Anderson",
+        "address": "15765 Crist Manors, Flatleyville, NJ 28838"
+      },
+      "consignee": {
+        "name": "Schinner, Nikolaus and Gulgowski",
+        "address": "543 Louis Lane, DeKalb, ME 30683"
+      },
+      "weight_lb": 3008,
+      "line_items": [
+        {
+          "line_number": 1,
+          "description": "Linehaul",
+          "charge_code": "LINEHAUL",
+          "amount_cents": 329410,
+          "expected_cents": 329410
+        },
+        {
+          "line_number": 2,
+          "description": "Fuel surcharge",
+          "charge_code": "FUEL",
+          "amount_cents": 101096,
+          "expected_cents": 101096
+        }
+      ],
+      "total_cents": 430506,
+      "overcharges": [],
+      "subtotal_cents": 430506,
+      "tax_cents": 0,
+      "refs": {
+        "bol": "6544124082",
+        "po": "PO-00506",
+        "shipped_on": "2025-10-16",
+        "delivered_on": "2025-10-19"
+      },
+      "first_page": 1,
+      "expected": {
+        "status": "reconciled",
+        "overcharges": []
+      }
+    }
+  ]
+}
