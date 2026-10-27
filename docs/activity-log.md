@@ -19,6 +19,34 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-28: Stages 0 and 1 of the direct-UDP plan; stage 2 not built (branch tailscale-udp-stages from main `55080cb`, docs only, not committed)
+
+- **Request:** "Run only stages 0 and 1 of docs/tailscale-udp-plan.md." Stage 0 read-only on the running demo (netcheck, tailscale status, the 2026-10-21 timing from the PC); stage 1 the throwaway netcheck, with the go for one temporary container on a temporary network with a name of its own, removed by its exact name, never pruned. Nothing of freightaudit-prod, no compose file and no network the demo uses changed. Steps for the user's own phone timing on mobile data, with no app install; then the plan's stop rules, the docs, and no commit.
+- **Start:** main clean at `55080cb` (#59); `git checkout -b tailscale-udp-stages`, so the docs leave main clean (docs/memory.md would otherwise sit uncommitted on main, which stopped a merge once).
+- **Before:** 12 containers running (freightaudit-prod's 7, filinglens-prod's 5) and 11 networks. The demo's tailscale image is unchanged, `tailscale/tailscale:v1.102.5` by digest, and already local.
+- **Stage 0, read-only** (18:11 UTC on 2026-10-27; `MSYS_NO_PATHCONV=1 docker exec freightaudit-prod-tailscale-1 tailscale --socket=/tmp/tailscaled.sock netcheck`, then `status` and `status --json`):
+  - `UDP: false`, no IPv4 address found; nearest relay hkg at 28.4 ms over HTTPS through squid.
+  - Backend Running on home relay hkg; 23 peers, all Funnel ingress (`tag:ingress`), online and idle, none direct, their home relays in par, lhr, fra, nyc, sfo, syd and tok.
+  - `docker logs --since 10m freightaudit-prod-api-1`, counted only: 9 requests in the 10 minutes before.
+- **Stage 1, the throwaway netcheck** (18:12 UTC): `docker network create freightaudit-udp-netcheck-20261028`; `docker run --rm --name freightaudit-udp-netcheck --network freightaudit-udp-netcheck-20261028 --entrypoint tailscale` with the same image by digest, `netcheck`, which needed no login; then `docker rm -f freightaudit-udp-netcheck` (already gone through `--rm`) and `docker network rm freightaudit-udp-netcheck-20261028`. Nothing was left under either name. Results: `UDP: true`, an IPv4 address found (the home's public address, not written down here), `MappingVariesByDestIP: true`, `PortMapping` empty, hkg 38.8 ms over UDP.
+- **The timing from the PC** (18:12:38 to 18:16:45 UTC, `curl.exe` from Git Bash, a new connection each, 30 s at most, five rounds a minute apart, run in the background since a foreground wait is blocked here): `/healthz` 0.79, 0.59, 0.59, 0.60 and 0.57 s; `/readyz` 0.70, 0.61, 0.61, 0.70 and 0.57 s. 10 of 10 within 2.5 s, no failed connection; the TLS handshake ended 0.41 to 0.63 s in.
+- **The stop rules:** stage 1's `MappingVariesByDestIP: true` makes a direct path doubtful, and the plan builds the sidecar only with UDP behind an easy NAT, so stage 2 is not built. From the PC the relay met stage 3's success bar at this hour anyway (docs/tailscale-udp-plan.md, Results; docs/memory.md, 2026-10-28).
+- **A restart seen, not caused:**
+  - What happened: the demo's api and worker had started at 18:08 UTC, three minutes before stage 0, on `79deaff` (revision label). The tailscale container kept its 14:57 UTC start.
+  - Why: not confirmed. This run only ran `tailscale netcheck` and `status` in the tailscale container and read the api's log; the user's `pnpm demo:up` for #57 is the likely cause.
+  - What we did: read it with `docker inspect --format`, marked #57's demo step done in docs/todo.md, and noted the restart beside the 9 requests before the timing, since `demo:up`'s public check sends some of them.
+- **The phone steps given to the user** (any phone, its browser and its Clock app; the Funnel name is the one `tailscale status` prints under "Funnel on"):
+  1. Turn Wi-Fi off, so the phone uses mobile data only.
+  2. In the browser, open a private tab (Chrome: menu, New Incognito tab; Safari: tabs, Private, +).
+  3. At a whole minute, type `<funnel name>/healthz` in the address bar. Start the stopwatch as you tap Go, and stop it when `{"status":"ok"}` shows. Write down the seconds.
+  4. Close every private tab, so the next request needs a new connection. Open a new one and do the same with `/readyz`, which shows `{"status":"ok","checks":…}`. Close every private tab again.
+  5. Repeat steps 3 and 4 at each of the next four whole minutes: five rounds, ten times in all.
+  6. A page that has not shown after 30 s counts as no connection: write that down and close the tab.
+  7. Send the ten times with the minute of each round. Against 2.5 s; a stopwatch adds about 0.3 s.
+- Files: `docs/{tailscale-udp-plan,todo,context,memory,activity-log}.md`.
+- Validation: docs only; their line endings checked (CRLF). After: the same 12 containers and 11 networks; freightaudit-prod unchanged by this run.
+- Outstanding: the user's phone run; docs/memory.md's stop-rule reading is the user's to confirm.
+
 ### 2026-10-28: fa-polish-2: pdf.js's legacy build, the focus on toasts and a vanished Upload button, the side-tab exception from apps/web, a build step before CI's eval (branch fa-polish-2 from main `79deaff`, not committed)
 
 - **Request:** "Build one polish PR on a new branch fa-polish-2 from main, tests first for each item, and report once at the end", with the user's choices for four Pending items: pdf.js's legacy build in the viewer and the upload thumbnails, with `lib/pdfjs.test.ts`'s file list to match; the focus to the file chooser when a toast's Close or Retry, or an upload that removes the Upload button, takes it away, only if it was lost; `apps/web/.impeccable/config.json`; and a build step before the eval in CI's smoke and the weekly run. The go for `pnpm e2e` and `pnpm test:int`, with this project's dev containers stopped after; no live model calls; freightaudit-prod and the other projects' containers left alone; a stop on any Windows block; no commit.

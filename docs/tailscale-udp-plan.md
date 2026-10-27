@@ -1,7 +1,43 @@
 # Direct UDP for the demo's tailscale node: plan
 
 Status: a plan only, nothing built (2026-10-22). It would reverse part of the egress design in `docs/threat-notes.md`,
-so it waits for the user's review. Sources are listed at the end; anything not read in a source says so.
+so it waits for the user's review. Sources are listed at the end; anything not read in a source says so. Stages 0 and
+1 ran on 2026-10-28 (Taipei): see Results.
+
+## Results of stages 0 and 1 (2026-10-27, 18:11 to 18:18 UTC)
+
+**Stage 0, read-only on the demo** (`freightaudit-prod-tailscale-1`, the pinned v1.102.5):
+
+- `netcheck`: `UDP: false`, no IPv4 address found, no IPv6. `MappingVariesByDestIP` and `PortMapping` empty, since no
+  STUN reply came back. Nearest relay Hong Kong, measured over HTTPS through squid: hkg 28.4 ms, tok 55.2 ms, sin 55.5
+  ms.
+- `status --json`: backend Running, home relay hkg. Its 23 peers are all Funnel ingress servers (`tag:ingress`), online
+  and idle, none with a direct address. Their home relays are par, lhr, fra, nyc, sfo, syd and tok: none in hkg or sin.
+- The api had logged 9 requests in the 10 minutes before the timing, where 2026-10-21's moment had none. Its container
+  and the worker's had restarted at 18:08 UTC on `79deaff` (revision label): not by this run, most likely the user's
+  `pnpm demo:up` (not confirmed). The tailscale container kept its 14:57 UTC start.
+- The 2026-10-21 timing from the PC (`curl.exe`, a new connection each, 18:12:38 to 18:16:45 UTC): `/healthz` 0.79,
+  0.59, 0.59, 0.60 and 0.57 s; `/readyz` 0.70, 0.61, 0.61, 0.70 and 0.57 s. 10 of 10 within 2.5 s and no failed
+  connection, against 3 of 10 and 2 failed connections on 2026-10-21; the TLS handshake ended 0.41 to 0.63 s in.
+- From outside the home network: waits for the user's phone run on mobile data (docs/todo.md).
+
+**Stage 1, a throwaway container** (`freightaudit-udp-netcheck` on the temporary bridge network
+`freightaudit-udp-netcheck-20261028`, the same image by digest, no login needed; both removed by exact name):
+
+- `UDP: true`, an IPv4 address found, no IPv6.
+- `MappingVariesByDestIP: true`: the NAT gives each destination a new mapping, a hard NAT, in Docker Desktop or in the
+  home router; one netcheck cannot tell which.
+- `PortMapping` empty: no UPnP, NAT-PMP or PCP answered from behind Docker Desktop's NAT.
+- Nearest relay Hong Kong over UDP: hkg 38.8 ms, sin 45.4 ms, tok 61.4 ms.
+
+**The stop rules applied:** `UDP` is true, so stage 1 does not stop there. But `MappingVariesByDestIP` is true, which
+this plan reads as a doubtful direct path, and the Recommendation builds the sidecar only with UDP behind an easy NAT.
+That condition fails, so stage 2 is not built. A direct path could still form if the ingress servers answer from public
+addresses without a NAT of their own, but unknown 3 above stays unconfirmed, and the sidecar's cost is the same either
+way. Stage 0 adds a second reason: from the PC, the relay path met stage 3's own success bar at this hour (10 of 10
+within 2.5 s, no failed connection), so there was nothing slow for a direct path to fix. The 2026-10-21 run shows the
+path varies, so the phone run and a busier hour can still show a slow leg; while the NAT is hard, that would point to
+the relay options under Staying on the relay, not to stage 2.
 
 ## Why
 
