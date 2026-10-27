@@ -16,7 +16,9 @@ import type { Roles, Run, Subset } from './run.ts';
 type Floor = { min?: number; max?: number; from: string };
 type Thresholds = { _rules?: string } & Partial<Record<Subset, Record<string, Floor>>>;
 const RULES =
-  "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). Exception: the ci subset gates extraction latency p95 on its design target (12,000 ms) where the derived floor would be tighter: with n = 20 its p95 is effectively the slowest single case, and its interval is too wide for a floor tighter than the target to separate regressions from noise (docs/memory.md, 2026-10-16); a ci run already above the target keeps its derived floor (docs/memory.md, 2026-10-27). Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
+  "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). The ci subset reports its extraction latency p95 and end-to-end latency p95 against their floors but does not gate on them: with n = 20 a p95 is the slowest one or two cases, which one slow provider call moves past any floor (docs/memory.md, 2026-10-28); the full run gates both. Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
+// Rows the ci subset reports against their floors without gating on them (RULES); the full run gates them.
+const NOT_GATED_IN_CI = new Set(['extraction_latency_p95_ms', 'e2e_latency_p95_ms']);
 // The repository root, under which a report reads floors and the k6 results and writes its files; a test points it elsewhere.
 const ROOT = new URL('../../', import.meta.url);
 
@@ -258,17 +260,18 @@ export async function report({
       const floor = floors[m.metric];
       const floorBound = floor && (floor.min !== undefined ? { op: '>=' as const, value: floor.min } : { op: '<=' as const, value: floor.max! });
       const floorOk = floorBound ? meets(m.value, floorBound) : undefined;
-      if (floorOk === false) code = Math.max(code, 1);
+      const gated = !(subset === 'ci' && NOT_GATED_IN_CI.has(m.metric));
+      if (floorOk === false && gated) code = Math.max(code, 1);
       // A run that clears its floor by more than its own interval's width earns a tighter floor, when the rule gives one.
       const proposed = m.ci && floorFrom(metric, m.ci);
       // A floor pinned to the design target by a written decision is never proposed for tightening.
       const tighter = floor?.from !== 'design target' && proposed !== undefined && floorBound && (metric.higherIsBetter ? proposed > floorBound.value : proposed < floorBound.value);
-      if (tighter && m.value !== undefined && m.ci && Math.abs(m.value - floorBound.value) > m.ci[1] - m.ci[0] && floorOk)
+      if (gated && tighter && m.value !== undefined && m.ci && Math.abs(m.value - floorBound.value) > m.ci[1] - m.ci[0] && floorOk)
         suggestions.push(`${metric.label}: measured ${fmt(metric.unit, m.value)} clears the floor ${fmt(metric.unit, floorBound.value)} by more than the interval's width; consider tightening it to ${fmt(metric.unit, proposed)}.`);
       if (setFloors && !floor && m.value !== undefined && m.ci) {
         floors[m.metric] = { [metric.higherIsBetter ? 'min' : 'max']: floorFrom(metric, m.ci), from: name };
       }
-      return { m, metric, floorBound, floorOk };
+      return { m, metric, floorBound, floorOk, gated };
     });
     if (setFloors) {
       thresholds._rules ??= RULES;
@@ -277,14 +280,14 @@ export async function report({
     const wide =
       subset === 'full'
         ? `${scores.length} cases give wide intervals: read each measurement with its 95% interval.`
-        : `${scores.length} ${(repeat ?? 1) > 1 ? 'reads' : 'cases'} give very wide intervals; this subset guards against regressions, it does not measure the targets.`;
+        : `${scores.length} ${(repeat ?? 1) > 1 ? 'reads' : 'cases'} give very wide intervals; this subset guards against regressions, it does not measure the targets.${subset === 'ci' ? ' Its two latency p95 rows are shown against their floors without gating: a p95 of so few cases is the slowest one or two, which one slow provider call moves.' : ''}`;
     const reads = (repeat ?? 1) > 1 ? ` Each case read ${repeat} times, each read in its own environment; the tables count reads.` : '';
     lines.push(`# Extraction eval: ${subset} (${date})`, '', `Golden set ${version}, ${head(run, scores)} Took ${Math.round(durationMs / 1000)} s.${reads}`, '', wide, '');
     if (stopped) lines.push(`**Stopped early on a spent quota (${stopped}); rerun the same command to resume from the cache.**`, '');
     lines.push('| Metric | Design target | Target | Floor | Floor | Measured | 95% CI | n |', '| --- | --- | --- | --- | --- | --- | --- | --- |');
-    for (const { m, metric, floorBound, floorOk } of rows) {
+    for (const { m, metric, floorBound, floorOk, gated } of rows) {
       const target = metric.target ? `${bound(metric.target.op, metric.unit, metric.target.value)} | ${yes(meets(m.value, metric.target))}` : '- | -';
-      const floor = floorBound ? `${bound(floorBound.op, metric.unit, floorBound.value)} | ${floorOk ? 'kept' : 'broken'}` : '- | -';
+      const floor = floorBound ? `${bound(floorBound.op, metric.unit, floorBound.value)} | ${floorOk ? 'kept' : 'broken'}${gated ? '' : ', not gated in ci'}` : '- | -';
       lines.push(`| ${metric.label} | ${target} | ${floor} | ${fmt(metric.unit, m.value)} | ${ci(metric.unit, m.ci)} | ${m.n} |`);
     }
     lines.push(
