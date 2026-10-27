@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "app/globals.css"
+        ],
+        "createdAt": "2026-10-27T17:33:41.866Z",
+        "reason": "approved design: the UI round 1 plan (approved 2026-10-18) and approved picture approved-2-invoice-detail.png give lines with a finding a tint and a left bar, in the PDF marks and their legend swatch (the root config's exception, for sessions working from apps/web)"
+      }
+    ]
+  }
+}

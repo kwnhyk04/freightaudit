@@ -4,8 +4,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // pdf.js 6.4.299 has no isEvalSupported option, so these guards stand in for it: the version is pinned exactly, the
-// builds the app loads hold no eval or Function constructor, and nothing loads the scripting sandbox (whose build holds
-// one eval) or turns scripting on.
+// builds the app loads hold no eval and no Function constructor beyond core-js's fixed global fallback, and nothing
+// loads the scripting sandbox (whose build holds one eval) or turns scripting on.
 const PIN = '6.4.299';
 const web = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pdfjs = dirname(createRequire(import.meta.url).resolve('pdfjs-dist/package.json'));
@@ -16,10 +16,13 @@ test('pdfjs-dist is pinned to exactly the version installed', () => {
   expect((JSON.parse(readFileSync(join(pdfjs, 'package.json'), 'utf8')) as { version: string }).version).toBe(PIN);
 });
 
-test.each(['build/pdf.mjs', 'build/pdf.min.mjs', 'build/pdf.worker.min.mjs'])('%s holds no eval( and no new Function(', (file) => {
+// The app loads the legacy builds, which also run where Map.prototype.getOrInsertComputed and Math.sumPrecise are
+// missing. They carry core-js, whose lookup of the global object ends in Function("return this")() only after
+// globalThis, which every browser that runs modules has; no other call of the Function constructor may appear.
+test.each(['legacy/build/pdf.mjs', 'legacy/build/pdf.min.mjs', 'legacy/build/pdf.worker.min.mjs'])("%s holds no eval( and no Function constructor but core-js's global fallback", (file) => {
   const code = readFileSync(join(pdfjs, file), 'utf8');
   expect(code.includes('eval(')).toBe(false);
-  expect(code.includes('new Function(')).toBe(false);
+  expect(code.match(/(?<![\w$.])Function\s*\((?!\s*["']return this["']\s*\))/g)).toBeNull();
 });
 
 test('no app file imports the scripting sandbox or the viewer, or turns scripting on', () => {

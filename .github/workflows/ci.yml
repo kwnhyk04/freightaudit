@@ -230,6 +230,10 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
+      # A failed build fails here: inside the eval's turbo run it would exit with tsc's code, which the next step would
+      # read as the eval's. Built here, those builds are cached there.
+      - name: Build the packages the eval imports
+        run: pnpm turbo run build --filter=@freightaudit/evals^...
       # Against the ci floors in evals/thresholds-v2.json: exit 1 (a broken floor) fails the job, exit 2 (a free-tier
       # quota stop) only warns, and exit 3 (a crash) fails it.
       - name: Eval the ci subset on the pinned models
