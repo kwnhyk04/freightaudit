@@ -10,9 +10,9 @@ catalog:
   "@types/jest": ^30.0.0
   "@types/node": ^24.19.2
   "@types/pg": ^8.23.1
-  bullmq: ^6.3.9
+  bullmq: ^6.3.19
   drizzle-orm: ^0.45.4
-  eslint: ^10.12.0
+  eslint: ^10.13.0
   # ioredis 6.0 is two days old; BullMQ 6 accepts >=5.
   ioredis: ^5.9.3
   jest: ^30.5.2
