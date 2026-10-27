@@ -2,7 +2,7 @@ import { type APIRequestContext, expect, type Page, test } from '@playwright/tes
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import pg from 'pg';
-import { PASSWORD } from './env.ts';
+import { olderBrowser, PASSWORD } from './env.ts';
 
 const env = parseEnv(readFileSync(new URL('e2e.env', import.meta.url), 'utf8'));
 async function db<Row>(sql: string) {
@@ -167,7 +167,7 @@ test.describe('overview', () => {
 });
 
 test.describe('upload', () => {
-  test('choosing files only lists them, with size and pages and why one would be refused; Upload sends the rest, which leave the list, and toasts say what follows', async ({ page, request }) => {
+  test('choosing files only lists them, with size and pages and why one would be refused; Upload sends the rest, which leave the list, and toasts say what follows; the Upload button goes with nothing left to send, its focus to the file chooser', async ({ page, request }) => {
     await page.goto('/upload');
     const file = page.getByLabel('Invoice files');
     // The input waits for the page to hydrate, since only then is a chosen file checked and listed.
@@ -195,6 +195,9 @@ test.describe('upload', () => {
     await expect(pick(page, 'digital.pdf')).toHaveCount(0);
     await expect(pick(page, 'notes.txt')).toContainText("It isn't a PDF, PNG or JPG.");
     await expect(pick(page, 'big.pdf')).toContainText('The file is 4.0 MB; the limit is 4 MB.');
+    // Nothing is left to send, so the Upload button goes, and the focus it held goes to the file chooser.
+    await expect(page.getByRole('button', { name: /^Upload / })).toHaveCount(0);
+    await expect(file).toBeFocused();
     await expect(toasts).toContainText('1 invoice uploaded. Reading now.');
     await expect(page).toHaveURL(/\/upload$/);
     expect(posts.count).toBe(1);
@@ -244,6 +247,16 @@ test.describe('upload', () => {
     await page.getByRole('row', { name: /photo[.]png/ }).getByRole('link', { name: 'photo.png' }).click();
     await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
     await expect(page.getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
+  });
+
+  test("in a browser without what pdf.js's modern build needs, a picked PDF still shows its first page", async ({ page }) => {
+    await olderBrowser(page);
+    await page.goto('/upload');
+    const file = page.getByLabel('Invoice files');
+    await expect(file).toBeEnabled();
+    await file.setInputFiles({ name: 'older.pdf', mimeType: 'application/pdf', buffer: digital });
+    await expect(pick(page, 'older.pdf')).toContainText(/[0-9]+ KB · 1 page/);
+    await expect(pick(page, 'older.pdf').locator('img')).toHaveAttribute('src', /^data:image\/png;base64,/);
   });
 
   test('a sample uploads in one tap; a second tap adds no invoice, extraction or key', async ({ page }) => {
@@ -332,7 +345,7 @@ test.describe('upload', () => {
     expect(posts).toBe(2);
   });
 
-  test('an upload that gets no answer ends the batch, and the file not sent stays listed; its toast stays until closed; Retry and Upload send it again, and the upload that empties the list leaves the focus on the file chooser', async ({ page }) => {
+  test('an upload that gets no answer ends the batch, and the file not sent stays listed; its toast stays until closed; Retry and Upload send it again; Retry, Close and the upload that empties the list each leave the focus on the file chooser', async ({ page }) => {
     await page.goto('/upload');
     const file = page.getByLabel('Invoice files');
     await expect(file).toBeEnabled();
@@ -356,8 +369,11 @@ test.describe('upload', () => {
     await failed.getByRole('button', { name: 'Retry' }).click();
     await expect.poll(() => posts.count).toBe(2);
     await expect(failed).toHaveCount(1);
+    // Retry closed its toast with the focus, and the toast after it came without; Close does the same.
+    await expect(file).toBeFocused();
     await failed.getByRole('button', { name: 'Close' }).click();
     await expect(failed).toHaveCount(0);
+    await expect(file).toBeFocused();
     // The file stays in the list, counted again, until it uploads and leaves. The second goes unsent, so this run adds
     // only the one invoice the tests after this one count on.
     await page.getByRole('button', { name: 'Remove digital-next.pdf' }).click();

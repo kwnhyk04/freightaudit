@@ -29,10 +29,10 @@ export function DocumentViewer({ src, filename, values }: { src: string; filenam
     (async () => {
       try {
         // The worker module runs on this thread, so no worker file has to be served. The matcher comes with pdf.js, so
-        // pages without a document never load it.
+        // pages without a document never load it. The legacy build also draws in browsers older than the modern one needs.
         // @ts-expect-error -- the worker module ships no types; importing it only registers it.
-        await import('pdfjs-dist/build/pdf.worker.min.mjs');
-        const [pdfjs, marks] = await Promise.all([import('pdfjs-dist'), import('../lib/marks.ts')]);
+        await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
+        const [pdfjs, marks] = await Promise.all([import('pdfjs-dist/legacy/build/pdf.mjs'), import('../lib/marks.ts')]);
         // Left while pdf.js loaded: cleanup had no task to destroy yet, so fetch nothing for a page that is gone.
         if (cancelled) return;
         task = pdfjs.getDocument({ url: src });

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
-import { PASSWORD } from './env.ts';
+import { olderBrowser, PASSWORD } from './env.ts';
 
 const sample = JSON.parse(readFileSync(new URL('../public/demo/invoices.json', import.meta.url), 'utf8')) as {
   invoices: { edges: { node: { id: string; status: string; filename: string; openDiscrepancyCount: number } }[] };
@@ -11,6 +11,15 @@ const offline = `http://127.0.0.1:${process.env.E2E_OFFLINE_PORT ?? 3002}`;
 const unknown = '00000000-0000-4000-8000-000000000000';
 const env = parseEnv(readFileSync(new URL('e2e.env', import.meta.url), 'utf8'));
 const HEADLINE = 'Catch freight overbilling before you pay it.';
+
+test("in a browser without what pdf.js's modern build needs, the sample's viewer still draws the document", async ({ page }) => {
+  await olderBrowser(page);
+  await page.goto(`/demo/invoices/${sampleId('g066.pdf')}`);
+  // The pages settle either drawn or with the viewer's error, which takes the drawn page away.
+  await expect(page.getByRole('region', { name: 'Document pages' })).toHaveAttribute('aria-busy', 'false');
+  await expect(page.getByText('The document could not be shown.')).toHaveCount(0);
+  await expect(page.getByRole('img', { name: /^Page 1 of / })).toBeVisible();
+});
 
 test('the landing page at / is public and static: no redirect, no api call, no key in it, and its links lead on', async ({ page }) => {
   const requests: string[] = [];

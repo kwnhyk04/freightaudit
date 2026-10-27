@@ -28,13 +28,14 @@ const duplicateWords = (existing: NonNullable<ActionState['existing']>): Words =
   return [before, { invoice: existing.id, text: name }, after];
 };
 
-// A PDF's page count and its first page drawn small, with pdf.js as the viewer loads it; either may stay unknown.
+// A PDF's page count and its first page drawn small, with pdf.js's legacy build as the viewer loads it; either may stay
+// unknown.
 async function firstPage(bytes: Uint8Array): Promise<{ pages?: number; thumb?: string }> {
   let task: PDFDocumentLoadingTask | undefined;
   try {
     // @ts-expect-error -- the worker module ships no types; importing it only registers it.
-    await import('pdfjs-dist/build/pdf.worker.min.mjs');
-    const pdfjs = await import('pdfjs-dist');
+    await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
     task = pdfjs.getDocument({ data: bytes.slice() });
     const doc = await task.promise;
     try {
@@ -90,10 +91,10 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
     // A file this browser cannot read goes unchecked here; the server's own checks still apply when it is sent.
     for (const pick of added) void inspect(pick.file, allowlist).then((found) => update(pick.id, found), () => update(pick.id, { checked: true }));
   }
-  // The focus goes to the next file's Remove, else to the file chooser, before the pressed button leaves the page.
+  // A pressed Remove hands the focus to the next file's Remove before it leaves the page.
   function remove(id: string) {
     const next = picks[picks.findIndex((each) => each.id === id) + 1];
-    focusOn(next ? `remove-${next.id}` : CHOOSER);
+    if (next) focusOn(`remove-${next.id}`);
     release(picks.filter((each) => each.id === id));
     setPicks((list) => list.filter((each) => each.id !== id));
   }
@@ -101,14 +102,13 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
     release(picks);
     setPicks([]);
   }
-  // Emptying the list, by Clear or by an upload that sent every file, takes its buttons with it: the focus they held goes
-  // to the file chooser, unless the reviewer moved it elsewhere meanwhile.
-  const listed = picks.length > 0;
-  const wasListed = useRef(listed);
+  // The element that last held the focus in this area. When it leaves the page with the focus (the last file's Remove,
+  // Clear, Upload once nothing is left to send, a toast's Close or Retry), the focus goes to the file chooser, unless the
+  // reviewer moved it elsewhere meanwhile.
+  const focused = useRef<Element | null>(null);
   useEffect(() => {
-    if (wasListed.current && !listed && document.activeElement === document.body) focusOn(CHOOSER);
-    wasListed.current = listed;
-  }, [listed]);
+    if (document.activeElement === document.body && focused.current && !focused.current.isConnected) focusOn(CHOOSER);
+  });
 
   // Sends the files in the order listed, and answered says what each answer does to the list: an uploaded file leaves it,
   // and a busy api, its rate limit or no answer ends the batch. Files added meanwhile wait for the next Upload.
@@ -156,7 +156,12 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
 
   const count = picks.filter(sendable).length;
   return (
-    <div className="upload-main">
+    <div
+      className="upload-main"
+      onFocus={(event) => {
+        focused.current = event.target;
+      }}
+    >
       <div
         className={`drop${over ? ' over' : ''}`}
         onDragOver={(event) => {
