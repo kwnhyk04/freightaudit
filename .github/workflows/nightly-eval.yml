@@ -1,7 +1,7 @@
 name: Full eval (weekly)
 
 on:
-  # Weekly, not nightly: the full set's 90 cases take a large share of a day's free-tier quota.
+  # Weekly, not nightly: the full set's 98 cases take a large share of a day's free-tier quota.
   schedule:
     - cron: "23 3 * * 1"
   workflow_dispatch:
@@ -19,7 +19,7 @@ env:
 
 jobs:
   eval:
-    name: full eval (90 cases)
+    name: full eval (98 cases)
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
@@ -39,7 +39,7 @@ jobs:
           path: evals/.cache
           key: eval-full-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: eval-full-${{ github.run_id }}-
-      # Against the full floors in evals/thresholds.json: exit 1 (a broken floor) fails the job and opens an issue,
+      # Against the full floors in evals/thresholds-v2.json: exit 1 (a broken floor) fails the job and opens an issue,
       # exit 2 (a free-tier quota stop) only warns.
       - name: Eval every case on the pinned models
         id: eval

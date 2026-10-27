@@ -16,8 +16,9 @@ import type { Roles, Run, Subset } from './run.ts';
 type Floor = { min?: number; max?: number; from: string };
 type Thresholds = { _rules?: string } & Partial<Record<Subset, Record<string, Floor>>>;
 const RULES =
-  "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). Exception: the ci subset gates extraction latency p95 on its design target (12,000 ms), not a derived floor: with n = 20 its p95 is effectively the slowest single case, and its interval is too wide for a floor tighter than the target to separate regressions from noise (docs/memory.md, 2026-10-16). Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
-const README = new URL('../../README.md', import.meta.url);
+  "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). Exception: the ci subset gates extraction latency p95 on its design target (12,000 ms) where the derived floor would be tighter: with n = 20 its p95 is effectively the slowest single case, and its interval is too wide for a floor tighter than the target to separate regressions from noise (docs/memory.md, 2026-10-16); a ci run already above the target keeps its derived floor (docs/memory.md, 2026-10-27). Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
+// The repository root, under which a report reads floors and the k6 results and writes its files; a test points it elsewhere.
+const ROOT = new URL('../../', import.meta.url);
 
 const metricOf = (name: string) => METRICS.find((def) => def.metric === name)!;
 const fmt = (unit: string, value: number | undefined) => {
@@ -68,15 +69,14 @@ function throughput(scores: Score[], roles: Roles) {
 // recorded-fixture provider. Neither measures real models at the design rate, which needs paid tiers.
 type E2eResults = { date: string; n: number; e2e_ms: { p50: number; p90: number; max: number } };
 type SystemResults = { date: string; accepted: number; lost: number; offered_per_hour: number; drain_s: number };
-const LOAD_TEST = new URL('../../loadtest/', import.meta.url);
-const results = async <T>(name: string) => {
-  const file = new URL(name, LOAD_TEST);
+const results = async <T>(root: URL, name: string) => {
+  const file = new URL(`loadtest/${name}`, root);
   return existsSync(file) ? (JSON.parse(await readFile(file, 'utf8')) as T) : undefined;
 };
 
-export async function loadTestRows() {
-  const e2e = await results<E2eResults>('e2e-results.json');
-  const system = await results<SystemResults>('system-results.json');
+export async function loadTestRows(root = ROOT) {
+  const e2e = await results<E2eResults>(root, 'e2e-results.json');
+  const system = await results<SystemResults>(root, 'system-results.json');
   const rows: string[] = [];
   // n = 20 cannot give a meaningful p95, so max stands in for it: the target is met only if every invoice made it.
   if (e2e) {
@@ -121,7 +121,7 @@ export function reportName(subset: Subset, date: string, config?: string, { vers
   return `${[date, version, ...(subset === 'full' && !config ? [] : [subset]), ...prompt, ...(config ? [config] : [])].join('-')}${times}`;
 }
 // The set CI gates on, whose full runs write the README's table and the landing page's results.
-export const DEFAULT_GOLDEN = 'v1';
+export const DEFAULT_GOLDEN = 'v2';
 // v1's floors keep their file; each later version has its own, under the same rules.
 export const thresholdsFile = (version: string) => (version === 'v1' ? 'thresholds.json' : `thresholds-${version}.json`);
 // The newest official report of a set version: a full run's, named by its date alone (and the version after v1).
@@ -157,17 +157,16 @@ export function byKindAndTrait(cases: Pick<GoldenCase, 'id' | 'kind' | 'traits'>
   return [...all.filter((row) => row.by === 'kind'), ...all.filter((row) => row.by === 'trait').sort((a, b) => a.name.localeCompare(b.name))];
 }
 
-const REPORTS = new URL('../reports/', import.meta.url);
 const largest = (values: number[]) => (values.length > 0 ? Math.max(...values).toLocaleString('en-US') : 'none');
 
 // A labelled run beside the latest official free run of its own set version on the cases both read, then Claude's
 // largest calls and invoices against the caps it ran under.
-async function beside(scores: Score[], run: Run) {
-  const official = latestOfficial(await readdir(REPORTS), run.version);
+async function beside(scores: Score[], run: Run, reports: URL) {
+  const official = latestOfficial(await readdir(reports), run.version);
   const lines = ['', `## Beside the official free run (${official ?? 'none found'})`, ''];
   if (official) {
     const ids = new Set(scores.map((score) => score.id));
-    const theirs = (JSON.parse(await readFile(new URL(official, REPORTS), 'utf8')) as { scores: Score[] }).scores.filter((score) => ids.has(score.id));
+    const theirs = (JSON.parse(await readFile(new URL(official, reports), 'utf8')) as { scores: Score[] }).scores.filter((score) => ids.has(score.id));
     const free = new Map(measure(theirs).map((m) => [m.metric, m]));
     lines.push(`On the ${theirs.length} cases both runs read, measured from each report's per-case scores.`, '', '| Metric | Free models (official) | This run |', '| --- | --- | --- |');
     for (const m of measure(scores)) {
@@ -195,11 +194,26 @@ async function beside(scores: Score[], run: Run) {
   return lines;
 }
 
-export async function report({ subset, runs, durationMs, setFloors, config }: { subset: Subset; runs: Run[]; durationMs: number; setFloors: boolean; config?: string | undefined }) {
+export async function report({
+  subset,
+  runs,
+  durationMs,
+  setFloors,
+  config,
+  root = ROOT,
+}: {
+  subset: Subset;
+  runs: Run[];
+  durationMs: number;
+  setFloors: boolean;
+  config?: string | undefined;
+  root?: URL;
+}) {
   const date = new Date().toISOString().slice(0, 10);
   const { version, promptHash, repeat } = runs[0]!;
   const name = reportName(subset, date, config, { version, promptHash, repeat });
-  const thresholdsUrl = new URL(`../${thresholdsFile(version)}`, import.meta.url);
+  const thresholdsUrl = new URL(`evals/${thresholdsFile(version)}`, root);
+  const reports = new URL('evals/reports/', root);
   const stopped = runs.find((run) => run.stopped)?.stopped;
   // A comparison scores only the cases every run finished, so both columns cover the same invoices.
   const done = (golden: { id: string }) => (subset === 'compare' ? runs.every((run) => run.results.has(golden.id)) : true);
@@ -311,7 +325,7 @@ export async function report({ subset, runs, durationMs, setFloors, config }: { 
         `| ${s.id} | ${kinds.get(s.id)} | ${traits.get(s.id)} | ${s.path} | ${s.header.correct}/${s.header.total} | ${s.invoices.read} of ${s.invoices.truth} | ${s.lines.tp}/${s.lines.fp}/${s.lines.fn} | ${s.overcharges.tp}/${s.overcharges.fp}/${s.overcharges.fn} | ${s.outcomes.ok}/${s.outcomes.total} | ${result.status}${result.error ? ` (${result.error})` : ''} |`,
       );
     }
-    if (config) lines.push(...(await beside(scores, run)));
+    if (config) lines.push(...(await beside(scores, run, reports)));
     Object.assign(json, { config: config ?? null, golden: version, repeat: repeat ?? 1, promptHash: run.promptHash, pins: pins(run.roles), cases: scores.length, computed: run.computed, metrics: measured, throughputPerHour: ceiling ?? null, floors, failures, breakdown, scores });
 
     if (writesReadme({ subset, version, config, stopped })) {
@@ -335,18 +349,19 @@ export async function report({ subset, runs, durationMs, setFloors, config }: { 
         ...rows
           .filter(({ metric }) => metric.target && metric.metric !== 'e2e_latency_p95_ms')
           .map(({ m, metric }) => `| ${metric.label} | ${bound(metric.target!.op, metric.unit, metric.target!.value)} | ${fmt(metric.unit, m.value)} | ${ci(metric.unit, m.ci)} | ${meets(m.value, metric.target!) ? 'yes' : 'no'} | ${modelOf(m.metric)} | ${date} |`),
-        ...(await loadTestRows()),
+        ...(await loadTestRows(root)),
         '<!-- eval:end -->',
       ].join('\n');
-      const readme = await readFile(README, 'utf8');
+      const readmeUrl = new URL('README.md', root);
+      const readme = await readFile(readmeUrl, 'utf8');
       const marked = /<!-- eval:start -->[\s\S]*<!-- eval:end -->/;
-      await writeFile(README, marked.test(readme) ? readme.replace(marked, table) : readme.replace(/^(# .*\n)/, `$1\n${table}\n`));
-      // The landing page's results table follows the report the README now names.
-      await writeLandingResults();
+      await writeFile(readmeUrl, marked.test(readme) ? readme.replace(marked, table) : readme.replace(/^(# .*\n)/, `$1\n${table}\n`));
     }
   }
-  await writeFile(new URL(`../reports/${name}.json`, import.meta.url), `${JSON.stringify(json, (_, value: unknown) => (value instanceof Set ? [...value] : value), 2)}\n`);
-  await writeFile(new URL(`../reports/${name}.md`, import.meta.url), `${lines.join('\n')}\n`);
+  await writeFile(new URL(`${name}.json`, reports), `${JSON.stringify(json, (_, value: unknown) => (value instanceof Set ? [...value] : value), 2)}\n`);
+  await writeFile(new URL(`${name}.md`, reports), `${lines.join('\n')}\n`);
+  // The landing page's results table follows the report the README now names, read back once it is written.
+  if (writesReadme({ subset, version, config, stopped })) await writeLandingResults(root);
   console.log(lines.join('\n'));
   return code;
 }

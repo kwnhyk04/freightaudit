@@ -1,0 +1,6198 @@
+{
+  "suite": "extraction",
+  "subset": "full",
+  "date": "2026-10-27",
+  "durationMs": 43,
+  "stopped": null,
+  "config": null,
+  "golden": "v2",
+  "repeat": 1,
+  "promptHash": "4e59f1910cbe",
+  "pins": "primary gemini/gemini-3.5-flash-lite, text groq/openai/gpt-oss-120b, fallback groq/qwen/qwen3.8-27b",
+  "cases": 98,
+  "computed": 0,
+  "metrics": [
+    {
+      "metric": "header_accuracy_digital",
+      "value": 0.9935897435897436,
+      "ci": [
+        0.9833333333333333,
+        1
+      ],
+      "n": 48
+    },
+    {
+      "metric": "header_accuracy_scanned",
+      "value": 0.9433962264150944,
+      "ci": [
+        0.8683623120300752,
+        0.9935897435897436
+      ],
+      "n": 50
+    },
+    {
+      "metric": "line_f1_digital",
+      "value": 0.9948186528497409,
+      "ci": [
+        0.9832306464485235,
+        1
+      ],
+      "n": 48
+    },
+    {
+      "metric": "line_f1_scanned",
+      "value": 0.9503916449086162,
+      "ci": [
+        0.8960344471947195,
+        0.9896373056994818
+      ],
+      "n": 50
+    },
+    {
+      "metric": "arithmetic_consistency",
+      "value": 0.9714285714285714,
+      "ci": [
+        0.9272727272727272,
+        1
+      ],
+      "n": 98
+    },
+    {
+      "metric": "overcharge_precision",
+      "value": 1,
+      "ci": [
+        1,
+        1
+      ],
+      "n": 98
+    },
+    {
+      "metric": "overcharge_recall",
+      "value": 0.9487179487179487,
+      "ci": [
+        0.8518321513002364,
+        1
+      ],
+      "n": 98
+    },
+    {
+      "metric": "dollar_recovery",
+      "value": 0.9901832532763107,
+      "ci": [
+        0.9533356734941497,
+        1
+      ],
+      "n": 98
+    },
+    {
+      "metric": "false_flag_rate",
+      "value": 0,
+      "ci": [
+        0,
+        0
+      ],
+      "n": 98
+    },
+    {
+      "metric": "escalation_rate",
+      "value": 0.02040816326530612,
+      "ci": [
+        0,
+        0.05102040816326531
+      ],
+      "n": 98
+    },
+    {
+      "metric": "extraction_latency_p50_ms",
+      "value": 2359,
+      "ci": [
+        2072,
+        2587
+      ],
+      "n": 94
+    },
+    {
+      "metric": "extraction_latency_p95_ms",
+      "value": 10689.949999999999,
+      "ci": [
+        7812,
+        15053.949999999993
+      ],
+      "n": 94
+    },
+    {
+      "metric": "rate_limit_waits",
+      "value": 37,
+      "ci": [
+        26,
+        49.024999999999864
+      ],
+      "n": 98
+    },
+    {
+      "metric": "rate_limit_wait_ms",
+      "value": 2406515,
+      "ci": [
+        1377654.3,
+        3685914.0249999994
+      ],
+      "n": 98
+    },
+    {
+      "metric": "failed_calls",
+      "value": 2,
+      "ci": [
+        0,
+        5
+      ],
+      "n": 98
+    },
+    {
+      "metric": "e2e_latency_p95_ms",
+      "value": 176807.69999999987,
+      "ci": [
+        90975,
+        216205.29999999987
+      ],
+      "n": 98
+    },
+    {
+      "metric": "input_tokens_per_page_digital",
+      "value": 802.9384615384615,
+      "ci": [
+        717.4207142857143,
+        902.0173076923076
+      ],
+      "n": 48
+    },
+    {
+      "metric": "output_tokens_per_page_digital",
+      "value": 609.4153846153846,
+      "ci": [
+        519.1248301630435,
+        712.5091666666666
+      ],
+      "n": 48
+    },
+    {
+      "metric": "tokens_per_invoice_digital",
+      "value": 1912.5625,
+      "ci": [
+        1626.3552083333332,
+        2257.6671874999993
+      ],
+      "n": 48
+    },
+    {
+      "metric": "tokens_per_invoice_scanned",
+      "value": 3034.64,
+      "ci": [
+        2389.0745,
+        3854.9719999999998
+      ],
+      "n": 50
+    },
+    {
+      "metric": "cost_per_invoice_digital_usd",
+      "value": 0.0006582916666666667,
+      "ci": [
+        0.0005529718750000001,
+        0.00078873125
+      ],
+      "n": 48
+    },
+    {
+      "metric": "cost_per_invoice_scanned_usd",
+      "value": 0.0019522200000000004,
+      "ci": [
+        0.0014759570000000004,
+        0.0026290764999999995
+      ],
+      "n": 50
+    },
+    {
+      "metric": "free_tier_cost_per_invoice_usd",
+      "value": 0,
+      "ci": [
+        0,
+        0
+      ],
+      "n": 98
+    },
+    {
+      "metric": "outcome_accuracy",
+      "value": 0.9428571428571428,
+      "ci": [
+        0.8761904761904762,
+        0.9905660377358491
+      ],
+      "n": 98
+    }
+  ],
+  "throughputPerHour": 512.4015555047221,
+  "floors": {
+    "header_accuracy_digital": {
+      "min": 0.98,
+      "from": "2026-10-27-v2"
+    },
+    "header_accuracy_scanned": {
+      "min": 0.86,
+      "from": "2026-10-27-v2"
+    },
+    "line_f1_digital": {
+      "min": 0.95,
+      "from": "2026-10-27-v2"
+    },
+    "line_f1_scanned": {
+      "min": 0.88,
+      "from": "2026-10-27-v2"
+    },
+    "arithmetic_consistency": {
+      "min": 0.92,
+      "from": "2026-10-27-v2"
+    },
+    "overcharge_precision": {
+      "min": 0.95,
+      "from": "2026-10-27-v2"
+    },
+    "overcharge_recall": {
+      "min": 0.85,
+      "from": "2026-10-27-v2"
+    },
+    "dollar_recovery": {
+      "min": 0.9,
+      "from": "2026-10-27-v2"
+    },
+    "false_flag_rate": {
+      "max": 0.03,
+      "from": "2026-10-27-v2"
+    },
+    "escalation_rate": {
+      "max": 0.1,
+      "from": "2026-10-27-v2"
+    },
+    "extraction_latency_p50_ms": {
+      "max": 3900,
+      "from": "2026-10-27-v2"
+    },
+    "extraction_latency_p95_ms": {
+      "max": 22600,
+      "from": "2026-10-27-v2"
+    },
+    "rate_limit_waits": {
+      "max": 74,
+      "from": "2026-10-27-v2"
+    },
+    "rate_limit_wait_ms": {
+      "max": 5528900,
+      "from": "2026-10-27-v2"
+    },
+    "failed_calls": {
+      "max": 6,
+      "from": "2026-10-27-v2"
+    },
+    "e2e_latency_p95_ms": {
+      "max": 324400,
+      "from": "2026-10-27-v2"
+    },
+    "input_tokens_per_page_digital": {
+      "max": 1360,
+      "from": "2026-10-27-v2"
+    },
+    "output_tokens_per_page_digital": {
+      "max": 1070,
+      "from": "2026-10-27-v2"
+    },
+    "tokens_per_invoice_digital": {
+      "max": 3390,
+      "from": "2026-10-27-v2"
+    },
+    "tokens_per_invoice_scanned": {
+      "max": 5790,
+      "from": "2026-10-27-v2"
+    },
+    "cost_per_invoice_digital_usd": {
+      "max": 0.0012,
+      "from": "2026-10-27-v2"
+    },
+    "cost_per_invoice_scanned_usd": {
+      "max": 0.004,
+      "from": "2026-10-27-v2"
+    },
+    "free_tier_cost_per_invoice_usd": {
+      "max": 0,
+      "from": "2026-10-27-v2"
+    },
+    "outcome_accuracy": {
+      "min": 0.85,
+      "from": "2026-10-27-v2"
+    }
+  },
+  "failures": [
+    {
+      "id": "g2-006",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "class": "5xx",
+      "status": 503,
+      "message": "groq HTTP 503 internal_server_error"
+    },
+    {
+      "id": "g2-008",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "class": "5xx",
+      "status": 503,
+      "message": "groq HTTP 503 internal_server_error"
+    }
+  ],
+  "breakdown": [
+    {
+      "by": "kind",
+      "name": "clean",
+      "cases": 32,
+      "header": [
+        191,
+        192
+      ],
+      "carrier": [
+        32,
+        32
+      ],
+      "count": [
+        32,
+        32
+      ],
+      "outcome": [
+        32,
+        32
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "overcharge",
+      "cases": 20,
+      "header": [
+        114,
+        120
+      ],
+      "carrier": [
+        18,
+        20
+      ],
+      "count": [
+        20,
+        20
+      ],
+      "outcome": [
+        18,
+        20
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "duplicate_invoice",
+      "cases": 5,
+      "header": [
+        30,
+        30
+      ],
+      "carrier": [
+        5,
+        5
+      ],
+      "count": [
+        5,
+        5
+      ],
+      "outcome": [
+        5,
+        5
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "repeated_page",
+      "cases": 12,
+      "header": [
+        72,
+        72
+      ],
+      "carrier": [
+        12,
+        12
+      ],
+      "count": [
+        12,
+        12
+      ],
+      "outcome": [
+        12,
+        12
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "multi_invoice",
+      "cases": 5,
+      "header": [
+        60,
+        72
+      ],
+      "carrier": [
+        10,
+        12
+      ],
+      "count": [
+        4,
+        5
+      ],
+      "outcome": [
+        9,
+        12
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "packet",
+      "cases": 4,
+      "header": [
+        24,
+        24
+      ],
+      "carrier": [
+        4,
+        4
+      ],
+      "count": [
+        4,
+        4
+      ],
+      "outcome": [
+        4,
+        4
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "partial_credit",
+      "cases": 3,
+      "header": [
+        18,
+        18
+      ],
+      "carrier": [
+        3,
+        3
+      ],
+      "count": [
+        3,
+        3
+      ],
+      "outcome": [
+        3,
+        3
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "credit_memo",
+      "cases": 2,
+      "header": [
+        12,
+        12
+      ],
+      "carrier": [
+        2,
+        2
+      ],
+      "count": [
+        2,
+        2
+      ],
+      "outcome": [
+        2,
+        2
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "revised_invoice",
+      "cases": 3,
+      "header": [
+        18,
+        18
+      ],
+      "carrier": [
+        3,
+        3
+      ],
+      "count": [
+        3,
+        3
+      ],
+      "outcome": [
+        3,
+        3
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "tricky_number",
+      "cases": 4,
+      "header": [
+        24,
+        24
+      ],
+      "carrier": [
+        4,
+        4
+      ],
+      "count": [
+        4,
+        4
+      ],
+      "outcome": [
+        4,
+        4
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "handwritten",
+      "cases": 2,
+      "header": [
+        12,
+        12
+      ],
+      "carrier": [
+        2,
+        2
+      ],
+      "count": [
+        2,
+        2
+      ],
+      "outcome": [
+        1,
+        2
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "upside_down",
+      "cases": 2,
+      "header": [
+        11,
+        12
+      ],
+      "carrier": [
+        2,
+        2
+      ],
+      "count": [
+        2,
+        2
+      ],
+      "outcome": [
+        2,
+        2
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "missing_pro",
+      "cases": 2,
+      "header": [
+        12,
+        12
+      ],
+      "carrier": [
+        2,
+        2
+      ],
+      "count": [
+        2,
+        2
+      ],
+      "outcome": [
+        2,
+        2
+      ]
+    },
+    {
+      "by": "kind",
+      "name": "non_usd",
+      "cases": 2,
+      "header": [
+        12,
+        12
+      ],
+      "carrier": [
+        2,
+        2
+      ],
+      "count": [
+        2,
+        2
+      ],
+      "outcome": [
+        2,
+        2
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "carrier_wording",
+      "cases": 16,
+      "header": [
+        108,
+        108
+      ],
+      "carrier": [
+        18,
+        18
+      ],
+      "count": [
+        16,
+        16
+      ],
+      "outcome": [
+        18,
+        18
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "continued_page",
+      "cases": 14,
+      "header": [
+        96,
+        96
+      ],
+      "carrier": [
+        16,
+        16
+      ],
+      "count": [
+        14,
+        14
+      ],
+      "outcome": [
+        15,
+        16
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "copy_label",
+      "cases": 4,
+      "header": [
+        24,
+        24
+      ],
+      "carrier": [
+        4,
+        4
+      ],
+      "count": [
+        4,
+        4
+      ],
+      "outcome": [
+        4,
+        4
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "early_pay_discount",
+      "cases": 16,
+      "header": [
+        108,
+        108
+      ],
+      "carrier": [
+        18,
+        18
+      ],
+      "count": [
+        16,
+        16
+      ],
+      "outcome": [
+        18,
+        18
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "factoring_remit",
+      "cases": 16,
+      "header": [
+        108,
+        120
+      ],
+      "carrier": [
+        18,
+        20
+      ],
+      "count": [
+        15,
+        16
+      ],
+      "outcome": [
+        17,
+        20
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "fax",
+      "cases": 10,
+      "header": [
+        56,
+        72
+      ],
+      "carrier": [
+        10,
+        12
+      ],
+      "count": [
+        9,
+        10
+      ],
+      "outcome": [
+        7,
+        12
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "invoice_not_first",
+      "cases": 2,
+      "header": [
+        12,
+        12
+      ],
+      "carrier": [
+        2,
+        2
+      ],
+      "count": [
+        2,
+        2
+      ],
+      "outcome": [
+        2,
+        2
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "landscape",
+      "cases": 16,
+      "header": [
+        106,
+        120
+      ],
+      "carrier": [
+        17,
+        20
+      ],
+      "count": [
+        15,
+        16
+      ],
+      "outcome": [
+        16,
+        20
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "low_contrast",
+      "cases": 10,
+      "header": [
+        59,
+        60
+      ],
+      "carrier": [
+        10,
+        10
+      ],
+      "count": [
+        10,
+        10
+      ],
+      "outcome": [
+        10,
+        10
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "low_res",
+      "cases": 10,
+      "header": [
+        65,
+        66
+      ],
+      "carrier": [
+        11,
+        11
+      ],
+      "count": [
+        10,
+        10
+      ],
+      "outcome": [
+        11,
+        11
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "multi_column",
+      "cases": 16,
+      "header": [
+        108,
+        120
+      ],
+      "carrier": [
+        18,
+        20
+      ],
+      "count": [
+        15,
+        16
+      ],
+      "outcome": [
+        17,
+        20
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "reference_numbers",
+      "cases": 30,
+      "header": [
+        202,
+        216
+      ],
+      "carrier": [
+        33,
+        36
+      ],
+      "count": [
+        29,
+        30
+      ],
+      "outcome": [
+        31,
+        36
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "rotated_table",
+      "cases": 5,
+      "header": [
+        29,
+        42
+      ],
+      "carrier": [
+        5,
+        7
+      ],
+      "count": [
+        4,
+        5
+      ],
+      "outcome": [
+        3,
+        7
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "skew",
+      "cases": 10,
+      "header": [
+        60,
+        60
+      ],
+      "carrier": [
+        10,
+        10
+      ],
+      "count": [
+        10,
+        10
+      ],
+      "outcome": [
+        9,
+        10
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "stamp",
+      "cases": 22,
+      "header": [
+        137,
+        138
+      ],
+      "carrier": [
+        22,
+        23
+      ],
+      "count": [
+        22,
+        22
+      ],
+      "outcome": [
+        23,
+        23
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "subtotal_tax",
+      "cases": 14,
+      "header": [
+        96,
+        96
+      ],
+      "carrier": [
+        16,
+        16
+      ],
+      "count": [
+        14,
+        14
+      ],
+      "outcome": [
+        15,
+        16
+      ]
+    },
+    {
+      "by": "trait",
+      "name": "title_line",
+      "cases": 78,
+      "header": [
+        491,
+        510
+      ],
+      "carrier": [
+        81,
+        85
+      ],
+      "count": [
+        77,
+        78
+      ],
+      "outcome": [
+        79,
+        85
+      ]
+    }
+  ],
+  "scores": [
+    {
+      "id": "g2-001",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1593,
+      "waits": 1,
+      "waitMs": 53023,
+      "failedCalls": 0,
+      "e2eMs": 54809,
+      "inputTokens": 871,
+      "outputTokens": 474,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 415
+    },
+    {
+      "id": "g2-002",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1920,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2163,
+      "inputTokens": 900,
+      "outputTokens": 715,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 564
+    },
+    {
+      "id": "g2-003",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2182,
+      "waits": 1,
+      "waitMs": 17970,
+      "failedCalls": 0,
+      "e2eMs": 20420,
+      "inputTokens": 884,
+      "outputTokens": 859,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 648
+    },
+    {
+      "id": "g2-004",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1666,
+      "waits": 1,
+      "waitMs": 197201,
+      "failedCalls": 0,
+      "e2eMs": 199320,
+      "inputTokens": 1000,
+      "outputTokens": 468,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 431
+    },
+    {
+      "id": "g2-005",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2672,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2912,
+      "inputTokens": 1855,
+      "outputTokens": 854,
+      "calls": 2,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 790
+    },
+    {
+      "id": "g2-006",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2200,
+      "waits": 2,
+      "waitMs": 93425,
+      "failedCalls": 1,
+      "e2eMs": 127980,
+      "inputTokens": 884,
+      "outputTokens": 696,
+      "calls": 2,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 550
+    },
+    {
+      "id": "g2-007",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2565,
+      "waits": 1,
+      "waitMs": 77294,
+      "failedCalls": 0,
+      "e2eMs": 80289,
+      "inputTokens": 880,
+      "outputTokens": 818,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 623
+    },
+    {
+      "id": "g2-008",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1929,
+      "waits": 2,
+      "waitMs": 140733,
+      "failedCalls": 1,
+      "e2eMs": 174240,
+      "inputTokens": 897,
+      "outputTokens": 611,
+      "calls": 2,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 501
+    },
+    {
+      "id": "g2-009",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2275,
+      "waits": 1,
+      "waitMs": 347698,
+      "failedCalls": 0,
+      "e2eMs": 350316,
+      "inputTokens": 1019,
+      "outputTokens": 813,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 641
+    },
+    {
+      "id": "g2-010",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1769,
+      "waits": 1,
+      "waitMs": 9836,
+      "failedCalls": 0,
+      "e2eMs": 11887,
+      "inputTokens": 840,
+      "outputTokens": 636,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 508
+    },
+    {
+      "id": "g2-011",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1887,
+      "waits": 1,
+      "waitMs": 9011,
+      "failedCalls": 0,
+      "e2eMs": 11126,
+      "inputTokens": 882,
+      "outputTokens": 637,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 515
+    },
+    {
+      "id": "g2-012",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2566,
+      "waits": 1,
+      "waitMs": 9260,
+      "failedCalls": 0,
+      "e2eMs": 11926,
+      "inputTokens": 899,
+      "outputTokens": 821,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 627
+    },
+    {
+      "id": "g2-013",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1954,
+      "waits": 1,
+      "waitMs": 101576,
+      "failedCalls": 0,
+      "e2eMs": 103920,
+      "inputTokens": 882,
+      "outputTokens": 691,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 547
+    },
+    {
+      "id": "g2-014",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2371,
+      "waits": 1,
+      "waitMs": 30304,
+      "failedCalls": 0,
+      "e2eMs": 32770,
+      "inputTokens": 998,
+      "outputTokens": 893,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 686
+    },
+    {
+      "id": "g2-015",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1377,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 1576,
+      "inputTokens": 832,
+      "outputTokens": 402,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 366
+    },
+    {
+      "id": "g2-016",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1795,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2093,
+      "inputTokens": 880,
+      "outputTokens": 639,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 515
+    },
+    {
+      "id": "g2-017",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2019,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2386,
+      "inputTokens": 1390,
+      "outputTokens": 394,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1402
+    },
+    {
+      "id": "g2-018",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1929,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2215,
+      "inputTokens": 1390,
+      "outputTokens": 301,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1170
+    },
+    {
+      "id": "g2-019",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2006,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2123,
+      "inputTokens": 1390,
+      "outputTokens": 393,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1400
+    },
+    {
+      "id": "g2-020",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2458,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2687,
+      "inputTokens": 1390,
+      "outputTokens": 346,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1282
+    },
+    {
+      "id": "g2-021",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 5542,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 5833,
+      "inputTokens": 1390,
+      "outputTokens": 395,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1405
+    },
+    {
+      "id": "g2-022",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2751,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 3139,
+      "inputTokens": 1390,
+      "outputTokens": 245,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1030
+    },
+    {
+      "id": "g2-023",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2186,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2379,
+      "inputTokens": 1390,
+      "outputTokens": 342,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1272
+    },
+    {
+      "id": "g2-024",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3504,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 3699,
+      "inputTokens": 1390,
+      "outputTokens": 396,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1407
+    },
+    {
+      "id": "g2-025",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2623,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 3037,
+      "inputTokens": 1390,
+      "outputTokens": 298,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1162
+    },
+    {
+      "id": "g2-026",
+      "path": "scanned",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 7869,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 8321,
+      "inputTokens": 2496,
+      "outputTokens": 303,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1506
+    },
+    {
+      "id": "g2-027",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 5,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 0,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3969,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 4235,
+      "inputTokens": 1390,
+      "outputTokens": 294,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1152
+    },
+    {
+      "id": "g2-028",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3210,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 3440,
+      "inputTokens": 1390,
+      "outputTokens": 301,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1170
+    },
+    {
+      "id": "g2-029",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 5130,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 5301,
+      "inputTokens": 1390,
+      "outputTokens": 299,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1165
+    },
+    {
+      "id": "g2-030",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 7812,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 8209,
+      "inputTokens": 1390,
+      "outputTokens": 395,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1405
+    },
+    {
+      "id": "g2-031",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3894,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 4224,
+      "inputTokens": 1390,
+      "outputTokens": 395,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1405
+    },
+    {
+      "id": "g2-032",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3762,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 3959,
+      "inputTokens": 1390,
+      "outputTokens": 348,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1287
+    },
+    {
+      "id": "g2-033",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 23007,
+        "planted": 23007,
+        "cleanLines": 1
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1673,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 1867,
+      "inputTokens": 875,
+      "outputTokens": 614,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 500
+    },
+    {
+      "id": "g2-034",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 6,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 14612,
+        "planted": 14612,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1958,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2137,
+      "inputTokens": 898,
+      "outputTokens": 669,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 536
+    },
+    {
+      "id": "g2-035",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 19759,
+        "planted": 19759,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1569,
+      "waits": 1,
+      "waitMs": 96813,
+      "failedCalls": 0,
+      "e2eMs": 98653,
+      "inputTokens": 1007,
+      "outputTokens": 553,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 483
+    },
+    {
+      "id": "g2-036",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 5,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 0,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 86870,
+        "planted": 86870,
+        "cleanLines": 1
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1954,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2122,
+      "inputTokens": 834,
+      "outputTokens": 661,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 522
+    },
+    {
+      "id": "g2-037",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 11034,
+        "planted": 11034,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1949,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2088,
+      "inputTokens": 875,
+      "outputTokens": 630,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 509
+    },
+    {
+      "id": "g2-038",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 6,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 19759,
+        "planted": 19759,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3201,
+      "waits": 1,
+      "waitMs": 79028,
+      "failedCalls": 0,
+      "e2eMs": 82503,
+      "inputTokens": 904,
+      "outputTokens": 1237,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 878
+    },
+    {
+      "id": "g2-039",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 5106,
+        "planted": 5106,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1773,
+      "waits": 1,
+      "waitMs": 5904,
+      "failedCalls": 0,
+      "e2eMs": 7972,
+      "inputTokens": 880,
+      "outputTokens": 588,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 485
+    },
+    {
+      "id": "g2-040",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 11421,
+        "planted": 11421,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1849,
+      "waits": 1,
+      "waitMs": 189165,
+      "failedCalls": 0,
+      "e2eMs": 191358,
+      "inputTokens": 1020,
+      "outputTokens": 506,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 457
+    },
+    {
+      "id": "g2-041",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 9444,
+        "planted": 9444,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1704,
+      "waits": 1,
+      "waitMs": 9610,
+      "failedCalls": 0,
+      "e2eMs": 11644,
+      "inputTokens": 839,
+      "outputTokens": 494,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 422
+    },
+    {
+      "id": "g2-042",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 22913,
+        "planted": 22913,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2088,
+      "waits": 1,
+      "waitMs": 7947,
+      "failedCalls": 0,
+      "e2eMs": 10332,
+      "inputTokens": 888,
+      "outputTokens": 447,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 401
+    },
+    {
+      "id": "g2-043",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 5,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 0,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 10035,
+        "planted": 10035,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1954,
+      "waits": 1,
+      "waitMs": 7620,
+      "failedCalls": 0,
+      "e2eMs": 9765,
+      "inputTokens": 891,
+      "outputTokens": 723,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 567
+    },
+    {
+      "id": "g2-044",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 6,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 11283,
+        "planted": 11283,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2534,
+      "waits": 1,
+      "waitMs": 9952,
+      "failedCalls": 0,
+      "e2eMs": 12780,
+      "inputTokens": 903,
+      "outputTokens": 930,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 693
+    },
+    {
+      "id": "g2-045",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 17507,
+        "planted": 17507,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1941,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2132,
+      "inputTokens": 1390,
+      "outputTokens": 347,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1285
+    },
+    {
+      "id": "g2-046",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 5,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 0,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "recovered": 0,
+        "planted": 14287,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 0,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2266,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2637,
+      "inputTokens": 1390,
+      "outputTokens": 346,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1282
+    },
+    {
+      "id": "g2-047",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 30961,
+        "planted": 30961,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2324,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2640,
+      "inputTokens": 1390,
+      "outputTokens": 344,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1277
+    },
+    {
+      "id": "g2-048",
+      "path": "scanned",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 65110,
+        "planted": 65110,
+        "cleanLines": 1
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 7612,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 8002,
+      "inputTokens": 2496,
+      "outputTokens": 252,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1379
+    },
+    {
+      "id": "g2-049",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 8594,
+        "planted": 8594,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 15793,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 15925,
+      "inputTokens": 1390,
+      "outputTokens": 296,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1157
+    },
+    {
+      "id": "g2-050",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 3,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 0,
+        "invoice_date": 1,
+        "pro_number": 0,
+        "currency": 1,
+        "total_cents": 0
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 1,
+        "fn": 1
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "recovered": 0,
+        "planted": 10687,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 0,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 5908,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 6410,
+      "inputTokens": 1390,
+      "outputTokens": 452,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1547
+    },
+    {
+      "id": "g2-051",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 5864,
+        "planted": 5864,
+        "cleanLines": 1
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 9899,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 10334,
+      "inputTokens": 1390,
+      "outputTokens": 246,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1032
+    },
+    {
+      "id": "g2-052",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 11786,
+        "planted": 11786,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3898,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 4238,
+      "inputTokens": 1390,
+      "outputTokens": 296,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1157
+    },
+    {
+      "id": "g2-053",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 463955,
+        "planted": 463955,
+        "cleanLines": 0
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2516,
+      "waits": 1,
+      "waitMs": 22985,
+      "failedCalls": 0,
+      "e2eMs": 25608,
+      "inputTokens": 1014,
+      "outputTokens": 995,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 749
+    },
+    {
+      "id": "g2-054",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 466263,
+        "planted": 466263,
+        "cleanLines": 0
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2992,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 3181,
+      "inputTokens": 841,
+      "outputTokens": 517,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 436
+    },
+    {
+      "id": "g2-055",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 658512,
+        "planted": 658512,
+        "cleanLines": 0
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1940,
+      "waits": 1,
+      "waitMs": 3134,
+      "failedCalls": 0,
+      "e2eMs": 5299,
+      "inputTokens": 896,
+      "outputTokens": 535,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 455
+    },
+    {
+      "id": "g2-056",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 524018,
+        "planted": 524018,
+        "cleanLines": 0
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1933,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2125,
+      "inputTokens": 1390,
+      "outputTokens": 348,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1287
+    },
+    {
+      "id": "g2-057",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 21233,
+        "planted": 21233,
+        "cleanLines": 0
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 4737,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 5025,
+      "inputTokens": 1390,
+      "outputTokens": 244,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1027
+    },
+    {
+      "id": "g2-058",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1580,
+      "waits": 1,
+      "waitMs": 226455,
+      "failedCalls": 0,
+      "e2eMs": 228226,
+      "inputTokens": 1108,
+      "outputTokens": 531,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 485
+    },
+    {
+      "id": "g2-059",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1504,
+      "waits": 1,
+      "waitMs": 18546,
+      "failedCalls": 0,
+      "e2eMs": 20253,
+      "inputTokens": 1120,
+      "outputTokens": 526,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 484
+    },
+    {
+      "id": "g2-060",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2540,
+      "waits": 1,
+      "waitMs": 29519,
+      "failedCalls": 0,
+      "e2eMs": 32389,
+      "inputTokens": 994,
+      "outputTokens": 624,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 524
+    },
+    {
+      "id": "g2-061",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1826,
+      "waits": 1,
+      "waitMs": 166204,
+      "failedCalls": 0,
+      "e2eMs": 168216,
+      "inputTokens": 1092,
+      "outputTokens": 558,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 499
+    },
+    {
+      "id": "g2-062",
+      "path": "scanned",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3467,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 3756,
+      "inputTokens": 2496,
+      "outputTokens": 246,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1364
+    },
+    {
+      "id": "g2-063",
+      "path": "scanned",
+      "pages": 3,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2454,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2925,
+      "inputTokens": 3602,
+      "outputTokens": 348,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1951
+    },
+    {
+      "id": "g2-064",
+      "path": "scanned",
+      "pages": 3,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1736,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2209,
+      "inputTokens": 3602,
+      "outputTokens": 307,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1848
+    },
+    {
+      "id": "g2-065",
+      "path": "scanned",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1719,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2110,
+      "inputTokens": 2496,
+      "outputTokens": 301,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1501
+    },
+    {
+      "id": "g2-066",
+      "path": "scanned",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3502,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 3950,
+      "inputTokens": 2496,
+      "outputTokens": 349,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1621
+    },
+    {
+      "id": "g2-067",
+      "path": "scanned",
+      "pages": 3,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 10635,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 11170,
+      "inputTokens": 3602,
+      "outputTokens": 402,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 2086
+    },
+    {
+      "id": "g2-068",
+      "path": "scanned",
+      "pages": 3,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 9115,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 9799,
+      "inputTokens": 3602,
+      "outputTokens": 255,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1718
+    },
+    {
+      "id": "g2-069",
+      "path": "scanned",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 10792,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 11141,
+      "inputTokens": 2496,
+      "outputTokens": 399,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1746
+    },
+    {
+      "id": "g2-070",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 12,
+        "total": 12
+      },
+      "fields": {
+        "carrier": 2,
+        "invoice_number": 2,
+        "invoice_date": 2,
+        "pro_number": 2,
+        "currency": 2,
+        "total_cents": 2
+      },
+      "invoices": {
+        "truth": 2,
+        "read": 2
+      },
+      "lines": {
+        "tp": 6,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 2,
+        "total": 2
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 6
+      },
+      "outcomes": {
+        "ok": 2,
+        "total": 2
+      },
+      "escalated": 0,
+      "latencyMs": 5937,
+      "waits": 1,
+      "waitMs": 31480,
+      "failedCalls": 0,
+      "e2eMs": 36190,
+      "inputTokens": 2860,
+      "outputTokens": 2122,
+      "calls": 3,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1702
+    },
+    {
+      "id": "g2-071",
+      "path": "digital",
+      "pages": 4,
+      "header": {
+        "correct": 18,
+        "total": 18
+      },
+      "fields": {
+        "carrier": 3,
+        "invoice_number": 3,
+        "invoice_date": 3,
+        "pro_number": 3,
+        "currency": 3,
+        "total_cents": 3
+      },
+      "invoices": {
+        "truth": 3,
+        "read": 3
+      },
+      "lines": {
+        "tp": 10,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 3,
+        "total": 3
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 10
+      },
+      "outcomes": {
+        "ok": 3,
+        "total": 3
+      },
+      "escalated": 0,
+      "latencyMs": 13715,
+      "waits": 3,
+      "waitMs": 235044,
+      "failedCalls": 0,
+      "e2eMs": 214084,
+      "inputTokens": 4099,
+      "outputTokens": 3496,
+      "calls": 4,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 2713
+    },
+    {
+      "id": "g2-072",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 12,
+        "total": 12
+      },
+      "fields": {
+        "carrier": 2,
+        "invoice_number": 2,
+        "invoice_date": 2,
+        "pro_number": 2,
+        "currency": 2,
+        "total_cents": 2
+      },
+      "invoices": {
+        "truth": 2,
+        "read": 2
+      },
+      "lines": {
+        "tp": 10,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 2,
+        "total": 2
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 10
+      },
+      "outcomes": {
+        "ok": 2,
+        "total": 2
+      },
+      "escalated": 0,
+      "latencyMs": 7812,
+      "waits": 2,
+      "waitMs": 35155,
+      "failedCalls": 0,
+      "e2eMs": 41390,
+      "inputTokens": 2886,
+      "outputTokens": 2933,
+      "calls": 3,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 2192
+    },
+    {
+      "id": "g2-073",
+      "path": "scanned",
+      "pages": 2,
+      "header": {
+        "correct": 12,
+        "total": 12
+      },
+      "fields": {
+        "carrier": 2,
+        "invoice_number": 2,
+        "invoice_date": 2,
+        "pro_number": 2,
+        "currency": 2,
+        "total_cents": 2
+      },
+      "invoices": {
+        "truth": 2,
+        "read": 2
+      },
+      "lines": {
+        "tp": 8,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 2,
+        "total": 2
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 8
+      },
+      "outcomes": {
+        "ok": 2,
+        "total": 2
+      },
+      "escalated": 0,
+      "latencyMs": 7734,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 6344,
+      "inputTokens": 5276,
+      "outputTokens": 1379,
+      "calls": 3,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 5031
+    },
+    {
+      "id": "g2-074",
+      "path": "scanned",
+      "pages": 3,
+      "header": {
+        "correct": 6,
+        "total": 18
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 3,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 9
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 3
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 12
+      },
+      "outcomes": {
+        "ok": 0,
+        "total": 3
+      },
+      "escalated": 1,
+      "latencyMs": 18567,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 18897,
+      "inputTokens": 13964,
+      "outputTokens": 2796,
+      "calls": 3,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 15173
+    },
+    {
+      "id": "g2-075",
+      "path": "scanned",
+      "pages": 3,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1886,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2471,
+      "inputTokens": 3602,
+      "outputTokens": 396,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 2071
+    },
+    {
+      "id": "g2-076",
+      "path": "scanned",
+      "pages": 6,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3075,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 3754,
+      "inputTokens": 6920,
+      "outputTokens": 395,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 3064
+    },
+    {
+      "id": "g2-077",
+      "path": "scanned",
+      "pages": 5,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 10588,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 11122,
+      "inputTokens": 5814,
+      "outputTokens": 352,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 2624
+    },
+    {
+      "id": "g2-078",
+      "path": "scanned",
+      "pages": 8,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2602,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 3467,
+      "inputTokens": 9132,
+      "outputTokens": 394,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 3725
+    },
+    {
+      "id": "g2-079",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2056,
+      "waits": 1,
+      "waitMs": 36321,
+      "failedCalls": 0,
+      "e2eMs": 38471,
+      "inputTokens": 993,
+      "outputTokens": 803,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 631
+    },
+    {
+      "id": "g2-080",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 1,
+        "fn": 1
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2905,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 3144,
+      "inputTokens": 860,
+      "outputTokens": 815,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 618
+    },
+    {
+      "id": "g2-081",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 1,
+        "fn": 1
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 4263,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 4514,
+      "inputTokens": 1390,
+      "outputTokens": 346,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1282
+    },
+    {
+      "id": "g2-082",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1611,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 1831,
+      "inputTokens": 877,
+      "outputTokens": 470,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 414
+    },
+    {
+      "id": "g2-083",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2519,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2914,
+      "inputTokens": 1390,
+      "outputTokens": 249,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1040
+    },
+    {
+      "id": "g2-084",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2608,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2886,
+      "inputTokens": 902,
+      "outputTokens": 987,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 728
+    },
+    {
+      "id": "g2-085",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1485,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 1581,
+      "inputTokens": 895,
+      "outputTokens": 511,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 441
+    },
+    {
+      "id": "g2-086",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 5368,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 5554,
+      "inputTokens": 1390,
+      "outputTokens": 344,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1277
+    },
+    {
+      "id": "g2-087",
+      "path": "digital",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2024,
+      "waits": 1,
+      "waitMs": 88670,
+      "failedCalls": 0,
+      "e2eMs": 90975,
+      "inputTokens": 1017,
+      "outputTokens": 811,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 639
+    },
+    {
+      "id": "g2-088",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 5
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2246,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2385,
+      "inputTokens": 854,
+      "outputTokens": 826,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 624
+    },
+    {
+      "id": "g2-089",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1935,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2114,
+      "inputTokens": 1390,
+      "outputTokens": 346,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1282
+    },
+    {
+      "id": "g2-090",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 6409,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 6606,
+      "inputTokens": 1390,
+      "outputTokens": 300,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1167
+    },
+    {
+      "id": "g2-091",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1712,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2113,
+      "inputTokens": 1390,
+      "outputTokens": 293,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1150
+    },
+    {
+      "id": "g2-092",
+      "path": "scanned",
+      "pages": 2,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 2,
+        "fn": 2
+      },
+      "arithmetic": {
+        "ok": 0,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 0,
+        "total": 1
+      },
+      "escalated": 1,
+      "latencyMs": 14656,
+      "waits": 1,
+      "waitMs": 19632,
+      "failedCalls": 0,
+      "e2eMs": 34697,
+      "inputTokens": 9291,
+      "outputTokens": 957,
+      "calls": 3,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 7505
+    },
+    {
+      "id": "g2-093",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1694,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2102,
+      "inputTokens": 1390,
+      "outputTokens": 346,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1282
+    },
+    {
+      "id": "g2-094",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 5,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 0
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 1,
+        "fn": 1
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 13677,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 14033,
+      "inputTokens": 3067,
+      "outputTokens": 450,
+      "calls": 2,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 2046
+    },
+    {
+      "id": "g2-095",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 3
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 1710,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 1868,
+      "inputTokens": 880,
+      "outputTokens": 591,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 487
+    },
+    {
+      "id": "g2-096",
+      "path": "scanned",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 2
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 3557,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 3701,
+      "inputTokens": 1390,
+      "outputTokens": 236,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 1007
+    },
+    {
+      "id": "g2-097",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2347,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2622,
+      "inputTokens": 897,
+      "outputTokens": 897,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 673
+    },
+    {
+      "id": "g2-098",
+      "path": "digital",
+      "pages": 1,
+      "header": {
+        "correct": 6,
+        "total": 6
+      },
+      "fields": {
+        "carrier": 1,
+        "invoice_number": 1,
+        "invoice_date": 1,
+        "pro_number": 1,
+        "currency": 1,
+        "total_cents": 1
+      },
+      "invoices": {
+        "truth": 1,
+        "read": 1
+      },
+      "lines": {
+        "tp": 4,
+        "fp": 0,
+        "fn": 0
+      },
+      "arithmetic": {
+        "ok": 1,
+        "total": 1
+      },
+      "overcharges": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "recovered": 0,
+        "planted": 0,
+        "cleanLines": 4
+      },
+      "outcomes": {
+        "ok": 1,
+        "total": 1
+      },
+      "escalated": 0,
+      "latencyMs": 2687,
+      "waits": 0,
+      "waitMs": 0,
+      "failedCalls": 0,
+      "e2eMs": 2913,
+      "inputTokens": 889,
+      "outputTokens": 985,
+      "calls": 1,
+      "costMicroUsd": 0,
+      "paidMicroUsd": 724
+    }
+  ]
+}

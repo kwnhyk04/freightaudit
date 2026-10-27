@@ -230,7 +230,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
-      # Against the ci floors in evals/thresholds.json: exit 1 (a broken floor) fails the job, exit 2 (a free-tier
+      # Against the ci floors in evals/thresholds-v2.json: exit 1 (a broken floor) fails the job, exit 2 (a free-tier
       # quota stop) only warns.
       - name: Eval the ci subset on the pinned models
         id: eval
@@ -282,7 +282,7 @@ jobs:
           marker='<!-- eval-smoke -->'
           case "$STATUS" in
             0) note='' ;;
-            1) note='> **Failed:** a metric fell below its floor in evals/thresholds.json.' ;;
+            1) note='> **Failed:** a metric fell below its floor in evals/thresholds-v2.json.' ;;
             2) note='> **Warning, not a failure:** the run stopped on a free-tier quota before every case ran. Rerun the job once the quota resets.' ;;
             *) note="> **Failed:** the eval exited with code $STATUS." ;;
           esac

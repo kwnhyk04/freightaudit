@@ -1,0 +1,199 @@
+{
+  "full": {
+    "header_accuracy_digital": {
+      "min": 0.98,
+      "from": "2026-10-27-v2"
+    },
+    "header_accuracy_scanned": {
+      "min": 0.86,
+      "from": "2026-10-27-v2"
+    },
+    "line_f1_digital": {
+      "min": 0.95,
+      "from": "2026-10-27-v2"
+    },
+    "line_f1_scanned": {
+      "min": 0.88,
+      "from": "2026-10-27-v2"
+    },
+    "arithmetic_consistency": {
+      "min": 0.92,
+      "from": "2026-10-27-v2"
+    },
+    "overcharge_precision": {
+      "min": 0.95,
+      "from": "2026-10-27-v2"
+    },
+    "overcharge_recall": {
+      "min": 0.85,
+      "from": "2026-10-27-v2"
+    },
+    "dollar_recovery": {
+      "min": 0.9,
+      "from": "2026-10-27-v2"
+    },
+    "false_flag_rate": {
+      "max": 0.03,
+      "from": "2026-10-27-v2"
+    },
+    "escalation_rate": {
+      "max": 0.1,
+      "from": "2026-10-27-v2"
+    },
+    "extraction_latency_p50_ms": {
+      "max": 3900,
+      "from": "2026-10-27-v2"
+    },
+    "extraction_latency_p95_ms": {
+      "max": 22600,
+      "from": "2026-10-27-v2"
+    },
+    "rate_limit_waits": {
+      "max": 74,
+      "from": "2026-10-27-v2"
+    },
+    "rate_limit_wait_ms": {
+      "max": 5528900,
+      "from": "2026-10-27-v2"
+    },
+    "failed_calls": {
+      "max": 6,
+      "from": "2026-10-27-v2"
+    },
+    "e2e_latency_p95_ms": {
+      "max": 324400,
+      "from": "2026-10-27-v2"
+    },
+    "input_tokens_per_page_digital": {
+      "max": 1360,
+      "from": "2026-10-27-v2"
+    },
+    "output_tokens_per_page_digital": {
+      "max": 1070,
+      "from": "2026-10-27-v2"
+    },
+    "tokens_per_invoice_digital": {
+      "max": 3390,
+      "from": "2026-10-27-v2"
+    },
+    "tokens_per_invoice_scanned": {
+      "max": 5790,
+      "from": "2026-10-27-v2"
+    },
+    "cost_per_invoice_digital_usd": {
+      "max": 0.0012,
+      "from": "2026-10-27-v2"
+    },
+    "cost_per_invoice_scanned_usd": {
+      "max": 0.004,
+      "from": "2026-10-27-v2"
+    },
+    "free_tier_cost_per_invoice_usd": {
+      "max": 0,
+      "from": "2026-10-27-v2"
+    },
+    "outcome_accuracy": {
+      "min": 0.85,
+      "from": "2026-10-27-v2"
+    }
+  },
+  "_rules": "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). Exception: the ci subset gates extraction latency p95 on its design target (12,000 ms) where the derived floor would be tighter: with n = 20 its p95 is effectively the slowest single case, and its interval is too wide for a floor tighter than the target to separate regressions from noise (docs/memory.md, 2026-10-16); a ci run already above the target keeps its derived floor (docs/memory.md, 2026-10-27). Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.",
+  "ci": {
+    "header_accuracy_digital": {
+      "min": 0.95,
+      "from": "2026-10-27-v2-ci"
+    },
+    "header_accuracy_scanned": {
+      "min": 0.6,
+      "from": "2026-10-27-v2-ci"
+    },
+    "line_f1_digital": {
+      "min": 0.95,
+      "from": "2026-10-27-v2-ci"
+    },
+    "line_f1_scanned": {
+      "min": 0.6,
+      "from": "2026-10-27-v2-ci"
+    },
+    "arithmetic_consistency": {
+      "min": 0.71,
+      "from": "2026-10-27-v2-ci"
+    },
+    "overcharge_precision": {
+      "min": 0.95,
+      "from": "2026-10-27-v2-ci"
+    },
+    "overcharge_recall": {
+      "min": 0.9,
+      "from": "2026-10-27-v2-ci"
+    },
+    "dollar_recovery": {
+      "min": 0.9,
+      "from": "2026-10-27-v2-ci"
+    },
+    "false_flag_rate": {
+      "max": 0.03,
+      "from": "2026-10-27-v2-ci"
+    },
+    "escalation_rate": {
+      "max": 0.25,
+      "from": "2026-10-27-v2-ci"
+    },
+    "extraction_latency_p50_ms": {
+      "max": 5000,
+      "from": "2026-10-27-v2-ci"
+    },
+    "extraction_latency_p95_ms": {
+      "max": 27900,
+      "from": "2026-10-27-v2-ci"
+    },
+    "rate_limit_waits": {
+      "max": 26,
+      "from": "2026-10-27-v2-ci"
+    },
+    "rate_limit_wait_ms": {
+      "max": 1642300,
+      "from": "2026-10-27-v2-ci"
+    },
+    "failed_calls": {
+      "max": 4,
+      "from": "2026-10-27-v2-ci"
+    },
+    "e2e_latency_p95_ms": {
+      "max": 321200,
+      "from": "2026-10-27-v2-ci"
+    },
+    "input_tokens_per_page_digital": {
+      "max": 1700,
+      "from": "2026-10-27-v2-ci"
+    },
+    "output_tokens_per_page_digital": {
+      "max": 1200,
+      "from": "2026-10-27-v2-ci"
+    },
+    "tokens_per_invoice_digital": {
+      "max": 5080,
+      "from": "2026-10-27-v2-ci"
+    },
+    "tokens_per_invoice_scanned": {
+      "max": 13180,
+      "from": "2026-10-27-v2-ci"
+    },
+    "cost_per_invoice_digital_usd": {
+      "max": 0.0019,
+      "from": "2026-10-27-v2-ci"
+    },
+    "cost_per_invoice_scanned_usd": {
+      "max": 0.0109,
+      "from": "2026-10-27-v2-ci"
+    },
+    "free_tier_cost_per_invoice_usd": {
+      "max": 0,
+      "from": "2026-10-27-v2-ci"
+    },
+    "outcome_accuracy": {
+      "min": 0.59,
+      "from": "2026-10-27-v2-ci"
+    }
+  }
+}
