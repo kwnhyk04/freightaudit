@@ -546,3 +546,6 @@ export function uploadState(upload: Recent): UploadState {
   if (upload.status === 'FAILED') return { done, result: `Failed: ${upload.failureReason ? capital(upload.failureReason) : 'Used up its retries'}`, tone: 'bad' };
   return { done, result: statusLabel(upload.status, 0, null, upload.shipment !== null), tone: upload.status === 'APPROVED' ? 'ok' : 'faint' };
 }
+
+// The landing page's badge beside an eval result: Met, or Below target in the warning tone.
+export const resultBadge = (met: boolean): { label: string; tone: Tone } => (met ? { label: 'Met', tone: 'ok' } : { label: 'Below target', tone: 'warn' });

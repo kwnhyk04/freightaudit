@@ -40,7 +40,7 @@ jobs:
           key: eval-full-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: eval-full-${{ github.run_id }}-
       # Against the full floors in evals/thresholds-v2.json: exit 1 (a broken floor) fails the job and opens an issue,
-      # exit 2 (a free-tier quota stop) only warns.
+      # exit 2 (a free-tier quota stop) only warns, and exit 3 (a crash) fails the job without an issue.
       - name: Eval every case on the pinned models
         id: eval
         env:

@@ -1,7 +1,10 @@
 import { createTestDatabase, testEnv } from '@freightaudit/db/testing';
 import { fakeModels, replyWith } from '@freightaudit/llm/testing';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import type { GoldenCase } from '../golden/build.ts';
 import { measure, scoreCase } from './metrics.ts';
 import { evaluate, type Roles, startEnvironment } from './run.ts';
@@ -55,3 +58,12 @@ test('the harness scores cases run through the real pipeline, caches them, and a
     if (key) await rm(new URL(`../.cache/golden-v1/${key}/`, import.meta.url), { recursive: true, force: true });
   }
 }, 120_000);
+
+// The weekly run opens its regression issue on exit 1, and the smoke's comment calls 1 a broken floor.
+test('a run that crashes exits 3, never the 1 of a broken floor', async () => {
+  const child = spawn(process.execPath, [fileURLToPath(new URL('run.ts', import.meta.url)), '--subset', 'nope'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  let stderr = '';
+  child.stderr?.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
+  const [code] = await once(child, 'close');
+  expect([code, stderr]).toEqual([3, expect.stringContaining('--subset must be dev, test, ci, full or compare')]);
+}, 60_000);

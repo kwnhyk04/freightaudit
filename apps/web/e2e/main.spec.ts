@@ -271,18 +271,24 @@ test.describe('upload', () => {
     expect(rows).toEqual([{ extractions: 1, keys: 1 }]);
   });
 
-  test('a listed file can be removed, and Clear empties the list; nothing is sent', async ({ page }) => {
+  test('a listed file can be removed, and Clear empties the list; nothing is sent; the focus goes to the next Remove, else the file chooser', async ({ page }) => {
     await page.goto('/upload');
     const file = page.getByLabel('Invoice files');
     await expect(file).toBeEnabled();
     const posts = countUploads(page);
     await file.setInputFiles(['one.pdf', 'two.pdf', 'three.pdf'].map((name) => ({ name, mimeType: 'application/pdf', buffer: digital })));
     await expect(page.getByRole('button', { name: 'Upload 3 invoices' })).toBeVisible();
-    await page.getByRole('button', { name: 'Remove two.pdf' }).click();
+    // A pressed Remove leaves the page, so the focus moves on instead of falling to the page's body.
+    await page.getByRole('button', { name: 'Remove two.pdf' }).press('Enter');
     await expect(page.getByRole('list', { name: 'Files to upload' }).getByRole('listitem')).toHaveCount(2);
+    await expect(page.getByRole('button', { name: 'Remove three.pdf' })).toBeFocused();
     await expect(page.getByRole('button', { name: 'Upload 2 invoices' })).toBeVisible();
-    await page.getByRole('button', { name: 'Clear' }).click();
+    // The last file has no next one, and Clear takes every Remove with it: both leave the focus on the file chooser.
+    await page.getByRole('button', { name: 'Remove three.pdf' }).press('Enter');
+    await expect(file).toBeFocused();
+    await page.getByRole('button', { name: 'Clear' }).press('Enter');
     await expect(page.getByRole('list', { name: 'Files to upload' })).toHaveCount(0);
+    await expect(file).toBeFocused();
     expect(posts.count).toBe(0);
   });
 
@@ -326,7 +332,7 @@ test.describe('upload', () => {
     expect(posts).toBe(2);
   });
 
-  test('an upload that gets no answer ends the batch, and the file not sent stays listed; its toast stays until closed; Retry and Upload send it again', async ({ page }) => {
+  test('an upload that gets no answer ends the batch, and the file not sent stays listed; its toast stays until closed; Retry and Upload send it again, and the upload that empties the list leaves the focus on the file chooser', async ({ page }) => {
     await page.goto('/upload');
     const file = page.getByLabel('Invoice files');
     await expect(file).toBeEnabled();
@@ -358,6 +364,8 @@ test.describe('upload', () => {
     await page.unroute('**/upload');
     await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
     await expect(pick(page, 'digital-copy.pdf')).toHaveCount(0);
+    // The upload took the list and its buttons away, so the focus goes to the file chooser, as after Clear.
+    await expect(file).toBeFocused();
     await expect(page.locator('.toasts')).toContainText('1 invoice uploaded. Reading now.');
   });
 

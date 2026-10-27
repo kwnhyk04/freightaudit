@@ -3,7 +3,7 @@ import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import { demoInvoiceFile } from '../lib/demo.ts';
 import results from '../lib/eval-results.json';
-import { findingText, findingTitle, invoiceAmounts, overcharge, plural } from '../lib/labels.ts';
+import { findingText, findingTitle, invoiceAmounts, overcharge, plural, resultBadge } from '../lib/labels.ts';
 import { START_PAGE } from '../lib/session.ts';
 import { Badge, Difference, StatusBadge } from './ui.tsx';
 
@@ -151,16 +151,21 @@ export function Landing() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.rows.map((row) => (
-                    <tr key={row.label}>
-                      <td>{row.label}</td>
-                      <td className="num muted">{row.target}</td>
-                      <td className="num">
-                        <strong>{row.result}</strong>
-                      </td>
-                      <td>{row.met ? <Badge tone="ok">Met</Badge> : <Badge tone="warn">Below target</Badge>}</td>
-                    </tr>
-                  ))}
+                  {results.rows.map((row) => {
+                    const badge = resultBadge(row.met);
+                    return (
+                      <tr key={row.label}>
+                        <td>{row.label}</td>
+                        <td className="num muted">{row.target}</td>
+                        <td className="num">
+                          <strong>{row.result}</strong>
+                        </td>
+                        <td>
+                          <Badge tone={badge.tone}>{badge.label}</Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
