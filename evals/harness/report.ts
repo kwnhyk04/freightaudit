@@ -129,8 +129,10 @@ export const latestOfficial = (files: string[], version: string) =>
   files.filter((file) => new RegExp(`^\\d{4}-\\d{2}-\\d{2}${version === 'v1' ? '' : `-${version}`}\\.json$`).test(file)).sort().at(-1);
 export const readmeIntro = ({ version, cases, date, served, name }: { version: string; cases: number; date: string; served: string; name: string }) =>
   `Golden set ${version} (${cases} synthetic invoices, ground truth from the generator), measured ${date} with ${served}. ${cases} cases give wide intervals; misses are listed as misses. Full report: \`evals/reports/${name}.md\`.`;
-export const writesReadme = ({ subset, version, config, stopped }: { subset: Subset; version: string; config?: string | undefined; stopped?: string | undefined }) =>
-  subset === 'full' && !stopped && !config && version === DEFAULT_GOLDEN;
+// Whether a run rewrites the README's table and the landing results: only a full run of the default set that read every
+// case, never a quota stop, a labelled configuration or a run that left cases unread (--cached on a partial cache).
+export const writesReadme = ({ subset, version, config, stopped, unread = 0 }: { subset: Subset; version: string; config?: string | undefined; stopped?: string | undefined; unread?: number }) =>
+  subset === 'full' && !stopped && !config && version === DEFAULT_GOLDEN && unread === 0;
 
 export type Breakdown = { by: 'kind' | 'trait'; name: string; cases: number; header: [number, number]; carrier: [number, number]; count: [number, number]; outcome: [number, number] };
 // Per kind, then per trait: cases (reads, with --repeat), header fields, the carrier, invoices read against the truth and
@@ -218,6 +220,7 @@ export async function report({
   // A comparison scores only the cases every run finished, so both columns cover the same invoices.
   const done = (golden: { id: string }) => (subset === 'compare' ? runs.every((run) => run.results.has(golden.id)) : true);
   const scored = runs.map((run) => ({ run, scores: run.cases.filter((golden) => run.results.has(golden.id) && done(golden)).map((golden) => scoreCase(golden, run.results.get(golden.id)!)) }));
+  const rewrites = writesReadme({ subset, version, config, stopped, unread: scored.reduce((sum, { run, scores }) => sum + run.cases.length - scores.length, 0) });
   const used = usage(runs);
   const usageTable = [
     '| Model | Served as | Calls | Input tokens | Output tokens |',
@@ -328,7 +331,7 @@ export async function report({
     if (config) lines.push(...(await beside(scores, run, reports)));
     Object.assign(json, { config: config ?? null, golden: version, repeat: repeat ?? 1, promptHash: run.promptHash, pins: pins(run.roles), cases: scores.length, computed: run.computed, metrics: measured, throughputPerHour: ceiling ?? null, floors, failures, breakdown, scores });
 
-    if (writesReadme({ subset, version, config, stopped })) {
+    if (rewrites) {
       // Every pinned role with the model version the provider reported serving, or that it was never called.
       const served = Object.entries(run.roles)
         .map(([role, { provider, model }]) => {
@@ -361,7 +364,7 @@ export async function report({
   await writeFile(new URL(`${name}.json`, reports), `${JSON.stringify(json, (_, value: unknown) => (value instanceof Set ? [...value] : value), 2)}\n`);
   await writeFile(new URL(`${name}.md`, reports), `${lines.join('\n')}\n`);
   // The landing page's results table follows the report the README now names, read back once it is written.
-  if (writesReadme({ subset, version, config, stopped })) await writeLandingResults(root);
+  if (rewrites) await writeLandingResults(root);
   console.log(lines.join('\n'));
   return code;
 }

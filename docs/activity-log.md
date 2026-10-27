@@ -19,6 +19,49 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-27: fa-polish-1: the upload list's focus, two eval harness edges and PR 3's minors, fastify and fast-uri, and the Claude docs (branch fa-polish-1 from main `25ac601`, not committed)
+
+- **Request:** "Build one polish PR on a new branch fa-polish-1 from main 25ac601, tests first for each item, and report once at the end" (user, 2026-10-27), with four items: the upload list's focus rule (docs/todo.md, found 2026-10-25); the two eval harness edges from PR 3's review and its three deferred minors; fastify and fast-uri at the fixed versions in docs/todo.md, with the api's and worker's tests; and the docs made to match the code on `claude_unavailable` against `claude_switched_off` and on 429 answers. With it: no live model calls and no live eval runs, freightaudit-prod and the other projects' containers left alone, small things decided and listed, a stop on any Windows block of a program, the docs as AGENTS.md describes, and no commit.
+- **Start:** main at `25ac601` with a clean tree (`git branch --show-current` first, the pitfall of 2026-10-24); `git checkout -b fa-polish-1 25ac601`. No program was blocked by Windows.
+- **Containers before:** 12 running, freightaudit-prod's 7 (api and worker started 14:56:58 and 14:57:02 UTC) and filinglens-prod's 5; this project's dev postgres, redis and minio were stopped.
+- **1. The upload list's focus rule:**
+  - What happened: a pressed Remove or Clear left the page with the focus, which fell to the page's body; an upload that emptied the list did the same with the Upload button.
+  - Why: `components/upload.tsx` never moved the focus; the plan's rule was not built (todo, 2026-10-25).
+  - What we did, tests first: two e2e tests in `e2e/main.spec.ts`. The remove-and-clear test presses Enter on Remove and expects the next file's Remove, then the file chooser after the last file and after Clear; the no-answer test expects the file chooser once its last upload empties the list. Against the code as it was, both failed on `toBeFocused()`, at "Remove three.pdf" and at the file chooser. Then `remove()` focuses the next file's Remove (each now has `id="remove-<pick id>"`), else the file chooser (`CHOOSER`, the input's id), before the pressed button leaves; an effect moves the focus to the file chooser when the list empties and the focus fell to the body. Both passed (`playwright test --project=setup --project=main -g focus`: 4 of 4, the setup and the Search button test matching too).
+  - Deliberate breaks, each built and run, then reverted: Remove always to the file chooser failed the first test; the effect never firing failed the second. Clear without its own focus call still passed, since the effect covers an emptied list, so that call was deleted: the shorter version.
+- **2. The two eval harness edges:**
+  - A partial cache: a test in `report.test.ts` runs a full report over two cases with a result for one. It failed on its value (README rewritten, landing results written), 1 of 7. `writesReadme` now takes `unread`, and `report()` computes it once, as `rewrites` (the second minor). 7 of 7.
+  - A crash's exit code. What happened: an eval that crashed exited 1, the code of a broken floor, so the weekly issue's title and the smoke's note would call it one. Why: Node's own exit code for an uncaught error is 1. Checked in Node first: `process.exitCode` does not change it, and an `uncaughtException` handler receives a rejected top-level `await` and exits with its own code. Test first in `run.int.test.ts`: it spawns `run.ts --subset nope` and expects exit 3 with the error's message; it failed with 1. With the handler in `run.ts`'s entry it passed. Both workflows' comments name exit 3, and the smoke's PR comment has its own note for it.
+  - Noted, not built: a failed build inside `turbo run eval` would still exit with tsc's code (docs/todo.md, Pending).
+- **PR 3's three minors:**
+  - The full-report test read the clock after `report()` returned. It now reads the report's name from the README and checks it against the date in the report's json. Two temporary tests with a clock shim, which read 2026-10-27 23:59:59.999 UTC first and 2026-10-28 after: the old assertion failed ("Expected: 2026-10-28-v2", "Received: 2026-10-27-v2") and the new one passed. Both were removed.
+  - `writesReadme` once in `report()`: above.
+  - "Below target": `resultBadge` in `apps/web/lib/labels.ts`, tests first against a stub that read every result as Met (1 of 34 failed on its value), then 34 of 34; `components/landing.tsx` renders it, so the page is unchanged.
+- **3. fastify and fast-uri:**
+  - Before: a plain `pnpm audit` found 9 (5 low, 4 moderate), all fastify and fast-uri; the api's 12 and mock-tms's 2 unit tests passed (the worker has none).
+  - fastify: 5.12.6 and 5.12.7 were both published on 2026-10-13 (06:50 and 08:07 UTC), and 5.12.7 is one "Bumped v5.12.7" commit (GitHub's compare page). The three manifests' floor went to `^5.12.6`, the fixed version; `pnpm install` resolved 5.12.7 and kept its dependencies.
+  - fast-uri: its parents allow the fixes (ajv 8.20.0 `^3.0.1`; @fastify/ajv-compiler 4.0.7 and fast-json-stringify 7.1.0 `^4.0.0`), so `pnpm update -r fast-uri` took 3.1.9 and 4.2.3 with no override (the user's rule of 2026-10-24). The lockfile's diff holds only fastify and fast-uri lines.
+  - After: "No known vulnerabilities found", `--audit-level high` exits 0, each app resolves fastify 5.12.7 and Fastify's validators fast-uri 3.1.9 and 4.2.3; the api's and mock-tms's unit tests pass as before, and `pnpm test:int` 152 of 152.
+  - Small events: pnpm suggested an update of pnpm itself (ignored). The old fastify and fast-uri folders stay unlinked in `node_modules/.pnpm` until a prune.
+- **4. The Claude docs:**
+  - What happened: docs/context.md (Claude backup) said a 429 without retry-after makes Claude unavailable for the process and that it logs `claude_unavailable`; `.env.example`'s comment said the same. The code: a 429 is a rate limit with or without retry-after (`packages/llm/src/claude.ts`), and a 402, the two 400s, or a 401, 403 or 404 switch every worker off through the gate, which logs `claude_switched_off` once (`claude-first.ts`).
+  - Why: `git log -S` shows `claude_unavailable` came with #15 (`8f345f4`) and left with #40 (`3c61a1b`), which brought the gate, `claude_switched_off` and the 429 rule (the user's answers of 2026-10-21); those two docs were not updated then.
+  - What we did: corrected both; marked docs/memory.md's 2026-10-17 entry and #15's completed todo item as superseded by #40, as the memory's 2026-10-15 carrier entry was. The activity log's entries of 2026-10-17 and later stay as written (AGENTS.md). The other 429 claims were checked and hold: the api's (Problem Details with RateLimit-Limit, RateLimit-Remaining and Retry-After, `limits.int.test.ts`), the web's (a 429 ends the batch with Retry, and a sample's shows under its button, as docs/threat-notes.md says) and mock-tms's (`retry-after: 1`).
+- **Small events:**
+  - The GateGuard hook asked for facts before the first Bash and before each first edit of a file; I gave them and retried. In several parallel batches the first edit was refused and the others applied; each refused edit was retried before any run.
+  - A `cd` into turbo's docs folder moved the session's working directory, and the Playwright runs from `apps/web` moved it there; later commands `cd` to the root first. The design hook flagged nothing on `upload.tsx` or `landing.tsx`.
+- **Checks:**
+  - Evals unit tests 42, web 140; `pnpm turbo run build` 11 of 11, then `pnpm turbo run typecheck lint test --force` 42 of 42.
+  - `pnpm test:int` 152 of 152 in 28 suites (151 before, plus the crash test).
+  - `pnpm e2e` 52 of 52 (1.6 min). `pnpm audit`: none found.
+- **Containers after:** e2e's prepare step started this project's postgres, redis and minio, and `docker compose -f infra/docker-compose.yml stop postgres redis minio` stopped them again. No test container was left. freightaudit-prod's 7 and filinglens-prod's 5 were untouched, the demo's api and worker still on their 14:56 and 14:57 UTC start. triagecopilot's 3 and filinglens's 4 dev containers, up since the session's middle, were started by other sessions.
+- Files: `apps/web/components/{upload,landing}.tsx`, `apps/web/lib/{labels.ts,labels.test.ts}`, `apps/web/e2e/main.spec.ts`, `evals/harness/{report.ts,report.test.ts,run.ts,run.int.test.ts}`, `.github/workflows/{ci.yml,nightly-eval.yml}`, `apps/{api,worker,mock-tms}/package.json`, `pnpm-lock.yaml`, `.env.example`, README.md, `docs/{context,memory,todo,activity-log}.md`.
+- Validation: as in Checks.
+- Outstanding:
+  - The user ships it; its CI eval smoke makes live free-model calls, since it changes `evals/`. Then its Release and `pnpm demo:up` put fastify 5.12.7 on the demo.
+  - The decisions listed in docs/memory.md (2026-10-27, fa-polish-1) are the user's to confirm.
+  - Two findings wait in docs/todo.md: the focus on a toast's Close and Retry and on a vanished Upload button, and a build failure's exit code inside `turbo run eval`.
+
 ### 2026-10-27: The user's answers on PR 3's report: the ci p95 floor, and the weekly run of 2026-10-26 (branch golden-v2-gate, not committed)
 
 - **Request:** "Yes to the 27,900 ms ci floor. FYI: GitHub shows the Oct 26 weekly run succeeded, so it may not have hit that bug; note that in the docs if you can check it from the log. Then I'll ship." (user, 2026-10-27, on the report of the entry below). The ci p95 floor is now the user's decision (docs/memory.md, 2026-10-27).

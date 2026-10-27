@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -49,39 +49,63 @@ test('the default set has floors for the ci subset and the full set', async () =
   expect([Object.keys(thresholds.ci ?? {}).length > 0, Object.keys(thresholds.full ?? {}).length > 0]).toEqual([true, true]);
 });
 
-// The landing page's results are built from the report the README names, so that report must be on disk first.
-test('a full run of the default set writes its report, then the README table and the landing results that name it', async () => {
+const OLDER_README = '# FreightAudit\n\n<!-- eval:start -->\nan older table\n<!-- eval:end -->\n';
+const goldenCase = async (id: string) => JSON.parse(await readFile(new URL(`../golden/v2/cases/${id}.json`, import.meta.url), 'utf8')) as GoldenCase;
+const role = (provider: 'gemini' | 'groq', model: string) => ({ provider, model, baseUrl: 'http://127.0.0.1:9', apiKey: 'test-key', rpm: 30, tpm: 6_000 });
+// A full run of the default set over these cases, with a result for each one it read.
+const fullRun = (cases: GoldenCase[], read: GoldenCase[]) =>
+  ({
+    label: 'pinned',
+    version: DEFAULT_GOLDEN,
+    roles: { primary: role('gemini', 'p'), text: role('groq', 't'), fallback: role('groq', 'f') },
+    cases,
+    results: new Map(read.map((golden) => [golden.id, { id: golden.id, status: 'reconciled', error: null, e2eMs: 1_000, invoices: [], calls: [] }])),
+    stopped: undefined,
+    computed: 0,
+    key: 'k',
+    promptHash: 'p',
+  }) as Run;
+// report() on such a run in a temp folder that holds an older README table: its exit code and the files it left there.
+async function reportIn(run: Run) {
   const dir = await mkdtemp(join(tmpdir(), 'freightaudit-report-'));
   const root = pathToFileURL(`${dir}/`);
   const log = console.log;
+  const read = (path: string) => readFile(new URL(path, root), 'utf8').catch(() => undefined);
   try {
     await mkdir(new URL('evals/reports/', root), { recursive: true });
     await mkdir(new URL('apps/web/lib/', root), { recursive: true });
-    await writeFile(new URL('README.md', root), '# FreightAudit\n\n<!-- eval:start -->\nan older table\n<!-- eval:end -->\n');
-    const golden = JSON.parse(await readFile(new URL('../golden/v2/cases/g2-001.json', import.meta.url), 'utf8')) as GoldenCase;
-    const role = (provider: 'gemini' | 'groq', model: string) => ({ provider, model, baseUrl: 'http://127.0.0.1:9', apiKey: 'test-key', rpm: 30, tpm: 6_000 });
-    const run = {
-      label: 'pinned',
-      version: DEFAULT_GOLDEN,
-      roles: { primary: role('gemini', 'p'), text: role('groq', 't'), fallback: role('groq', 'f') },
-      cases: [golden],
-      results: new Map([[golden.id, { id: golden.id, status: 'reconciled', error: null, e2eMs: 1_000, invoices: [], calls: [] }]]),
-      stopped: undefined,
-      computed: 1,
-      key: 'k',
-      promptHash: 'p',
-    } as Run;
+    await writeFile(new URL('README.md', root), OLDER_README);
     console.log = () => {};
-    expect(await report({ subset: 'full', runs: [run], durationMs: 1, setFloors: false, root })).toBe(0);
+    const code = await report({ subset: 'full', runs: [run], durationMs: 1, setFloors: false, root });
     console.log = log;
-    const name = reportName('full', new Date().toISOString().slice(0, 10), undefined, { version: DEFAULT_GOLDEN });
-    expect(namedReport(await readFile(new URL('README.md', root), 'utf8'))).toBe(name);
-    const written = JSON.parse(await readFile(new URL(`evals/reports/${name}.json`, root), 'utf8'));
-    expect(JSON.parse(await readFile(new URL('apps/web/lib/eval-results.json', root), 'utf8'))).toEqual(landingResults(written, name));
+    const files = await readdir(new URL('evals/reports/', root));
+    const reports = Object.fromEntries(await Promise.all(files.map(async (file) => [file, await read(`evals/reports/${file}`)] as const)));
+    return { code, readme: await read('README.md'), landing: await read('apps/web/lib/eval-results.json'), reports };
   } finally {
     console.log = log;
     await rm(dir, { recursive: true, force: true });
   }
+}
+
+// The landing page's results are built from the report the README names, so that report must be on disk first.
+test('a full run of the default set writes its report, then the README table and the landing results that name it', async () => {
+  const golden = await goldenCase('g2-001');
+  const { code, readme, landing, reports } = await reportIn(fullRun([golden], [golden]));
+  expect(code).toBe(0);
+  const name = namedReport(readme!);
+  const written = JSON.parse(reports[`${name}.json`]!);
+  // The name carries the date report() took, so the test never reads a clock of its own that 00:00 UTC could move.
+  expect(name).toBe(`${written.date}-v2`);
+  expect(JSON.parse(landing!)).toEqual(landingResults(written, name));
+});
+
+test('a full run that left a case unread, as --cached does on a partial cache, writes its report but not the README table or the landing results', async () => {
+  const [read, unread] = await Promise.all([goldenCase('g2-001'), goldenCase('g2-002')]);
+  const { code, readme, landing, reports } = await reportIn(fullRun([read, unread], [read]));
+  expect(code).toBe(0);
+  const json = Object.entries(reports).find(([file]) => file.endsWith('.json'))![1]!;
+  expect([Object.keys(reports).length, JSON.parse(json).cases]).toEqual([2, 1]);
+  expect([readme, landing]).toEqual([OLDER_README, undefined]);
 });
 
 test('the breakdown counts each kind and each trait: cases, header fields, carrier, invoices read and outcomes', () => {

@@ -427,4 +427,12 @@ async function main() {
   process.exit(await report({ subset, runs, durationMs: Date.now() - started, setFloors: values['set-floors'], config: values.config }));
 }
 
-if (import.meta.main) await main();
+// A crash, a rejected main() included, exits 3, so exit 1 always means a broken floor: the weekly run's regression issue
+// and the smoke's comment read it so.
+if (import.meta.main) {
+  process.on('uncaughtException', (err) => {
+    console.error(err);
+    process.exit(3);
+  });
+  await main();
+}

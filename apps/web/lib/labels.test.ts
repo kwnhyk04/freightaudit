@@ -25,6 +25,7 @@ import {
   rebilledText,
   rebillNote,
   refusal,
+  resultBadge,
   reviewReason,
   statusLabel,
   statusReason,
@@ -633,4 +634,10 @@ test('a recent upload that re-bills a shipment says so beside its result, naming
   ]);
   expect(uploadState({ ...upload, discrepancies: { edges: [charge('b', null)] } }).rebill).toBeUndefined();
   expect(uploadState({ ...upload, status: 'APPROVED' }).rebill).toBeUndefined();
+});
+
+// Every row of golden set v2's official results meets its target, so the landing page shows no miss today.
+test("the landing page's results read Met, or Below target in the warning tone for a result that misses its target", () => {
+  expect(resultBadge(true)).toEqual({ label: 'Met', tone: 'ok' });
+  expect(resultBadge(false)).toEqual({ label: 'Below target', tone: 'warn' });
 });

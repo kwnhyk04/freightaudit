@@ -19,6 +19,9 @@ const FADE_MS = 6_000;
 const THUMB_WIDTH = 96;
 // A file that can go: read, nothing against it, and not sent yet, or sent and met an answer worth trying again.
 const sendable = (pick: Picked) => pick.checked && !pick.problem && (pick.state === 'ready' || (pick.state === 'failed' && pick.retry === true));
+// The file chooser, which takes the focus when the button that had it leaves the page, so it never falls to the body.
+const CHOOSER = 'invoice-files';
+const focusOn = (id: string) => document.getElementById(id)?.focus();
 const hex = (buffer: ArrayBuffer) => [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 const duplicateWords = (existing: NonNullable<ActionState['existing']>): Words => {
   const [before, name, after] = duplicateParts(existing);
@@ -87,7 +90,10 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
     // A file this browser cannot read goes unchecked here; the server's own checks still apply when it is sent.
     for (const pick of added) void inspect(pick.file, allowlist).then((found) => update(pick.id, found), () => update(pick.id, { checked: true }));
   }
+  // The focus goes to the next file's Remove, else to the file chooser, before the pressed button leaves the page.
   function remove(id: string) {
+    const next = picks[picks.findIndex((each) => each.id === id) + 1];
+    focusOn(next ? `remove-${next.id}` : CHOOSER);
     release(picks.filter((each) => each.id === id));
     setPicks((list) => list.filter((each) => each.id !== id));
   }
@@ -95,6 +101,14 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
     release(picks);
     setPicks([]);
   }
+  // Emptying the list, by Clear or by an upload that sent every file, takes its buttons with it: the focus they held goes
+  // to the file chooser, unless the reviewer moved it elsewhere meanwhile.
+  const listed = picks.length > 0;
+  const wasListed = useRef(listed);
+  useEffect(() => {
+    if (wasListed.current && !listed && document.activeElement === document.body) focusOn(CHOOSER);
+    wasListed.current = listed;
+  }, [listed]);
 
   // Sends the files in the order listed, and answered says what each answer does to the list: an uploaded file leaves it,
   // and a busy api, its rate limit or no answer ends the batch. Files added meanwhile wait for the next Upload.
@@ -161,12 +175,12 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
         </svg>
         <p>
           <strong>Drop invoices here, or </strong>
-          <label htmlFor="invoice-files" className="link">
+          <label htmlFor={CHOOSER} className="link">
             choose files
           </label>
         </p>
         <input
-          id="invoice-files"
+          id={CHOOSER}
           className="visually-hidden"
           type="file"
           multiple
@@ -216,7 +230,7 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
                   <span className="faint">{[sizeLabel(pick.file.size), pick.pages === undefined ? undefined : plural(pick.pages, 'page')].filter(Boolean).join(' · ')}</span>
                   <PickNote pick={pick} />
                 </div>
-                <button type="button" className="button small" aria-label={`Remove ${pick.file.name}`} onClick={() => remove(pick.id)} disabled={sending}>
+                <button type="button" id={`remove-${pick.id}`} className="button small" aria-label={`Remove ${pick.file.name}`} onClick={() => remove(pick.id)} disabled={sending}>
                   Remove
                 </button>
               </li>
