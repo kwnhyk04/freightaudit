@@ -348,6 +348,15 @@ export async function evaluate({
   return { label, version: manifest.version, roles, cases, results, stopped, computed: cachedOnly ? 0 : todo.length, key, promptHash: PROMPT_HASH };
 }
 
+// The golden set version a run reads: --golden, else v1 for --subset compare (the comparison set has v1 only), else the
+// default set.
+export function goldenOf(subset: Subset, flag: string | undefined) {
+  const golden = flag ?? (subset === 'compare' ? 'v1' : DEFAULT_GOLDEN);
+  if (golden !== 'v1' && golden !== 'v2') throw new Error('--golden must be v1 or v2');
+  if (subset === 'compare' && golden !== 'v1') throw new Error('--subset compare reads comparison v1, beside golden v1');
+  return golden;
+}
+
 // --repeat reads each dev case n times, to measure a misread that comes and goes; the held-out test split is read once,
 // and floors never come from repeated reads.
 export function checkRepeat({ repeat, subset, setFloors }: { repeat: number; subset: Subset; setFloors: boolean }) {
@@ -380,16 +389,15 @@ async function main() {
       concurrency: { type: 'string', default: '4' },
       cached: { type: 'boolean', default: false },
       config: { type: 'string' },
-      golden: { type: 'string', default: DEFAULT_GOLDEN },
+      golden: { type: 'string' },
       repeat: { type: 'string', default: '1' },
     },
   });
   if (values.config !== undefined && values.config !== 'claude-primary') throw new Error('--config must be claude-primary');
   if (values.suite !== 'extraction') throw new Error('--suite must be extraction');
   if (!['dev', 'test', 'ci', 'full', 'compare'].includes(values.subset)) throw new Error('--subset must be dev, test, ci, full or compare');
-  if (values.golden !== 'v1' && values.golden !== 'v2') throw new Error('--golden must be v1 or v2');
   const subset = values.subset as Subset;
-  if (subset === 'compare' && values.golden !== 'v1') throw new Error('--subset compare reads comparison v1, beside golden v1');
+  const golden = goldenOf(subset, values.golden);
   const repeat = Number(values.repeat);
   checkRepeat({ repeat, subset, setFloors: values['set-floors'] });
   const { roles, problems } = configuredRoles();
@@ -412,7 +420,7 @@ async function main() {
     const reads: Run[] = [];
     for (let r = 1; r <= repeat && !reads.at(-1)?.stopped; r++) {
       const set = subset === 'compare' ? 'comparison' : 'golden';
-      reads.push(await evaluate({ set, version: values.golden, repeat: r, subset, ...plan, fresh: values.fresh, concurrency: Number(values.concurrency), cachedOnly: values.cached }));
+      reads.push(await evaluate({ set, version: golden, repeat: r, subset, ...plan, fresh: values.fresh, concurrency: Number(values.concurrency), cachedOnly: values.cached }));
     }
     runs.push(mergeReads(reads));
   }

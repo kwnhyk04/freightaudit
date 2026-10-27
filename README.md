@@ -64,55 +64,56 @@ The reasons are recorded in `AGENTS.md`, `docs/memory.md` (Decisions and Reasoni
 <!-- eval:start -->
 ## Eval results
 
-Golden set v1 (90 synthetic invoices, ground truth from the generator), measured 2026-10-15 with primary gemini/gemini-3.5-flash-lite (served as gemini-3.5-flash-lite), text groq/openai/gpt-oss-120b (served as openai/gpt-oss-120b), fallback groq/qwen/qwen3.8-27b (not called). 90 cases give wide intervals; misses are listed as misses. Full report: `evals/reports/2026-10-15.md`.
+Golden set v2 (98 synthetic invoices, ground truth from the generator), measured 2026-10-27 with primary gemini/gemini-3.5-flash-lite (served as gemini-3.5-flash-lite), text groq/openai/gpt-oss-120b (served as openai/gpt-oss-120b), fallback groq/qwen/qwen3.8-27b (served as qwen/qwen3.8-27b). 98 cases give wide intervals; misses are listed as misses. Full report: `evals/reports/2026-10-27-v2.md`.
 
 | Metric | Target | Measured | 95% CI | Met | Model | Date |
 | --- | --- | --- | --- | --- | --- | --- |
-| Header field accuracy (digital) | ≥ 0.980 | 0.995 | 0.988 to 1.000 | yes | groq/openai/gpt-oss-120b | 2026-10-15 |
-| Header field accuracy (scanned) | ≥ 0.930 | 1.000 | 1.000 to 1.000 | yes | gemini/gemini-3.5-flash-lite | 2026-10-15 |
-| Line-item F1 (digital) | ≥ 0.950 | 1.000 | 1.000 to 1.000 | yes | groq/openai/gpt-oss-120b | 2026-10-15 |
-| Line-item F1 (scanned) | ≥ 0.880 | 0.985 | 0.952 to 1.000 | yes | gemini/gemini-3.5-flash-lite | 2026-10-15 |
-| Arithmetic consistency (after repair) | ≥ 0.990 | 1.000 | 1.000 to 1.000 | yes | all roles | 2026-10-15 |
-| Overcharge precision | ≥ 0.950 | 0.944 | 0.805 to 1.000 | no | all roles | 2026-10-15 |
-| Overcharge recall | ≥ 0.900 | 1.000 | 1.000 to 1.000 | yes | all roles | 2026-10-15 |
-| Dollar recovery | ≥ 0.900 | 1.000 | 1.000 to 1.000 | yes | all roles | 2026-10-15 |
-| False flag rate | ≤ 0.030 | 0.007 | 0.000 to 0.023 | yes | all roles | 2026-10-15 |
-| Escalation rate | ≤ 0.100 | 0.000 | 0.000 to 0.000 | yes | all roles | 2026-10-15 |
-| Extraction latency p50 (3 pages or fewer) | ≤ 5,000 ms | 2,333 ms | 2,102 ms to 2,620 ms | yes | all roles | 2026-10-15 |
-| Extraction latency p95 (3 pages or fewer) | ≤ 12,000 ms | 4,698 ms | 3,989 ms to 6,574 ms | yes | all roles | 2026-10-15 |
-| Input tokens per page (text path) | ≤ 4,000 | 828 | 786 to 880 | yes | groq/openai/gpt-oss-120b | 2026-10-15 |
-| Output tokens per page (text path) | ≤ 1,200 | 674 | 624 to 727 | yes | groq/openai/gpt-oss-120b | 2026-10-15 |
-| Cost per invoice, paid-equivalent (digital) | ≤ $0.0200 | $0.0005 | $0.0005 to $0.0006 | yes | groq/openai/gpt-oss-120b | 2026-10-15 |
-| Cost per invoice, paid-equivalent (scanned) | ≤ $0.0500 | $0.0015 | $0.0011 to $0.0021 | yes | gemini/gemini-3.5-flash-lite | 2026-10-15 |
+| Header field accuracy (digital) | ≥ 0.980 | 0.994 | 0.983 to 1.000 | yes | groq/openai/gpt-oss-120b | 2026-10-27 |
+| Header field accuracy (scanned) | ≥ 0.930 | 0.943 | 0.868 to 0.994 | yes | gemini/gemini-3.5-flash-lite | 2026-10-27 |
+| Line-item F1 (digital) | ≥ 0.950 | 0.995 | 0.983 to 1.000 | yes | groq/openai/gpt-oss-120b | 2026-10-27 |
+| Line-item F1 (scanned) | ≥ 0.880 | 0.950 | 0.896 to 0.990 | yes | gemini/gemini-3.5-flash-lite | 2026-10-27 |
+| Arithmetic consistency (after repair) | ≥ 0.990 | 0.971 | 0.927 to 1.000 | no | all roles | 2026-10-27 |
+| Overcharge precision | ≥ 0.950 | 1.000 | 1.000 to 1.000 | yes | all roles | 2026-10-27 |
+| Overcharge recall | ≥ 0.900 | 0.949 | 0.852 to 1.000 | yes | all roles | 2026-10-27 |
+| Dollar recovery | ≥ 0.900 | 0.990 | 0.953 to 1.000 | yes | all roles | 2026-10-27 |
+| False flag rate | ≤ 0.030 | 0.000 | 0.000 to 0.000 | yes | all roles | 2026-10-27 |
+| Escalation rate | ≤ 0.100 | 0.020 | 0.000 to 0.051 | yes | all roles | 2026-10-27 |
+| Extraction latency p50 (3 pages or fewer) | ≤ 5,000 ms | 2,359 ms | 2,072 ms to 2,587 ms | yes | all roles | 2026-10-27 |
+| Extraction latency p95 (3 pages or fewer) | ≤ 12,000 ms | 10,690 ms | 7,812 ms to 15,054 ms | yes | all roles | 2026-10-27 |
+| Input tokens per page (text path) | ≤ 4,000 | 803 | 717 to 902 | yes | groq/openai/gpt-oss-120b | 2026-10-27 |
+| Output tokens per page (text path) | ≤ 1,200 | 609 | 519 to 713 | yes | groq/openai/gpt-oss-120b | 2026-10-27 |
+| Cost per invoice, paid-equivalent (digital) | ≤ $0.0200 | $0.0007 | $0.0006 to $0.0008 | yes | groq/openai/gpt-oss-120b | 2026-10-27 |
+| Cost per invoice, paid-equivalent (scanned) | ≤ $0.0500 | $0.0020 | $0.0015 to $0.0026 | yes | gemini/gemini-3.5-flash-lite | 2026-10-27 |
 | End-to-end latency at low load with real free-tier models (k6, n = 20, one every 15 s; p95 is not meaningful at this n) | p95 ≤ 30,000 ms | p50 3,108 ms, p90 4,162 ms, max 4,663 ms | n/a | yes | all roles | 2026-10-15 |
 | Throughput (k6: recorded-fixture model provider at 3x the 2,000/h normal rate, 2 workers x 8) | ≥ 2,000 / h | 6,000 / h sustained for 10 min: 1,083 accepted, 0 lost, all final within 5 s of the last upload | n/a | yes | recorded fixtures | 2026-10-15 |
 <!-- eval:end -->
 
-The last two rows come from the k6 load test (see Load test). Their measured values are in `loadtest/e2e-results.json` and `loadtest/system-results.json`, their pace and run lengths in `loadtest/k6.js`, and their targets and the 2 workers x concurrency 8 in `docs/context.md` (Targets). The other rows come from `evals/reports/2026-10-15.md`.
+The last two rows come from the k6 load test (see Load test). Their measured values are in `loadtest/e2e-results.json` and `loadtest/system-results.json`, their pace and run lengths in `loadtest/k6.js`, and their targets and the 2 workers x concurrency 8 in `docs/context.md` (Targets). The other rows come from `evals/reports/2026-10-27-v2.md`.
 
 **What these numbers show, and what they don't:**
 
-- **The set is small and easy.** Golden set v1 is 90 synthetic invoices (`evals/golden/v1/manifest.json`) from the generator's 6 HTML templates (`evals/fixtures/templates.ts`), with ground truth from the same generator. Scores near 1.0 (`evals/reports/2026-10-15.md`) mean these models find this set easy, not that real carrier invoices would score the same. With 90 cases, every interval is wide.
-- **One target in this table is missed:** overcharge precision, 0.944 against 0.950. A repeated scanned page was read as two invoices and gave two false duplicate findings (case g080 in `evals/reports/2026-10-15.md`).
-- **The report misses two more**, under the eval's own free-tier throttling: end-to-end p95 at 143 s, and throughput at a ceiling of about 394 an hour (`evals/reports/2026-10-15.md`). In this table the k6 rows take their place.
-- **Extraction latency** counts successful calls only, from the first request to the parsed answer, repairs included. It leaves out waits for a provider's rate limit, which measure the free plan, not the pipeline. The harness counts those waits, their total time and failed or timed-out calls apart, with floors on the ci subset (`evals/thresholds.json`).
-- **On the ci subset** of 20 cases that gates pull requests (`evals/golden/v1/manifest.json`), extraction latency p95 is held to its 12,000 ms design target, not to a floor taken from a run (`evals/thresholds.json`). At n = 20, p95 is about the slowest single case, and its interval was 7.5 to 31 s on one PR run (`docs/memory.md`): too wide for a tighter floor.
-- **The k6 rows measure different things.** The latency row is 20 invoices on the real free-tier models, one every 15 s (`loadtest/k6.js`), below the free tiers' ceiling of about 394 an hour (`evals/reports/2026-10-15.md`), so it shows latency, not throttling. The throughput row is the system at 3x the design rate of 2,000 an hour (`loadtest/system-results.json`), with recorded replies in place of the models. Neither measures real models at the design rate, which would need paid tiers.
-- **Golden set v2** (`evals/golden/v2/manifest.json`, 98 cases) adds harder layouts (two columns, a landscape page fed sideways, carrier-specific wording, a second page), real-world noise (fax, stamps, 3 to 6 degrees of tilt, faded print, 96 dpi) and more adversarial cases (title lines, repeated pages, packets, partial credits, revised invoices), each within the api's upload limits (`docs/context.md`). The table above still measures v1: v2's official free run and its floors come next (`docs/todo.md`).
-- **The extraction prompt now lists a repeated page or a copy as one invoice, and reads a packet whose first page is a bill of lading** (`packages/llm/src/extract.ts`). Both rules were chosen on v2's dev split only. On it, the free models read repeated pages right in 12 of 18 reads before and 18 of 18 after, and overcharge precision went from 0.542 to 1.000 (`evals/reports/2026-10-25-v2-dev-19f0c1-x3.md`, `evals/reports/2026-10-25-v2-dev-4e59f1-x3.md`; table in `docs/activity-log.md`, 2026-10-26). The title-line misread did not show on v2's dev split, so the prompt has no rule for it.
+- **The set is synthetic.** Golden set v2 is 98 invoices, 48 digital and 50 scanned (`evals/golden/v2/manifest.json`), with ground truth from the same generator that drew them. It is harder than the first set: four more layouts (two columns, a landscape page fed sideways, carrier-specific wording, a second page; `evals/fixtures/templates-v2.ts`), scan noise (fax, stamps, 3 to 6 degrees of tilt, faded print, 96 dpi; `evals/fixtures/scan-v2.ts`) and 37 adversarial cases (repeated pages, several invoices in one file, partial credits, credit memos, revised invoices, tricky invoice numbers, handwriting, upside-down pages, a missing PRO number, other currencies). Real carrier invoices may still score differently, and with 98 cases every interval is wide.
+- **One target in this table is missed:** arithmetic consistency after repair, 0.971 against 0.990 (`evals/reports/2026-10-27-v2.md`): 102 of 105 invoices, by the per-case scores in its `.json`. Case g2-074, a faxed scan of three invoices, was read as one, so its other two were never read; g2-092, with a handwritten note, had two lines misread. Both ended in needs review.
+- **The report misses two more**, under the eval's own free-tier throttling: end-to-end p95 at 177 s, and throughput at a ceiling of about 512 an hour (`evals/reports/2026-10-27-v2.md`). In this table the k6 rows take their place.
+- **Extraction latency** counts successful calls only, from the first request to the parsed answer, repairs included. It leaves out waits for a provider's rate limit, which measure the free plan, not the pipeline. The harness counts those waits, their total time and failed or timed-out calls apart, each with a floor on the full set and the ci subset (`evals/thresholds-v2.json`).
+- **On the ci subset** of 20 cases that gates pull requests (`evals/golden/v2/manifest.json`), the floors are wide. They come from the lower 95% bounds of 20 cases, 9 of them scans, so scanned header accuracy and line-item F1 are held at 0.60 and outcome accuracy at 0.59 (`evals/thresholds-v2.json`): they catch large regressions only. Extraction latency p95 there measured 15,243 ms, above its 12,000 ms target (`evals/reports/2026-10-27-v2-ci.md`), so it keeps the floor taken from that run, 27,900 ms, rather than the target v1's ci subset is held to (`docs/memory.md`).
+- **The k6 rows measure different things.** The latency row is 20 golden set v1 invoices on the real free-tier models, one every 15 s (`loadtest/k6.js`), below the free tiers' ceiling of about 394 an hour (`evals/reports/2026-10-15.md`), so it shows latency, not throttling. The throughput row is the system at 3x the design rate of 2,000 an hour (`loadtest/system-results.json`), with recorded replies in place of the models. Neither measures real models at the design rate, which would need paid tiers.
+- **Golden set v1,** the first and easier set, stays in the repository with its floors (`evals/thresholds.json`) and checksums, but CI no longer runs it. Its 90 cases (`evals/golden/v1/manifest.json`) come from 6 templates (`evals/fixtures/templates.ts`). On 2026-10-15 they met every target in this table but overcharge precision, 0.944, where a repeated scanned page was read as two invoices (case g080 in `evals/reports/2026-10-15.md`).
+- **The extraction prompt now lists a repeated page or a copy as one invoice, and reads a packet whose first page is a bill of lading** (`packages/llm/src/extract.ts`). Both rules were chosen on v2's dev split only. On it, the free models read repeated pages right in 12 of 18 reads before and 18 of 18 after, and overcharge precision went from 0.542 to 1.000 (`evals/reports/2026-10-25-v2-dev-19f0c1-x3.md`, `evals/reports/2026-10-25-v2-dev-4e59f1-x3.md`; table in `docs/activity-log.md`, 2026-10-26). The official run read all 12 repeated-page cases as one invoice, the 6 held-out test cases included (`evals/reports/2026-10-27-v2.md`, By kind and trait).
+- **Title lines:** the title-line misread did not show on v2's dev split, so the prompt has no rule for it. On the test split, the free text model read the title as part of the carrier on 2 digital invoices, g2-036 ("— Freight Bill") and g2-043 ("— FREIGHT BILL"). Their carrier misses are in `evals/reports/2026-10-27-v2.json` (per-case fields), and the readings in `docs/activity-log.md` (2026-10-27). Both still reconciled, since the carrier is matched in code; the header score counts them as misses. A test-split finding is never tuned on, so it waits for a later set's dev cases.
 
-**Claude Haiku 5.5 on the test split.** The test split is 70 cases, 55 digital and 15 scanned (`evals/reports/2026-10-17-test-haiku.md`). The 2026-10-17 run pinned `claude-haiku-5-5` as the primary and text model, with thinking off. The fallback stayed Groq's free qwen, and no case reached it: 73 calls, 0 failed. The free column is the 2026-10-15 run, scored on the same 70 cases from its per-case results. 70 cases give very wide intervals, and the run sets no floors.
+**Claude Haiku 5.5 on v2's test split.** The test split is 64 cases, 31 digital and 33 scanned (`evals/reports/2026-10-27-v2-test-claude-primary.md`). The 2026-10-27 run read with Claude Haiku first under the demo's caps (`--config claude-primary`): 71 Claude calls and 8 on the free chain behind it (Gemini 2, Groq's qwen 6), 0 failed. The free column is the official free run (`evals/reports/2026-10-27-v2.md`), scored on the same 64 cases from its per-case results. 64 cases give very wide intervals, and the run sets no floors.
 
-Sources: the free column is in `docs/activity-log.md` (2026-10-17, "Claude Haiku 5.5 as a paid backup"); the Haiku column and the call counts are in `evals/reports/2026-10-17-test-haiku.md`. The Haiku run cost $0.026 (`docs/activity-log.md`, same entry). The free models billed nothing (`evals/reports/2026-10-15.md`, cost as billed).
+Sources: both columns are in `evals/reports/2026-10-27-v2-test-claude-primary.md` (Beside the official free run), and the call counts in its Model use. The Haiku run cost $0.0292 (`docs/activity-log.md`, 2026-10-27). The free models billed nothing (`evals/reports/2026-10-27-v2.md`, cost as billed).
 
-| Metric | Free models (2026-10-15) | Claude Haiku 5.5 (2026-10-17) |
+| Metric | Free models (2026-10-27) | Claude Haiku 5.5 first (2026-10-27) |
 | --- | --- | --- |
-| Header field accuracy, digital / scanned | 0.994 / 1.000 | 1.000 / 1.000 |
-| Line-item F1, digital / scanned | 1.000 / 0.982 | 1.000 / 0.917 (95% CI 0.757 to 1.000) |
-| Overcharge precision | 0.933 | 0.875 |
-| False flag rate | 0.009 | 0.018 |
-| Outcome accuracy | 0.972 | 1.000 |
-| Extraction latency p50 / p95 | 2,400 / 4,698 ms | 1,880 / 2,720 ms |
+| Header field accuracy, digital / scanned | 0.990 / 0.919 | 1.000 / 0.900 |
+| Line-item F1, digital / scanned | 0.992 / 0.922 | 1.000 / 0.897 |
+| Overcharge precision | 1.000 | 1.000 |
+| False flag rate | 0.000 | 0.000 |
+| Outcome accuracy | 0.928 | 0.899 |
+| Extraction latency p50 / p95 | 2,751 / 13,677 ms | 2,271 / 5,980 ms |
 
 ## Known limitations
 
@@ -124,7 +125,7 @@ The full list is in `docs/context.md`, Known Limitations.
 - **One reviewer and one tenant.** There is one password, recorded as `reviewer`, and the sign-in limit counts per Vercel instance. Each deployment serves one tenant, set by `TENANT_ID` (`docs/context.md`).
 - **USD only.** An invoice in any other currency ends in needs review (`unsupported_currency`).
 - **Narrow corrections.** A reviewer corrects only the carrier and PRO number of an invoice whose reading matched no shipment, and the carrier and invoice number of one held for a possible duplicate. An invoice whose reading failed validation can be approved as billed or rejected, not corrected.
-- **One layout misreads.** The remit layout's title line was read as the carrier in 2 of 15 remit invoices, which then end in needs review (`docs/context.md`).
+- **Title lines.** A document title printed beside the carrier's name was read as part of it on 2 digital invoices of golden set v2's test split (g2-036 and g2-043 in `evals/reports/2026-10-27-v2.json`). The carrier is matched in code (`docs/context.md`), so both still reconciled.
 - **Long scans have no fallback.** The fallback model takes at most 3 page images a request, so a longer scan that needs it ends in needs review (`docs/context.md`).
 - **Uploads are at most 4 MiB** (`packages/contracts/src/limits.ts`), so a 20-page scan fits only with small pages.
 - **Document marks** need a digital PDF, and a value gets one only where it appears exactly once in the PDF's text (`docs/context.md`).
@@ -252,7 +253,7 @@ The public demo's backend runs on a personal PC as its own compose project, `fre
 | `pnpm e2e:screenshots` | The invoice list, an invoice and the upload page at the sizes of the approved mockups, in light, dark and on a phone, into `docs/screenshots/ui/round-1/`; then every screen in light and dark, and three on a phone, into `docs/screenshots/ui/`. The sizes are in `apps/web/e2e/screenshots.spec.ts` |
 | `pnpm demo:init`, `demo:up`, `demo:down`, `db:backup`, `db:reset-demo` | The public demo's backend on the demo PC: create `.env.prod`, start or stop project `freightaudit-prod`, dump its database to `backups/`, or reset it to the seed plus the sample invoices (`docs/deploy.md`) |
 | `pnpm extract:resume` | Restart the extract queue after the worker paused it because a provider rejected its key or model (401, 403 or 404, in `packages/llm/src/errors.ts`; the worker logs `alert: "extract_paused"`). Fix the setting and restart the worker first |
-| `pnpm eval --suite extraction --subset ci\|dev\|test\|full\|compare [--fresh] [--set-floors]` | Runs golden set v1 (`evals/golden/v1/manifest.json`: 90 invoices, a dev split of 20, a test split of 70 and a ci subset of 20) through the real worker against the small seed in throwaway Postgres and Redis containers, with the pinned roles from `.env` (real model calls; needs Docker and the keys). Each case's result is cached in `evals/.cache`, so a run stopped by a spent quota resumes; `--fresh` ignores the cache. Writes `evals/reports/<date>[-<subset>].json` and `.md` with every target met or missed and the regression floors of `evals/thresholds.json`; a full run rewrites the eval table above. The exit codes are in `docs/context.md`, Evals. `compare` runs `gemini-3.8-flash` beside the configured primary on `evals/comparison/v1`. Rebuild a set with `node evals/golden/build.ts --set golden\|comparison` only as a new version |
+| `pnpm eval --suite extraction --subset ci\|dev\|test\|full\|compare [--golden v1\|v2] [--fresh] [--cached] [--set-floors]` | Runs golden set v2 (`evals/golden/v2/manifest.json`: 98 invoices, a dev split of 34, a test split of 64 and a ci subset of 20), or v1 with `--golden v1` (90 invoices), through the real worker against the small seed in throwaway Postgres and Redis containers, with the pinned roles from `.env` (real model calls; needs Docker and the keys). Each case's result is cached in `evals/.cache`, so a run stopped by a spent quota resumes; `--fresh` ignores the cache, and `--cached` reports from it alone, with no model calls. Writes `evals/reports/<date>-v2[-<subset>].json` and `.md` (v1's without `-v2`) with every target met or missed and the regression floors of `evals/thresholds-v2.json` (v1's: `evals/thresholds.json`); a full run of v2 rewrites the eval table above and the landing page's results. The exit codes are in `docs/context.md`, Evals. `compare` runs `gemini-3.8-flash` beside the configured primary on `evals/comparison/v1`. Rebuild a set with `node evals/golden/build.ts --set golden\|comparison` only as a new version |
 
 One project or file: `node --experimental-vm-modules node_modules/jest/bin/jest.js --selectProjects contract`, or `--selectProjects integration -- apps/worker/src/tms-chaos` (build the packages first with `pnpm build`).
 
@@ -351,9 +352,9 @@ docker compose --env-file .env -f infra/docker-compose.yml run --rm k6 run -e SC
 
 GitHub Actions, with every action pinned to a commit SHA, every tool image to a digest, and per-job token permissions.
 
-- `ci.yml` (pull requests, and the checks of `release.yml`): lint and typecheck (plus actionlint and the promtool alert rule tests), unit tests (`pnpm test --force`, so a cached pass never counts), integration tests (Testcontainers and the Playwright Chromium), end-to-end tests (`pnpm e2e`, the Playwright report kept on failure), contracts (`contracts:check` and oasdiff against the base), migrations (all of them on a fresh database, and this change's on a seeded snapshot built from the base, which must end in the same schema), golden set checksums, the eval smoke (`pnpm eval --suite extraction --subset ci` on same-repository PRs, report posted as a PR comment; a broken floor fails, a quota stop only warns), a Docker build and Trivy scan per image, gitleaks and `pnpm audit`.
+- `ci.yml` (pull requests, and the checks of `release.yml`): lint and typecheck (plus actionlint and the promtool alert rule tests), unit tests (`pnpm test --force`, so a cached pass never counts), integration tests (Testcontainers and the Playwright Chromium), end-to-end tests (`pnpm e2e`, the Playwright report kept on failure), contracts (`contracts:check` and oasdiff against the base), migrations (all of them on a fresh database, and this change's on a seeded snapshot built from the base, which must end in the same schema), golden set checksums, the eval smoke (`pnpm eval --suite extraction --subset ci`, golden set v2's 20 ci cases, on same-repository PRs, report posted as a PR comment; a broken floor fails, a quota stop only warns), a Docker build and Trivy scan per image, gitleaks and `pnpm audit`.
 - `release.yml` (push to main, or by hand from main for a push that started none): the same checks, then `ghcr.io/<owner>/freightaudit-{api,worker,web}` tagged `sha-<short>` and `latest` with provenance. Nothing deploys from CI: the PC pulls these images (`pnpm demo:up`), and Vercel builds the UI from main.
-- `nightly-eval.yml`: the full eval weekly (its `cron`: Mondays 03:23 UTC) or on demand, report as an artifact, an issue when a floor breaks; re-running that workflow run resumes from its cached cases.
+- `nightly-eval.yml`: the full eval of golden set v2's 98 cases weekly (its `cron`: Mondays 03:23 UTC) or on demand, report as an artifact, an issue when a floor breaks; re-running that workflow run resumes from its cached cases.
 
 Repository secrets: `GEMINI_API_KEY` and `GROQ_API_KEY`; optionally `TURBO_TOKEN` with the variable `TURBO_TEAM` for Turborepo Remote Cache. Images build from the repository root: `docker build -f apps/api/Dockerfile .` (or `apps/worker`, `apps/web`).
 

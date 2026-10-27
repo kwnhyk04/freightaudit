@@ -1,5 +1,5 @@
 import { rm } from 'node:fs/promises';
-import { checkRepeat, evaluate, mergeReads, type Roles } from './run.ts';
+import { checkRepeat, evaluate, goldenOf, mergeReads, type Roles } from './run.ts';
 
 const role = (provider: 'gemini' | 'groq', model: string) => ({ provider, model, baseUrl: 'http://127.0.0.1:9', apiKey: 'test-key', rpm: 1, tpm: 1 });
 // Pins no real run uses, so the cache folders this test makes are its own.
@@ -27,6 +27,14 @@ test('a v2 run reads golden/v2 and keys its cache apart from v1 and from its oth
   } finally {
     for (const run of runs) await rm(new URL(`../.cache/golden-${run.version}/${run.key}/`, import.meta.url), { recursive: true, force: true });
   }
+});
+
+test('a run reads the default set, v2, unless --golden names one, and --subset compare reads v1, the only comparison set', () => {
+  expect(goldenOf('ci', undefined)).toBe('v2');
+  expect(goldenOf('full', 'v1')).toBe('v1');
+  expect(goldenOf('compare', undefined)).toBe('v1');
+  expect(() => goldenOf('compare', 'v2')).toThrow('--subset compare reads comparison v1, beside golden v1');
+  expect(() => goldenOf('ci', 'v3')).toThrow('--golden must be v1 or v2');
 });
 
 test('--repeat reads the dev split only and never sets floors', () => {

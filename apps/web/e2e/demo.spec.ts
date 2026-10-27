@@ -19,10 +19,11 @@ test('the landing page at / is public and static: no redirect, no api call, no k
   expect([response!.status(), new URL(page.url()).pathname]).toEqual([200, '/']);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(HEADLINE);
   expect(await response!.text()).not.toContain(env.API_KEY!);
-  // The results are the official report's; the one target it missed reads as missed.
+  // The results are the official report's: golden set v2's 98 cases, where every row shown meets its target.
+  await expect(page.getByText('Evaluated on 98 synthetic invoices')).toBeVisible();
   const precision = page.getByRole('row', { name: /^Overcharge precision/ });
-  await expect(precision).toContainText('94.4%');
-  await expect(precision).toContainText('Below target');
+  await expect(precision).toContainText('100%');
+  await expect(precision).toContainText('Met');
   // The invoice beside the headline is the sample's g066, in the app's own words, and opens there.
   await expect(page.getByText('Rate card version 2 sets Linehaul at $5,343.60; billed $6,145.14.')).toBeVisible();
   await page.getByRole('link', { name: 'Open it in the sample' }).click();

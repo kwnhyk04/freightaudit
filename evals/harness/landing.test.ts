@@ -8,7 +8,7 @@ const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
 
 test("the landing page's results are what landing.ts builds from the report the README names", () => {
   const name = namedReport(read('README.md'));
-  expect(name).toBe('2026-10-15');
+  expect(name).toBe('2026-10-27-v2');
   expect(JSON.parse(read('apps/web/lib/eval-results.json'))).toEqual(landingResults(JSON.parse(read(`evals/reports/${name}.json`)), name));
 });
 

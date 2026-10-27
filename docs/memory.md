@@ -594,6 +594,18 @@ From the approved design doc:
   - No title-line rule: v2's dev split showed no title line read as the carrier on either model (93 of 93 free readings, 31 of 31 on Haiku), and the plan's rule is no evidence, no change.
   - The four cassettes whose requests carry the prompt were re-recorded (R4); every new reply reads its fixture exactly as before.
   - Reason: the approved plan's step 4, general rules only, no carrier names or case text.
+- 2026-10-27: Golden set v2 is the default set (PR 3, `DEFAULT_GOLDEN` in `evals/harness/report.ts`), as the approved plan has it. CI's eval smoke reads v2's ci subset (20 cases) and the weekly run its full set (98 cases), against `evals/thresholds-v2.json`, and a full run of v2 writes the README table and the landing page's results. v1, its reports, floors and checksums stay, and CI no longer runs it.
+  - The switch landed before the official run (R8), not after its floors as the plan orders it: only a full run of the default set writes the README and the landing results. Nothing ships before both.
+  - `--subset compare` reads comparison v1 when no `--golden` is given (`goldenOf` in `run.ts`), since the comparison set has v1 only.
+  - The official run is `evals/reports/2026-10-27-v2.md`: its 64 test cases ran on 2026-10-27, and its 34 dev cases came from R5's cache (same prompt and pins). It was rebuilt from the cache after the landing-writer crash (Known Issues, 2026-10-27), so its head says "0 run now".
+  - The ci floors came from R8's cached ci cases (`2026-10-27-v2-ci`). They are wide (scanned header accuracy and line F1 0.60, outcome 0.59), as the rule gives for 20 cases with 9 scans and two hard misses, so the smoke catches only large regressions.
+  - No prompt change for the two title lines read as part of the carrier on the test split (g2-036 "— Freight Bill", g2-043 "— FREIGHT BILL"): a test-split finding waits for a later set's dev cases (the plan's rule). Both reconciled through the carrier match in code.
+  - Reason: the approved plan (open questions 1 and 2) and the user's request of 2026-10-27.
+- 2026-10-27: v2's ci subset keeps its derived extraction-latency p95 floor (27,900 ms), not the 12,000 ms design target that v1's ci subset is held to (agent decision under the user's "decide everything else" rule, for the user to confirm). Confirmed by the user on 2026-10-27 ("Yes to the 27,900 ms ci floor").
+  - v2's ci run measured p95 15,243 ms (95% CI 4,112 to 18,567), above the target, so the target would break every smoke on its own numbers.
+  - The 2026-10-16 exception lifted a derived floor tighter than the target (8,900 ms) to the target, because n = 20 is "too wide for a floor tighter than the target". A ci run already above the target is the general rule's own case ("unless the run already exceeds it").
+  - The rules text now says where the exception applies, in `RULES` (`report.ts`) and in `thresholds-v2.json`'s `_rules`; v1's file keeps its own text, which holds for v1.
+  - Cost if wrong: the smoke cannot flag a p95 regression between 12,000 and 27,900 ms; the weekly full run still holds p95 at 22,600 ms.
 
 ## Preferences and Instructions
 
@@ -884,6 +896,12 @@ From the approved design doc:
   - `node --env-file=e2e/e2e.env …/next dev` exits with "--env-file= is not allowed in NODE_OPTIONS". Next passes the parent's Node flags to its child through `NODE_OPTIONS`.
   - Git Bash rewrites an argument that starts with `/`, such as `/demo/dashboard`, into a Windows path (`C:/Program Files/Git/demo/dashboard`). Set `MSYS_NO_PATHCONV=1` for that command.
   - `next dev` writes `apps/web/AGENTS.md`, Next's agent-rules block, when it sees an agent. It is untracked and not ignored, so ship would commit it. It was removed, since nobody asked for it. How to apply: after an agent's `next dev`, delete it, unless the user decides to keep it.
+- 2026-10-27: A full run of the default set crashed after its last case, before writing its report: "ENOENT … evals/reports/<name>.json" in `writeLandingResults`.
+  - What happened: R8 met it, with its floors and the README's table written but no report. The weekly run of 2026-10-26 likely met it too, since it ran v1's full set as the default (not confirmed; Claude does not read Actions).
+  - Follow-up (user, 2026-10-27): GitHub shows that weekly run succeeded. The crash was in its code (`364de0b`, after #53), where a full run that ends without a quota stop exits 1 and fails the job. So that run most likely stopped early on a free-tier quota, which skips the README and landing writes and exits 2, and `nightly-eval.yml` passes exit 2 with a warning (not confirmed; its page would show "Stopped on a free-tier quota"). A re-run of that run keeps its commit, so it would crash once it finishes.
+  - Why: `report()` wrote the landing results, which read the report the README names, before writing that report. It came with the landing writer (#53, 2026-10-25), and only a full run of the default set reaches it.
+  - What we did: tests first. `report({ root })` lets a test run a full report in a temp folder; that test failed with the same ENOENT, then passed once the landing results were written after the report.
+  - How to apply: a step that reads what an earlier step writes needs a test that runs both in order. Code that only a scheduled or official run reaches needs such a test before that run.
 
 ## Rejected Approaches
 

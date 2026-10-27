@@ -49,10 +49,10 @@ export function namedReport(readme: string) {
 }
 
 const root = new URL('../../', import.meta.url);
-export async function writeLandingResults() {
-  const name = namedReport(await readFile(new URL('README.md', root), 'utf8'));
-  const report = JSON.parse(await readFile(new URL(`evals/reports/${name}.json`, root), 'utf8')) as Report;
-  await writeFile(new URL('apps/web/lib/eval-results.json', root), `${JSON.stringify(landingResults(report, name), null, 2)}\n`);
+export async function writeLandingResults(at = root) {
+  const name = namedReport(await readFile(new URL('README.md', at), 'utf8'));
+  const report = JSON.parse(await readFile(new URL(`evals/reports/${name}.json`, at), 'utf8')) as Report;
+  await writeFile(new URL('apps/web/lib/eval-results.json', at), `${JSON.stringify(landingResults(report, name), null, 2)}\n`);
 }
 
 if (import.meta.main) await writeLandingResults();
