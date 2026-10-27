@@ -626,6 +626,10 @@ From the approved design doc:
   - `apps/web/.impeccable/config.json` was written by the plugin's own `impeccable hooks ignore-value side-tab "*" --file app/globals.css --reason …` run from `apps/web`, since its docs (`reference/hooks.md`) say not to edit that file by hand. The detector reads it from the working directory, so its file glob is relative to `apps/web`; the reason repeats the root config's.
   - The build step is `pnpm turbo run build --filter=@freightaudit/evals^...`: the eval's dependencies without the eval package, which has no build. The eval step's own `^build` tasks then hit turbo's local cache in the same job (a local dry run listed all 9 as HIT), so a build can fail only in its own step.
   - Reason: each is the smallest change that does what the user chose.
+- 2026-10-28: Stage 2 of `docs/tailscale-udp-plan.md`, the firewall sidecar for direct UDP, is not built: the plan's stop rule, applied by the agent after stages 0 and 1 (the user's request), for the user to confirm.
+  - Why: stage 1's throwaway netcheck found UDP out of Docker Desktop, but behind a hard NAT (`MappingVariesByDestIP: true`, no port mapping), and the plan builds the sidecar only with UDP behind an easy NAT and the ingress-to-node leg shown slow. From the PC, stage 0's timing met the plan's own success bar on the relay (10 of 10 within 2.5 s, the slowest 0.79 s, no failed connection, at 18:12 UTC on 2026-10-27), against 3 of 10 and 2 failed connections on 2026-10-21. The phone run from outside waits for the user.
+  - Found on the way: the node's home relay is hkg, but its 23 Funnel ingress peers have theirs in par, lhr, fra, nyc, sfo, syd and tok, none in hkg or sin. Replies over the relay may travel through those regions; not measured.
+  - How to apply: if a later timing shows the relay slow again, start from the plan's Staying on the relay options. Stage 2 needs a new reason first: an easy NAT (a different router or Docker setup), or a direct path that Tailscale documents for Funnel's ingress peers.
 
 ## Preferences and Instructions
 
