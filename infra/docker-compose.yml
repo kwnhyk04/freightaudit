@@ -67,7 +67,7 @@ services:
 
   prometheus:
     profiles: [observability]
-    image: prom/prometheus:v3.15.0-busybox
+    image: prom/prometheus:v3.15.1-busybox
     volumes: ["./prometheus.yml:/etc/prometheus/prometheus.yml:ro", "./prometheus-alerts.yml:/etc/prometheus/alerts.yml:ro"]
     ports: ["127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"]
     healthcheck:
@@ -87,7 +87,7 @@ services:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
 
   toxiproxy:
-    image: ghcr.io/shopify/toxiproxy:2.12.0
+    image: ghcr.io/shopify/toxiproxy:2.13.0
     command: ["-host=0.0.0.0", "-config=/config/toxiproxy.json"]
     volumes: ["./toxiproxy.json:/config/toxiproxy.json:ro"]
     extra_hosts: ["host.docker.internal:host-gateway"]
