@@ -3,7 +3,7 @@
 # The newest build is installed, not an exact version: Ubuntu drops superseded builds from its archive. The build fails on
 # anything older than the release with the 2026 ICP, FTP gateway and cache digest fixes; a new base digest from
 # Dependabot rebuilds it with the newest fixes.
-FROM ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
+FROM ubuntu:24.10@sha256:cdf755952ed117f6126ff4e65810bf93767d4c38f5c7185b50ec1f1078b464cc
 ARG SQUID_MIN=6.14-0ubuntu0.24.04.4
 RUN apt-get update \
   && apt-get install -y --no-install-recommends -t noble-security squid \
