@@ -39,8 +39,9 @@ export class ProviderConfigError extends PermanentError {
   override name = 'ProviderConfigError';
 }
 
-// Why Claude can take no more requests: a 402 billing_error, a 400 about the credit balance or a spend limit, or a 401,
-// 403 or 404 (a bad key or model). A 429, with or without retry-after, is a rate limit like any other.
+// Why Claude can take no more requests: a 402 billing_error, a 400 about the credit balance or a spend limit, the usage
+// tier's monthly spend cap (a 429 naming enforced_spend_limit_reached), or a 401, 403 or 404 (a bad key or model). Any
+// other 429, with or without retry-after, is a rate limit like any other.
 export type ClaudeUnavailableReason = 'billing_error' | 'credit_balance' | 'spend_limit' | 'bad_key_or_model';
 
 // Claude's account cannot be used. The free models take over for good (Limits.switchClaudeOff) and the message holds the
@@ -56,8 +57,8 @@ export class ClaudeUnavailableError extends PermanentError {
 }
 
 // Why Claude was not asked at all: past its end date, switched off, a prompt over its cap, an invoice or day over its
-// budget. Nothing was sent, so no model call is recorded.
-export type ClaudeSkipReason = 'end_date' | 'switched_off' | 'input_cap' | 'extraction_cap' | 'daily_budget';
+// budget, or the call would pass the spend cap (which switches Claude off). Nothing was sent, so no call is recorded.
+export type ClaudeSkipReason = 'end_date' | 'switched_off' | 'input_cap' | 'extraction_cap' | 'daily_budget' | 'spend_cap';
 export class ClaudeSkippedError extends Error {
   override name = 'ClaudeSkippedError';
   readonly reason: ClaudeSkipReason;

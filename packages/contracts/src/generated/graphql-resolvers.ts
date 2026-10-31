@@ -51,9 +51,9 @@ export type AuditEntry = {
   at: Scalars['DateTime']['output'];
   /**
    * Fields the entry changed, with their old and new values. A pipeline read also names the carrier as read (from) and as
-   * matched (to), and while Claude reads first, field claude says why the free models read the invoice (to): switched_off,
-   * daily_budget, input_cap or extraction_cap when it was never sent, billing_error, credit_balance, spend_limit or
-   * bad_key_or_model when Claude refused it, or a failure class (429, 5xx, timeout, network, other).
+   * matched (to), and while Claude reads first, field claude says why a free model wrote the reading (to): switched_off,
+   * daily_budget, input_cap, extraction_cap or spend_cap when it was never sent, billing_error, credit_balance, spend_limit
+   * or bad_key_or_model when Claude refused it, or a failure class (429, 5xx, timeout, network, other).
    */
   changes: Array<FieldChange>;
   /** Text that goes with the entry: a reason, a note, a failure message, a review reason or how the carrier matched. */

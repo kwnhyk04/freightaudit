@@ -107,8 +107,8 @@ services:
   worker:
     <<: [*kept, *hardened]
     image: ${IMAGE_REPO:-ghcr.io/kwnhyk04}/freightaudit-worker:${IMAGE_TAG:-latest}
-    # Claude Haiku may read first until LLM_CLAUDE_FIRST_UNTIL, on its own daily budget; its key lives only in .env.prod.
-    # Empty Claude settings keep the free chain.
+    # Claude Haiku reads first at every step until LLM_CLAUDE_FIRST_UNTIL, on its own daily budget and under its spend cap;
+    # its key lives only in .env.prod. Empty Claude settings keep the free chain.
     environment:
       <<: *backend-env
       AI_ENABLED: ${AI_ENABLED:-true}
@@ -117,6 +117,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       LLM_CLAUDE_MODEL: ${LLM_CLAUDE_MODEL:-}
       LLM_CLAUDE_FIRST_UNTIL: ${LLM_CLAUDE_FIRST_UNTIL:-}
+      LLM_CLAUDE_SPEND_CAP_USD: ${LLM_CLAUDE_SPEND_CAP_USD:-}
       DAILY_CLAUDE_TOKEN_BUDGET: ${DAILY_CLAUDE_TOKEN_BUDGET:-1400000}
       # The Groq account is shared with other projects and CI; about 3 resets and 25 uploads a day.
       DAILY_AI_TOKEN_BUDGET: ${DAILY_AI_TOKEN_BUDGET:-100000}

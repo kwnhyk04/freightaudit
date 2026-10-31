@@ -2,7 +2,8 @@
 
 The UI runs on Vercel (Hobby, free). The backend runs on this PC as compose project `freightaudit-prod`, and the
 internet reaches only its api, through Tailscale Funnel. When the PC is off or asleep, the UI shows the committed sample
-(`apps/web/public/demo`), so the public demo never shows an error page. Everything stays on free plans.
+(`apps/web/public/demo`), so the public demo never shows an error page. Everything stays on free plans except Claude
+Haiku, which is paid until its end date, spend cap or credit stops it (Cost).
 
 ```
 Browser --HTTPS--> Vercel: apps/web (sessions, the BFF) --HTTPS + X-API-Key--> https://<host>.<tailnet>.ts.net
@@ -10,7 +11,7 @@ Browser --HTTPS--> Vercel: apps/web (sessions, the BFF) --HTTPS + X-API-Key--> h
 This PC, project freightaudit-prod:                                              |
   tailscale container (TLS ends here) --network edge--> api:4000  <--------------+
   api, worker --network data (no route out)--> postgres, redis, minio
-  worker    --network outbound (no route out)--> egress-proxy:3128 --network egress--> Gemini, Groq
+  worker    --network outbound (no route out)--> egress-proxy:3128 --network egress--> Gemini, Groq, Anthropic
   tailscale --network outbound (no route out)--> egress-proxy:3129 --network egress--> Tailscale, Let's Encrypt
 ```
 
@@ -145,9 +146,10 @@ Nothing to add. The release workflow publishes the images; nothing deploys from 
 | `GEMINI_API_KEY`, `GROQ_API_KEY` | `.env.prod` (demo keys); GitHub secrets (CI eval only) | Free-tier model keys | New key in the console, `pnpm demo:up`, delete the old key |
 | `DAILY_AI_TOKEN_BUDGET` | `.env.prod`, default 100,000 | The free models' tokens a UTC day | Edit, `pnpm demo:up` |
 | `ANTHROPIC_API_KEY` | `.env.prod`; root `.env` for the local Claude eval | Claude Haiku's key | New key in the console, `pnpm demo:up`, delete the old key |
-| `LLM_CLAUDE_MODEL` | `.env.prod`: `claude-haiku-5-5` | Turns Claude on; empty keeps the free chain | Edit, `pnpm demo:up` |
+| `LLM_CLAUDE_MODEL` | `.env.prod`: `claude-haiku-5-5` | Turns Claude on, and then needs the next two; empty keeps the free chain | Edit, `pnpm demo:up` |
 | `LLM_CLAUDE_FIRST_UNTIL` | `.env.prod`: `2026-11-10` | The last UTC day Claude reads first; then the free chain for good | Edit, `pnpm demo:up` |
-| `DAILY_CLAUDE_TOKEN_BUDGET` | `.env.prod`, default 1,400,000 | Claude's own tokens a UTC day, reserved before each call | Edit, `pnpm demo:up` |
+| `LLM_CLAUDE_SPEND_CAP_USD` | `.env.prod`: `15.00` | The most Claude may ever bill, in dollars and cents; reaching it switches Claude off for good | Raise it, then resume (Claude first, below) |
+| `DAILY_CLAUDE_TOKEN_BUDGET` | `.env.prod`, default 1,400,000 | Claude's own tokens a UTC day, reserved before each call; a full day skips Claude until 00:00 UTC | Edit, `pnpm demo:up` |
 | `POSTGRES_PASSWORD` | `.env.prod` | Demo database password (used once, when the volume is created) | `ALTER USER freightaudit PASSWORD '<new>'` in the container, edit `.env.prod`, `pnpm demo:up` |
 | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | `.env.prod` | Demo object store credentials | Edit, `pnpm demo:up` |
 | `TS_AUTHKEY` | `.env.prod`, first start only | One-off Tailscale auth key | Expires in a day; a new login needs a new key |
@@ -161,21 +163,38 @@ Never anywhere: a `NEXT_PUBLIC_` variable.
 
 ### Claude first (until 2026-11-10)
 
-The worker reads each invoice with Claude Haiku first, then its repair, then the free fallback. A 402, a 400 naming the
-credit balance or a spend limit, or a 401, 403 or 404 switches every worker to the free chain for good, with the alert
-`claude_switched_off` in the worker's log; from 2026-11-11 00:00 UTC the free chain reads by date. To let Claude read
-again after a top-up or a fixed key, delete the switch in the demo's Redis, which publishes no port for
-`pnpm claude:resume`: `docker exec freightaudit-prod-redis-1 redis-cli DEL <REDIS_PREFIX>:llm:claude:off`, with the
-`REDIS_PREFIX` of `.env.prod`.
+Claude Haiku reads first at every step of an invoice: the read, the repair, and the fresh read when it has not replied
+yet. Each step's free model stands behind it (docs/context.md, LLM roles). These switch every worker to the free chain
+for good, with one `claude_switched_off` alert in the worker's log:
+- a 402 billing_error, or a 400 naming the credit balance or "You have reached your specified (workspace) API usage
+  limits";
+- the usage tier's monthly spend cap: a 429 whose `error.details.error_code` is `enforced_spend_limit_reached`;
+- a 401, 403 or 404 (a bad key or model);
+- FreightAudit's own cap, `LLM_CLAUDE_SPEND_CAP_USD`. Each call is reserved at Haiku's prices (its estimate plus a full
+  560-token reply) in `<REDIS_PREFIX>:llm:claude:spent`, which never expires, and settled to the billed cost after. At
+  startup the worker raises that total to the sum of `llm_calls.cost_micro_usd` for `anthropic`, so it counts the demo's
+  spend since #40 and survives a Redis reset.
 
-After the PR that brings it merges:
+From 2026-11-11 00:00 UTC the free chain reads by date, with no switch. Any other 429, a 529, a 500, a 504 or another 4xx
+hands only that step to the free model, and the next step asks Claude again. A full `DAILY_CLAUDE_TOKEN_BUDGET` skips
+Claude until 00:00 UTC.
+
+To let Claude read again, fix the cause first: a top-up, a fixed key, or a higher `LLM_CLAUDE_SPEND_CAP_USD` in
+`.env.prod` (the total never resets, so the new cap must be above it). Then delete the switch in the demo's Redis, which
+publishes no port for `pnpm claude:resume`: `docker exec freightaudit-prod-redis-1 redis-cli DEL <REDIS_PREFIX>:llm:claude:off`,
+with the `REDIS_PREFIX` of `.env.prod`. Last, restart the worker: `pnpm demo:up` after an edit of `.env.prod`, else
+`docker restart freightaudit-prod-worker-1`. A worker that has seen the switch keeps it in memory until it restarts, so
+restart after the delete.
+
+After the PR that brings the spend cap merges (no migration; squid is unchanged, so the egress proxy needs no restart):
 1. The Release for the merge commit publishes `sha-<short>`.
-2. On the PC, `git pull` (the compose file and `infra/squid.conf` come from the checkout).
-3. In `.env.prod`: `ANTHROPIC_API_KEY=<key>`, `LLM_CLAUDE_MODEL=claude-haiku-5-5`, `LLM_CLAUDE_FIRST_UNTIL=2026-11-10`,
-   `DAILY_CLAUDE_TOKEN_BUDGET=1400000`.
-4. `pnpm demo:up`, then `docker restart freightaudit-prod-egress-proxy-1`, which reads the new allowlist.
-5. Check: the worker's revision label, its `claude` start line, one sample tap's model call by `anthropic`, and
-   `CONNECT api.anthropic.com:443` with no `TCP_DENIED` in `docker logs freightaudit-prod-egress-proxy-1`.
+2. On the PC, `git pull` (the compose file, which now passes `LLM_CLAUDE_SPEND_CAP_USD` to the worker, comes from the
+   checkout).
+3. In `.env.prod`, before `pnpm demo:up`: `LLM_CLAUDE_SPEND_CAP_USD=15.00`. With `LLM_CLAUDE_MODEL` set and no cap, the
+   worker refuses to start.
+4. `pnpm demo:up`.
+5. Check: the worker's revision label, and its `claude` start line with `spendCapUsd` 15.00 and `spentMicroUsd`, the
+   spend recorded so far.
 
 ## Commands
 
@@ -227,11 +246,11 @@ Measured in the dry run (2026-10-17), on every port of 5432, 6379, 9000, 9001, 4
   and its rules refuse private destinations.
 
 Uploads on the demo are limited to golden-set PDFs (`evals/golden/v1/manifest.json`), so only synthetic invoices reach
-the PC and the free-tier models.
+the PC and the models.
 
 ## Cost
 
-Free plans only. What could ever bill you:
+Free plans, except Claude Haiku: it is paid until its end date, spend cap or credit stops it. What could ever bill you:
 - Gemini: a key whose Google Cloud project has billing enabled runs on the paid tier.
 - Groq: only after an upgrade to a paid tier with a card.
 - Vercel Hobby: cannot bill; over its limits the project pauses for up to 30 days.
@@ -239,7 +258,8 @@ Free plans only. What could ever bill you:
 - GitHub: public repository, so Actions and public images are free.
 - Anthropic: while Claude reads first, at most `DAILY_CLAUDE_TOKEN_BUDGET` (1,400,000) tokens a UTC day, $0.70 priced as all
   output at Haiku's $0.50 per million (`packages/llm/prices.json`); FreightAudit's share of the organization's $50 monthly
-  limit is $15 until 2026-11-10, and the console's limit stops it beyond that.
+  limit is $15 until 2026-11-10, which `LLM_CLAUDE_SPEND_CAP_USD` (15.00) enforces over all of Claude's recorded calls,
+  and the console's limit stops it beyond that.
 
 ## Troubleshooting
 

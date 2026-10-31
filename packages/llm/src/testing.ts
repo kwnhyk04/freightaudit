@@ -153,14 +153,33 @@ export async function fakeModels(reply: (call: FakeCall) => FakeReply | Promise<
   return { url, calls: () => calls, close };
 }
 
-// Claude's switch and day as Redis keeps them (Limits), in memory; two gates on one store are two worker processes.
-export function memoryClaudeStore(budget = 1_400_000) {
-  const state = { off: undefined as string | undefined, spent: 0 };
+// Claude's switch, day and spend cap as Redis keeps them (Limits), in memory; two gates on one store are two worker
+// processes. `spent` counts the day's tokens, `micro` the total cost in micro-dollars.
+export function memoryClaudeStore(budget = 1_400_000, cap = 2n ** 62n) {
+  const state = { off: undefined as string | undefined, spent: 0, micro: 0n };
   return {
     state,
     claudeOff: async () => state.off,
     switchClaudeOff: async (reason: string) => (state.off ? false : ((state.off = reason), true)),
-    reserveClaude: async (tokens: number) => (state.spent + tokens > budget ? false : ((state.spent += tokens), true)),
-    settleClaude: async (reserved: number, used: { inputTokens: number; outputTokens: number }) => void (state.spent += used.inputTokens + used.outputTokens - reserved),
+    reserveClaude: async (tokens: number, micro: bigint) => {
+      if (state.micro + micro > cap) return 'cap' as const;
+      if (state.spent + tokens > budget) return 'day' as const;
+      state.spent += tokens;
+      state.micro += micro;
+      return 'ok' as const;
+    },
+    settleClaude: async (reserved: { tokens: number; micro: bigint }, used: { inputTokens: number; outputTokens: number }, usedMicro: bigint) => {
+      state.spent += used.inputTokens + used.outputTokens - reserved.tokens;
+      state.micro += usedMicro - reserved.micro;
+    },
   };
+}
+
+// Anthropic's error answers: bad-key as recorded, the rest as Anthropic documents them (fixtures/anthropic).
+export type AnthropicAnswer = { status: number; headers: Record<string, string>; body: object };
+export function anthropicAnswer(name: string): AnthropicAnswer {
+  const { answers } = JSON.parse(readFileSync(new URL('anthropic/documented.json', FIXTURES), 'utf8')) as { answers: Record<string, AnthropicAnswer> };
+  if (Object.hasOwn(answers, name)) return answers[name]!;
+  const { status, headers, body } = JSON.parse(readFileSync(new URL(`anthropic/${name}.json`, FIXTURES), 'utf8')) as AnthropicAnswer;
+  return { status, headers, body };
 }

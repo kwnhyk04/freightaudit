@@ -1,5 +1,6 @@
 import { SpanKind, SpanStatusCode, trace } from '@opentelemetry/api';
-import type { Provider, Role } from './extract.ts';
+import type { Provider } from './extract.ts';
+import type { Bucket } from './limits.ts';
 
 // GenAI semantic conventions as of semconv v1.41.1, the last core release that defines them: v1.42.0 moved them to the
 // semantic-conventions-genai repository, and they are still in development. The names are inlined rather than imported,
@@ -8,8 +9,8 @@ const tracer = trace.getTracerProvider().getTracer('@freightaudit/llm', undefine
 const PROVIDER_NAMES: Record<string, string> = { gemini: 'gcp.gemini', groq: 'groq', mistral: 'mistral_ai' };
 
 // A client span around each model call, after its rate-limit wait, so its time is the provider's. It records the model,
-// tokens and finish reason, never the prompt, the pages or the output.
-export const traced = (provider: Provider, role: Role): Provider => ({
+// tokens and finish reason, never the prompt, the pages or the output. Claude's calls carry the role `claude`.
+export const traced = (provider: Provider, role: Bucket): Provider => ({
   ...provider,
   generate(input) {
     const operation = provider.name === 'gemini' ? 'generate_content' : 'chat';

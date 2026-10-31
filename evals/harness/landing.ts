@@ -1,10 +1,12 @@
-// The landing page's results table: the rows the approved design shows, from the official report the README's eval
-// table names, written to apps/web/lib/eval-results.json so the web reads only its own files. report.ts writes it on
-// each full run; `node evals/harness/landing.ts` writes it again from the README's report.
-import { readFile, writeFile } from 'node:fs/promises';
+// The landing page's results table: the rows the approved design shows, for the latest official report of each run,
+// Claude first and the free models alone (the two the README's eval table names), written to
+// apps/web/lib/eval-results.json so the web reads only its own files. report.ts writes it on each full run of the default
+// set; `node evals/harness/landing.ts` writes it again from the reports on disk.
+import { writeFile } from 'node:fs/promises';
 import { meets, type Metric, METRICS } from './metrics.ts';
 
 type Report = { date?: string; cases?: number; metrics: { metric: string; value?: number | null }[] };
+type Official = { name: string; json: Report };
 
 // As drawn: six metrics, then latency and cost, each a pair in one row.
 const ROWS: { metrics: string[]; label?: string }[] = [
@@ -26,33 +28,40 @@ function show({ metric, unit }: Metric, value: number) {
   return `${Number((value * 100).toFixed(1))}%`;
 }
 
-export function landingResults(report: Report, name: string) {
-  const measured = new Map(report.metrics.map((each) => [each.metric, each.value ?? undefined]));
+// Each row's target, and each run's result and whether it meets the target; a run not measured yet has no cells.
+export function landingResults({ claudeFirst, free }: { claudeFirst?: Official | undefined; free?: Official | undefined }) {
+  const measuredOf = (official?: Official) => official && new Map(official.json.metrics.map((each) => [each.metric, each.value ?? undefined]));
+  const [first, alone] = [measuredOf(claudeFirst), measuredOf(free)];
   const rows = ROWS.map(({ metrics, label }) => {
     const defs = metrics.map((metric) => METRICS.find((def) => def.metric === metric)!);
-    const values = defs.map((def) => measured.get(def.metric));
+    const cell = (measured?: Map<string, number | undefined>) => {
+      if (!measured) return null;
+      const values = defs.map((def) => measured.get(def.metric));
+      return {
+        result: values.every((value) => value !== undefined) ? defs.map((def, i) => show(def, values[i]!)).join(' / ') : 'n/a',
+        met: defs.every((def, i) => meets(values[i], def.target!)),
+      };
+    };
     return {
       label: label ?? defs[0]!.label,
       target: `${defs[0]!.target!.op === '<=' ? '≤ ' : ''}${defs.map((def) => show(def, def.target!.value)).join(' / ')}`,
-      result: values.every((value) => value !== undefined) ? defs.map((def, i) => show(def, values[i]!)).join(' / ') : 'n/a',
-      met: defs.every((def, i) => meets(values[i], def.target!)),
+      claudeFirst: cell(first),
+      free: cell(alone),
     };
   });
-  return { report: `evals/reports/${name}.md`, date: report.date, cases: report.cases, rows };
+  const run = (official?: Official) => (official ? { report: `evals/reports/${official.name}.md`, date: official.json.date } : null);
+  return { cases: (claudeFirst ?? free)?.json.cases, claudeFirst: run(claudeFirst), free: run(free), rows };
 }
 
-// The report the README's eval table names, as in "Full report: `evals/reports/2026-10-15.md`".
-export function namedReport(readme: string) {
-  const name = /Full report: `evals\/reports\/([^`]+)\.md`/.exec(readme)?.[1];
-  if (!name) throw new Error('the README names no full report');
-  return name;
+// The reports the README's eval table names, in order, as in "Full report: `evals/reports/2026-10-27-v2.md`".
+export const namedReports = (readme: string) => [...readme.matchAll(/Full report: `evals\/reports\/([^`]+)\.md`/g)].map((match) => match[1]!);
+
+export async function writeLandingResults(at: URL, officials: Parameters<typeof landingResults>[0]) {
+  await writeFile(new URL('apps/web/lib/eval-results.json', at), `${JSON.stringify(landingResults(officials), null, 2)}\n`);
 }
 
-const root = new URL('../../', import.meta.url);
-export async function writeLandingResults(at = root) {
-  const name = namedReport(await readFile(new URL('README.md', at), 'utf8'));
-  const report = JSON.parse(await readFile(new URL(`evals/reports/${name}.json`, at), 'utf8')) as Report;
-  await writeFile(new URL('apps/web/lib/eval-results.json', at), `${JSON.stringify(landingResults(report, name), null, 2)}\n`);
+if (import.meta.main) {
+  const root = new URL('../../', import.meta.url);
+  const { officialReports } = await import('./report.ts');
+  await writeLandingResults(root, await officialReports(root));
 }
-
-if (import.meta.main) await writeLandingResults();

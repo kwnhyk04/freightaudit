@@ -190,6 +190,15 @@ test('a scan longer than the fallback takes never goes to it: a 429 or output st
   expect(await fits.run(pages(8))).toMatchObject({ step: 'first_pass', model: 'mistral/mistral-model' });
 });
 
+test('a free model rate limited on its repair or on the third pass is never passed on: the job retries', async () => {
+  const repair = ladder({ primary: ['not json', new RateLimitError('gemini HTTP 429')], fallback: [reply(invoice())] });
+  await expect(repair.run()).rejects.toBeInstanceOf(RateLimitError);
+  expect(steps(repair.calls)).toEqual(['primary first_pass invalid', 'primary repair rate_limited']);
+  const third = ladder({ primary: ['not json', 'not json'], fallback: [new RateLimitError('mistral HTTP 429')] });
+  await expect(third.run()).rejects.toBeInstanceOf(RateLimitError);
+  expect(steps(third.calls)).toEqual(['primary first_pass invalid', 'primary repair invalid', 'fallback fallback rate_limited']);
+});
+
 test('a provider error other than a 429 is recorded and ends the ladder', async () => {
   const { calls, run } = ladder({ primary: [new ProviderConfigError('gemini HTTP 401')], fallback: [reply(invoice())] });
   await expect(run()).rejects.toBeInstanceOf(ProviderConfigError);

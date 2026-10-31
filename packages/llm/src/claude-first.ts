@@ -1,5 +1,6 @@
-import { ClaudeSkippedError, ClaudeUnavailableError } from './errors.ts';
-import type { Backup, GenerateInput, Usage } from './extract.ts';
+import { ClaudeSkippedError, ClaudeUnavailableError, PermanentError, TransientError } from './errors.ts';
+import type { GenerateInput, Provider, Usage } from './extract.ts';
+import { callCost } from './prices.ts';
 
 // Caps while Claude reads first, sized from Haiku's real use on the golden PDFs the demo accepts (its 2026-10-17 run,
 // docs/memory.md) with about 10% headroom, so it is never cut off mid-work on them.
@@ -38,27 +39,38 @@ function jpegSize(bytes: Uint8Array) {
 }
 
 export type ClaudeLog = (fields: object, msg: string) => void;
-// What every worker process shares through Redis (Limits): the switch to the free models and Claude's UTC day.
+// What a call holds of Claude's day and spend cap until it settles: its tokens, and its cost in micro-dollars.
+export type ClaudeReservation = { tokens: number; micro: bigint };
+// What every worker process shares through Redis (Limits): the switch to the free models, Claude's UTC day and its spend
+// cap. A reservation takes the day's tokens and the cap's micro-dollars together, or names what is full, the cap first.
 export type ClaudeStore = {
   claudeOff(): Promise<string | undefined>;
   switchClaudeOff(reason: string): Promise<boolean>;
-  reserveClaude(tokens: number, now?: number): Promise<boolean>;
-  settleClaude(reserved: number, used: Usage, now?: number): Promise<void>;
+  reserveClaude(tokens: number, micro: bigint, now?: number): Promise<'ok' | 'day' | 'cap'>;
+  settleClaude(reserved: ClaudeReservation, used: Usage, usedMicro: bigint, now?: number): Promise<void>;
 };
-type GateOptions = { first: boolean; until?: string | undefined; maxTokens: number; inputCap?: number | undefined; now?: () => number; log?: ClaudeLog };
+type GateOptions = { until?: string | undefined; maxTokens?: number; inputCap?: number | undefined; now?: () => number; log?: ClaudeLog };
 
-// Every Claude call passes here. Past its end date, switched off, over a cap or over its day it is never sent
-// (ClaudeSkippedError). An account that cannot be used switches every process to the free models, with one alert.
-export function gateClaude(provider: Backup, store: ClaudeStore, { first, until, maxTokens, inputCap = CLAUDE_INPUT_CAP, now = Date.now, log = () => {} }: GateOptions): Backup {
+const NOTHING: Usage = { inputTokens: 0, outputTokens: 0 };
+
+// Every Claude call passes here. Past its end date, switched off, over a cap, over its day or past the spend cap it is
+// never sent (ClaudeSkippedError). An account that cannot be used, or the spend cap reached, switches every process to the
+// free models for good, with one alert.
+export function gateClaude(provider: Provider, store: ClaudeStore, { until, maxTokens = CLAUDE_FIRST_MAX_TOKENS, inputCap = CLAUDE_INPUT_CAP, now = Date.now, log = () => {} }: GateOptions): Provider {
   // Claude reads through the end date's whole UTC day.
   const end = until ? Date.parse(`${until}T00:00:00Z`) + 86_400_000 : Number.POSITIVE_INFINITY;
-  // The caps from real use bind while Claude reads first; the ceiling binds always.
-  const cap = first ? Math.min(inputCap, CLAUDE_PROMPT_CEILING) : CLAUDE_PROMPT_CEILING;
+  // The caps from real use bind, and no prompt passes the ceiling, whatever cap a caller gives.
+  const cap = Math.min(inputCap, CLAUDE_PROMPT_CEILING);
+  const price = (usage: Usage) => callCost(provider.name, provider.model, usage);
   let off = false;
+  const switchOff = async (reason: string, status?: number) => {
+    off = true;
+    if (!(await store.switchClaudeOff(reason))) return;
+    if (status === undefined) log({ alert: 'claude_switched_off', reason }, 'Claude reached its spend cap: the free models read every invoice until the cap is raised and pnpm claude:resume runs');
+    else log({ alert: 'claude_switched_off', reason, status }, 'Claude cannot be used: the free models read every invoice until pnpm claude:resume');
+  };
   return {
     ...provider,
-    first,
-    available: () => !off && provider.available(),
     async generate(input) {
       const at = now();
       if (at >= end) throw new ClaudeSkippedError('end_date');
@@ -68,21 +80,26 @@ export function gateClaude(provider: Backup, store: ClaudeStore, { first, until,
       }
       const estimate = estimateInputTokens(input);
       if (estimate > cap) throw new ClaudeSkippedError('input_cap');
-      const reserved = estimate + maxTokens;
-      if (first && (input.claudeTokens ?? 0) + reserved > CLAUDE_EXTRACTION_CAP) throw new ClaudeSkippedError('extraction_cap');
-      if (!(await store.reserveClaude(reserved, at))) throw new ClaudeSkippedError('daily_budget');
+      // The worst case: the estimate and a full reply, at the model's prices.
+      const reserved = { tokens: estimate + maxTokens, micro: price({ inputTokens: estimate, outputTokens: maxTokens }) };
+      if ((input.claudeTokens ?? 0) + reserved.tokens > CLAUDE_EXTRACTION_CAP) throw new ClaudeSkippedError('extraction_cap');
+      const taken = await store.reserveClaude(reserved.tokens, reserved.micro, at);
+      if (taken === 'day') throw new ClaudeSkippedError('daily_budget');
+      if (taken === 'cap') {
+        await switchOff('spend_cap');
+        throw new ClaudeSkippedError('spend_cap');
+      }
       let reply;
       try {
         reply = await provider.generate(input);
       } catch (err) {
-        if (err instanceof ClaudeUnavailableError) {
-          off = true;
-          if (await store.switchClaudeOff(err.reason)) log({ alert: 'claude_switched_off', reason: err.reason, status: err.status }, 'Claude cannot be used: the free models read every invoice until pnpm claude:resume');
-        }
-        // ponytail: a failed call keeps its reservation, in case Anthropic billed it; settle it if that starves the day.
+        if (err instanceof ClaudeUnavailableError) await switchOff(err.reason, err.status);
+        // Anthropic bills no call it answered with an error, so that reservation comes back; a timeout or a lost connection
+        // may have been billed, so it keeps its reservation.
+        if ((err instanceof TransientError || err instanceof PermanentError) && err.status !== undefined) await store.settleClaude(reserved, NOTHING, 0n, at);
         throw err;
       }
-      await store.settleClaude(reserved, reply.usage, at);
+      await store.settleClaude(reserved, reply.usage, price(reply.usage), at);
       return reply;
     },
   };

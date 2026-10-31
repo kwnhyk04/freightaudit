@@ -1,6 +1,5 @@
-import { CLAUDE_MAX_TOKENS, createClaudeProvider } from './claude.ts';
-import { gateClaude } from './claude-first.ts';
-import { RateLimitError } from './errors.ts';
+import { createClaudeProvider } from './claude.ts';
+import { CLAUDE_FIRST_MAX_TOKENS, gateClaude } from './claude-first.ts';
 import { type Call, extractInvoices, type Models, type Part, type Provider } from './extract.ts';
 import { memoryClaudeStore } from './testing.ts';
 
@@ -26,51 +25,43 @@ const valid = JSON.stringify({
 const text: Part[] = [{ page: 1, text: 'INVOICE' }];
 const KEY = 'sk-ant-test-0123456789abcdefghijklmnop';
 
-// The Messages API on a fake fetch: each request answers with the next scripted response, and every body is kept.
-function anthropic(...responses: { status: number; body: object; headers?: Record<string, string> | undefined }[]) {
+// The Messages API on a fake fetch that answers every request with one message, keeping each body.
+function anthropic(json: string) {
   const bodies: Record<string, unknown>[] = [];
   const fetch = (async (_url: unknown, init?: RequestInit) => {
     bodies.push(JSON.parse(String(init?.body)));
-    const next = responses[bodies.length - 1] ?? responses.at(-1)!;
-    return new Response(JSON.stringify(next.body), { status: next.status, headers: { 'content-type': 'application/json', ...next.headers } });
+    const body = { id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-haiku-5-5', content: [{ type: 'text', text: json }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 900, output_tokens: 300 } };
+    return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
   }) as typeof globalThis.fetch;
   return { fetch, bodies };
 }
-const message = (json: string) => ({
-  status: 200,
-  body: { id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-haiku-5-5', content: [{ type: 'text', text: json }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 900, output_tokens: 300 } },
-});
-const apiError = (status: number, type: string, text: string, headers?: Record<string, string>) => ({ status, body: { type: 'error', error: { type, message: text } }, headers });
 
 // A model that always answers the same; `calls` counts its requests.
-function always(name: string, reply: string | Error) {
+function always(name: string, reply: string) {
   const provider = { name, model: `${name}-model`, calls: 0 } as Provider & { calls: number };
   provider.generate = async () => {
     provider.calls++;
-    if (reply instanceof Error) throw reply;
     return { text: reply, usage: { inputTokens: 10, outputTokens: 5 }, latencyMs: 7, servedModel: undefined };
   };
   return provider;
 }
 
-function chain(responses: Parameters<typeof anthropic>, main: string | Error = 'not json') {
-  const api = anthropic(...responses);
-  const logs: object[] = [];
+function chain(json: string) {
+  const api = anthropic(json);
   const client = createClaudeProvider({ apiKey: KEY, model: 'claude-haiku-5-5', baseUrl: 'http://claude.test', fetch: api.fetch });
-  const claude = gateClaude(client, memoryClaudeStore(), { first: false, maxTokens: CLAUDE_MAX_TOKENS, log: (fields) => void logs.push(fields) });
+  const claude = gateClaude(client, memoryClaudeStore(), { until: '2099-12-31' });
   const free = always('groq', valid);
-  const models: Models = { primary: always('gemini', main), text: always('groq-text', main), fallback: free, claude };
-  return { api, logs, claude, free, models };
+  const models: Models = { primary: always('gemini', 'not json'), text: always('groq-text', 'not json'), fallback: free, claude };
+  return { api, free, models };
 }
 
-test('Claude reads with thinking off, the main readers output ceiling, no temperature, the schema as its output format, scans as JPEG', async () => {
-  const { api, models } = chain([message(valid)]);
+test('Claude reads with thinking off, at most 560 output tokens, no temperature, the schema as its output format, scans as JPEG', async () => {
+  const { api, models } = chain(valid);
   const scan: Part[] = [{ page: 1, text: 'Page one' }, { page: 2, jpeg: new Uint8Array([0xff, 0xd8, 0xff]) }];
-  const result = await extractInvoices(models, { parts: scan, pageCount: 2 });
-  expect(result).toMatchObject({ step: 'fallback', model: 'anthropic/claude-haiku-5-5' });
+  expect(await extractInvoices(models, { parts: scan, pageCount: 2 })).toMatchObject({ step: 'first_pass', model: 'anthropic/claude-haiku-5-5' });
   const [body] = api.bodies;
-  expect(body).toMatchObject({ model: 'claude-haiku-5-5', max_tokens: CLAUDE_MAX_TOKENS, thinking: { type: 'disabled' }, output_config: { format: { type: 'json_schema' } } });
-  expect(CLAUDE_MAX_TOKENS).toBe(65_536);
+  expect(body).toMatchObject({ model: 'claude-haiku-5-5', max_tokens: CLAUDE_FIRST_MAX_TOKENS, thinking: { type: 'disabled' }, output_config: { format: { type: 'json_schema' } } });
+  expect(CLAUDE_FIRST_MAX_TOKENS).toBe(560);
   expect(body).not.toHaveProperty('temperature');
   expect(body!.messages).toEqual([
     {
@@ -84,67 +75,8 @@ test('Claude reads with thinking off, the main readers output ceiling, no temper
   ]);
 });
 
-test('Claude comes after the main model and its repair, and before the free fallback, which it spares when it reads the invoice', async () => {
-  const { models, free } = chain([message(valid)]);
-  const calls: Call[] = [];
-  const result = await extractInvoices(models, { parts: text, pageCount: 1 }, { onCall: (call) => void calls.push(call) });
-  expect(calls.map(({ provider, step, outcome }) => `${provider} ${step} ${outcome}`)).toEqual(['groq-text first_pass invalid', 'groq-text repair invalid', 'anthropic fallback valid']);
-  expect(result).toMatchObject({ step: 'fallback', fallbackReason: 'invalid_output' });
-  expect(free.calls).toBe(0);
-});
-
-test.each([
-  ['a 402 billing_error', apiError(402, 'billing_error', 'Your account has a billing problem.'), 'billing_error'],
-  ['a 400 about the credit balance', apiError(400, 'invalid_request_error', 'Your credit balance is too low to access the Anthropic API.'), 'credit_balance'],
-  ['a 400 about a spend limit', apiError(400, 'invalid_request_error', 'You have reached your specified API usage limits.'), 'spend_limit'],
-  ['a 401', apiError(401, 'authentication_error', 'invalid x-api-key'), 'bad_key_or_model'],
-  ['a 404', apiError(404, 'not_found_error', 'model: claude-haiku-5-5'), 'bad_key_or_model'],
-] as const)('%s makes Claude unavailable: the free fallback takes over for good, with one alert', async (_case, response, reason) => {
-  const { api, logs, claude, free, models } = chain([response]);
-  const first = await extractInvoices(models, { parts: text, pageCount: 1 });
-  expect(first).toMatchObject({ step: 'fallback', model: 'groq/groq-model' });
-  expect(claude.available()).toBe(false);
-  // The next invoice goes straight from its main model to the free fallback.
-  await extractInvoices(models, { parts: text, pageCount: 1 });
-  expect(api.bodies).toHaveLength(1);
-  expect(free.calls).toBe(2);
-  // The reason and status, once: never the key or the provider's message.
-  expect(logs).toEqual([{ alert: 'claude_switched_off', reason, status: response.status }]);
-  expect(JSON.stringify(logs)).not.toMatch(/sk-ant|credit balance|usage limits|billing problem|x-api-key/);
-});
-
-test('a 429 without retry-after is a rate limit like any other: it waits and retries, and Claude stays in the chain', async () => {
-  const { logs, claude, free, models } = chain([apiError(429, 'rate_limit_error', 'Number of request tokens has exceeded your rate limit.')]);
-  await expect(extractInvoices(models, { parts: text, pageCount: 1 })).rejects.toBeInstanceOf(RateLimitError);
-  expect(claude.available()).toBe(true);
-  expect(free.calls).toBe(0);
-  expect(logs).toEqual([]);
-});
-
-test('a 429 with retry-after is a normal rate limit: it waits and retries as today, and Claude stays in the chain', async () => {
-  const { logs, claude, free, models } = chain([apiError(429, 'rate_limit_error', 'Slow down.', { 'retry-after': '7' })]);
-  const err = await extractInvoices(models, { parts: text, pageCount: 1 }).catch((thrown: unknown) => thrown);
-  expect(err).toBeInstanceOf(RateLimitError);
-  expect(err).toMatchObject({ retryAfterMs: 7_000, status: 429, message: 'anthropic HTTP 429 rate_limit_error' });
-  expect(claude.available()).toBe(true);
-  expect(free.calls).toBe(0);
-  expect(logs).toEqual([]);
-});
-
-test('a rate-limited main model hands its first pass to Claude, and with Claude out of credit to the free fallback', async () => {
-  const limited = new RateLimitError('gemini HTTP 429', { status: 429 });
-  const withClaude = chain([message(valid)], limited);
-  expect(await extractInvoices(withClaude.models, { parts: [{ page: 1, jpeg: new Uint8Array() }], pageCount: 1 })).toMatchObject({
-    step: 'first_pass',
-    fallbackReason: 'rate_limited',
-    model: 'anthropic/claude-haiku-5-5',
-  });
-  const spent = chain([apiError(402, 'billing_error', 'No credit.')], limited);
-  expect(await extractInvoices(spent.models, { parts: text, pageCount: 1 })).toMatchObject({ step: 'first_pass', model: 'groq/groq-model' });
-});
-
 test('without LLM_CLAUDE_MODEL the chain is the free one: main model, its repair, then the free fallback', async () => {
-  const { models, free } = chain([message(valid)]);
+  const { models, free } = chain(valid);
   const calls: Call[] = [];
   await extractInvoices({ ...models, claude: undefined }, { parts: text, pageCount: 1 }, { onCall: (call) => void calls.push(call) });
   expect(calls.map(({ provider }) => provider)).toEqual(['groq-text', 'groq-text', 'groq']);

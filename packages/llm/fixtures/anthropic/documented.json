@@ -1,0 +1,92 @@
+{
+  "note": "Anthropic's error answers for the cases that cannot be produced on demand: credit used up, spend limits, rate limits, overload and server errors. Status, error type and the envelope (type, error, request_id) are as Anthropic's error and rate-limit pages show them. Where a page quotes no message, the message is illustrative: the code reads the status, the error type and error.details.error_code, and a message only to tell the two account 400s apart. The 401 and the 404 are recorded instead (bad-key.json and unknown-model.json, by scripts/record-anthropic-errors.ts).",
+  "fetched": "2026-10-31",
+  "answers": {
+    "credit_balance": {
+      "source": "Anthropic's answer once prepaid credit runs out: a 400 invalid_request_error naming the credit balance. The docs pages quote no message; this is the text #40's tests carried, and the code keys on \"credit balance\" alone.",
+      "status": 400,
+      "headers": {},
+      "body": { "type": "error", "error": { "type": "invalid_request_error", "message": "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits." }, "request_id": "req_011CSHoEeqs5C35K2UUqR7Fy" }
+    },
+    "billing_error": {
+      "source": "https://platform.claude.com/docs/en/api/errors (402 billing_error; message illustrative)",
+      "status": 402,
+      "headers": {},
+      "body": { "type": "error", "error": { "type": "billing_error", "message": "There is an issue with your billing or payment information." }, "request_id": "req_011CSHoEeqs5C35K2UUqR7Fy" }
+    },
+    "permission_error": {
+      "source": "https://platform.claude.com/docs/en/api/errors (403 permission_error; message illustrative)",
+      "status": 403,
+      "headers": {},
+      "body": { "type": "error", "error": { "type": "permission_error", "message": "Your API key does not have permission to use the specified resource." }, "request_id": "req_011CSHoEeqs5C35K2UUqR7Fy" }
+    },
+    "spend_limit": {
+      "source": "https://platform.claude.com/docs/en/api/rate-limits#setting-your-own-spend-limit (a 400 invalid_request_error whose message starts with this text and states when access resumes)",
+      "status": 400,
+      "headers": {},
+      "body": { "type": "error", "error": { "type": "invalid_request_error", "message": "You have reached your specified API usage limits. You will regain access on 2026-12-01 at 00:00 UTC." }, "request_id": "req_018EeWyXxfu5pfWkrYcMdjWG" }
+    },
+    "workspace_spend_limit": {
+      "source": "https://platform.claude.com/docs/en/api/rate-limits#setting-your-own-spend-limit (the workspace limit's wording)",
+      "status": 400,
+      "headers": {},
+      "body": { "type": "error", "error": { "type": "invalid_request_error", "message": "You have reached your specified workspace API usage limits. You will regain access on 2026-12-01 at 00:00 UTC." }, "request_id": "req_018EeWyXxfu5pfWkrYcMdjWG" }
+    },
+    "tier_spend_cap": {
+      "source": "https://platform.claude.com/docs/en/api/rate-limits#reaching-your-spend-cap (verbatim; no retry-after header)",
+      "status": 429,
+      "headers": {},
+      "body": {
+        "type": "error",
+        "error": {
+          "type": "rate_limit_error",
+          "message": "You have reached your API usage limits: your organization has crossed its monthly API usage threshold, set based on your organization's API tier. You will regain access on 2026-09-01 at 00:00 UTC.",
+          "details": { "error_code": "enforced_spend_limit_reached" }
+        },
+        "request_id": "req_018EeWyXxfu5pfWkrYcMdjWG"
+      }
+    },
+    "rate_limited": {
+      "source": "https://platform.claude.com/docs/en/api/rate-limits (a 429 rate_limit_error with retry-after; message illustrative)",
+      "status": 429,
+      "headers": { "retry-after": "7" },
+      "body": { "type": "error", "error": { "type": "rate_limit_error", "message": "This request would exceed your organization's rate limit of 50,000 input tokens per minute." }, "request_id": "req_018EeWyXxfu5pfWkrYcMdjWG" }
+    },
+    "rate_limited_no_retry_after": {
+      "source": "https://platform.claude.com/docs/en/api/rate-limits (not every 429 carries retry-after, such as an acceleration limit; message illustrative)",
+      "status": 429,
+      "headers": {},
+      "body": { "type": "error", "error": { "type": "rate_limit_error", "message": "Your organization's usage increased sharply; slow down and try again." }, "request_id": "req_018EeWyXxfu5pfWkrYcMdjWG" }
+    },
+    "overloaded": {
+      "source": "https://platform.claude.com/docs/en/api/errors (529 overloaded_error; message illustrative)",
+      "status": 529,
+      "headers": {},
+      "body": { "type": "error", "error": { "type": "overloaded_error", "message": "Overloaded" }, "request_id": "req_011CSHoEeqs5C35K2UUqR7Fy" }
+    },
+    "api_error": {
+      "source": "https://platform.claude.com/docs/en/api/errors (500 api_error; message illustrative)",
+      "status": 500,
+      "headers": {},
+      "body": { "type": "error", "error": { "type": "api_error", "message": "Internal server error" }, "request_id": "req_011CSHoEeqs5C35K2UUqR7Fy" }
+    },
+    "timeout_error": {
+      "source": "https://platform.claude.com/docs/en/api/errors (504 timeout_error; message illustrative)",
+      "status": 504,
+      "headers": {},
+      "body": { "type": "error", "error": { "type": "timeout_error", "message": "Request timed out" }, "request_id": "req_011CSHoEeqs5C35K2UUqR7Fy" }
+    },
+    "request_too_large": {
+      "source": "https://platform.claude.com/docs/en/api/errors (413 request_too_large)",
+      "status": 413,
+      "headers": {},
+      "body": { "type": "error", "error": { "type": "request_too_large", "message": "Request exceeds the maximum allowed number of bytes." }, "request_id": "req_011CSHoEeqs5C35K2UUqR7Fy" }
+    },
+    "invalid_request": {
+      "source": "https://platform.claude.com/docs/en/api/errors (a 400 about the request itself, as quoted there)",
+      "status": 400,
+      "headers": {},
+      "body": { "type": "error", "error": { "type": "invalid_request_error", "message": "This model does not support assistant message prefill. The conversation must end with a user message." }, "request_id": "req_011CSHoEeqs5C35K2UUqR7Fy" }
+    }
+  }
+}

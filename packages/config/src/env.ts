@@ -71,7 +71,7 @@ export const settings = {
   LLM_FALLBACK_TPM: perMinute(8_000),
   // A page whose text layer has fewer non-space characters than this is read as an image, like a scan.
   LLM_TEXT_MIN_CHARS: integer(100),
-  // The paid Claude backup between each role's main model and the free fallback. Empty (the default) turns it off.
+  // Claude, which reads first at every step, with each step's free model behind it. Empty (the default) turns it off.
   LLM_CLAUDE_MODEL: z.string().default(''),
   LLM_CLAUDE_RPM: perMinute(50),
   LLM_CLAUDE_TPM: perMinute(50_000),
@@ -81,6 +81,8 @@ export const settings = {
     .default(''),
   // Claude's own UTC day, apart from DAILY_AI_TOKEN_BUDGET: $15 to 2026-11-10 over 21 days at $0.50 per million.
   DAILY_CLAUDE_TOKEN_BUDGET: integer(1_400_000),
+  // The most Claude may ever bill, in dollars and cents ("15.00"); reaching it switches Claude off for good.
+  LLM_CLAUDE_SPEND_CAP_USD: z.union([z.literal(''), z.string().regex(/^\d+(\.\d{1,2})?$/, 'dollars and cents, such as 15.00')]).default(''),
   // One key per provider account; required while AI_ENABLED is true for each provider a role uses. Empty means not set.
   GEMINI_API_KEY: z.string().optional(),
   GROQ_API_KEY: z.string().optional(),
@@ -157,6 +159,7 @@ export const LLM_SETTINGS = [
   'LLM_CLAUDE_RPM',
   'LLM_CLAUDE_TPM',
   'LLM_CLAUDE_FIRST_UNTIL',
+  'LLM_CLAUDE_SPEND_CAP_USD',
 ] as const satisfies (keyof Settings)[];
 
 const BASE_URLS: Record<LlmProvider, string> = {
@@ -202,12 +205,19 @@ export function llmRoles(env: LlmEnv) {
     provider === 'ollama' || apiKey ? [] : [`LLM_${name.toUpperCase()}_PROVIDER is ${provider}, which needs ${KEYS[provider]}`],
   );
   if (roles.fallback.provider === roles.primary.provider) problems.push('LLM_FALLBACK_PROVIDER must differ from LLM_PRIMARY_PROVIDER');
-  // The Claude backup, only while LLM_CLAUDE_MODEL names a model; evals never take it, since a run pins one model per role.
+  // Claude's gate, with its end date, caps and spend cap, is the only way to Claude: no role may name it.
+  for (const [name, { provider }] of Object.entries(roles)) {
+    if (provider === 'anthropic') problems.push(`LLM_${name.toUpperCase()}_PROVIDER cannot be anthropic: Claude reads first through LLM_CLAUDE_MODEL`);
+  }
+  // Claude, while LLM_CLAUDE_MODEL names a model: first at every step until its end date, under its spend cap.
   const claude: LlmRole | undefined = env.LLM_CLAUDE_MODEL
     ? { provider: 'anthropic', model: env.LLM_CLAUDE_MODEL, baseUrl: BASE_URLS.anthropic, apiKey: env.ANTHROPIC_API_KEY || undefined, rpm: env.LLM_CLAUDE_RPM, tpm: env.LLM_CLAUDE_TPM }
     : undefined;
-  if (claude && !claude.apiKey) problems.push('LLM_CLAUDE_MODEL is set, which needs ANTHROPIC_API_KEY');
   const claudeFirst = env.LLM_CLAUDE_FIRST_UNTIL ? { until: env.LLM_CLAUDE_FIRST_UNTIL } : undefined;
+  const claudeSpendCap = env.LLM_CLAUDE_SPEND_CAP_USD || undefined;
+  if (claude && !claude.apiKey) problems.push('LLM_CLAUDE_MODEL is set, which needs ANTHROPIC_API_KEY');
+  if (claude && !claudeFirst) problems.push('LLM_CLAUDE_MODEL is set, which needs LLM_CLAUDE_FIRST_UNTIL');
+  if (claude && !claudeSpendCap) problems.push('LLM_CLAUDE_MODEL is set, which needs LLM_CLAUDE_SPEND_CAP_USD');
   if (claudeFirst && !claude) problems.push('LLM_CLAUDE_FIRST_UNTIL is set, which needs LLM_CLAUDE_MODEL');
-  return { roles, claude, claudeFirst, problems };
+  return { roles, claude, claudeFirst, claudeSpendCap, problems };
 }

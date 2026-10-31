@@ -7,7 +7,7 @@ import { CLAUDE_EXTRACTION_CAP, CLAUDE_FIRST_MAX_TOKENS, CLAUDE_INPUT_CAP } from
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import type { GoldenCase } from '../golden/build.ts';
 import { writeLandingResults } from './landing.ts';
-import { failuresOf, type Measured, measure, meets, type Metric, METRICS, scoreCase, type Score } from './metrics.ts';
+import { failuresOf, type Measured, measure, meets, type Metric, METRICS, replied, scoreCase, type Score } from './metrics.ts';
 import type { Roles, Run, Subset } from './run.ts';
 
 // Floors per subset: a minimum for metrics where higher is better, a maximum for the others. Floors only tighten;
@@ -97,44 +97,114 @@ export async function loadTestRows(root = ROOT) {
   return rows;
 }
 
+// Which models actually read the run: each one's calls, the failed ones among them, its tokens, the versions it reported
+// serving, and its share of all the run's calls, most calls first.
 const usage = (runs: Run[]) => {
-  const rows = new Map<string, { calls: number; input: number; output: number; served: Set<string> }>();
+  const rows = new Map<string, { calls: number; failed: number; input: number; output: number; served: Set<string> }>();
   for (const run of runs)
     for (const result of run.results.values())
       for (const call of result.calls) {
-        const row = rows.get(`${call.provider}/${call.model}`) ?? { calls: 0, input: 0, output: 0, served: new Set<string>() };
+        const row = rows.get(`${call.provider}/${call.model}`) ?? { calls: 0, failed: 0, input: 0, output: 0, served: new Set<string>() };
         row.calls += 1;
+        if (!replied(call)) row.failed += 1;
         row.input += call.inputTokens;
         row.output += call.outputTokens;
         if (call.servedModel) row.served.add(call.servedModel);
         rows.set(`${call.provider}/${call.model}`, row);
       }
-  return rows;
+  const total = [...rows.values()].reduce((sum, row) => sum + row.calls, 0);
+  return [...rows]
+    .sort(([, a], [, b]) => b.calls - a.calls)
+    .map(([model, row]) => ({ model, servedAs: [...row.served], calls: row.calls, share: total ? Number((row.calls / total).toFixed(4)) : 0, failed: row.failed, inputTokens: row.input, outputTokens: row.output }));
 };
-const pins = (roles: Roles) => Object.entries(roles).map(([role, { provider, model }]) => `${role} ${provider}/${model}`).join(', ');
+export type ModelUse = ReturnType<typeof usage>[number];
+const percent = (share: number) => `${(share * 100).toFixed(1)}%`;
+// As in "anthropic/claude-haiku-5-5 90.0% of calls, groq/qwen/qwen3.8-27b 10.0%".
+const servedBy = (use: Pick<ModelUse, 'model' | 'share'>[]) => use.map(({ model, share }, i) => `${model} ${percent(share)}${i === 0 ? ' of calls' : ''}`).join(', ');
+// Claude first at every step when the run reads it so, then each role's free model.
+const pins = (roles: Roles, claude?: { provider: string; model: string }) =>
+  `${claude ? `${claude.provider}/${claude.model} first at every step, then ` : ''}${Object.entries(roles)
+    .map(([role, { provider, model }]) => `${role} ${provider}/${model}`)
+    .join(', ')}`;
 
-// A full run is the official report and has the date alone; a labelled configuration always names its subset and itself.
-// A later set version follows the date, its dev reports carry the prompt they read with, so a before and an after on one
-// day never overwrite each other, and repeated reads (--repeat) add their count.
+// A full run of the free models alone is the official free report and has the date alone, the names CI and the floors
+// know; a Claude-first run always names its subset and itself. A later set version follows the date, its dev reports
+// carry the prompt they read with, so a before and an after on one day never overwrite each other, and repeated reads
+// (--repeat) add their count.
 export function reportName(subset: Subset, date: string, config?: string, { version = 'v1', promptHash, repeat = 1 }: { version?: string; promptHash?: string; repeat?: number } = {}) {
+  const label = config === 'free' ? undefined : config;
   const times = repeat > 1 ? `-x${repeat}` : '';
-  if (version === 'v1') return `${config ? `${date}-${subset}-${config}` : subset === 'full' ? date : `${date}-${subset}`}${times}`;
+  if (version === 'v1') return `${label ? `${date}-${subset}-${label}` : subset === 'full' ? date : `${date}-${subset}`}${times}`;
   const prompt = subset === 'dev' && promptHash ? [promptHash.slice(0, 6)] : [];
-  return `${[date, version, ...(subset === 'full' && !config ? [] : [subset]), ...prompt, ...(config ? [config] : [])].join('-')}${times}`;
+  return `${[date, version, ...(subset === 'full' && !label ? [] : [subset]), ...prompt, ...(label ? [label] : [])].join('-')}${times}`;
 }
 // The set CI gates on, whose full runs write the README's table and the landing page's results.
 export const DEFAULT_GOLDEN = 'v2';
 // v1's floors keep their file; each later version has its own, under the same rules.
 export const thresholdsFile = (version: string) => (version === 'v1' ? 'thresholds.json' : `thresholds-${version}.json`);
-// The newest official report of a set version: a full run's, named by its date alone (and the version after v1).
-export const latestOfficial = (files: string[], version: string) =>
-  files.filter((file) => new RegExp(`^\\d{4}-\\d{2}-\\d{2}${version === 'v1' ? '' : `-${version}`}\\.json$`).test(file)).sort().at(-1);
-export const readmeIntro = ({ version, cases, date, served, name }: { version: string; cases: number; date: string; served: string; name: string }) =>
-  `Golden set ${version} (${cases} synthetic invoices, ground truth from the generator), measured ${date} with ${served}. ${cases} cases give wide intervals; misses are listed as misses. Full report: \`evals/reports/${name}.md\`.`;
-// Whether a run rewrites the README's table and the landing results: only a full run of the default set that read every
-// case, never a quota stop, a labelled configuration or a run that left cases unread (--cached on a partial cache).
-export const writesReadme = ({ subset, version, config, stopped, unread = 0 }: { subset: Subset; version: string; config?: string | undefined; stopped?: string | undefined; unread?: number }) =>
-  subset === 'full' && !stopped && !config && version === DEFAULT_GOLDEN && unread === 0;
+// The newest official report of a set version for a run, Claude first or the free models alone: a full run's, by name.
+export const latestOfficial = (files: string[], version: string, config?: string) => {
+  const name = new RegExp(`^${reportName('full', '\\d{4}-\\d{2}-\\d{2}', config, { version })}\\.json$`);
+  return files.filter((file) => name.test(file)).sort().at(-1);
+};
+// Whether a run rewrites the README's table and the landing results: a full run of the default set, Claude first or the
+// free models alone, that read every case; never a quota stop or a run that left cases unread (--cached on a partial
+// cache).
+export const writesReadme = ({ subset, version, stopped, unread = 0 }: { subset: Subset; version: string; config?: string | undefined; stopped?: string | undefined; unread?: number }) =>
+  subset === 'full' && !stopped && version === DEFAULT_GOLDEN && unread === 0;
+
+type Official = { name: string; json: { date: string; cases: number; pins: string; metrics: Measured[]; modelUse?: Pick<ModelUse, 'model' | 'share'>[] } };
+export type Officials = { claudeFirst?: Official | undefined; free?: Official | undefined };
+// The latest official report of each run of a set version, as written.
+export async function officialReports(root = ROOT, version = DEFAULT_GOLDEN): Promise<Officials> {
+  const reports = new URL('evals/reports/', root);
+  const files = existsSync(reports) ? await readdir(reports) : [];
+  const load = async (config: 'claude-first' | 'free') => {
+    const file = latestOfficial(files, version, config);
+    return file ? { name: file.slice(0, -'.json'.length), json: JSON.parse(await readFile(new URL(file, reports), 'utf8')) as Official['json'] } : undefined;
+  };
+  return { claudeFirst: await load('claude-first'), free: await load('free') };
+}
+
+// The README's eval table: the Claude-first run first, labelled, and the free models alone beside it, labelled as what CI
+// checks and what reads once Claude stops; then the k6 load test's rows. End-to-end latency comes from k6 alone.
+export function readmeSection({ claudeFirst, free }: Officials, loadRows: string[]) {
+  const cases = (claudeFirst ?? free)?.json.cases ?? 0;
+  const byMetric = (official?: Official) => new Map((official?.json.metrics ?? []).map((m) => [m.metric, m]));
+  const [first, alone] = [byMetric(claudeFirst), byMetric(free)];
+  const cells = (official: Official | undefined, m: Measured | undefined, metric: Metric) =>
+    official ? `${fmt(metric.unit, m?.value ?? undefined)} | ${ci(metric.unit, m?.ci ?? undefined)} | ${meets(m?.value ?? undefined, metric.target!) ? 'yes' : 'no'}` : 'not measured | - | -';
+  const line = (label: string, about: string, official?: Official) =>
+    official
+      ? `- **${label}** (${about}): measured ${official.json.date}${official.json.modelUse ? `; served: ${servedBy(official.json.modelUse)}` : ` with ${official.json.pins}`}. Full report: \`evals/reports/${official.name}.md\`.`
+      : `- **${label}**: not measured yet.`;
+  return [
+    '<!-- eval:start -->',
+    '## Eval results',
+    '',
+    `Golden set ${DEFAULT_GOLDEN} (${cases} synthetic invoices, ground truth from the generator), read two ways. ${cases} cases give wide intervals; misses are listed as misses.`,
+    '',
+    line('Claude first', "Claude Haiku 5.5 reads first at every step, with the free models behind it: the demo's chain while Claude reads first", claudeFirst),
+    line('Free models only', 'what CI checks on every change to extraction, and what reads once Claude stops at its end date, its spend cap or its credit', free),
+    '',
+    '| Metric | Target | Claude first | 95% CI | Met | Free models only | 95% CI | Met |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
+    ...METRICS.filter((metric) => metric.target && metric.metric !== 'e2e_latency_p95_ms').map(
+      (metric) => `| ${metric.label} | ${bound(metric.target!.op, metric.unit, metric.target!.value)} | ${cells(claudeFirst, first.get(metric.metric), metric)} | ${cells(free, alone.get(metric.metric), metric)} |`,
+    ),
+    ...(loadRows.length > 0 ? ['', 'Under load, from the k6 load test:', '', '| Metric | Target | Measured | 95% CI | Met | Model | Date |', '| --- | --- | --- | --- | --- | --- | --- |', ...loadRows] : []),
+    '<!-- eval:end -->',
+  ].join('\n');
+}
+
+async function writeReadme(root: URL, officials: Officials) {
+  const table = readmeSection(officials, await loadTestRows(root));
+  const readmeUrl = new URL('README.md', root);
+  const readme = await readFile(readmeUrl, 'utf8');
+  const marked = /<!-- eval:start -->[\s\S]*<!-- eval:end -->/;
+  // A function, so a "$1" in a dollar amount is never read as a capture group.
+  await writeFile(readmeUrl, marked.test(readme) ? readme.replace(marked, () => table) : readme.replace(/^(# .*\n)/, (heading) => `${heading}\n${table}\n`));
+}
 
 export type Breakdown = { by: 'kind' | 'trait'; name: string; cases: number; header: [number, number]; carrier: [number, number]; count: [number, number]; outcome: [number, number] };
 // Per kind, then per trait: cases (reads, with --repeat), header fields, the carrier, invoices read against the truth and
@@ -178,13 +248,18 @@ async function beside(scores: Score[], run: Run, reports: URL) {
       lines.push(`| ${metric.label} | ${fmt(metric.unit, free.get(m.metric)?.value)} | ${fmt(metric.unit, m.value)} |`);
     }
   }
-  const calls = [...run.results.values()].flatMap((result) => result.calls).filter((call) => call.provider === 'anthropic' && (call.outcome === 'valid' || call.outcome === 'invalid'));
-  // An invoice's Claude calls run from its first pass to the next one.
-  const perInvoice: number[] = [];
+  const calls = [...run.results.values()].flatMap((result) => result.calls).filter((call) => call.provider === 'anthropic' && replied(call));
+  // An invoice's Claude tokens in one attempt, as the cap counts them: from its Claude first pass to the next one, since a
+  // job retry starts the ladder over.
+  const tokens = new Map<string, number>();
+  const attempts = new Map<string, number>();
   for (const call of calls) {
-    if (call.step === 'first_pass' || perInvoice.length === 0) perInvoice.push(0);
-    perInvoice[perInvoice.length - 1]! += call.inputTokens + call.outputTokens;
+    const invoice = call.invoiceId ?? '';
+    if (call.step === 'first_pass') attempts.set(invoice, (attempts.get(invoice) ?? 0) + 1);
+    const key = `${invoice}#${attempts.get(invoice) ?? 1}`;
+    tokens.set(key, (tokens.get(key) ?? 0) + call.inputTokens + call.outputTokens);
   }
+  const perInvoice = [...tokens.values()];
   lines.push(
     '',
     '## Claude against its caps',
@@ -193,7 +268,7 @@ async function beside(scores: Score[], run: Run, reports: URL) {
     '| --- | --- | --- |',
     `| Output tokens per call | ${largest(calls.map((call) => call.outputTokens))} | ${CLAUDE_FIRST_MAX_TOKENS.toLocaleString('en-US')} |`,
     `| Input tokens per call | ${largest(calls.map((call) => call.inputTokens))} | ${CLAUDE_INPUT_CAP.toLocaleString('en-US')}, estimated before sending |`,
-    `| Claude tokens per invoice | ${largest(perInvoice)} | ${CLAUDE_EXTRACTION_CAP.toLocaleString('en-US')}, with the next call reserved |`,
+    `| Claude tokens per invoice attempt | ${largest(perInvoice)} | ${CLAUDE_EXTRACTION_CAP.toLocaleString('en-US')}, with the next call reserved |`,
   );
   return lines;
 }
@@ -225,12 +300,17 @@ export async function report({
   const rewrites = writesReadme({ subset, version, config, stopped, unread: scored.reduce((sum, { run, scores }) => sum + run.cases.length - scores.length, 0) });
   const used = usage(runs);
   const usageTable = [
-    '| Model | Served as | Calls | Input tokens | Output tokens |',
-    '| --- | --- | --- | --- | --- |',
-    ...[...used].map(([model, row]) => `| ${model} | ${[...row.served].join(', ')} | ${row.calls} | ${row.input.toLocaleString('en-US')} | ${row.output.toLocaleString('en-US')} |`),
+    '| Model | Served as | Calls | Share of calls | Failed | Input tokens | Output tokens |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
+    ...used.map(
+      (row) =>
+        `| ${row.model} | ${row.servedAs.join(', ')} | ${row.calls} | ${percent(row.share)} | ${row.failed} | ${row.inputTokens.toLocaleString('en-US')} | ${row.outputTokens.toLocaleString('en-US')} |`,
+    ),
   ];
+  // A Claude-first run is never held to the floors, which come from the free models alone, and never sets them.
+  const labelled = config !== undefined && config !== 'free';
   const head = (run: Run, scores: Score[]) =>
-    `${scores.length} of ${run.cases.length} cases (${run.computed} run now, the rest from the cache), prompt ${run.promptHash}, models: ${pins(run.roles)}.`;
+    `${scores.length} of ${run.cases.length} cases (${run.computed} run now, the rest from the cache), prompt ${run.promptHash}, models: ${pins(run.roles, run.claude)}.`;
   const lines: string[] = [];
   let code = stopped ? 2 : 0;
   const json: Record<string, unknown> = { suite: 'extraction', subset, date, durationMs, stopped: stopped ?? null };
@@ -246,14 +326,14 @@ export async function report({
       lines.push(`| ${metric.label} | ${measured.map((m) => `${fmt(metric.unit, m.get(key)?.value)} (${ci(metric.unit, m.get(key)?.ci)})`).join(' | ')} |`);
     }
     lines.push('', '## Model use', '', ...usageTable);
-    json.runs = scored.map(({ run, scores }, i) => ({ label: run.label, pins: pins(run.roles), promptHash: run.promptHash, cases: scores.length, metrics: [...measured[i]!.values()] }));
+    json.runs = scored.map(({ run, scores }, i) => ({ label: run.label, pins: pins(run.roles, run.claude), promptHash: run.promptHash, cases: scores.length, metrics: [...measured[i]!.values()] }));
+    json.modelUse = used;
   } else {
     const [{ run, scores }] = scored as [(typeof scored)[number]];
     const measured: Measured[] = measure(scores);
     const ceiling = throughput(scores, run.roles);
     const thresholds: Thresholds = existsSync(thresholdsUrl) ? (JSON.parse(await readFile(thresholdsUrl, 'utf8')) as Thresholds) : {};
-    // A labelled configuration is never held to the official floors and never sets them.
-    const floors = config ? {} : (thresholds[subset] ??= {});
+    const floors = labelled ? {} : (thresholds[subset] ??= {});
     const suggestions: string[] = [];
     const rows = measured.map((m) => {
       const metric = metricOf(m.metric);
@@ -282,7 +362,16 @@ export async function report({
         ? `${scores.length} cases give wide intervals: read each measurement with its 95% interval.`
         : `${scores.length} ${(repeat ?? 1) > 1 ? 'reads' : 'cases'} give very wide intervals; this subset guards against regressions, it does not measure the targets.${subset === 'ci' ? ' Its two latency p95 rows are shown against their floors without gating: a p95 of so few cases is the slowest one or two, which one slow provider call moves.' : ''}`;
     const reads = (repeat ?? 1) > 1 ? ` Each case read ${repeat} times, each read in its own environment; the tables count reads.` : '';
-    lines.push(`# Extraction eval: ${subset} (${date})`, '', `Golden set ${version}, ${head(run, scores)} Took ${Math.round(durationMs / 1000)} s.${reads}`, '', wide, '');
+    lines.push(
+      `# Extraction eval: ${subset} (${date})`,
+      '',
+      `Golden set ${version}, ${head(run, scores)} Took ${Math.round(durationMs / 1000)} s.${reads}`,
+      '',
+      `Served: ${used.length > 0 ? servedBy(used) : 'no model call'}.`,
+      '',
+      wide,
+      '',
+    );
     if (stopped) lines.push(`**Stopped early on a spent quota (${stopped}); rerun the same command to resume from the cache.**`, '');
     lines.push('| Metric | Design target | Target | Floor | Floor | Measured | 95% CI | n |', '| --- | --- | --- | --- | --- | --- | --- | --- |');
     for (const { m, metric, floorBound, floorOk, gated } of rows) {
@@ -331,43 +420,33 @@ export async function report({
         `| ${s.id} | ${kinds.get(s.id)} | ${traits.get(s.id)} | ${s.path} | ${s.header.correct}/${s.header.total} | ${s.invoices.read} of ${s.invoices.truth} | ${s.lines.tp}/${s.lines.fp}/${s.lines.fn} | ${s.overcharges.tp}/${s.overcharges.fp}/${s.overcharges.fn} | ${s.outcomes.ok}/${s.outcomes.total} | ${result.status}${result.error ? ` (${result.error})` : ''} |`,
       );
     }
-    if (config) lines.push(...(await beside(scores, run, reports)));
-    Object.assign(json, { config: config ?? null, golden: version, repeat: repeat ?? 1, promptHash: run.promptHash, pins: pins(run.roles), cases: scores.length, computed: run.computed, metrics: measured, throughputPerHour: ceiling ?? null, floors, failures, breakdown, scores });
-
-    if (rewrites) {
-      // Every pinned role with the model version the provider reported serving, or that it was never called.
-      const served = Object.entries(run.roles)
-        .map(([role, { provider, model }]) => {
-          const row = used.get(`${provider}/${model}`);
-          return `${role} ${provider}/${model} (${row ? `served as ${[...row.served].join(', ')}` : 'not called'})`;
-        })
-        .join(', ');
-      const modelOf = (key: string) => (key.includes('_digital') ? `${run.roles.text.provider}/${run.roles.text.model}` : key.includes('_scanned') ? `${run.roles.primary.provider}/${run.roles.primary.model}` : 'all roles');
-      const table = [
-        '<!-- eval:start -->',
-        '## Eval results',
-        '',
-        readmeIntro({ version, cases: scores.length, date, served, name }),
-        '',
-        '| Metric | Target | Measured | 95% CI | Met | Model | Date |',
-        '| --- | --- | --- | --- | --- | --- | --- |',
-        // End-to-end latency and throughput come from the k6 load test; this run's throttled ones stay in its report.
-        ...rows
-          .filter(({ metric }) => metric.target && metric.metric !== 'e2e_latency_p95_ms')
-          .map(({ m, metric }) => `| ${metric.label} | ${bound(metric.target!.op, metric.unit, metric.target!.value)} | ${fmt(metric.unit, m.value)} | ${ci(metric.unit, m.ci)} | ${meets(m.value, metric.target!) ? 'yes' : 'no'} | ${modelOf(m.metric)} | ${date} |`),
-        ...(await loadTestRows(root)),
-        '<!-- eval:end -->',
-      ].join('\n');
-      const readmeUrl = new URL('README.md', root);
-      const readme = await readFile(readmeUrl, 'utf8');
-      const marked = /<!-- eval:start -->[\s\S]*<!-- eval:end -->/;
-      await writeFile(readmeUrl, marked.test(readme) ? readme.replace(marked, table) : readme.replace(/^(# .*\n)/, `$1\n${table}\n`));
-    }
+    if (labelled) lines.push(...(await beside(scores, run, reports)));
+    Object.assign(json, {
+      config: config ?? null,
+      golden: version,
+      repeat: repeat ?? 1,
+      promptHash: run.promptHash,
+      pins: pins(run.roles, run.claude),
+      cases: scores.length,
+      computed: run.computed,
+      modelUse: used,
+      metrics: measured,
+      throughputPerHour: ceiling ?? null,
+      floors,
+      failures,
+      breakdown,
+      scores,
+    });
   }
-  await writeFile(new URL(`${name}.json`, reports), `${JSON.stringify(json, (_, value: unknown) => (value instanceof Set ? [...value] : value), 2)}\n`);
+  await writeFile(new URL(`${name}.json`, reports), `${JSON.stringify(json, null, 2)}\n`);
   await writeFile(new URL(`${name}.md`, reports), `${lines.join('\n')}\n`);
-  // The landing page's results table follows the report the README now names, read back once it is written.
-  if (rewrites) await writeLandingResults(root);
+  // The README's eval table and the landing page's results follow the latest official report of each run, read back once
+  // this one is written.
+  if (rewrites) {
+    const officials = await officialReports(root, version);
+    await writeReadme(root, officials);
+    await writeLandingResults(root, officials);
+  }
   console.log(lines.join('\n'));
   return code;
 }

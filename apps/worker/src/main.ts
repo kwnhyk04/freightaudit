@@ -1,8 +1,9 @@
 import { configError, LLM_SETTINGS, llmRoles, loadEnv } from '@freightaudit/config/env';
-import { createPool } from '@freightaudit/db';
+import { createPool, llmCalls } from '@freightaudit/db';
 import { createLimits, createModels, hasPrice } from '@freightaudit/llm';
 import { createQueues, createStorage, observeQueues } from '@freightaudit/pipeline';
 import { readiness, serverOptions, shutdownTelemetry, tcpCheck } from '@freightaudit/telemetry';
+import { eq, sum } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import Fastify from 'fastify';
 import { Redis } from 'ioredis';
@@ -30,7 +31,7 @@ const env = loadEnv([
   ...LLM_SETTINGS,
 ]);
 // With AI off nothing is required: no model is built and extract jobs wait.
-const { roles, claude, claudeFirst, problems } = llmRoles(env);
+const { roles, claude, claudeFirst, claudeSpendCap, problems } = llmRoles(env);
 const unpriced = [...Object.values(roles), ...(claude ? [claude] : [])].flatMap(({ provider, model }) =>
   hasPrice(provider, model) ? [] : [`${provider}/${model} has no entry in packages/llm/prices.json`],
 );
@@ -47,18 +48,26 @@ const limits = createLimits(redis, {
   enabled: env.AI_ENABLED,
   dailyTokenBudget: env.DAILY_AI_TOKEN_BUDGET,
   dailyClaudeBudget: env.DAILY_CLAUDE_TOKEN_BUDGET,
+  claudeSpendCap,
   roles: { ...roles, claude },
 });
-// Which way Claude runs, never its key: off, the backup, or first until a UTC date.
-app.log.info({ claude: claude ? { model: claude.model, first: claudeFirst?.until ?? false, dailyTokens: env.DAILY_CLAUDE_TOKEN_BUDGET } : false }, 'claude');
+const db = drizzle(pool);
+// Claude's total counts every Claude call Postgres recorded, so a Redis that lost it never lets Claude past its cap.
+const recorded = claude && env.AI_ENABLED ? (await db.select({ total: sum(llmCalls.costMicroUsd) }).from(llmCalls).where(eq(llmCalls.provider, 'anthropic')))[0]?.total : undefined;
+const spent = claude && env.AI_ENABLED ? await limits.seedClaudeSpent(BigInt(recorded ?? 0)) : undefined;
+// How Claude runs, never its key: off, or first until a UTC date, under its day and its spend cap.
+app.log.info(
+  { claude: claude ? { model: claude.model, until: claudeFirst?.until, dailyTokens: env.DAILY_CLAUDE_TOKEN_BUDGET, spendCapUsd: claudeSpendCap, spentMicroUsd: spent?.toString() } : false },
+  'claude',
+);
 const workers = startWorkers(
   {
-    db: drizzle(pool),
+    db,
     redis,
     queues,
     limits,
-    // With LLM_CLAUDE_MODEL set, Claude comes between each role's main model and the free fallback, or first while
-    // LLM_CLAUDE_FIRST_UNTIL lasts; switching it off for good raises the claude_switched_off alert.
+    // With LLM_CLAUDE_MODEL set, Claude reads first at every step until LLM_CLAUDE_FIRST_UNTIL ends, with each step's free
+    // model behind it; switching it off for good raises the claude_switched_off alert.
     models: env.AI_ENABLED ? createModels(roles, limits, { claude, claudeFirst, log: (fields, msg) => app.log.error(fields, msg) }) : undefined,
     textMinChars: env.LLM_TEXT_MIN_CHARS,
     storage: createStorage({ endpoint: env.S3_ENDPOINT, accessKey: env.S3_ACCESS_KEY, secretKey: env.S3_SECRET_KEY, bucket: env.S3_BUCKET }),

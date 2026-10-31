@@ -1,25 +1,20 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_FIRST_MAX_TOKENS } from './claude-first.ts';
 import { ClaudeUnavailableError, type ClaudeUnavailableReason, httpError, parseRetryAfter, TransientError } from './errors.ts';
-import type { Backup, Part } from './extract.ts';
+import type { Part, Provider } from './extract.ts';
 
-// The output ceiling the main readers run at (Gemini 3.5 Flash-Lite and Groq's gpt-oss-120b, both 65,536 by their model
-// metadata), so Claude may write as much as the models it stands behind.
-export const CLAUDE_MAX_TOKENS = 65_536;
-
-type ClaudeOptions = { apiKey: string; model: string; baseUrl?: string | undefined; timeoutMs?: number; fetch?: typeof fetch; maxTokens?: number };
+type ClaudeOptions = { apiKey: string; model: string; baseUrl?: string | undefined; timeoutMs?: number | undefined; fetch?: typeof fetch; maxTokens?: number };
 
 // Claude through the official SDK: structured output to the extraction schema, scans as base64 JPEG (Haiku 5.5 takes
 // images, per its Models API capabilities). Thinking is off, since it counts against max_tokens and could cut the answer
-// short. No temperature: Haiku 5.5 refuses a non-default one. SDK retries are off; the job's retries and the ladder
-// handle failures. maxTokens is the backup's ceiling unless Claude reads first (claude-first.ts). Once the account cannot
-// be used, this process skips it; the gate keeps that for every process.
-export function createClaudeProvider({ apiKey, model, baseUrl, timeoutMs = 60_000, fetch, maxTokens = CLAUDE_MAX_TOKENS }: ClaudeOptions): Backup {
+// short. No temperature: Haiku 5.5 refuses a non-default one. SDK retries are off; the ladder and the job's retries
+// handle failures. Every call passes Claude's gate (claude-first.ts), which keeps Claude off once its account cannot be
+// used.
+export function createClaudeProvider({ apiKey, model, baseUrl, timeoutMs = 60_000, fetch, maxTokens = CLAUDE_FIRST_MAX_TOKENS }: ClaudeOptions): Provider {
   const client = new Anthropic({ apiKey, baseURL: baseUrl, timeout: timeoutMs, maxRetries: 0, ...(fetch ? { fetch } : {}) });
-  let unavailable: ClaudeUnavailableReason | undefined;
   return {
     name: 'anthropic',
     model,
-    available: () => unavailable === undefined,
     async generate({ prompt, parts, schema }) {
       const started = performance.now();
       try {
@@ -43,10 +38,7 @@ export function createClaudeProvider({ apiKey, model, baseUrl, timeoutMs = 60_00
         if (err instanceof Anthropic.APIConnectionError) throw new TransientError('connection failed', { cause: err, kind: 'network' });
         if (!(err instanceof Anthropic.APIError) || err.status === undefined) throw err;
         const reason = unavailableReason(err);
-        if (reason) {
-          unavailable = reason;
-          throw new ClaudeUnavailableError(reason, err.status);
-        }
+        if (reason) throw new ClaudeUnavailableError(reason, err.status);
         // The error type, never the message, which may quote the request.
         throw httpError(err.status, `anthropic HTTP ${err.status}${err.type ? ` ${err.type}` : ''}`, parseRetryAfter(err.headers?.get('retry-after')));
       }
@@ -54,14 +46,17 @@ export function createClaudeProvider({ apiKey, model, baseUrl, timeoutMs = 60_00
   };
 }
 
-// An account that cannot be used: a 402 billing_error, a 400 invalid_request_error about the credit balance or a spend
-// limit, or a 401, 403 or 404 (a bad key or model). A 429 is a rate limit, with or without retry-after. Only those two
-// 400 messages are read, and only to tell them apart; no message is kept.
+// An account that cannot be used: a 402 billing_error; the usage tier's monthly spend cap, a 429 whose details name
+// enforced_spend_limit_reached (it has no retry-after and fails until the month ends); a 400 invalid_request_error about
+// the credit balance or a spend limit; or a 401, 403 or 404 (a bad key or model). Any other 429 is a rate limit. Only
+// those two 400 messages are read, and only to tell them apart; no message is kept.
 function unavailableReason(err: InstanceType<typeof Anthropic.APIError>): ClaudeUnavailableReason | undefined {
+  const { error } = (err.error ?? {}) as { error?: { message?: unknown; details?: { error_code?: unknown } | null } };
+  if (error?.details?.error_code === 'enforced_spend_limit_reached') return 'spend_limit';
   if (err.status === 402 || err.type === 'billing_error') return 'billing_error';
   if (err.status === 401 || err.status === 403 || err.status === 404) return 'bad_key_or_model';
   if (err.status !== 400 || err.type !== 'invalid_request_error') return undefined;
-  const message = String((err.error as { error?: { message?: unknown } } | undefined)?.error?.message ?? '');
+  const message = String(error?.message ?? '');
   if (/credit balance/i.test(message)) return 'credit_balance';
   if (/spend(ing)? limit|usage limit/i.test(message)) return 'spend_limit';
   return undefined;

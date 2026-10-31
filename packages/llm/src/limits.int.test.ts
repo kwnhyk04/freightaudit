@@ -89,18 +89,46 @@ test("Claude has its own UTC day: its tokens never count against the free budget
   const options = { prefix: day, enabled: true, roles: { ...roles({ rpm: 60, tpm: 60_000 }), claude: { rpm: 50, tpm: 50_000 } }, dailyTokenBudget: 1_000, dailyClaudeBudget: 5_000 };
   const limits = createLimits(redis, options);
   const now = Date.parse('2026-10-21T15:00:00Z');
-  expect(await limits.reserveClaude(3_000, now)).toBe(true);
+  expect(await limits.reserveClaude(3_000, 0n, now)).toBe('ok');
   await limits.record('claude', { inputTokens: 1_500, outputTokens: 500 }, 2_000, now);
-  await limits.settleClaude(3_000, { inputTokens: 1_500, outputTokens: 500 }, now);
+  await limits.settleClaude({ tokens: 3_000, micro: 0n }, { inputTokens: 1_500, outputTokens: 500 }, 0n, now);
   expect(await redis.hget(`${day}:llm:day:2026-10-21`, 'claude_tokens')).toBe('2000');
   // The free budget of 1,000 is untouched by Claude's 2,000.
   expect(await limits.blockedUntil(now)).toBeUndefined();
   // 3,000 left: of two reservations of 2,000 sent at once, only one fits.
-  const both = await Promise.all([limits.reserveClaude(2_000, now), createLimits(redis, options).reserveClaude(2_000, now)]);
-  expect(both.filter(Boolean)).toHaveLength(1);
-  expect(await limits.reserveClaude(1_001, now)).toBe(false);
+  const both = await Promise.all([limits.reserveClaude(2_000, 0n, now), createLimits(redis, options).reserveClaude(2_000, 0n, now)]);
+  expect(both.sort()).toEqual(['day', 'ok']);
+  expect(await limits.reserveClaude(1_001, 0n, now)).toBe('day');
   // The next UTC day starts empty.
-  expect(await limits.reserveClaude(5_000, Date.parse('2026-10-22T00:00:00Z'))).toBe(true);
+  expect(await limits.reserveClaude(5_000, 0n, Date.parse('2026-10-22T00:00:00Z'))).toBe('ok');
+});
+
+test("Claude's spend cap: a reservation takes the day's tokens and the cap's micro-dollars together or neither, two at once never pass it, the total never expires, and a seed keeps the larger total", async () => {
+  const cap = `${prefix}-claude-cap`;
+  // A cap of $0.001: 1,000 micro-dollars.
+  const options = { prefix: cap, enabled: true, roles: { ...roles({ rpm: 60, tpm: 60_000 }), claude: { rpm: 50, tpm: 50_000 } }, dailyTokenBudget: 1e9, dailyClaudeBudget: 10_000, claudeSpendCap: '0.001' };
+  const limits = createLimits(redis, options);
+  const now = Date.parse('2026-10-31T15:00:00Z');
+  const spent = async () => [await redis.get(`${cap}:llm:claude:spent`), await redis.hget(`${cap}:llm:day:2026-10-31`, 'claude_tokens')];
+  expect(await limits.reserveClaude(1_000, 600n, now)).toBe('ok');
+  // Settled to what the call used and billed.
+  await limits.settleClaude({ tokens: 1_000, micro: 600n }, { inputTokens: 500, outputTokens: 100 }, 100n, now);
+  expect(await spent()).toEqual(['100', '600']);
+  expect(await redis.ttl(`${cap}:llm:claude:spent`)).toBe(-1);
+  // 900 micro-dollars left: of two reservations of 600 sent at once, only one fits, and the refused one takes no tokens.
+  const both = await Promise.all([limits.reserveClaude(10, 600n, now), createLimits(redis, options).reserveClaude(10, 600n, now)]);
+  expect(both.sort()).toEqual(['cap', 'ok']);
+  expect(await spent()).toEqual(['700', '610']);
+  // A refund gives a call's whole reservation back.
+  await limits.settleClaude({ tokens: 10, micro: 600n }, { inputTokens: 0, outputTokens: 0 }, 0n, now);
+  expect(await spent()).toEqual(['100', '600']);
+  // A full day is told apart from a reached cap, and the cap wins when both are reached.
+  expect(await limits.reserveClaude(10_000, 1n, now)).toBe('day');
+  expect(await limits.reserveClaude(10_000, 1_000n, now)).toBe('cap');
+  // The seed from what Postgres recorded keeps the larger total, whichever it is.
+  expect(await limits.seedClaudeSpent(50n)).toBe(100n);
+  expect(await limits.seedClaudeSpent(950n)).toBe(950n);
+  expect(await limits.reserveClaude(1, 51n, now)).toBe('cap');
 });
 
 test('the switch to the free models is stored once, seen by every worker process, and stays until claude:resume clears it', async () => {
