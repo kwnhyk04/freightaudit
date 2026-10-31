@@ -16,12 +16,12 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.132.1",
+    "@anthropic-ai/sdk": "^0.137.0",
     "@freightaudit/contracts": "workspace:*",
     "@freightaudit/db": "workspace:*",
     "@freightaudit/domain": "workspace:*",
-    "@google/genai": "^2.29.1",
-    "@napi-rs/canvas": "^1.0.11",
+    "@google/genai": "^2.31.0",
+    "@napi-rs/canvas": "^1.0.13",
     "@opentelemetry/api": "catalog:",
     "ioredis": "catalog:",
     "pdf-lib": "catalog:",
