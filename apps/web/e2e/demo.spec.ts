@@ -8,11 +8,27 @@ const sample = JSON.parse(readFileSync(new URL('../public/demo/invoices.json', i
 };
 const sampleId = (file: string) => sample.invoices.edges.find(({ node }) => node.filename === file)!.node.id;
 type Cell = { result: string; met: boolean } | null;
-const results = JSON.parse(readFileSync(new URL('../lib/eval-results.json', import.meta.url), 'utf8')) as { cases: number; rows: { label: string; claudeFirst: Cell; free: Cell }[] };
+type Run = { date: string } | null;
+const results = JSON.parse(readFileSync(new URL('../lib/eval-results.json', import.meta.url), 'utf8')) as {
+  cases: number;
+  claudeFirst: Run;
+  free: Run;
+  rows: { label: string; claudeFirst: Cell; free: Cell }[];
+};
+// The hero's figures are g066's open finding, as the sample stores it.
+const details = JSON.parse(readFileSync(new URL('../public/demo/invoice-details.json', import.meta.url), 'utf8')) as Record<
+  string,
+  { invoice: { filename: string; discrepancies: { edges: { node: { status: string; billedCents: number; expectedCents: number } }[] } } }
+>;
+const g066 = Object.values(details)
+  .find(({ invoice }) => invoice.filename === 'g066.pdf')!
+  .invoice.discrepancies.edges.find(({ node }) => node.status === 'OPEN')!.node;
+const usd = (cents: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
+const longDate = (date: string) => new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
 const offline = `http://127.0.0.1:${process.env.E2E_OFFLINE_PORT ?? 3002}`;
 const unknown = '00000000-0000-4000-8000-000000000000';
 const env = parseEnv(readFileSync(new URL('e2e.env', import.meta.url), 'utf8'));
-const HEADLINE = 'Catch freight overbilling before you pay it.';
+const HEADLINE = 'Pay the contract rate, not the invoice.';
 
 test("in a browser without what pdf.js's modern build needs, the sample's viewer still draws the document", async ({ page }) => {
   await olderBrowser(page);
@@ -30,27 +46,54 @@ test('the landing page at / is public and static: no redirect, no api call, no k
   expect([response!.status(), new URL(page.url()).pathname]).toEqual([200, '/']);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(HEADLINE);
   expect(await response!.text()).not.toContain(env.API_KEY!);
-  // The results are the two official runs' from eval-results.json: each run's column shows its cell, or that it is not measured yet.
-  await expect(page.getByText(`Evaluated on ${results.cases} synthetic invoices`)).toBeVisible();
-  for (const name of ['Claude first', 'Free models only']) await expect(page.getByRole('columnheader', { name })).toBeVisible();
-  const precision = results.rows.find((row) => row.label === 'Overcharge precision')!;
-  const cells = page.getByRole('row', { name: /^Overcharge precision/ }).getByRole('cell');
-  // Metric and Target come first, then Claude first and Free models only.
-  for (const [i, cell] of [precision.claudeFirst, precision.free].entries()) {
-    const shown = cells.nth(i + 2);
-    if (!cell) {
-      await expect(shown).toHaveText('Not measured yet');
-      continue;
-    }
-    await expect(shown).toContainText(cell.result);
-    await expect(shown).toContainText(cell.met ? 'Met' : 'Below target');
+  // The reconciliation beside the headline is g066's open finding, labelled as the sample it is.
+  const recon = page.locator('figure[data-seenry-signature]');
+  for (const [term, cents] of [
+    ['Billed', g066.billedCents],
+    ['Contract, rate card v2', g066.expectedCents],
+    ['Held for review', g066.billedCents - g066.expectedCents],
+  ] as const) {
+    await expect(recon.locator('div', { has: page.locator('dt', { hasText: term }) }).locator('dd')).toHaveText(usd(cents));
   }
-  // The invoice beside the headline is the sample's g066, in the app's own words, and opens there.
-  await expect(page.getByText('Rate card version 2 sets Linehaul at $5,343.60; billed $6,145.14.')).toBeVisible();
+  await expect(recon).toContainText('Sample invoice from the demo set');
+  // The results are the two official runs' from eval-results.json, each dated: each run's column shows its cell, or
+  // that it is not measured yet, and every row is there.
+  const table = page.getByRole('region', { name: 'Results by metric' });
+  await expect(page.getByText(`${results.cases} synthetic invoices with known ground truth`)).toBeVisible();
+  for (const [name, run] of [
+    ['Claude first', results.claudeFirst],
+    ['Free models only', results.free],
+  ] as const) {
+    await expect(table.getByRole('columnheader', { name: new RegExp(`^${name}`) })).toContainText(run ? longDate(run.date) : 'Not measured yet');
+  }
+  await expect(table.getByRole('row')).toHaveCount(results.rows.length + 1);
+  for (const row of results.rows) {
+    const cells = table.getByRole('row', { name: new RegExp(`^${row.label.replace(/[()/]/g, '\\$&')}`) }).getByRole('cell');
+    // Metric and Target come first, then Claude first and Free models only.
+    for (const [i, cell] of [row.claudeFirst, row.free].entries()) {
+      const shown = cells.nth(i + 2);
+      if (!cell) {
+        await expect(shown).toHaveText('Not measured yet');
+        continue;
+      }
+      await expect(shown).toContainText(cell.result);
+      await expect(shown).toContainText(cell.met ? 'Met' : 'Below target');
+    }
+  }
+  // How it works is g066's own trail; its Read stage says the sample predates Claude first.
+  const trail = page.getByRole('region', { name: 'Audit trail of the sample invoice' });
+  await expect(trail.getByText('Rate card version 2 sets Linehaul at $5,343.60; billed $6,145.14.')).toBeVisible();
+  await expect(trail).toContainText('before Claude first went live, so Gemini 3.5 Flash-Lite read it.');
+  // Every engineering proof links to its file on main.
+  const proofs = page.locator('.evidence-links a');
+  expect(await proofs.count()).toBeGreaterThan(0);
+  for (const href of await proofs.evaluateAll((links) => links.map((link) => link.getAttribute('href')))) {
+    expect(href).toMatch(/^https:\/\/github\.com\/kwnhyk04\/freightaudit\/(blob|tree)\/main\/\S+$/);
+  }
   await page.getByRole('link', { name: 'Open it in the sample' }).click();
   await expect(page).toHaveURL(`/demo/invoices/${sampleId('g066.pdf')}`);
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', 'https://github.com/kwnhyk04/freightaudit');
+  await expect(page.getByRole('link', { name: 'GitHub', exact: true })).toHaveAttribute('href', 'https://github.com/kwnhyk04/freightaudit');
   await page.getByRole('link', { name: 'See sample invoices, no sign-in' }).click();
   await expect(page).toHaveURL(/\/demo\/invoices$/);
   // Signed out, the live demo asks for the password first; the sign-in page's name leads home.

@@ -19,6 +19,50 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-11-01: Landing page ledger redesign (branch landing-ledger from main `2201933`, not committed)
+
+- The user asked for a hero redesign planned with the Seenry skills and Seenry's free references (no MCP, no generated images). Eight references were viewed (Baselayer, Aurora, Stuut, Amplemarket, Adaline, Aria, GetInvoice, Ahrefs; Algolia's preview did not load and was skipped). Three directions were proposed. The user had hero A (the scanned g066 with pins) and hero B (the reconciliation as display type) previewed on a scratch branch `hero-preview`, chose B, then had the rest of the page redesigned in its language. After a second preview, the user approved the build with four changes: stacked results rows on phones, the Read stage's note, real GitHub links, and an evidence test.
+- What changed: the hero, How it works (g066's own audit trail through `trailRows`), the results restyled with each run's date, and Engineering paired with its evidence and file links. The details are in docs/context.md, Landing page.
+- `lib/evidence.json` is new.
+  - What happened: the Engineering figures (k6's 6,000/h and 0 lost, 20 of 98 eval cases, 1,000 property-test cases) were typed into `landing.tsx`.
+  - Why: no file the web could read held them. The Docker build context leaves out `loadtest/`, `evals/golden` and test files (`.dockerignore`), so the page cannot read the sources at build time.
+  - What we did: `scripts/evidence.ts` copies them into `lib/evidence.json` (`pnpm --filter @freightaudit/web evidence`), the same pattern as `eval-results.json`. `scripts/evidence.test.ts` fails when the copy drifts from its sources.
+- Next's dev server wrote `apps/web/AGENTS.md`.
+  - What happened: `next dev` printed "Generated AGENTS.md for AI agents" and created the file.
+  - Why: Next 16.4's `agentRules` default.
+  - What we did: set `agentRules: false` in `apps/web/next.config.ts`. On restart, Next removed the file itself.
+- The web dev server would not start.
+  - What happened: it failed with "Invalid environment configuration" for `API_URL`, `API_KEY` and `SESSION_SECRET`.
+  - Why: the root `.env` holds none of the web's settings.
+  - What we did: for the preview only, started it with those three test placeholders exported from `apps/web/e2e/e2e.env`. `.env` was not changed.
+- Two landing class names collided with existing rules.
+  - What happened: `.stack` and `.trail` are existing app rules (`.trail` is a grid), and they broke the new layout.
+  - Why: the new CSS reused names the app already styles.
+  - What we did: renamed them `stack-line` and `audit-ledger`.
+- Two names collided in the e2e test.
+  - What happened: the section and its table wrapper were both named "Evaluation results". The landing e2e test's `getByRole('link', { name: 'GitHub' })` also matched the `.github/…` links, which failed the first `pnpm e2e` run.
+  - Why: both locators matched more than one element.
+  - What we did: renamed the wrapper "Results by metric" and gave the GitHub locator `exact: true`. The second run passed.
+- The Seenry gate script did not run as built.
+  - What happened: `existing_check.mjs` failed on Windows.
+  - Why: it builds paths from `URL.pathname` (`H:\C:\…`), and its token lint's `--changed` needs `/bin/sh`.
+  - What we did: ran `review_board.mjs` directly, with `--playwright` pointed at `node_modules/.pnpm/playwright@1.64.1/node_modules/playwright/index.mjs`, and ran `motion_scan.mjs`. The token lint was not run.
+  - The board went from 11 blocker groups to 3 by raising the landing's type floors, moving faint text to `--text-2`, making the actions 48 px, and adding hover transitions on two new tokens (`--dur-1`, `--ease-out`).
+  - The 3 left are not fixed, by choice. The badge "dot" is hidden on the landing page (`display: none`, checked in the browser), so that finding is a false positive. The 13 px badges are the app's shared component. The 15 px table notes keep the ledger's one text size.
+  - The motion scan's 3 violations are in rules the change did not touch (`globals.css` pulse and a 6 s animation) and in `playwright-report`.
+- `pnpm e2e:screenshots` redrew 15 screens outside the landing page.
+  - Why: new run data, not code changes.
+  - What we did: restored those 15 with `git restore` so the diff keeps only the three landing shots.
+- Playwright MCP wrote its research screenshots into `.playwright-mcp/` in the repo. The folder is now in `.gitignore`, and it was deleted at the user's request.
+- Files: `apps/web/components/landing.tsx`, `apps/web/app/globals.css`, `apps/web/lib/engineering.ts`, `apps/web/lib/engineering.test.ts`, `apps/web/lib/evidence.json`, `apps/web/scripts/evidence.ts`, `apps/web/scripts/evidence.test.ts`, `apps/web/e2e/demo.spec.ts`, `apps/web/e2e/main.spec.ts`, `apps/web/next.config.ts`, `apps/web/package.json`, `.gitignore`, `docs/screenshots/ui/round-2/4-landing*.png`, docs.
+- Validation:
+  - `pnpm turbo run build typecheck lint test`: 44 of 44 tasks (web 143 tests in 12 suites).
+  - `pnpm e2e`: 54 of 54, on the second run.
+  - `pnpm e2e:screenshots`: 14 of 14, with no sideways scroll at 390 px.
+  - `impeccable detect` on the changed files from the root: exit 0, no findings.
+  - Seenry review board: 3 blocker groups, as above.
+- Outstanding: the user ships with ship.ps1. The scratch branch `hero-preview` has no commits and can be deleted.
+
 ### 2026-10-31: Claude first at every step, the free models behind it, and the evals' two official runs (branch claude-first-everywhere from main `b7fc85a`, not committed)
 
 - The plan was approved with the user's four answers: a total dollar cap that switches Claude off for good; Claude takes the third pass only after a free model failed (built as: only if Claude has not replied in that extraction, so it is never asked the same question twice); a Claude 429 or 529 in an eval waits and retries; record the 401 and the 404 once, keeping status, response headers and body only. The user approved the AGENTS.md lines, both live steps (the official run while its estimate stays under $0.10) and the container suites here.

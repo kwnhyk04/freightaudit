@@ -30,6 +30,9 @@
   --radius: 6px;
   --sans: var(--font-plex-sans), system-ui, sans-serif;
   --mono: var(--font-plex-mono), ui-monospace, monospace;
+  /* Hover and press: a color change only, quick enough never to lag the pointer. */
+  --dur-1: 120ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -1363,7 +1366,8 @@ td.wrap {
   color: inherit;
 }
 
-/* The landing page: the public front door, with wider type and no sidebar, in the app's own tokens. */
+/* The landing page: the public front door in the app's own tokens, set as a ledger: hairline rules, tabular figures,
+   one weight step, no cards. */
 .landing-wrap {
   max-width: 1152px;
   margin: 0 auto;
@@ -1393,186 +1397,260 @@ td.wrap {
 }
 .landing-top .button {
   margin-left: auto;
+  font-size: 14px;
 }
+.button.large {
+  height: 48px;
+  padding: 0 20px;
+  font-size: 15px;
+}
+.landing-top a,
+.hero a,
+.landing-section a {
+  transition:
+    color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-top a,
+  .hero a,
+  .landing-section a {
+    transition: none;
+  }
+}
+
+/* The hero: the claim beside the sample's reconciliation, then the eval's two runs on the three rows a buyer asks about. */
 .hero {
-  padding: 64px 0 56px;
+  padding: 80px 0 72px;
 }
 .hero .landing-wrap {
   display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(0, 6fr);
-  gap: 40px 56px;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: 48px 56px;
   align-items: center;
 }
-.eyebrow {
-  color: var(--accent);
-  font-size: 12px;
+.hero-copy h1 {
+  max-width: 14em;
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-}
-.hero h1 {
-  max-width: 12em;
-  font-size: 40px;
-  line-height: 48px;
-  letter-spacing: -0.01em;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 .lead {
   color: var(--text-2);
-  font-size: 17px;
-  line-height: 28px;
-  max-width: 560px;
+  font-size: 18px;
+  line-height: 30px;
+  max-width: 36em;
 }
-.hero .actions {
+.hero-copy .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin: 28px 0 20px;
+  margin-top: 28px;
 }
-.button.large {
-  height: 42px;
-  padding: 0 18px;
-  font-size: 14.5px;
-}
-.sample-card {
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgb(22 25 29 / 8%);
-  overflow: hidden;
-}
-.sample-head {
-  display: grid;
-  gap: 4px;
-  padding: 16px;
-  border-bottom: 1px solid var(--rule);
-}
-.sample-head .row {
-  align-items: center;
-}
-.sample-findings {
-  list-style: none;
+.recon-figure {
   margin: 0;
-  padding: 0 16px;
-}
-.sample-findings li {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
-  gap: 12px;
+  gap: 16px;
+}
+.recon-figure figcaption {
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 20px;
+}
+.recon {
+  display: grid;
+  margin: 0;
+}
+.recon div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 24px;
   padding: 14px 0;
-}
-.sample-findings li + li {
   border-top: 1px solid var(--rule);
 }
-.sample-findings .num {
-  text-align: left;
+.recon .recon-held {
+  border-top: 2px solid var(--text);
+}
+.recon dt {
+  color: var(--text-2);
+  font-size: 15px;
+}
+.recon dd {
+  margin: 0;
+  font-size: clamp(28px, 3.4vw, 44px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 500;
+}
+.recon-held dd {
+  color: var(--bad);
   font-weight: 600;
 }
-.sample-title {
-  font-weight: 600;
-  margin-bottom: 2px;
+.hero-proof {
+  grid-column: 1 / -1;
 }
-.sample-foot {
-  padding: 12px 16px;
-  background: var(--sunken);
-  border-top: 1px solid var(--rule);
-  text-align: right;
-}
+
+/* Sections: each opens with its title and one line, then its ledger. */
 .landing-section {
-  padding: 56px 0;
+  padding: 72px 0;
   border-top: 1px solid var(--rule);
 }
 .landing-section.plain {
   background: var(--surface);
 }
 .landing-section h2 {
-  font-size: 26px;
-  line-height: 32px;
+  font-size: 28px;
+  line-height: 34px;
+  letter-spacing: -0.01em;
   margin-bottom: 8px;
-}
-.landing-section h3 {
-  font-size: 15px;
-  line-height: 22px;
-  margin: 0 0 6px;
 }
 .landing-section .intro {
   color: var(--text-2);
-  margin-bottom: 20px;
-}
-.steps-grid {
-  list-style: none;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin: 24px 0 0;
-  padding: 0;
-}
-.steps-grid li {
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  padding: 18px;
-}
-.step-number {
-  display: block;
-  margin-bottom: 10px;
-  color: var(--accent);
-  font: 500 12px/16px var(--mono);
-}
-.steps-grid p,
-.engineering p {
-  color: var(--text-2);
-  font-size: 13.5px;
-  line-height: 21px;
+  font-size: 16px;
+  line-height: 26px;
+  max-width: 46em;
+  margin-bottom: 28px;
 }
 .landing-note {
-  margin-top: 12px;
+  margin-top: 16px;
+  font-size: 15px;
+  line-height: 22px;
 }
-/* The results: a header or a pair such as "p50 / p95" wraps in a narrow column, so on a phone both runs fit beside the metric. */
-table.results th,
-table.results td.num {
+
+/* The ledger: no frame, a strong rule under the header, hairlines between rows, figures in tabular digits. */
+.hero-proof.table-wrap,
+.landing-section .table-wrap {
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+table.ledger {
+  font-size: 15px;
+}
+table.ledger th {
+  position: static;
+  background: none;
+  padding: 10px 16px 10px 0;
+  border-bottom: 1px solid var(--text);
+  font-size: 15px;
+  white-space: normal;
+  vertical-align: bottom;
+}
+table.ledger td,
+table.ledger tbody th {
+  padding: 14px 16px 14px 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+table.ledger tbody tr:last-child td,
+table.ledger tbody tr:last-child th {
+  border-bottom: 1px solid var(--rule);
+}
+table.ledger td.num {
   white-space: normal;
 }
-table.results .row {
+table.ledger .row {
   align-items: baseline;
 }
-.engineering {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 28px 32px;
-  margin-top: 24px;
+table.ledger strong {
+  font-weight: 600;
 }
-.chips {
-  list-style: none;
+.landing-section .badge::before,
+.hero-proof .badge::before {
+  display: none;
+}
+.hero .badge,
+.landing-section .badge {
+  font-size: 13px;
+}
+.run-date {
+  display: block;
+  color: var(--text-2);
+  font-weight: 400;
+}
+
+/* How it works: the sample's audit trail; the time column and the held amount are the figures. */
+table.audit-ledger tbody th {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  width: 1%;
+}
+.trail-time {
+  width: 1%;
+  text-align: left;
+  color: var(--text-2);
+}
+.trail-time span {
+  display: block;
+  font-size: 14px;
+}
+.trail-what {
+  font-weight: 500;
+}
+.trail-note {
+  color: var(--text-2);
+}
+.trail-rule {
+  margin-top: 6px;
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 22px;
+  max-width: 52em;
+}
+.trail-amount {
+  color: var(--bad);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Engineering: claim, proof and the files that prove it, as a spec sheet. */
+.evidence {
+  display: grid;
+  margin: 0;
+  border-top: 1px solid var(--text);
+}
+.evidence div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+  gap: 8px 32px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.evidence dt {
+  font-weight: 600;
+}
+.evidence dd {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.evidence-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 32px 0 0;
-  padding: 0;
+  gap: 4px 20px;
+  font-size: 14px;
 }
-.chips li {
-  padding: 3px 12px;
-  border: 1px solid var(--rule-strong);
-  border-radius: 999px;
+.evidence-links code {
+  font-family: var(--mono);
+}
+.stack-line {
+  margin-top: 24px;
   color: var(--text-2);
-  font-size: 12.5px;
-}
-@media (prefers-color-scheme: dark) {
-  .sample-card {
-    box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
-  }
+  font-size: 14px;
+  line-height: 20px;
 }
 @media (max-width: 1023px) {
   .hero .landing-wrap {
     grid-template-columns: minmax(0, 1fr);
   }
-  .steps-grid,
-  .engineering {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
-/* Phone: the sections stack, the in-page links give way to the demo button, and the results table wraps its cells; its frame scrolls only if they still do not fit. */
+/* Phone: the hero stacks, the in-page links give way to the demo button, the trail folds each row into a card-free block. */
 @media (max-width: 720px) {
   .landing-wrap {
     padding: 0 16px;
@@ -1581,26 +1659,96 @@ table.results .row {
     display: none;
   }
   .hero {
-    padding: 32px 0 40px;
+    padding: 40px 0 48px;
   }
-  .hero h1 {
-    font-size: 30px;
-    line-height: 36px;
+  .hero .landing-wrap {
+    gap: 32px;
   }
   .lead {
     font-size: 16px;
     line-height: 26px;
   }
   .landing-section {
-    padding: 40px 0;
+    padding: 48px 0;
   }
   .landing-section h2 {
     font-size: 22px;
     line-height: 28px;
   }
-  .steps-grid,
-  .engineering {
+  table.ledger {
+    font-size: 14px;
+  }
+  table.audit-ledger thead {
+    display: none;
+  }
+  table.audit-ledger tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  table.audit-ledger td,
+  table.audit-ledger tbody th,
+  table.audit-ledger tbody tr:last-child td,
+  table.audit-ledger tbody tr:last-child th {
+    padding: 0;
+    border: 0;
+    width: auto;
+  }
+  table.audit-ledger tbody th {
+    order: 1;
+  }
+  table.audit-ledger .trail-time {
+    order: 2;
+  }
+  table.audit-ledger .trail-amount {
+    order: 3;
+    font-size: 16px;
+  }
+  table.audit-ledger td:nth-child(3) {
+    order: 4;
+    grid-column: 1 / -1;
+    margin-top: 8px;
+  }
+  .evidence div {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* The results tables stack: each row is its metric, then its target and the two runs side by side, each named. */
+  table.ledger:not(.audit-ledger) thead {
+    display: none;
+  }
+  table.ledger:not(.audit-ledger) tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  table.ledger:not(.audit-ledger) td,
+  table.ledger:not(.audit-ledger) tbody tr:last-child td {
+    padding: 0;
+    border: 0;
+    text-align: left;
+  }
+  table.ledger.results tr {
+    grid-template-columns: minmax(0, 0.8fr) repeat(2, minmax(0, 1fr));
+  }
+  table.ledger:not(.audit-ledger) td:first-child {
+    grid-column: 1 / -1;
+    font-weight: 500;
+  }
+  table.ledger td[data-run]::before {
+    content: attr(data-run);
+    display: block;
+    margin-bottom: 2px;
+    color: var(--text-2);
+    font-size: 14px;
+    font-weight: 400;
+  }
+  table.ledger:not(.audit-ledger) .row {
+    flex-wrap: wrap;
+    gap: 4px 6px;
   }
 }
 

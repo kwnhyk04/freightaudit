@@ -13,3 +13,4 @@ evals/.cache/
 apps/web/playwright-report/
 apps/web/test-results/
 apps/web/e2e/.auth/
+.playwright-mcp/
