@@ -19,6 +19,25 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-10-31: Claude first at every step, the free models behind it, and the evals' two official runs (branch claude-first-everywhere from main `b7fc85a`, not committed)
+
+- The plan was approved with the user's four answers: a total dollar cap that switches Claude off for good; Claude takes the third pass only after a free model failed (built as: only if Claude has not replied in that extraction, so it is never asked the same question twice); a Claude 429 or 529 in an eval waits and retries; record the 401 and the 404 once, keeping status, response headers and body only. The user approved the AGENTS.md lines, both live steps (the official run while its estimate stays under $0.10) and the container suites here.
+- What #40 already did and the gaps found, with the design, are in docs/memory.md (2026-10-31). Tests were written first: 34 of 35 Claude tests failed against the old code, then all passed.
+- The 404 recording was not written.
+  - What happened: `record:anthropic` sent the 404 with the user's key; Anthropic's answer carried `anthropic-organization-id` and `anthropic-workspace-id` headers, so the script stopped and wrote nothing, as planned.
+  - Why: an authenticated answer names the account in its headers (from the header names the script printed; their values were never printed).
+  - What we did: changed the script to record each file on its own, recorded the 401 alone (made-up key, no account header, no key in the file), and kept a documented 404 in `packages/llm/fixtures/anthropic/documented.json` for the user to decide.
+  - Update (user, 2026-11-01): record the 404 again with those two headers left out, keeping the key check. The script now leaves them out of every file and still refuses a key or a cookie; `record:anthropic unknown-model` wrote `unknown-model.json` (404 `not_found_error`, no key, both headers left out). The test reads it, the documented 404 is gone, and the llm unit tests pass (66), with lint and typecheck.
+- The official Claude-first full v2 run (`pnpm eval --suite extraction --subset full`, the user's go): 98 of 98 cases in 388 s. Claude 109 calls (89.3%), Groq's qwen 7 (5.7%, one 429 on g2-074, which retried the job), Gemini 6 (4.9%). Claude billed $0.0458 (299,247 input and 31,727 output tokens), against an estimate of $0.045; checked at 48 cases ($0.0189) on the way.
+  - Beside the free run (`2026-10-27-v2`): scanned header accuracy 0.928 against 0.943 (Claude first misses 0.93), arithmetic consistency 0.952 against 0.971 (both miss 0.99), escalation 0.061 against 0.020, overcharge recall 0.974 against 0.949, extraction latency p95 5,742 against 10,690 ms.
+  - One Claude reply reached the 560-token output ceiling: it was cut off, read as invalid, and the ladder went on. Not raised.
+- The caps table summed g2-074's two attempts.
+  - What happened: the new per-invoice grouping showed 14,050 Claude tokens against the 8,500 cap.
+  - Why: the qwen 429 retried the job, which reads the invoice again from the start; each attempt used 7,025 tokens, within the cap, which counts one attempt.
+  - What we did: grouped the table by attempt (a Claude first pass starts one) and rebuilt the report from the run's own cache with `--cached`, no model call, so it says "0 run now"; the largest attempt is 7,377.
+- Deliberate breaks, each failing its tests and reverted: the tier cap read as a rate limit (1), no refund (15), the third pass asking Claude again (2), an eval passing a Claude 429, 529 or 400 on (3), the share column dropped (2), a workflow without `--config free` (1). The planned break of the seed (keeping the smaller total) was not run, to spare a second container run; its test is in `limits.int.test.ts`.
+- Checks (the user asked for the container suites here): `pnpm turbo run build typecheck lint test --force` 44 of 44; `pnpm contracts:check` (after `pnpm codegen` for one schema description); `pnpm test:int` 155 in 28 suites; `pnpm e2e` 54; `pnpm e2e:screenshots` 14, the landing shots re-shot with the two columns. No key in the diff (checked by value, never printed). The e2e run started this project's dev Postgres, Redis and MinIO; they were stopped after, so the running containers match the list from before, and freightaudit-prod was not touched.
+
 ### 2026-10-28: Stages 0 and 1 of the direct-UDP plan; stage 2 not built (branch tailscale-udp-stages from main `55080cb`, docs only, not committed)
 
 - **Request:** "Run only stages 0 and 1 of docs/tailscale-udp-plan.md." Stage 0 read-only on the running demo (netcheck, tailscale status, the 2026-10-21 timing from the PC); stage 1 the throwaway netcheck, with the go for one temporary container on a temporary network with a name of its own, removed by its exact name, never pruned. Nothing of freightaudit-prod, no compose file and no network the demo uses changed. Steps for the user's own phone timing on mobile data, with no app install; then the plan's stop rules, the docs, and no commit.

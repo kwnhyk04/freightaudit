@@ -391,6 +391,7 @@ const reasonText = (detail: string) => (/^[a-z_]+(:|$)/.test(detail) ? reviewRea
 const CLAUDE_HANDOFF: Record<string, string> = {
   switched_off: 'Claude was switched off',
   daily_budget: "Claude's budget for the day was spent",
+  spend_cap: "FreightAudit's spend cap for Claude was reached",
   input_cap: "its pages were over Claude's input cap",
   extraction_cap: "the invoice would have passed Claude's cap for one invoice",
   billing_error: "Claude's account had a billing problem",

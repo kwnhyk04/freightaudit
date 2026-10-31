@@ -1,55 +1,109 @@
 {
-  "report": "evals/reports/2026-10-27-v2.md",
-  "date": "2026-10-27",
   "cases": 98,
+  "claudeFirst": {
+    "report": "evals/reports/2026-10-31-v2-full-claude-first.md",
+    "date": "2026-10-31"
+  },
+  "free": {
+    "report": "evals/reports/2026-10-27-v2.md",
+    "date": "2026-10-27"
+  },
   "rows": [
     {
       "label": "Header field accuracy (digital)",
       "target": "98%",
-      "result": "99.4%",
-      "met": true
+      "claudeFirst": {
+        "result": "100%",
+        "met": true
+      },
+      "free": {
+        "result": "99.4%",
+        "met": true
+      }
     },
     {
       "label": "Header field accuracy (scanned)",
       "target": "93%",
-      "result": "94.3%",
-      "met": true
+      "claudeFirst": {
+        "result": "92.8%",
+        "met": false
+      },
+      "free": {
+        "result": "94.3%",
+        "met": true
+      }
     },
     {
       "label": "Line-item F1 (scanned)",
       "target": "0.88",
-      "result": "0.95",
-      "met": true
+      "claudeFirst": {
+        "result": "0.93",
+        "met": true
+      },
+      "free": {
+        "result": "0.95",
+        "met": true
+      }
     },
     {
       "label": "Overcharge recall",
       "target": "90%",
-      "result": "94.9%",
-      "met": true
+      "claudeFirst": {
+        "result": "97.4%",
+        "met": true
+      },
+      "free": {
+        "result": "94.9%",
+        "met": true
+      }
     },
     {
       "label": "Overcharge precision",
       "target": "95%",
-      "result": "100%",
-      "met": true
+      "claudeFirst": {
+        "result": "100%",
+        "met": true
+      },
+      "free": {
+        "result": "100%",
+        "met": true
+      }
     },
     {
       "label": "False flag rate",
       "target": "≤ 3%",
-      "result": "0%",
-      "met": true
+      "claudeFirst": {
+        "result": "0%",
+        "met": true
+      },
+      "free": {
+        "result": "0%",
+        "met": true
+      }
     },
     {
       "label": "Extraction latency p50 / p95 (3 pages or fewer)",
       "target": "≤ 5 s / 12 s",
-      "result": "2.4 s / 10.7 s",
-      "met": true
+      "claudeFirst": {
+        "result": "1.7 s / 5.7 s",
+        "met": true
+      },
+      "free": {
+        "result": "2.4 s / 10.7 s",
+        "met": true
+      }
     },
     {
       "label": "Cost per invoice, paid-equivalent (digital / scanned)",
       "target": "≤ $0.02 / $0.05",
-      "result": "$0.0007 / $0.002",
-      "met": true
+      "claudeFirst": {
+        "result": "$0.0005 / $0.0012",
+        "met": true
+      },
+      "free": {
+        "result": "$0.0007 / $0.002",
+        "met": true
+      }
     }
   ]
 }

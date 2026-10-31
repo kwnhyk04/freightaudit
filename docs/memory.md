@@ -6,6 +6,14 @@ Entry format: `- YYYY-MM-DD: <fact or decision>. Reason: <why>.` From 2026-10-18
 
 ## Decisions and Reasoning
 
+- 2026-10-31: Claude first everywhere (user request; plan approved with four answers). What happened: #40 already had the end date, the switch-off on 402, a credit-balance or spend-limit 400 and 401, 403 or 404, the caps and the daily budget. It lacked six things: the tier's monthly spend cap (a 429 whose `error.details.error_code` is `enforced_spend_limit_reached`, no retry-after; Anthropic's rate-limits page) was read as a plain rate limit; a failed Claude call handed the whole invoice, not that call, to the free chain; a Claude 400 about the request or a 413 dead-lettered the invoice; there was no total cap; a role pinned to `anthropic` skipped the gate; and evals defaulted to free. Reason for each choice:
+  - One Claude mode, first at every step, with each step's free model behind it; the backup mode and `anthropic` role pins are gone. Reason: the gate (end date, caps, cap, switch-off) must be the only way to Claude.
+  - A total cap, `LLM_CLAUDE_SPEND_CAP_USD`, reserved before each call at Haiku's prices with the day's tokens in one Lua script, settled to the bill, refunded when Anthropic answers with an error, kept after a timeout. At worker start the Redis total is raised to the sum of `llm_calls.cost_micro_usd` for anthropic. Reason: the demo's Redis has no named volume, so Postgres is the durable record of what Claude billed. To resume: raise the cap, `pnpm claude:resume`, then restart the worker (a worker keeps the off state in memory).
+  - The third pass goes to Claude only if Claude has not replied in that extraction. Reason: the user chose "only after a free model failed"; this also never asks Claude the question it already answered.
+  - A timeout or a lost connection leaves the rest of that attempt to the free models. Reason: three 60 s Claude timeouts in one attempt could outlast the job lock (design review).
+  - Evals: Claude first by default; `--config free` is the only config CI runs and the only one that sets floors. A Claude 429 or 529 in an eval waits and retries (user). Reason: CI holds no Anthropic key, floors stay comparable, and every report names each model's share of calls.
+  - The 404 is recorded with `anthropic-organization-id` and `anthropic-workspace-id` left out (user, 2026-11-01). Reason: Anthropic's answer to a request with the real key names the organization and the workspace in those two headers, and the repository is public; the key check stays.
+
 From the approved design doc:
 
 - 2026-10-13: The LLM never computes money. Reason: keeps financial results deterministic and auditable.

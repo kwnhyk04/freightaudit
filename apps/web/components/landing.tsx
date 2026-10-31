@@ -2,15 +2,37 @@ import { holdOf } from '@freightaudit/contracts/hold';
 import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import { demoInvoiceFile } from '../lib/demo.ts';
-import results from '../lib/eval-results.json';
+import evalResults from '../lib/eval-results.json';
 import { findingText, findingTitle, invoiceAmounts, overcharge, plural, resultBadge } from '../lib/labels.ts';
 import { START_PAGE } from '../lib/session.ts';
 import { Badge, Difference, StatusBadge } from './ui.tsx';
 
-// The public landing page, from files this server holds (the official eval report's results and the sample): it calls no
+// The public landing page, from files this server holds (the two official eval runs' results and the sample): it calls no
 // api and holds no key. Every claim on it has a source in the repository (docs/memory.md, UI round 2).
 const REPOSITORY = 'https://github.com/kwnhyk04/freightaudit';
 const day = new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' });
+
+// The runs' results as evals/harness/landing.ts writes them: a run, or its cell in a row, is null until it is measured.
+type Cell = { result: string; met: boolean } | null;
+type Run = { date: string } | null;
+const results: { cases: number; claudeFirst: Run; free: Run; rows: { label: string; target: string; claudeFirst: Cell; free: Cell }[] } = evalResults;
+const measured = (run: Run) => (run ? `measured ${day.format(new Date(`${run.date}T00:00:00Z`))}` : 'not measured yet');
+// A figure keeps each measure whole, so a pair such as "2.4 s / 10.7 s" wraps only after its slash.
+const figure = (text: string) => text.replaceAll(' ', ' ').replaceAll('/ ', '/ ');
+
+// One run's result with its badge, which goes under it in a narrow column; a run not measured yet says so.
+function Result({ cell }: { cell: Cell }) {
+  if (!cell) return <td className="faint">Not measured yet</td>;
+  const badge = resultBadge(cell.met);
+  return (
+    <td>
+      <span className="row">
+        <strong>{figure(cell.result)}</strong>
+        <Badge tone={badge.tone}>{badge.label}</Badge>
+      </span>
+    </td>
+  );
+}
 
 const STEPS = [
   ['Upload', 'A PDF, PNG or JPG, or a batch of up to 500. Each file is stored by its content, so a duplicate never gets processed twice.'],
@@ -131,41 +153,31 @@ export function Landing() {
           <div className="landing-wrap">
             <h2 id="results-title">Evaluation results</h2>
             <p className="intro">
-              Evaluated on {results.cases} synthetic invoices with known ground truth on {day.format(new Date(`${results.date}T00:00:00Z`))}. A 20-invoice subset runs on pull requests that
-              change extraction; the full set runs weekly.
+              Evaluated on {results.cases} synthetic invoices with known ground truth, read two ways. Claude first is Claude Haiku 5.5 reading first, with the free models behind it (
+              {measured(results.claudeFirst)}). The free models alone are what CI checks on every change to extraction, and what reads once Claude&apos;s credits end (
+              {measured(results.free)}). On the free models, a 20-invoice subset runs on pull requests that change extraction, and the full set runs weekly.
             </p>
             <div className="table-wrap" role="region" aria-label="Evaluation results" tabIndex={0}>
-              <table>
+              <table className="results">
                 <thead>
                   <tr>
                     <th scope="col">Metric</th>
                     <th scope="col" className="num">
                       Target
                     </th>
-                    <th scope="col" className="num">
-                      Result
-                    </th>
-                    <th scope="col">
-                      <span className="visually-hidden">Met</span>
-                    </th>
+                    <th scope="col">Claude first</th>
+                    <th scope="col">Free models only</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {results.rows.map((row) => {
-                    const badge = resultBadge(row.met);
-                    return (
-                      <tr key={row.label}>
-                        <td>{row.label}</td>
-                        <td className="num muted">{row.target}</td>
-                        <td className="num">
-                          <strong>{row.result}</strong>
-                        </td>
-                        <td>
-                          <Badge tone={badge.tone}>{badge.label}</Badge>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {results.rows.map((row) => (
+                    <tr key={row.label}>
+                      <td>{row.label}</td>
+                      <td className="num muted">{figure(row.target)}</td>
+                      <Result cell={row.claudeFirst} />
+                      <Result cell={row.free} />
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

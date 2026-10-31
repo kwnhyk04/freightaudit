@@ -1529,6 +1529,14 @@ td.wrap {
 .landing-note {
   margin-top: 12px;
 }
+/* The results: a header or a pair such as "p50 / p95" wraps in a narrow column, so on a phone both runs fit beside the metric. */
+table.results th,
+table.results td.num {
+  white-space: normal;
+}
+table.results .row {
+  align-items: baseline;
+}
 .engineering {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1564,7 +1572,7 @@ td.wrap {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-/* Phone: the sections stack, the in-page links give way to the demo button, and the results table scrolls in its frame. */
+/* Phone: the sections stack, the in-page links give way to the demo button, and the results table wraps its cells; its frame scrolls only if they still do not fit. */
 @media (max-width: 720px) {
   .landing-wrap {
     padding: 0 16px;

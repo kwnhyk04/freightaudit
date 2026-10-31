@@ -22,6 +22,8 @@ export type Finding = { line_number: number; type: string; expected_cents: numbe
 export type PredictedInvoice = { status: string; step: string | null; reviewReason: string | null; read: Read | null; findings: Finding[] };
 // waitMs is the time the call waited on its role's rate limit; null or absent for calls recorded before migration 0011.
 export type CallRow = {
+  // The invoice the call read for (the upload, for a split); absent in results cached before 2026-10-31.
+  invoiceId?: string;
   role: string;
   step: string;
   provider: string;

@@ -7,6 +7,8 @@ const sample = JSON.parse(readFileSync(new URL('../public/demo/invoices.json', i
   invoices: { edges: { node: { id: string; status: string; filename: string; openDiscrepancyCount: number } }[] };
 };
 const sampleId = (file: string) => sample.invoices.edges.find(({ node }) => node.filename === file)!.node.id;
+type Cell = { result: string; met: boolean } | null;
+const results = JSON.parse(readFileSync(new URL('../lib/eval-results.json', import.meta.url), 'utf8')) as { cases: number; rows: { label: string; claudeFirst: Cell; free: Cell }[] };
 const offline = `http://127.0.0.1:${process.env.E2E_OFFLINE_PORT ?? 3002}`;
 const unknown = '00000000-0000-4000-8000-000000000000';
 const env = parseEnv(readFileSync(new URL('e2e.env', import.meta.url), 'utf8'));
@@ -28,11 +30,21 @@ test('the landing page at / is public and static: no redirect, no api call, no k
   expect([response!.status(), new URL(page.url()).pathname]).toEqual([200, '/']);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(HEADLINE);
   expect(await response!.text()).not.toContain(env.API_KEY!);
-  // The results are the official report's: golden set v2's 98 cases, where every row shown meets its target.
-  await expect(page.getByText('Evaluated on 98 synthetic invoices')).toBeVisible();
-  const precision = page.getByRole('row', { name: /^Overcharge precision/ });
-  await expect(precision).toContainText('100%');
-  await expect(precision).toContainText('Met');
+  // The results are the two official runs' from eval-results.json: each run's column shows its cell, or that it is not measured yet.
+  await expect(page.getByText(`Evaluated on ${results.cases} synthetic invoices`)).toBeVisible();
+  for (const name of ['Claude first', 'Free models only']) await expect(page.getByRole('columnheader', { name })).toBeVisible();
+  const precision = results.rows.find((row) => row.label === 'Overcharge precision')!;
+  const cells = page.getByRole('row', { name: /^Overcharge precision/ }).getByRole('cell');
+  // Metric and Target come first, then Claude first and Free models only.
+  for (const [i, cell] of [precision.claudeFirst, precision.free].entries()) {
+    const shown = cells.nth(i + 2);
+    if (!cell) {
+      await expect(shown).toHaveText('Not measured yet');
+      continue;
+    }
+    await expect(shown).toContainText(cell.result);
+    await expect(shown).toContainText(cell.met ? 'Met' : 'Below target');
+  }
   // The invoice beside the headline is the sample's g066, in the app's own words, and opens there.
   await expect(page.getByText('Rate card version 2 sets Linehaul at $5,343.60; billed $6,145.14.')).toBeVisible();
   await page.getByRole('link', { name: 'Open it in the sample' }).click();

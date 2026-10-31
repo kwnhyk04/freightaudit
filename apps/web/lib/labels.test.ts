@@ -445,6 +445,8 @@ test('a read while Claude reads first says why the free models had it, on its Re
   });
   const notes = (entry: unknown, step = 'first_pass') => trailRows({ extraction: { model: 'groq/openai/gpt-oss-120b', step }, auditTrail: [move(1, 'received', 'extracting'), entry] } as unknown as Detail, [])[1]!.notes;
   expect(notes(handedOff('extracted', 'daily_budget'))).toEqual(["Handed to the free models: Claude's budget for the day was spent"]);
+  // FreightAudit's own cap on Claude's spend, apart from the spend limit Anthropic's Console sets.
+  expect(notes(handedOff('extracted', 'spend_cap'))).toEqual(["Handed to the free models: FreightAudit's spend cap for Claude was reached"]);
   expect(notes(handedOff('extracted', 'extraction_cap'), 'fallback')).toEqual(['on the fallback model', "Handed to the free models: the invoice would have passed Claude's cap for one invoice"]);
   expect(notes(handedOff('needs_review', 'switched_off', 'output is not valid JSON'))).toEqual(["The model's reading failed validation.", 'Handed to the free models: Claude was switched off']);
   expect(notes(handedOff('extracted', '5xx'))).toEqual(['Handed to the free models: Claude answered with a server error']);

@@ -1,7 +1,17 @@
 import { CHARGE_CODES } from '@freightaudit/db';
 import { checkArithmetic } from '@freightaudit/domain';
 import { z } from 'zod';
-import { ClaudeSkippedError, type ClaudeSkipReason, ClaudeUnavailableError, type ClaudeUnavailableReason, type FailureClass, failureOf, RateLimitError, TransientError } from './errors.ts';
+import {
+  ClaudeSkippedError,
+  type ClaudeSkipReason,
+  ClaudeUnavailableError,
+  type ClaudeUnavailableReason,
+  type FailureClass,
+  failureOf,
+  PermanentError,
+  RateLimitError,
+  TransientError,
+} from './errors.ts';
 
 export type Usage = { inputTokens: number; outputTokens: number };
 // A page as the model reads it: its text layer, or a JPEG render of a page without one.
@@ -18,11 +28,9 @@ export type Provider = { name: string; model: string; maxImages?: number | undef
 // The text model reads documents whose every page has a text layer, the primary reads the rest, and the fallback takes
 // over when the first model is rate limited or its output stays invalid.
 export type Role = 'primary' | 'text' | 'fallback';
-// A paid model that comes after the main model and before the free fallback, while its account has credit; its calls are
-// recorded under the fallback role, told apart by provider and model. With `first` it reads before the free models, and
-// its calls are recorded under the document's role.
-export type Backup = Provider & { available(): boolean; first?: boolean | undefined };
-export type Models = Record<Role, Provider> & { claude?: Backup | undefined };
+// `claude`, when configured, comes first at every step, behind its gate (claude-first.ts), with the free model of that
+// step behind it; its calls are recorded under the step's role, told apart by provider and model.
+export type Models = Record<Role, Provider> & { claude?: Provider | undefined };
 export type Step = 'first_pass' | 'repair' | 'fallback';
 export type Call = {
   role: Role;
@@ -139,7 +147,8 @@ function check(text: string, pageCount: number): Checked {
 }
 
 export type ExtractOptions = {
-  // Outside evals a 429 on the first pass sends it to the fallback model; an eval run pins one model per role.
+  // Outside evals a 429 on the free read sends it to the free fallback, and a failed Claude call goes to the free model
+  // behind it; an eval run pins its chain, so both throw and the job retries.
   fallbackOnRateLimit?: boolean;
   // Sees each call as it ends, failed ones included, so the caller can record it.
   onCall?: (call: Call) => Promise<void> | void;
@@ -164,8 +173,9 @@ export type Extraction = {
 // the end date Claude's window is over, so the free models reading is no hand-off.
 export type ClaudeHandoff = Exclude<ClaudeSkipReason, 'end_date'> | ClaudeUnavailableReason | FailureClass;
 
-// A first pass, one repair that sees the exact problems, one fresh pass on Claude when it is configured and has credit,
-// one on the free fallback model, then needs_review. A rate-limited first pass goes to Claude, else the free fallback.
+// A read, one repair that sees the exact problems, one fresh read as a second opinion, then needs_review. Claude, when
+// configured, comes first at each step, and a step it cannot take goes to the free model behind it; a rate-limited free
+// read goes to the free fallback.
 export async function extractInvoices(
   models: Models,
   { parts, pageCount }: { parts: Part[]; pageCount: number },
@@ -174,13 +184,17 @@ export async function extractInvoices(
   const usage: Usage = { inputTokens: 0, outputTokens: 0 };
   let model = '';
   let fallbackReason: Extraction['fallbackReason'] = null;
-  let claudeHandoff: Extraction['claudeHandoff'] = null;
+  let handoff: Extraction['claudeHandoff'] = null;
+  // The model of the last reply, so a hand-off is kept only when a free model wrote the reply the extraction ends on.
+  let by: Provider | undefined;
   let claudeUsed = 0;
+  const { claude, fallback } = models;
   const call = async (role: Role, step: Step, prompt: string, provider: Provider = models[role]) => {
-    model = `${provider.name}/${provider.model}`;
     let waitMs = 0;
-    const record = (outcome: Call['outcome'], callUsage: Usage, latencyMs: number, servedModel: string | null, failure?: ReturnType<typeof failureOf>) =>
-      onCall?.({
+    // Only a call that was sent names the model: a Claude call its gate skipped never does.
+    const record = (outcome: Call['outcome'], callUsage: Usage, latencyMs: number, servedModel: string | null, failure?: ReturnType<typeof failureOf>) => {
+      model = `${provider.name}/${provider.model}`;
+      return onCall?.({
         role,
         step,
         provider: provider.name,
@@ -194,13 +208,14 @@ export async function extractInvoices(
         httpStatus: failure?.httpStatus ?? null,
         errorMessage: failure?.errorMessage ?? null,
       });
+    };
     const started = performance.now();
     let reply: Reply;
     try {
       const onWait = (ms: number) => {
         waitMs = ms;
       };
-      reply = await provider.generate({ prompt, parts, schema: EXTRACTION_JSON_SCHEMA, step, onWait, claudeTokens: provider === models.claude ? claudeUsed : undefined });
+      reply = await provider.generate({ prompt, parts, schema: EXTRACTION_JSON_SCHEMA, step, onWait, claudeTokens: provider === claude ? claudeUsed : undefined });
     } catch (err) {
       // A skipped Claude call was never sent, so there is nothing to record.
       if (err instanceof ClaudeSkippedError) throw err;
@@ -211,10 +226,11 @@ export async function extractInvoices(
     }
     usage.inputTokens += reply.usage.inputTokens;
     usage.outputTokens += reply.usage.outputTokens;
-    if (provider === models.claude) claudeUsed += reply.usage.inputTokens + reply.usage.outputTokens;
+    if (provider === claude) claudeUsed += reply.usage.inputTokens + reply.usage.outputTokens;
+    by = provider;
     const result = check(reply.text, pageCount);
     await record('invoices' in result ? 'valid' : 'invalid', reply.usage, reply.latencyMs, reply.servedModel ?? null);
-    return { text: reply.text, result };
+    return { text: reply.text, result, provider };
   };
   const done = (step: Extraction['step'], invoices: ExtractedInvoice[], problems: string[] = [], output: unknown = null): Extraction => ({
     step,
@@ -223,89 +239,72 @@ export async function extractInvoices(
     output,
     model,
     fallbackReason,
-    claudeHandoff,
+    // Why a free model, not Claude, wrote the reply the extraction ends on.
+    claudeHandoff: by !== undefined && by === claude ? null : handoff,
     usage,
   });
 
   // A scan with more page images than the fallback takes never goes to it: needing the fallback ends at needs_review.
   const images = parts.filter((part) => 'jpeg' in part).length;
-  const { fallback } = models;
   const pageCap =
     images > (fallback.maxImages ?? Infinity)
       ? `fallback_page_cap: ${images} page images, more than the ${fallback.maxImages} ${fallback.name}/${fallback.model} takes`
       : undefined;
 
-  // The backup's turn, recorded under the fallback role: undefined when it is not configured, cannot be used or is
-  // skipped, and then the free fallback runs as it would without Claude. Claude reading first takes no second turn.
-  const { claude } = models;
-  const backup = claude?.first ? undefined : claude;
-  const viaClaude = async (step: Step, prompt: string) => {
-    if (!backup?.available()) return undefined;
+  // Claude's turn at a step: its reply, or undefined when it cannot take the step and the free model behind it takes it,
+  // which keeps why. It cannot when its gate skips the call, its account refuses it, or, outside evals, the call fails;
+  // after a timeout or a lost connection it sits out the rest of this attempt. An eval run pins its chain, so there a
+  // failed call throws and the job retries Claude.
+  let claudeReplied = false;
+  let claudeAway = false;
+  const viaClaude = async (role: Role, step: Step, prompt: string) => {
+    if (!claude || claudeAway) return undefined;
     try {
-      return await call('fallback', step, prompt, backup);
+      const reply = await call(role, step, prompt, claude);
+      claudeReplied = true;
+      return reply;
     } catch (err) {
-      if (err instanceof ClaudeUnavailableError || err instanceof ClaudeSkippedError) return undefined;
-      throw err;
+      if (err instanceof ClaudeSkippedError) handoff = err.reason === 'end_date' ? null : err.reason;
+      else if (err instanceof ClaudeUnavailableError) handoff = err.reason;
+      else if (fallbackOnRateLimit && (err instanceof TransientError || err instanceof PermanentError)) {
+        handoff = failureOf(err).errorClass;
+        claudeAway = err instanceof TransientError && err.kind !== undefined;
+      } else throw err;
+      return undefined;
     }
   };
 
+  // The read: Claude, else the free model of the document's role; a rate-limited free read goes to the free fallback.
   let role: Role = parts.every((part) => 'text' in part) ? 'text' : 'primary';
-  // Claude reading first: its first pass, its repair, then the free fallback. A call it cannot take hands the invoice to
-  // the free chain below, which keeps why: skipped, switched off, or (outside evals) rate limited or failed.
-  if (claude?.first) {
-    const viaFirst = async (step: Step, prompt: string) => {
-      try {
-        return await call(role, step, prompt, claude);
-      } catch (err) {
-        if (err instanceof ClaudeSkippedError) claudeHandoff = err.reason === 'end_date' ? null : err.reason;
-        else if (err instanceof ClaudeUnavailableError) claudeHandoff = err.reason;
-        else if (fallbackOnRateLimit && err instanceof TransientError) claudeHandoff = failureOf(err).errorClass;
-        else throw err;
-        return undefined;
-      }
-    };
-    const read = await viaFirst('first_pass', PROMPT);
-    if (read) {
-      if ('invoices' in read.result) return done('first_pass', read.result.invoices);
-      const last = (await viaFirst('repair', repairPrompt(read.text, read.result.problems))) ?? read;
-      if ('invoices' in last.result) return done('repair', last.result.invoices);
-      fallbackReason = 'invalid_output';
-      if (pageCap) return done('needs_review', [], [...last.result.problems, pageCap], last.result.json);
-      const free = await call('fallback', 'fallback', PROMPT);
-      if ('invoices' in free.result) return done('fallback', free.result.invoices);
-      return done('needs_review', [], free.result.problems, free.result.json);
-    }
-  }
-  let provider: Provider = models[role];
-  let attempt;
-  try {
-    attempt = await call(role, 'first_pass', PROMPT);
-  } catch (err) {
-    if (!(err instanceof RateLimitError) || !fallbackOnRateLimit) throw err;
-    fallbackReason = 'rate_limited';
-    role = 'fallback';
-    attempt = await viaClaude('first_pass', PROMPT);
-    if (attempt) provider = claude!;
-    else {
+  let read = await viaClaude(role, 'first_pass', PROMPT);
+  if (!read) {
+    try {
+      read = await call(role, 'first_pass', PROMPT);
+    } catch (err) {
+      if (!(err instanceof RateLimitError) || !fallbackOnRateLimit) throw err;
+      fallbackReason = 'rate_limited';
+      role = 'fallback';
       if (pageCap) return done('needs_review', [], [pageCap]);
-      provider = fallback;
-      attempt = await call(role, 'first_pass', PROMPT);
+      read = await call(role, 'first_pass', PROMPT);
     }
   }
-  if ('invoices' in attempt.result) return done('first_pass', attempt.result.invoices);
-  attempt = await call(role, 'repair', repairPrompt(attempt.text, attempt.result.problems), provider);
-  if ('invoices' in attempt.result) return done('repair', attempt.result.invoices);
-  // Still invalid: one fresh pass on Claude, unless it just failed, then one on the free fallback.
-  if (provider !== fallback) {
+  if ('invoices' in read.result) return done('first_pass', read.result.invoices);
+  // The repair: Claude, else the free model that read, or the role's free model when Claude read.
+  const fixing = repairPrompt(read.text, read.result.problems);
+  let last = (await viaClaude(role, 'repair', fixing)) ?? (await call(role, 'repair', fixing, read.provider === claude ? models[role] : read.provider));
+  if ('invoices' in last.result) return done('repair', last.result.invoices);
+  // Still invalid: a fresh read as a second opinion, by Claude unless it has replied already, then by the free fallback
+  // unless it read already.
+  if (role !== 'fallback') {
     fallbackReason ??= 'invalid_output';
-    const fresh = provider === claude ? undefined : await viaClaude('fallback', PROMPT);
+    const fresh = claudeReplied ? undefined : await viaClaude('fallback', 'fallback', PROMPT);
     if (fresh) {
-      attempt = fresh;
-      if ('invoices' in attempt.result) return done('fallback', attempt.result.invoices);
+      last = fresh;
+      if ('invoices' in last.result) return done('fallback', last.result.invoices);
     }
-    if (pageCap) return done('needs_review', [], [...attempt.result.problems, pageCap], attempt.result.json);
-    attempt = await call('fallback', 'fallback', PROMPT);
-    if ('invoices' in attempt.result) return done('fallback', attempt.result.invoices);
+    if (pageCap) return done('needs_review', [], [...last.result.problems, pageCap], last.result.json);
+    last = await call('fallback', 'fallback', PROMPT);
+    if ('invoices' in last.result) return done('fallback', last.result.invoices);
   }
-  return done('needs_review', [], attempt.result.problems, attempt.result.json);
+  return done('needs_review', [], last.result.problems, last.result.json);
 }

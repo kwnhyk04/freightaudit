@@ -243,7 +243,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           status=0
-          pnpm eval --suite extraction --subset ci || status=$?
+          pnpm eval --suite extraction --subset ci --config free || status=$?
           {
             echo "status=$status"
             echo "report=$(git ls-files --others --modified --exclude-standard -- 'evals/reports/*-ci.md')"

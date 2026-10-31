@@ -1,8 +1,9 @@
 // The extraction eval: runs eval cases through the real worker (extract, repair, fallback, reconcile) against the small
-// seed in throwaway Postgres and Redis, with one pinned model per role from the environment. The provider 429 fallback
-// is off, so a 429 waits and retries; each case's result is cached, so a quota stop resumes later instead of starting
-// over. Usage: pnpm eval --suite extraction --subset ci|dev|test|full|compare [--golden v1|v2] [--repeat <n>] [--fresh]
-// [--set-floors] [--concurrency 4] [--config claude-primary]
+// seed in throwaway Postgres and Redis, with its chain pinned: Claude Haiku 5.5 first at every step with the configured
+// free models behind it (the default, the demo's chain), or the free models alone (--config free, which CI runs and floors
+// come from). The provider 429 fallback is off, so a 429 waits and retries; each case's result is cached, so a quota stop
+// resumes later instead of starting over. Usage: pnpm eval --suite extraction --subset ci|dev|test|full|compare
+// [--config claude-first|free] [--golden v1|v2] [--repeat <n>] [--fresh] [--set-floors] [--concurrency 4]
 import { LLM_SETTINGS, llmRoles, type LlmRole, settings } from '@freightaudit/config/env';
 import { createPool, deadLetters, discrepancies, extractions, invoiceLines, invoices, llmCalls, tenants } from '@freightaudit/db';
 import { migrate } from '@freightaudit/db/migrate';
@@ -43,9 +44,11 @@ export type Run = {
   version: string;
   // How many reads of each case this run merges (--repeat); 1 when absent.
   repeat?: number;
-  // A labelled configuration such as claude-primary, which names the report and never touches floors or the README.
+  // Claude first or the free models alone; a Claude-first report says so in its name and never touches floors.
   config?: string | undefined;
   roles: Roles;
+  // Claude, first at every step ahead of the roles, when the run reads Claude first.
+  claude?: { provider: string; model: string } | undefined;
   cases: GoldenCase[];
   results: Map<string, CaseResult>;
   stopped: string | undefined;
@@ -61,14 +64,28 @@ export const pinsOf = (roles: Roles) => Object.fromEntries(Object.entries(roles)
 const llmSettings = z.object(Object.fromEntries(LLM_SETTINGS.map((key) => [key, settings[key]])) as Pick<typeof settings, (typeof LLM_SETTINGS)[number]>);
 // The roles as the worker resolves them from the environment, with what keeps them from running.
 export const configuredRoles = (source: Record<string, string | undefined> = process.env) => llmRoles(llmSettings.parse(source));
-// The labelled Claude-primary run (--config claude-primary): Claude reads first through the demo's gate and caps, with
-// the configured free models behind it. It runs on this PC only and never sets or checks floors.
-export function claudePrimary({ subset, setFloors }: { subset: Subset; setFloors: boolean }, source: Record<string, string | undefined> = process.env): LlmRole {
-  if (source.CI) throw new Error('--config claude-primary runs on this PC only, never in CI');
-  if (setFloors) throw new Error('--config claude-primary never sets floors');
-  if (subset === 'compare') throw new Error('--config claude-primary runs on the golden set, not --subset compare');
+// The free roles an eval pins, with what keeps them from running: Claude's own settings are the demo's and never block an
+// eval, which pins Claude itself.
+export const evalRoles = (source: Record<string, string | undefined> = process.env) => {
+  const { roles, problems } = configuredRoles(source);
+  return { roles, problems: problems.filter((problem) => !problem.startsWith('LLM_CLAUDE_')) };
+};
+export type Config = 'claude-first' | 'free';
+// A run's configuration: Claude first by default, the demo's chain; the free models alone with --config free, which CI
+// runs, floors come from, and the comparison of two free primaries reads.
+export function configOf({ subset, flag, setFloors }: { subset: Subset; flag: string | undefined; setFloors: boolean }): Config {
+  const config = flag ?? (subset === 'compare' ? 'free' : 'claude-first');
+  if (config !== 'claude-first' && config !== 'free') throw new Error('--config must be claude-first or free');
+  if (config === 'claude-first' && subset === 'compare') throw new Error('--subset compare compares the free primaries: run it with --config free');
+  if (setFloors && config !== 'free') throw new Error('--set-floors needs --config free: floors come from the free models alone');
+  return config;
+}
+// Claude Haiku 5.5, pinned, first at every step through the demo's gate and caps, with the configured free models behind
+// it. It runs on this PC only: CI holds no Anthropic key and runs --config free.
+export function claudeFirst(source: Record<string, string | undefined> = process.env): LlmRole {
+  if (source.CI) throw new Error('a Claude-first eval runs on this PC only, never in CI: use --config free');
   const { claude } = configuredRoles({ ...source, LLM_CLAUDE_MODEL: 'claude-haiku-5-5' });
-  if (!claude?.apiKey) throw new Error('--config claude-primary needs ANTHROPIC_API_KEY in .env');
+  if (!claude?.apiKey) throw new Error('a Claude-first eval needs ANTHROPIC_API_KEY in .env; --config free runs the free models alone');
   return claude;
 }
 
@@ -82,7 +99,8 @@ class LocalContainer extends GenericContainer {
   }
 }
 
-export type Environment = { db: NodePgDatabase; queues: Queues; storage: Storage; tenantId: string; alerts: object[]; close(): Promise<void> };
+// alerts holds a provider that refused its settings; claudeOff Claude switched off mid-run (its credit, key or a limit).
+export type Environment = { db: NodePgDatabase; queues: Queues; storage: Storage; tenantId: string; alerts: object[]; claudeOff: object[]; close(): Promise<void> };
 
 // The small seed in Postgres, Redis for queues and limits, and the worker in this process with the given roles. Without
 // URLs it starts its own containers from the images the compose file pins.
@@ -122,6 +140,7 @@ export async function startEnvironment(roles: Roles, urls: { databaseUrl?: strin
   const storage = createMemoryStorage();
   // A provider that rejects its key or model pauses the extract queue; the run stops instead of waiting on it.
   const alerts: object[] = [];
+  const claudeOff: object[] = [];
   const workers = startWorkers(
     {
       db,
@@ -130,7 +149,7 @@ export async function startEnvironment(roles: Roles, urls: { databaseUrl?: strin
       storage,
       limits,
       // Claude reads first with no end date of its own: the run's date is the user's choice.
-      models: createModels(roles, limits, { claude, claudeFirst: claude ? { until: '9999-12-31' } : undefined }),
+      models: createModels(roles, limits, { claude, claudeFirst: claude ? { until: '9999-12-31' } : undefined, log: (fields) => void claudeOff.push(fields) }),
       textMinChars: settings.LLM_TEXT_MIN_CHARS.parse(process.env.LLM_TEXT_MIN_CHARS),
       tmsUrl: 'http://127.0.0.1:9',
       log: { warn: () => {}, error: (obj) => void alerts.push(obj) },
@@ -145,6 +164,7 @@ export async function startEnvironment(roles: Roles, urls: { databaseUrl?: strin
     storage,
     tenantId: tenant!.id,
     alerts,
+    claudeOff,
     async close() {
       await workers.close();
       await queues.close();
@@ -185,6 +205,7 @@ export async function runCase(env: Environment, root: URL, golden: GoldenCase): 
     // A 429 whose wait outlasts 10 minutes (a spent daily quota), on the upload or any of its parts, stops the case here,
     // to resume after the reset. So does the deadline, naming the case's last failure. Either way its calls go along.
     const stop = async (error: string) => ({ id: golden.id, status: 'stopped', error, e2eMs: 0, invoices: [], calls: await callsOf(env, rows.map((row) => row.id)) });
+    if (env.claudeOff.length > 0) return stop(`Claude switched off: ${JSON.stringify(env.claudeOff[0])}`);
     for (const row of rows) {
       const job = await env.queues.queue('extract').getJob(row.hash);
       if (job && (await job.isDelayed()) && job.delay > 600_000 && /HTTP 429/.test(job.failedReason ?? '')) return stop(`${job.failedReason}, retry in ${Math.round(job.delay / 1000)} s`);
@@ -239,6 +260,7 @@ export async function runCase(env: Environment, root: URL, golden: GoldenCase): 
 async function callsOf(env: Environment, invoiceIds: string[]): Promise<CallRow[]> {
   const calls = await env.db.select().from(llmCalls).where(inArray(llmCalls.invoiceId, invoiceIds)).orderBy(asc(llmCalls.createdAt), asc(llmCalls.id));
   return calls.map((call) => ({
+      invoiceId: call.invoiceId,
       role: call.role,
       step: call.step,
       provider: call.provider,
@@ -280,7 +302,7 @@ export async function evaluate({
   subset: Subset;
   label: string;
   roles: Roles;
-  // Claude reading first ahead of the pinned roles (--config claude-primary).
+  // Claude first at every step ahead of the pinned roles (the claude-first config).
   claude?: LlmRole | undefined;
   fresh?: boolean;
   concurrency?: number;
@@ -296,7 +318,9 @@ export async function evaluate({
   const chosen = manifest.cases.filter((entry) => (only ? only.includes(entry.id) : inSubset(entry)));
   const cases = await Promise.all(chosen.map(async (entry) => JSON.parse(await readFile(new URL(`cases/${entry.id}.json`, root), 'utf8')) as GoldenCase));
   // Claude first, with its caps, is part of what a cached result was read with.
-  const first = claude && `${claude.provider}/${claude.model} first, ${CLAUDE_FIRST_MAX_TOKENS} out, ${CLAUDE_INPUT_CAP} in, ${CLAUDE_EXTRACTION_CAP} an invoice`;
+  // Its ladder too: Claude first at every step since 2026-10-31, so results read with Claude at the first two steps only
+  // are never reused.
+  const first = claude && `${claude.provider}/${claude.model} first at every step, ${CLAUDE_FIRST_MAX_TOKENS} out, ${CLAUDE_INPUT_CAP} in, ${CLAUDE_EXTRACTION_CAP} an invoice`;
   const key = sha256(JSON.stringify({ set, version: manifest.version, pins: pinsOf(roles), prompt: PROMPT_HASH, ...(first ? { claude: first } : {}), ...(repeat > 1 ? { repeat } : {}) })).slice(0, 12);
   const cache = new URL(`../.cache/${set}-${manifest.version}/${key}/`, import.meta.url);
   await mkdir(cache, { recursive: true });
@@ -321,6 +345,11 @@ export async function evaluate({
         Array.from({ length: concurrency }, async () => {
           for (let golden = queue.shift(); golden && !stopped; golden = queue.shift()) {
             const result = await runCase(env, root, golden);
+            // Claude switched off while this case ran: stop before caching it, so no free read is kept as Claude's.
+            if (env.claudeOff.length > 0) {
+              stopped = `${golden.id}: Claude switched off ${JSON.stringify(env.claudeOff[0])}`;
+              break;
+            }
             // Each failed call goes to the job log as its case ends, with a configured key masked as in the cache.
             for (const call of result.calls.filter((row) => !replied(row))) {
               call.errorMessage = mask(call.errorMessage);
@@ -345,7 +374,18 @@ export async function evaluate({
       await env.close();
     }
   }
-  return { label, version: manifest.version, roles, cases, results, stopped, computed: cachedOnly ? 0 : todo.length, key, promptHash: PROMPT_HASH };
+  return {
+    label,
+    version: manifest.version,
+    roles,
+    claude: claude && { provider: claude.provider, model: claude.model },
+    cases,
+    results,
+    stopped,
+    computed: cachedOnly ? 0 : todo.length,
+    key,
+    promptHash: PROMPT_HASH,
+  };
 }
 
 // The golden set version a run reads: --golden, else v1 for --subset compare (the comparison set has v1 only), else the
@@ -393,17 +433,17 @@ async function main() {
       repeat: { type: 'string', default: '1' },
     },
   });
-  if (values.config !== undefined && values.config !== 'claude-primary') throw new Error('--config must be claude-primary');
   if (values.suite !== 'extraction') throw new Error('--suite must be extraction');
   if (!['dev', 'test', 'ci', 'full', 'compare'].includes(values.subset)) throw new Error('--subset must be dev, test, ci, full or compare');
   const subset = values.subset as Subset;
+  const config = configOf({ subset, flag: values.config, setFloors: values['set-floors'] });
   const golden = goldenOf(subset, values.golden);
   const repeat = Number(values.repeat);
   checkRepeat({ repeat, subset, setFloors: values['set-floors'] });
-  const { roles, problems } = configuredRoles();
+  const { roles, problems } = evalRoles();
   const unpriced = Object.values(roles).flatMap(({ provider, model }) => (hasPrice(provider, model) ? [] : [`${provider}/${model} has no entry in packages/llm/prices.json`]));
   if (problems.length + unpriced.length > 0) throw new Error([...problems, ...unpriced].join('\n'));
-  const claude = values.config ? claudePrimary({ subset, setFloors: values['set-floors'] }) : undefined;
+  const claude = config === 'claude-first' ? claudeFirst() : undefined;
   const started = Date.now();
   // The comparison pins only the primary differently: gemini-3.8-flash beside the configured one, on the comparison set.
   const plans =
@@ -412,7 +452,7 @@ async function main() {
           { label: `${roles.primary.provider}/${roles.primary.model}`, roles },
           { label: 'gemini/gemini-3.8-flash', roles: { ...roles, primary: { ...roles.primary, provider: 'gemini' as const, model: 'gemini-3.8-flash', rpm: 5 } } },
         ]
-      : [{ label: values.config ?? 'pinned', roles, claude }];
+      : [{ label: config, roles, claude }];
   const runs: Run[] = [];
   for (const plan of plans) {
     // Each read starts its own environment, since a job id is the PDF's hash and runs once per Redis; a quota stop ends
@@ -424,7 +464,7 @@ async function main() {
     }
     runs.push(mergeReads(reads));
   }
-  process.exit(await report({ subset, runs, durationMs: Date.now() - started, setFloors: values['set-floors'], config: values.config }));
+  process.exit(await report({ subset, runs, durationMs: Date.now() - started, setFloors: values['set-floors'], config }));
 }
 
 // A crash, a rejected main() included, exits 3, so exit 1 always means a broken floor: the weekly run's regression issue

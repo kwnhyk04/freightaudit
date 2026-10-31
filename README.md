@@ -37,7 +37,7 @@ Browser --HTTPS--> web (Next.js): sign-in and the review UI
 - **web** (`apps/web`, Next.js) is a backend for frontend. Its server calls the api with a server-only key, and the browser never calls the api.
 - **api** (`apps/api`, Fastify): REST routes come from `packages/contracts/openapi.yaml`, GraphQL from `packages/contracts/schema.graphql`. An upload is stored in MinIO by its content hash, gets an invoice row in Postgres and adds an `extract` job. While the extract backlog is above its high-water mark, uploads get 503 with `Retry-After` (`apps/api/src/limits.int.test.ts`).
 - **worker** (`apps/worker`): three BullMQ queues (`packages/pipeline/src/queues.ts`), each with a dead-letter queue and replay.
-  - `extract` sends a document whose every page has a text layer to the text model, and any other document to the primary model, with its pages that lack text as images (`packages/llm/src/extract.ts`). Output that fails validation gets one repair, then the fallback model; after that the invoice waits for a reviewer (`docs/context.md`, Invoice Lifecycle).
+  - `extract` sends a document whose every page has a text layer to the text model, and any other document to the primary model, with its pages that lack text as images (`packages/llm/src/extract.ts`). Output that fails validation gets one repair, then a fresh read by the fallback model as a second opinion; after that the invoice waits for a reviewer (`docs/context.md`, Invoice Lifecycle). While Claude is on, Claude Haiku 5.5 takes each step first, with that step's free model behind it.
   - `reconcile` matches the shipment by carrier and PRO number, then prices every line with the rate card version in force on the ship date, using `packages/domain`.
   - `tms-sync` reads shipments from the mock TMS (`apps/mock-tms`) page by page.
 - **Shared packages:** `domain` (money and reconcile rules, pure functions), `llm` (the provider layer), `db` (SQL migrations and queries), `contracts` (the specs and their generated clients), `pipeline` (queues, dead letters, the PDF store), `telemetry` and `config`.
@@ -58,32 +58,40 @@ The reasons are recorded in `AGENTS.md`, `docs/memory.md` (Decisions and Reasoni
 - **Every list uses keyset (cursor) pagination,** so pages stay stable while invoices arrive; an integration test pages under concurrent inserts.
 - **Backend for frontend:** the browser never calls the api, so the api key never reaches the browser.
 - **One duplicate lookup serves reconcile and approval** (`possibleDuplicate` in `packages/db`), so an invoice approved from review is checked like one that reconciled.
-- **Free-tier models sit behind one provider layer** (`packages/llm`), each role pinned per eval run: no paid budget is needed, and since free tiers may train on prompts, only synthetic invoices go through them.
+- **Claude first, free models behind it, one provider layer** (`packages/llm`): Claude Haiku 5.5 reads first at every step while its end date, its spend cap and its credit last, and stops by itself when one ends; the free tiers behind it need no paid budget and are all CI runs. Each eval run pins its chain, and since free tiers may train on prompts, only synthetic invoices go through them.
 - **The golden set is generated from JSON,** so its ground truth is exact and needs no hand labels.
 
 <!-- eval:start -->
 ## Eval results
 
-Golden set v2 (98 synthetic invoices, ground truth from the generator), measured 2026-10-27 with primary gemini/gemini-3.5-flash-lite (served as gemini-3.5-flash-lite), text groq/openai/gpt-oss-120b (served as openai/gpt-oss-120b), fallback groq/qwen/qwen3.8-27b (served as qwen/qwen3.8-27b). 98 cases give wide intervals; misses are listed as misses. Full report: `evals/reports/2026-10-27-v2.md`.
+Golden set v2 (98 synthetic invoices, ground truth from the generator), read two ways. 98 cases give wide intervals; misses are listed as misses.
+
+- **Claude first** (Claude Haiku 5.5 reads first at every step, with the free models behind it: the demo's chain while Claude reads first): measured 2026-10-31; served: anthropic/claude-haiku-5-5 89.3% of calls, groq/qwen/qwen3.8-27b 5.7%, gemini/gemini-3.5-flash-lite 4.9%. Full report: `evals/reports/2026-10-31-v2-full-claude-first.md`.
+- **Free models only** (what CI checks on every change to extraction, and what reads once Claude stops at its end date, its spend cap or its credit): measured 2026-10-27 with primary gemini/gemini-3.5-flash-lite, text groq/openai/gpt-oss-120b, fallback groq/qwen/qwen3.8-27b. Full report: `evals/reports/2026-10-27-v2.md`.
+
+| Metric | Target | Claude first | 95% CI | Met | Free models only | 95% CI | Met |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Header field accuracy (digital) | ≥ 0.980 | 1.000 | 1.000 to 1.000 | yes | 0.994 | 0.983 to 1.000 | yes |
+| Header field accuracy (scanned) | ≥ 0.930 | 0.928 | 0.848 to 0.987 | no | 0.943 | 0.868 to 0.994 | yes |
+| Line-item F1 (digital) | ≥ 0.950 | 1.000 | 1.000 to 1.000 | yes | 0.995 | 0.983 to 1.000 | yes |
+| Line-item F1 (scanned) | ≥ 0.880 | 0.930 | 0.844 to 0.995 | yes | 0.950 | 0.896 to 0.990 | yes |
+| Arithmetic consistency (after repair) | ≥ 0.990 | 0.952 | 0.905 to 0.991 | no | 0.971 | 0.927 to 1.000 | no |
+| Overcharge precision | ≥ 0.950 | 1.000 | 1.000 to 1.000 | yes | 1.000 | 1.000 to 1.000 | yes |
+| Overcharge recall | ≥ 0.900 | 0.974 | 0.906 to 1.000 | yes | 0.949 | 0.852 to 1.000 | yes |
+| Dollar recovery | ≥ 0.900 | 0.996 | 0.978 to 1.000 | yes | 0.990 | 0.953 to 1.000 | yes |
+| False flag rate | ≤ 0.030 | 0.000 | 0.000 to 0.000 | yes | 0.000 | 0.000 to 0.000 | yes |
+| Escalation rate | ≤ 0.100 | 0.061 | 0.020 to 0.112 | yes | 0.020 | 0.000 to 0.051 | yes |
+| Extraction latency p50 (3 pages or fewer) | ≤ 5,000 ms | 1,743 ms | 1,671 ms to 1,803 ms | yes | 2,359 ms | 2,072 ms to 2,587 ms | yes |
+| Extraction latency p95 (3 pages or fewer) | ≤ 12,000 ms | 5,742 ms | 3,251 ms to 8,019 ms | yes | 10,690 ms | 7,812 ms to 15,054 ms | yes |
+| Input tokens per page (text path) | ≤ 4,000 | 1,596 | 1,350 to 1,895 | yes | 803 | 717 to 902 | yes |
+| Output tokens per page (text path) | ≤ 1,200 | 277 | 211 to 361 | yes | 609 | 519 to 713 | yes |
+| Cost per invoice, paid-equivalent (digital) | ≤ $0.0200 | $0.0005 | $0.0003 to $0.0008 | yes | $0.0007 | $0.0006 to $0.0008 | yes |
+| Cost per invoice, paid-equivalent (scanned) | ≤ $0.0500 | $0.0012 | $0.0007 to $0.0020 | yes | $0.0020 | $0.0015 to $0.0026 | yes |
+
+Under load, from the k6 load test:
 
 | Metric | Target | Measured | 95% CI | Met | Model | Date |
 | --- | --- | --- | --- | --- | --- | --- |
-| Header field accuracy (digital) | ≥ 0.980 | 0.994 | 0.983 to 1.000 | yes | groq/openai/gpt-oss-120b | 2026-10-27 |
-| Header field accuracy (scanned) | ≥ 0.930 | 0.943 | 0.868 to 0.994 | yes | gemini/gemini-3.5-flash-lite | 2026-10-27 |
-| Line-item F1 (digital) | ≥ 0.950 | 0.995 | 0.983 to 1.000 | yes | groq/openai/gpt-oss-120b | 2026-10-27 |
-| Line-item F1 (scanned) | ≥ 0.880 | 0.950 | 0.896 to 0.990 | yes | gemini/gemini-3.5-flash-lite | 2026-10-27 |
-| Arithmetic consistency (after repair) | ≥ 0.990 | 0.971 | 0.927 to 1.000 | no | all roles | 2026-10-27 |
-| Overcharge precision | ≥ 0.950 | 1.000 | 1.000 to 1.000 | yes | all roles | 2026-10-27 |
-| Overcharge recall | ≥ 0.900 | 0.949 | 0.852 to 1.000 | yes | all roles | 2026-10-27 |
-| Dollar recovery | ≥ 0.900 | 0.990 | 0.953 to 1.000 | yes | all roles | 2026-10-27 |
-| False flag rate | ≤ 0.030 | 0.000 | 0.000 to 0.000 | yes | all roles | 2026-10-27 |
-| Escalation rate | ≤ 0.100 | 0.020 | 0.000 to 0.051 | yes | all roles | 2026-10-27 |
-| Extraction latency p50 (3 pages or fewer) | ≤ 5,000 ms | 2,359 ms | 2,072 ms to 2,587 ms | yes | all roles | 2026-10-27 |
-| Extraction latency p95 (3 pages or fewer) | ≤ 12,000 ms | 10,690 ms | 7,812 ms to 15,054 ms | yes | all roles | 2026-10-27 |
-| Input tokens per page (text path) | ≤ 4,000 | 803 | 717 to 902 | yes | groq/openai/gpt-oss-120b | 2026-10-27 |
-| Output tokens per page (text path) | ≤ 1,200 | 609 | 519 to 713 | yes | groq/openai/gpt-oss-120b | 2026-10-27 |
-| Cost per invoice, paid-equivalent (digital) | ≤ $0.0200 | $0.0007 | $0.0006 to $0.0008 | yes | groq/openai/gpt-oss-120b | 2026-10-27 |
-| Cost per invoice, paid-equivalent (scanned) | ≤ $0.0500 | $0.0020 | $0.0015 to $0.0026 | yes | gemini/gemini-3.5-flash-lite | 2026-10-27 |
 | End-to-end latency at low load with real free-tier models (k6, n = 20, one every 15 s; p95 is not meaningful at this n) | p95 ≤ 30,000 ms | p50 3,108 ms, p90 4,162 ms, max 4,663 ms | n/a | yes | all roles | 2026-10-15 |
 | Throughput (k6: recorded-fixture model provider at 3x the 2,000/h normal rate, 2 workers x 8) | ≥ 2,000 / h | 6,000 / h sustained for 10 min: 1,083 accepted, 0 lost, all final within 5 s of the last upload | n/a | yes | recorded fixtures | 2026-10-15 |
 <!-- eval:end -->
@@ -102,25 +110,14 @@ The last two rows come from the k6 load test (see Load test). Their measured val
 - **The extraction prompt now lists a repeated page or a copy as one invoice, and reads a packet whose first page is a bill of lading** (`packages/llm/src/extract.ts`). Both rules were chosen on v2's dev split only. On it, the free models read repeated pages right in 12 of 18 reads before and 18 of 18 after, and overcharge precision went from 0.542 to 1.000 (`evals/reports/2026-10-25-v2-dev-19f0c1-x3.md`, `evals/reports/2026-10-25-v2-dev-4e59f1-x3.md`; table in `docs/activity-log.md`, 2026-10-26). The official run read all 12 repeated-page cases as one invoice, the 6 held-out test cases included (`evals/reports/2026-10-27-v2.md`, By kind and trait).
 - **Title lines:** the title-line misread did not show on v2's dev split, so the prompt has no rule for it. On the test split, the free text model read the title as part of the carrier on 2 digital invoices, g2-036 ("— Freight Bill") and g2-043 ("— FREIGHT BILL"). Their carrier misses are in `evals/reports/2026-10-27-v2.json` (per-case fields), and the readings in `docs/activity-log.md` (2026-10-27). Both still reconciled, since the carrier is matched in code; the header score counts them as misses. A test-split finding is never tuned on, so it waits for a later set's dev cases.
 
-**Claude Haiku 5.5 on v2's test split.** The test split is 64 cases, 31 digital and 33 scanned (`evals/reports/2026-10-27-v2-test-claude-primary.md`). The 2026-10-27 run read with Claude Haiku first under the demo's caps (`--config claude-primary`): 71 Claude calls and 8 on the free chain behind it (Gemini 2, Groq's qwen 6), 0 failed. The free column is the official free run (`evals/reports/2026-10-27-v2.md`), scored on the same 64 cases from its per-case results. 64 cases give very wide intervals, and the run sets no floors.
-
-Sources: both columns are in `evals/reports/2026-10-27-v2-test-claude-primary.md` (Beside the official free run), and the call counts in its Model use. The Haiku run cost $0.0292 (`docs/activity-log.md`, 2026-10-27). The free models billed nothing (`evals/reports/2026-10-27-v2.md`, cost as billed).
-
-| Metric | Free models (2026-10-27) | Claude Haiku 5.5 first (2026-10-27) |
-| --- | --- | --- |
-| Header field accuracy, digital / scanned | 0.990 / 0.919 | 1.000 / 0.900 |
-| Line-item F1, digital / scanned | 0.992 / 0.922 | 1.000 / 0.897 |
-| Overcharge precision | 1.000 | 1.000 |
-| False flag rate | 0.000 | 0.000 |
-| Outcome accuracy | 0.928 | 0.899 |
-| Extraction latency p50 / p95 | 2,751 / 13,677 ms | 2,271 / 5,980 ms |
+**The Claude-first run cost $0.0458** (109 Claude calls, 299,247 input and 31,727 output tokens at Haiku 5.5's $0.10 and $0.50 per million; `evals/reports/2026-10-31-v2-full-claude-first.md`, Model use). Its 13 free calls billed nothing. It sets no floors: CI's floors come from the free models alone (`evals/thresholds-v2.json`).
 
 ## Known limitations
 
 The full list is in `docs/context.md`, Known Limitations.
 
 - **Synthetic data only.** Every eval and every demo upload uses synthetic invoices; the demo accepts only golden-set PDFs (`docs/deploy.md`). Real carrier invoices may score differently.
-- **Free tiers.** The demo's models share free quotas and per-minute limits under a daily budget of 100,000 tokens (`.env.prod.example`). Once it is spent, an upload waits as Received until 00:00 UTC (`docs/deploy.md`, Troubleshooting). Free tiers cannot run real models at the design rate. Until 2026-11-10 Claude Haiku reads first on the demo, on its own budget of 1,400,000 tokens a UTC day (`.env.prod.example`; `docs/deploy.md`, Claude first), then the free models for good.
+- **Free tiers.** The demo's models share free quotas and per-minute limits under a daily budget of 100,000 tokens (`.env.prod.example`). Once it is spent, an upload waits as Received until 00:00 UTC (`docs/deploy.md`, Troubleshooting). Free tiers cannot run real models at the design rate. Until 2026-11-10 Claude Haiku reads first at every step on the demo, on its own budget of 1,400,000 tokens a UTC day and under its spend cap (`.env.prod.example`; `docs/deploy.md`, Claude first), then the free models for good.
 - **A personal PC.** The demo's backend answers only while that PC is on and awake; otherwise the UI shows the sample. It changes only when its owner runs `pnpm demo:up`, since nothing deploys from CI.
 - **One reviewer and one tenant.** There is one password, recorded as `reviewer`, and the sign-in limit counts per Vercel instance. Each deployment serves one tenant, set by `TENANT_ID` (`docs/context.md`).
 - **USD only.** An invoice in any other currency ends in needs review (`unsupported_currency`).
@@ -228,7 +225,7 @@ For the review UI also set `API_KEY` (one of `API_KEYS`), `SESSION_SECRET` (32 c
 
 Add `--profile observability` to also start the OpenTelemetry Collector, Jaeger, Prometheus and Grafana. Stop infra with `docker compose -f infra/docker-compose.yml --profile observability down` (add `-v` to drop data).
 
-Models run only with `AI_ENABLED=true` in `.env` (default false: no key needed, extract jobs wait). It then needs `GEMINI_API_KEY` (primary, reads scanned pages) and `GROQ_API_KEY` (text model and fallback), both free tiers; roles, models and per-minute limits are the `LLM_*` settings in `.env.example`. Free tiers may train on prompts, so send only synthetic invoices. Optional paid backup: `LLM_CLAUDE_MODEL=claude-haiku-5-5` with `ANTHROPIC_API_KEY` tries Claude Haiku 5.5 after a role's free model fails and before the free fallback. Empty (the default) keeps the free-only chain. With `LLM_CLAUDE_FIRST_UNTIL` set to a UTC date, Claude reads first until that day ends, under caps sized from its real use (`packages/llm/src/claude-first.ts`) and its own `DAILY_CLAUDE_TOKEN_BUDGET`. Out of credit, at a spend limit or with a bad key or model, Claude is switched off for every worker until `pnpm claude:resume`. CI never uses it; `pnpm eval --suite extraction --subset test --config claude-primary` runs it on this PC, beside the official free run, and sets no floors.
+Models run only with `AI_ENABLED=true` in `.env` (default false: no key needed, extract jobs wait). It then needs `GEMINI_API_KEY` (primary, reads scanned pages) and `GROQ_API_KEY` (text model and fallback), both free tiers; roles, models and per-minute limits are the `LLM_*` settings in `.env.example`. Free tiers may train on prompts, so send only synthetic invoices. Optional, paid: `LLM_CLAUDE_MODEL=claude-haiku-5-5` with `ANTHROPIC_API_KEY`, `LLM_CLAUDE_FIRST_UNTIL` (the last UTC day Claude reads first) and `LLM_CLAUDE_SPEND_CAP_USD` (the most it may ever bill) puts Claude Haiku 5.5 first at every step, with each step's free model behind it, under caps sized from its real use (`packages/llm/src/claude-first.ts`) and its own `DAILY_CLAUDE_TOKEN_BUDGET`. A rate limit, an overload or another failed call goes to the free model for that call only. Empty (the default) keeps the free-only chain. Out of credit, at a spend limit or with a bad key or model, Claude is switched off for every worker until `pnpm claude:resume`; at its spend cap, raise the cap first. CI never uses it. `pnpm eval` reads Claude first by default on this PC and sets no floors; `--config free` runs the free models alone, as CI does.
 
 The api, worker and mock-tms validate their settings at startup and exit with a list of missing or invalid variables. The pre-commit hook blocks commits whose staged changes contain a secret; it runs a local `gitleaks` when installed, otherwise the pinned Docker image.
 

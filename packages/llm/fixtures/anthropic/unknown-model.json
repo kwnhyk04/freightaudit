@@ -1,0 +1,30 @@
+{
+  "recorded_at": "2026-10-31",
+  "status": 404,
+  "headers": {
+    "cf-cache-status": "DYNAMIC",
+    "cf-ray": "a53405aabdb409c8-HKG",
+    "connection": "keep-alive",
+    "content-encoding": "br",
+    "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+    "content-type": "application/json",
+    "date": "Sat, 31 Oct 2026 16:26:34 GMT",
+    "request-id": "req_011CgadP454pAbSDpDJc9kUn",
+    "server": "cloudflare",
+    "server-timing": "x-originResponse;dur=208",
+    "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+    "traceresponse": "00-789781ec2436130e0d8c4b5e94f31cbc-f300ebc9aba708c6-01",
+    "transfer-encoding": "chunked",
+    "vary": "Accept-Encoding",
+    "x-robots-tag": "none",
+    "x-should-retry": "false"
+  },
+  "body": {
+    "type": "error",
+    "error": {
+      "type": "not_found_error",
+      "message": "model: claude-haiku-5-5-no-such-model"
+    },
+    "request_id": "req_011CgadP454pAbSDpDJc9kUn"
+  }
+}
