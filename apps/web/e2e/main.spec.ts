@@ -104,7 +104,7 @@ test.describe('landing page', () => {
   test('signed in, / is the same landing page; its demo button and a sign-in back to / both open the start page', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/$/);
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Catch freight overbilling before you pay it.');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Pay the contract rate, not the invoice.');
     await page.getByRole('link', { name: 'Try the live demo' }).click();
     await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/dashboard$/);
     await page.goto('/login?next=%2F');

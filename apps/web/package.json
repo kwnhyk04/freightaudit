@@ -15,6 +15,7 @@
     "e2e": "node e2e/prepare.ts && playwright test --project=setup --project=main --project=public --project=lockout",
     "e2e:screenshots": "node e2e/prepare.ts && playwright test --project=screenshots",
     "hash-password": "node scripts/hash-password.ts",
+    "evidence": "node scripts/evidence.ts",
     "demo:export": "node --env-file=../../.env scripts/export-demo.ts"
   },
   "dependencies": {

@@ -1,0 +1,18 @@
+{
+  "load": {
+    "date": "2026-10-15",
+    "accepted": 1083,
+    "lost": 0,
+    "normalPerHour": 2000,
+    "offeredPerHour": 6000,
+    "uploadP95Ms": 86
+  },
+  "evals": {
+    "ci": 20,
+    "cases": 98
+  },
+  "propertyTests": {
+    "files": 5,
+    "runs": 1000
+  }
+}
