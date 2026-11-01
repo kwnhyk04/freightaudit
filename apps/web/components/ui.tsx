@@ -1,7 +1,7 @@
 import type { InvoiceHold, InvoiceStatus } from '@freightaudit/contracts/graphql';
 import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { STATUS, statusLabel, type Tone, type Words } from '../lib/labels.ts';
 import { Icon, type IconName } from './icons.tsx';
 
@@ -101,22 +101,73 @@ export function Pager({ showing, previous, next, labels = ['Previous', 'Next'] }
   );
 }
 
-export function SkeletonRows({ columns, rows = 8 }: { columns: number; rows?: number }) {
+const classes = (...names: (string | false | undefined)[]) => names.filter(Boolean).join(' ') || undefined;
+
+// Every table in the app: a wrapper that scrolls sideways when the table is wider, and the table, composed from Th and
+// Td. A label (or labelledBy) makes the wrapper a named region the keyboard can scroll. look 'list' is the app's table;
+// 'ledger' is the landing page's. With cards, below 720 px each row becomes a card laid out by its cells' card roles.
+export function Table({
+  label,
+  labelledBy,
+  caption,
+  cards,
+  look = 'list',
+  busy,
+  wrapClassName,
+  className,
+  children,
+}: {
+  label?: string;
+  labelledBy?: string;
+  caption?: ReactNode;
+  cards?: boolean;
+  look?: 'list' | 'ledger';
+  busy?: boolean;
+  wrapClassName?: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  const region = label || labelledBy ? ({ role: 'region', 'aria-label': label, 'aria-labelledby': labelledBy, tabIndex: 0 } as const) : {};
   return (
-    <div className="table-wrap" aria-busy="true" aria-label="Loading">
-      <table>
-        <tbody>
-          {Array.from({ length: rows }, (_, row) => (
-            <tr key={row}>
-              {Array.from({ length: columns }, (__, column) => (
-                <td key={column}>
-                  <div className="skeleton" style={{ width: `${40 + ((row * 7 + column * 13) % 50)}%` }} />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
+    <div className={classes('table-wrap', look === 'list' && 'list', cards && 'card-list', wrapClassName)} {...region} {...(busy && { 'aria-busy': true, 'aria-label': 'Loading' })}>
+      <table className={classes(look === 'list' ? 'list-table' : 'ledger', cards && 'cards', className)}>
+        {caption && <caption className="visually-hidden">{caption}</caption>}
+        {children}
       </table>
     </div>
+  );
+}
+
+// A column header; num right-aligns it over its figures.
+export const Th = ({ num, scope = 'col', className, ...rest }: ComponentProps<'th'> & { num?: boolean }) => <th scope={scope} className={classes(num && 'num', className)} {...rest} />;
+
+// Where a cell sits in a phone card: title and meta stack on the left, amount (two lines tall) or aside on the right,
+// wide takes a line of its own, hide leaves the card. label names the cell inside a card, where no header shows; it is
+// text in the page, so a screen reader reads it with the value.
+export type CardRole = 'title' | 'meta' | 'amount' | 'aside' | 'wide' | 'hide';
+export function Td({ num, card, label, className, children, ...rest }: ComponentProps<'td'> & { num?: boolean; card?: CardRole; label?: string }) {
+  return (
+    <td className={classes(num && 'num', className)} data-card={card} {...rest}>
+      {label && <span className="card-label">{label}</span>}
+      {children}
+    </td>
+  );
+}
+
+export function SkeletonRows({ columns, rows = 8 }: { columns: number; rows?: number }) {
+  return (
+    <Table busy>
+      <tbody>
+        {Array.from({ length: rows }, (_, row) => (
+          <tr key={row}>
+            {Array.from({ length: columns }, (__, column) => (
+              <Td key={column}>
+                <div className="skeleton" style={{ width: `${40 + ((row * 7 + column * 13) % 50)}%` }} />
+              </Td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </Table>
   );
 }

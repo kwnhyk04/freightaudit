@@ -21,6 +21,7 @@ Instructions for any AI coding agent working in this project. Read this file fir
 - Set a fixed compose project name (`name: freightaudit` at the top of the compose file) so this project's containers, volumes and networks are grouped and named predictably. The public demo's override, `infra/docker-compose.prod.yml`, uses `name: freightaudit-prod`, so demo data never mixes with dev data (user decision, 2026-10-17).
 - Monitoring services (OpenTelemetry Collector, Jaeger, Prometheus, Grafana) sit behind a compose profile named `observability`, so the default `docker compose up` starts only what the app needs.
 - If a port is already taken, report which one and stop; do not change another project's ports.
+- New tables, tabs, pagers and badges in the web app must use the shared components (`Table`, `Th`, `Td`, `Tabs`, `Pager`, `StatusBadge`, `Badge`), never a page-specific copy. See `docs/design.md`.
 
 ## Session Start
 

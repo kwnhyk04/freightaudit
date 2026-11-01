@@ -27,7 +27,7 @@ import {
   unmatchedNote,
 } from '../lib/labels.ts';
 import { ActionForm, BulkDecision, DecideForm, DialogAction, StatusPoller } from './client.tsx';
-import { Badge, Day, Difference, Moment, Money, Said, StatusBadge } from './ui.tsx';
+import { Badge, Day, Difference, Moment, Money, Said, StatusBadge, Table, Td, Th } from './ui.tsx';
 import { DocumentViewer } from './viewer.tsx';
 import type { Where } from './views.tsx';
 
@@ -250,82 +250,72 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                 {lines.length === 0 ? (
                   <p className="faint">No lines were read.</p>
                 ) : (
-                  <div className="table-wrap" role="region" aria-labelledby="charges-title" tabIndex={0}>
-                    <table className="charges">
-                      <thead>
-                        <tr>
-                          <th scope="col" className="num">
-                            #
-                          </th>
-                          <th scope="col">Description</th>
-                          <th scope="col">Code</th>
-                          <th scope="col" className="num">
-                            Billed
-                          </th>
-                          {priced && (
-                            <>
-                              <th scope="col" className="num">
-                                Expected
-                              </th>
-                              <th scope="col" className="num">
-                                Difference
-                              </th>
-                            </>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {lines.map((line) => {
-                          const finding = byLine.get(line.lineNumber);
-                          const amounts = lineAmounts(line.amountCents, finding);
-                          const billed = already.get(line.lineNumber);
-                          return (
-                            <tr key={line.lineNumber} className={finding && finding.status !== 'DISMISSED' ? 'flagged' : undefined}>
-                              <td className="num">{line.lineNumber}</td>
-                              <td>
-                                {lineLabel(line.description)}
-                                {finding && <div className="faint nowrap">{FINDING[finding.type]}</div>}
-                              </td>
-                              <td className="id">{line.chargeCode ? codeBreaks(line.chargeCode) : <span className="faint">None</span>}</td>
-                              <td className="num">
-                                <Money cents={line.amountCents} currency={invoice.currency} />
-                              </td>
-                              {priced && (
-                                <>
-                                  <td className={billed ? 'num muted wrap' : 'num muted'}>
-                                    {billed ? <Said words={billed} base={base} /> : <Money cents={amounts.expectedCents} currency={invoice.currency} />}
-                                  </td>
-                                  <td className="num">
-                                    <Difference cents={amounts.differenceCents} currency={invoice.currency} />
-                                  </td>
-                                </>
-                              )}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot>
-                        <tr>
-                          <th scope="row" colSpan={3}>
-                            Total
-                          </th>
-                          <td className="num">
-                            <Money cents={invoice.totalCents} currency={invoice.currency} />
-                          </td>
-                          {priced && money && (
-                            <>
-                              <td className="num">
-                                <Money cents={money.expectedCents} currency={invoice.currency} />
-                              </td>
-                              <td className="num">
-                                <Difference cents={money.standingCents} currency={invoice.currency} />
-                              </td>
-                            </>
-                          )}
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+                  <Table labelledBy="charges-title" className="charges">
+                    <thead>
+                      <tr>
+                        <Th num>#</Th>
+                        <Th>Description</Th>
+                        <Th>Code</Th>
+                        <Th num>Billed</Th>
+                        {priced && (
+                          <>
+                            <Th num>Expected</Th>
+                            <Th num>Difference</Th>
+                          </>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lines.map((line) => {
+                        const finding = byLine.get(line.lineNumber);
+                        const amounts = lineAmounts(line.amountCents, finding);
+                        const billed = already.get(line.lineNumber);
+                        return (
+                          <tr key={line.lineNumber} className={finding && finding.status !== 'DISMISSED' ? 'flagged' : undefined}>
+                            <Td num>{line.lineNumber}</Td>
+                            <Td>
+                              {lineLabel(line.description)}
+                              {finding && <div className="faint nowrap">{FINDING[finding.type]}</div>}
+                            </Td>
+                            <Td className="id">{line.chargeCode ? codeBreaks(line.chargeCode) : <span className="faint">None</span>}</Td>
+                            <Td num>
+                              <Money cents={line.amountCents} currency={invoice.currency} />
+                            </Td>
+                            {priced && (
+                              <>
+                                <Td num className={billed ? 'muted wrap' : 'muted'}>
+                                  {billed ? <Said words={billed} base={base} /> : <Money cents={amounts.expectedCents} currency={invoice.currency} />}
+                                </Td>
+                                <Td num>
+                                  <Difference cents={amounts.differenceCents} currency={invoice.currency} />
+                                </Td>
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <Th scope="row" colSpan={3}>
+                          Total
+                        </Th>
+                        <Td num>
+                          <Money cents={invoice.totalCents} currency={invoice.currency} />
+                        </Td>
+                        {priced && money && (
+                          <>
+                            <Td num>
+                              <Money cents={money.expectedCents} currency={invoice.currency} />
+                            </Td>
+                            <Td num>
+                              <Difference cents={money.standingCents} currency={invoice.currency} />
+                            </Td>
+                          </>
+                        )}
+                      </tr>
+                    </tfoot>
+                  </Table>
                 )}
               </section>
               <InvoiceFacts invoice={invoice} correct={correctable && !readOnly} example={example} />

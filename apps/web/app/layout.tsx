@@ -1,5 +1,7 @@
 import localFont from 'next/font/local';
+import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
+import { parseTheme, THEME_COOKIE } from '../lib/theme.ts';
 import './globals.css';
 
 // One sans for the interface, a mono for identifiers, both from ./fonts (OFL), so the build never fetches from Google.
@@ -18,9 +20,11 @@ const plexMono = localFont({
 const icon = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%232b4c7e'/><path d='M10 8h13v4h-8.5v3.5H21v4h-6.5V24H10z' fill='white'/></svg>";
 export const metadata = { title: 'FreightAudit', description: 'Carrier invoice review for accounts payable', icons: { icon } };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+// The theme cookie picks the tokens on the server (data-theme); without one the device's scheme does.
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
+    <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`} data-theme={theme === 'system' ? undefined : theme}>
       <body>{children}</body>
     </html>
   );

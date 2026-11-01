@@ -1,7 +1,7 @@
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import { openapiPath } from '@freightaudit/contracts';
-import { MAX_UPLOAD_BYTES } from '@freightaudit/contracts/limits';
+import { MAX_BATCH_FILES, MAX_UPLOAD_BYTES } from '@freightaudit/contracts/limits';
 import { queryError } from '@freightaudit/db';
 import type { Storage } from '@freightaudit/pipeline';
 import { type Check, intakeRejected, readiness } from '@freightaudit/telemetry';
@@ -125,7 +125,7 @@ export function buildApp(
   app.register(multipart, {
     attachFieldsToBody: 'keyValues',
     onFile: createOnFile(storage, uploadAllowlist),
-    limits: { files: 500, fileSize: MAX_UPLOAD_BYTES },
+    limits: { files: MAX_BATCH_FILES, fileSize: MAX_UPLOAD_BYTES },
     throwFileSizeLimit: false,
   });
   // A probe flood shares one round of checks, so it opens no new backend connections per request.

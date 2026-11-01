@@ -42,8 +42,10 @@
   --scrim: rgb(22 25 29 / 32%);
   --drawer-shadow: 0 8px 32px rgb(22 25 29 / 18%);
 }
+/* Dark: the device's scheme, unless the reviewer chose Light, or Dark whatever the device says (data-theme, set on the
+   server from the theme cookie). The two blocks hold the same values; lib/theme.test.ts fails when they differ. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     color-scheme: dark;
     --canvas: #121417;
     --surface: #191c20;
@@ -71,6 +73,34 @@
     --scrim: rgb(0 0 0 / 55%);
     --drawer-shadow: 0 8px 32px rgb(0 0 0 / 50%);
   }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --canvas: #121417;
+  --surface: #191c20;
+  --sunken: #15181b;
+  --rule: #2a2f36;
+  --rule-strong: #3a414a;
+  --text: #e6e8eb;
+  --text-2: #a3abb5;
+  --text-3: #8b939d;
+  --accent: #8fb0e6;
+  --accent-hover: #a9c3ee;
+  --accent-tint: #1e2a3d;
+  --on-accent: #0f1726;
+  --ok: #7bd39b;
+  --ok-tint: #13281c;
+  --warn: #f2b866;
+  --warn-tint: #2e2210;
+  --bad: #f59a8e;
+  --bad-tint: #331614;
+  --neutral-tint: #22272d;
+  --chart: #3987e5;
+  --chart-warn: #c98500;
+  --chart-bad: #d03b3b;
+  --focus: 0 0 0 3px rgb(143 176 230 / 40%);
+  --scrim: rgb(0 0 0 / 55%);
+  --drawer-shadow: 0 8px 32px rgb(0 0 0 / 50%);
 }
 
 *,
@@ -323,6 +353,19 @@ h1.id {
   }
   .sidebar[data-collapsed='true'] .who {
     padding: 0;
+  }
+  .sidebar[data-collapsed='true'] .theme-switch {
+    flex-direction: column;
+  }
+  .sidebar[data-collapsed='true'] .theme-switch label + label {
+    border-left: 0;
+    border-top: 1px solid var(--rule-strong);
+  }
+  .sidebar[data-collapsed='true'] .theme-switch label:first-of-type {
+    border-radius: 5px 5px 0 0;
+  }
+  .sidebar[data-collapsed='true'] .theme-switch label:last-of-type {
+    border-radius: 0 0 5px 5px;
   }
   .sidebar[data-collapsed='true'] .nav .count {
     position: absolute;
@@ -663,8 +706,8 @@ tr.flagged td:first-child {
 .list-table tbody tr:hover {
   background: var(--sunken);
 }
-/* The review queue's evidence keeps the smaller size, so it wraps to fewer lines. */
-.finding-rows td:nth-child(6) {
+/* A cell of longer text in a list keeps the smaller size, so it wraps to fewer lines. */
+.list-table td.small-cell {
   font-size: 13px;
 }
 /* A card's labels: the column headers say it on a desktop, so they show only on a phone. */
@@ -802,6 +845,63 @@ td .reason {
   background: var(--accent-tint);
   color: var(--text);
   font-weight: 600;
+}
+/* The theme switch: the same segments as radios, at the sidebar's foot; folded, its icons stack. */
+.theme-switch {
+  display: flex;
+  min-width: 0;
+  margin: 0 0 8px;
+  padding: 0;
+}
+.theme-switch label {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 6px;
+  color: var(--text-2);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+.theme-switch label + label {
+  border-left: 1px solid var(--rule-strong);
+}
+.theme-switch label:first-of-type {
+  border-radius: 5px 0 0 5px;
+}
+.theme-switch label:last-of-type {
+  border-radius: 0 5px 5px 0;
+}
+.theme-switch label:hover {
+  background: var(--sunken);
+  color: var(--text);
+}
+.theme-switch label:has(:checked) {
+  background: var(--accent-tint);
+  color: var(--text);
+  font-weight: 500;
+}
+.theme-switch label:has(:focus-visible) {
+  z-index: 1;
+  box-shadow: var(--focus);
+}
+.theme-switch .icon {
+  flex: none;
+}
+/* Each radio covers its whole segment, unseen, so a tap anywhere on it picks it. */
+.theme-switch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 .overview-top {
   display: grid;
@@ -1224,16 +1324,20 @@ td .reason {
 .charges-note {
   margin-bottom: 8px;
 }
-/* Charge cells keep 8 px a side, so every column, Difference included, fits beside the document from 1280 px. */
+/* Charges keep 13 px type and 6 px a side, so every column, Difference included, fits beside the document from 1280 px,
+   even in a wider fallback font. */
+table.charges {
+  font-size: 13px;
+}
 table.charges th,
 table.charges td {
-  padding-left: 8px;
-  padding-right: 8px;
+  padding-left: 6px;
+  padding-right: 6px;
 }
 table.charges tfoot th,
 table.charges tfoot td {
   position: static;
-  padding: 7px 8px;
+  padding: 7px 6px;
   border-top: 1px solid var(--rule);
   background: none;
   color: var(--text);
@@ -1317,16 +1421,55 @@ dialog::backdrop {
   gap: 16px;
   min-width: 0;
 }
+/* One card: its head, the dropzone, then the files picked under a rule. */
+.upload-card {
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+.upload-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 20px 0;
+}
+.upload-card-head h2 {
+  margin: 0;
+}
+.upload-card-head p {
+  margin: 2px 0 0;
+}
+.upload-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--sunken);
+  color: var(--text-2);
+}
 .drop {
   position: relative;
+  margin: 16px 20px 20px;
   border: 1px dashed var(--rule-strong);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   background: var(--surface);
-  padding: 44px 24px 28px;
+  padding: 32px 24px;
   display: grid;
   gap: 8px;
   justify-items: center;
   text-align: center;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+.drop:hover {
+  border-color: var(--accent);
+}
+.drop .button {
+  margin-top: 6px;
+  cursor: pointer;
 }
 .drop:focus-within {
   box-shadow: var(--focus);
@@ -1349,11 +1492,6 @@ dialog::backdrop {
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
-}
-.drop label.link {
-  display: inline;
-  font-size: inherit;
-  font-weight: 600;
 }
 .link[disabled] {
   color: var(--text-2);
@@ -1378,8 +1516,7 @@ dialog::backdrop {
 }
 /* Files picked for upload, each with its first page, name, size and pages, where it stands, and Remove. */
 .picks {
-  padding: 0;
-  overflow: hidden;
+  border-top: 1px solid var(--rule);
 }
 .picks-head {
   display: flex;
@@ -1390,8 +1527,9 @@ dialog::backdrop {
   padding: 12px 16px;
   border-bottom: 1px solid var(--rule);
 }
-.picks-head h2 {
+.picks-head h3 {
   margin: 0;
+  font-size: 15px;
 }
 .picks-list {
   margin: 0;
@@ -1418,6 +1556,18 @@ dialog::backdrop {
   border: 1px solid var(--rule);
   border-radius: 3px;
   background: var(--sunken);
+}
+/* Without a picture the tile shows a plain file icon. */
+span.thumb {
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+}
+.pick-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
 }
 .pick-body {
   display: grid;
@@ -2001,6 +2151,13 @@ table.audit-ledger tbody th {
   .overview-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  .upload-card-head {
+    padding: 16px 16px 0;
+  }
+  .drop {
+    margin: 12px 16px 16px;
+    padding: 24px 16px;
+  }
   .doc {
     position: static;
     max-height: 70dvh;
@@ -2110,29 +2267,31 @@ table.audit-ledger tbody th {
     flex: 1;
     width: auto;
   }
-  /* Phone: each list row is a card. An invoice shows its number, carrier, status and what it bills over contract, and
-     the whole card opens it; a finding shows what was found, on which invoice and line, the amounts and the decision. */
-  .table-wrap.list {
+  /* Phone: a table with cards shows each row as a card, laid out by each cell's role (Td's card): title and meta stack
+     on the left, an amount or aside sits on the right, wide takes a line, hide leaves the card. A row that links its
+     first link across the whole card opens it from anywhere on the card. */
+  .table-wrap.card-list {
     overflow: visible;
     border: 0;
     border-radius: 0;
     background: none;
   }
-  .list-table,
-  .list-table tbody {
+  .cards,
+  .cards tbody {
     display: block;
   }
-  .list-table thead {
+  .cards thead {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip-path: inset(50%);
   }
-  .list-table tbody tr {
+  .cards tbody tr {
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
+    grid-auto-flow: row dense;
     gap: 4px 12px;
     margin-bottom: 8px;
     padding: 12px 14px;
@@ -2140,54 +2299,38 @@ table.audit-ledger tbody th {
     border-radius: var(--radius-lg);
     background: var(--surface);
   }
-  .list-table tbody td,
-  .list-table tbody tr:last-child td {
+  .cards tbody td,
+  .cards tbody tr:last-child td {
     display: block;
     padding: 0;
     border: 0;
   }
-  .invoice-rows td:nth-child(n + 4):nth-child(-n + 8) {
-    display: none;
+  .cards td[data-card='title'],
+  .cards td[data-card='meta'] {
+    grid-column: 1;
   }
-  .invoice-rows td:nth-child(1) {
-    grid-area: 1 / 1;
+  .cards td[data-card='title'] {
+    font-weight: 500;
   }
-  .invoice-rows td:nth-child(2) {
-    grid-area: 2 / 1;
+  .cards td[data-card='amount'] {
+    grid-column: 2;
+    grid-row: span 2;
   }
-  .invoice-rows td:nth-child(3) {
-    grid-area: 3 / 1 / auto / -1;
+  .cards td[data-card='aside'] {
+    grid-column: 2;
+  }
+  .cards td[data-card='wide'] {
+    grid-column: 1 / -1;
     margin-top: 4px;
   }
-  .invoice-rows td:nth-child(9) {
-    grid-area: 1 / 2 / span 2;
+  .cards td[data-card='hide'] {
+    display: none;
   }
-  .invoice-rows .id::after {
+  .cards tr.link-row .id::after {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: var(--radius-lg);
-  }
-  .finding-rows td:nth-child(1) {
-    grid-area: 1 / 1;
-    font-weight: 500;
-  }
-  .finding-rows td:nth-child(5) {
-    grid-area: 1 / 2;
-  }
-  .finding-rows td:nth-child(2) {
-    grid-area: 2 / 1;
-  }
-  .finding-rows td:nth-child(4) {
-    grid-area: 2 / 2;
-  }
-  .finding-rows td:nth-child(3),
-  .finding-rows td:nth-child(6),
-  .finding-rows td:nth-child(7) {
-    grid-column: 1 / -1;
-  }
-  .finding-rows td:nth-child(7) {
-    margin-top: 6px;
   }
   .card-label {
     display: block;
@@ -2195,10 +2338,10 @@ table.audit-ledger tbody th {
     color: var(--text-3);
   }
   /* In a card the decision wraps: the note takes its own line, the buttons share the next. */
-  .finding-rows td .decide {
+  .cards td .decide {
     flex-wrap: wrap;
   }
-  .finding-rows td .decide input {
+  .cards td .decide input {
     flex: 1 1 100%;
     width: auto;
   }
