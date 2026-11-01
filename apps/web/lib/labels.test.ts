@@ -29,6 +29,7 @@ import {
   reviewReason,
   statusLabel,
   statusReason,
+  statusTone,
   statusTotals,
   trailRows,
   unmatchedNote,
@@ -246,6 +247,30 @@ test('a list row explains its status: what holds a checked invoice, the review o
   expect(statusReason({ ...row, status: 'REJECTED' })).toBe('Rejected by a reviewer');
   expect(statusReason({ ...row, status: 'APPROVED' })).toBeNull();
   expect(statusReason({ ...row, status: 'APPROVED', matched: false })).toBe('Not checked against the rate card');
+});
+
+test('each status has one meaning colour, which its words always name too, and its tab count carries it', () => {
+  expect(statusTone('RECONCILED', 2, 'OPEN_FINDINGS')).toBe('bad');
+  expect(statusTone('RECONCILED', 1, 'POSSIBLE_DUPLICATE')).toBe('bad');
+  expect(statusTone('RECONCILED', 0, null)).toBe('ok');
+  expect(statusTone('RECONCILED', 2, 'CONFIRMED_DUPLICATE')).toBe('warn');
+  expect(statusTone('NEEDS_REVIEW', 0)).toBe('warn');
+  expect(statusTone('FAILED', 0)).toBe('fail');
+  expect(statusTone('APPROVED', 0)).toBe('neutral');
+  expect(statusTone('REJECTED', 0)).toBe('neutral');
+  // Waiting on the pipeline: neutral, with the pulsing dot.
+  for (const status of ['RECEIVED', 'EXTRACTING', 'EXTRACTED', 'RECONCILING'] as const) expect(statusTone(status, 0)).toBe('busy');
+  expect(Object.fromEntries(FILTERS.map((filter) => [filter.key, filter.tone]))).toEqual({
+    all: undefined,
+    needs_review: 'warn',
+    billing_issues: 'bad',
+    ready_to_approve: 'ok',
+    failed: 'fail',
+    approved: 'neutral',
+    rejected: 'neutral',
+    received: 'neutral',
+    extracted: 'neutral',
+  });
 });
 
 test('a status reads in plain words; a checked invoice says whether billing issues wait or it is ready to approve', () => {

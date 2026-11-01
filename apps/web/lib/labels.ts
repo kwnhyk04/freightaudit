@@ -2,9 +2,11 @@ import type { AuditAction, DiscrepancyStatus, DiscrepancyType, InvoiceDecision, 
 import { type FindingStatus, formatMoney, lineExpectedCents, overchargeCents, reviewAmounts } from '@freightaudit/domain';
 
 // The words the UI uses for the API's codes. Color always comes with a word, never alone.
-export type Tone = 'ok' | 'warn' | 'bad' | 'neutral' | 'busy';
+// A pill's meaning colour: ok soft green, warn amber, bad soft red, fail solid red, neutral and busy grey (busy pulses).
+export type Tone = 'ok' | 'warn' | 'bad' | 'fail' | 'neutral' | 'busy';
 
-// Each status's pill, and the reason line a list row shows under it where the status alone says why.
+// Each status's pill, and the reason line a list row shows under it where the status alone says why. Approved is
+// settled, so it stays calm; a checked invoice's colour depends on what waits (statusTone).
 export const STATUS: Record<InvoiceStatus, { label: string; tone: Tone; reason?: string }> = {
   RECEIVED: { label: 'Received', tone: 'busy', reason: 'Waiting to be read' },
   EXTRACTING: { label: 'Reading', tone: 'busy', reason: 'Reading the document' },
@@ -12,9 +14,16 @@ export const STATUS: Record<InvoiceStatus, { label: string; tone: Tone; reason?:
   RECONCILING: { label: 'Checking', tone: 'busy', reason: 'Comparing with the rate card' },
   RECONCILED: { label: 'Checked', tone: 'neutral' },
   NEEDS_REVIEW: { label: 'Reading needs a check', tone: 'warn' },
-  APPROVED: { label: 'Approved', tone: 'ok' },
+  APPROVED: { label: 'Approved', tone: 'neutral' },
   REJECTED: { label: 'Rejected', tone: 'neutral', reason: 'Rejected by a reviewer' },
-  FAILED: { label: 'Failed', tone: 'bad' },
+  FAILED: { label: 'Failed', tone: 'fail' },
+};
+// A status pill's colour, matching its words (statusLabel): billing issues soft red, ready to approve (as billed too)
+// soft green, a confirmed duplicate amber, as it only waits to be rejected.
+export const statusTone = (status: InvoiceStatus, open: number, hold: InvoiceHold | null = null): Tone => {
+  if (status !== 'RECONCILED') return STATUS[status].tone;
+  if (hold === 'CONFIRMED_DUPLICATE') return 'warn';
+  return open > 0 ? 'bad' : 'ok';
 };
 // A status pill's words; a checked invoice says whether it is a confirmed duplicate, which is never approved, billing
 // issues wait for a decision, or it is ready to approve, as billed when it matched no shipment (held at its approval
@@ -42,23 +51,25 @@ export const IN_FLIGHT = new Set<InvoiceStatus>(['RECEIVED', 'EXTRACTING', 'EXTR
 // The list's filters, in the order a reviewer works through them: each tab's key in ?status=, the invoices it holds and
 // the line that says what they are. A checked invoice has billing issues while a reviewer holds it (Invoice.hold), else
 // it is ready; open is the api's hasOpenFindings, which goes by that hold.
-export type Filter = { key: string; status?: InvoiceStatus; open?: boolean; label: string; note?: string };
+// tone is the colour of the tab's count, the same as its status pill's (waiting statuses show it still, as neutral).
+export type Filter = { key: string; status?: InvoiceStatus; open?: boolean; label: string; note?: string; tone?: Tone };
 export const FILTERS: Filter[] = [
   { key: 'all', label: 'All', note: 'Every invoice, newest first.' },
-  { key: 'needs_review', status: 'NEEDS_REVIEW', label: 'Reading needs a check', note: "The AI's reading matched no shipment or failed its checks; a reviewer corrects or rejects it." },
-  { key: 'billing_issues', status: 'RECONCILED', open: true, label: 'Billing issues', note: 'Checked against the rate card, with findings to decide or a confirmed duplicate to reject.' },
+  { key: 'needs_review', status: 'NEEDS_REVIEW', label: 'Reading needs a check', tone: 'warn', note: "The AI's reading matched no shipment or failed its checks; a reviewer corrects or rejects it." },
+  { key: 'billing_issues', status: 'RECONCILED', open: true, label: 'Billing issues', tone: 'bad', note: 'Checked against the rate card, with findings to decide or a confirmed duplicate to reject.' },
   {
     key: 'ready_to_approve',
     status: 'RECONCILED',
     open: false,
     label: 'Ready to approve',
+    tone: 'ok',
     note: 'Checked against the rate card with no finding left to decide, or from review with no matched shipment, ready to approve as billed.',
   },
-  { key: 'failed', status: 'FAILED', label: 'Failed', note: 'Processing used up its retries; each invoice shows why.' },
-  { key: 'approved', status: 'APPROVED', label: 'Approved', note: 'Approved for payment.' },
-  { key: 'rejected', status: 'REJECTED', label: 'Rejected', note: 'Rejected by a reviewer, with a reason.' },
-  { key: 'received', status: 'RECEIVED', label: 'Received', note: 'Uploaded, waiting to be read.' },
-  { key: 'extracted', status: 'EXTRACTED', label: 'Checking', note: 'Read, waiting to be checked against the rate card.' },
+  { key: 'failed', status: 'FAILED', label: 'Failed', tone: 'fail', note: 'Processing used up its retries; each invoice shows why.' },
+  { key: 'approved', status: 'APPROVED', label: 'Approved', tone: 'neutral', note: 'Approved for payment.' },
+  { key: 'rejected', status: 'REJECTED', label: 'Rejected', tone: 'neutral', note: 'Rejected by a reviewer, with a reason.' },
+  { key: 'received', status: 'RECEIVED', label: 'Received', tone: 'neutral', note: 'Uploaded, waiting to be read.' },
+  { key: 'extracted', status: 'EXTRACTED', label: 'Checking', tone: 'neutral', note: 'Read, waiting to be checked against the rate card.' },
 ];
 // The filter a ?status= value names: a tab's key, or any other status, listed without a tab; anything else is all.
 export function listFilter(raw: string | undefined): Filter {

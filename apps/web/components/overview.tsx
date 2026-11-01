@@ -209,8 +209,9 @@ function WeekChart({ name, weeks, series, format, marked, empty }: { name: strin
       </div>
       <details className="table-view">
         <summary>Show as a table</summary>
-        {/* A region the keyboard can scroll: on a phone the table scrolls inside it. */}
-        <Table label={`${name}, as a table`}>
+        {/* A region the keyboard can scroll: on a phone the table scrolls inside it. The week and each count share the
+            width evenly. */}
+        <Table label={`${name}, as a table`} cols={['', ...series.map(() => '')]}>
           <thead>
             <tr>
               <Th>Week of</Th>

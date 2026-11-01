@@ -1,8 +1,8 @@
 import type { InvoiceHold, InvoiceStatus } from '@freightaudit/contracts/graphql';
 import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
-import type { ComponentProps, ReactNode } from 'react';
-import { STATUS, statusLabel, type Tone, type Words } from '../lib/labels.ts';
+import type { ComponentProps, CSSProperties, ReactNode } from 'react';
+import { statusLabel, statusTone, type Tone, type Words } from '../lib/labels.ts';
 import { Icon, type IconName } from './icons.tsx';
 
 export const Badge = ({ tone, children }: { tone: Tone; children: ReactNode }) => <span className={`badge ${tone}`}>{children}</span>;
@@ -22,7 +22,7 @@ export const Said = ({ words, base }: { words: Words; base: string }) =>
 // open is the invoice's open findings, which a checked invoice's pill counts; hold is what holds it back from approval,
 // and a confirmed duplicate only waits to be rejected; matched is whether it has its shipment.
 export const StatusBadge = ({ status, open, hold = null, matched = true }: { status: InvoiceStatus; open: number; hold?: InvoiceHold | null; matched?: boolean }) => (
-  <Badge tone={hold === 'CONFIRMED_DUPLICATE' && status === 'RECONCILED' ? 'warn' : STATUS[status].tone}>{statusLabel(status, open, hold, matched)}</Badge>
+  <Badge tone={statusTone(status, open, hold)}>{statusLabel(status, open, hold, matched)}</Badge>
 );
 
 // Amounts arrive as integer cents, or as bigint from the domain's review helpers, and are only formatted here; the UI
@@ -106,11 +106,18 @@ const classes = (...names: (string | false | undefined)[]) => names.filter(Boole
 // Every table in the app: a wrapper that scrolls sideways when the table is wider, and the table, composed from Th and
 // Td. A label (or labelledBy) makes the wrapper a named region the keyboard can scroll. look 'list' is the app's table;
 // 'ledger' is the landing page's. With cards, below 720 px each row becomes a card laid out by its cells' card roles.
+// cols, one per column, lays a list table out fixed above 720 px, so its spare width is spread instead of going to the
+// longest text: a rem width keeps a narrow column fixed, a percentage gives a text column its share, and '' splits
+// what is left evenly. minWidth keeps the shares from collapsing; below it the wrapper scrolls. A column given as an
+// object can take another width below 1440 px (narrow), or, with wideOnly and its Th and Td classed 'wide-only', show
+// only from 1440 px (never on a phone).
 export function Table({
   label,
   labelledBy,
   caption,
   cards,
+  cols,
+  minWidth,
   look = 'list',
   busy,
   wrapClassName,
@@ -121,6 +128,8 @@ export function Table({
   labelledBy?: string;
   caption?: ReactNode;
   cards?: boolean;
+  cols?: (string | { width: string; narrow?: string; wideOnly?: true })[];
+  minWidth?: string;
   look?: 'list' | 'ledger';
   busy?: boolean;
   wrapClassName?: string;
@@ -128,10 +137,20 @@ export function Table({
   children: ReactNode;
 }) {
   const region = label || labelledBy ? ({ role: 'region', 'aria-label': label, 'aria-labelledby': labelledBy, tabIndex: 0 } as const) : {};
+  const fixed = Boolean(cols) && look === 'list';
   return (
     <div className={classes('table-wrap', look === 'list' && 'list', cards && 'card-list', wrapClassName)} {...region} {...(busy && { 'aria-busy': true, 'aria-label': 'Loading' })}>
-      <table className={classes(look === 'list' ? 'list-table' : 'ledger', cards && 'cards', className)}>
+      <table className={classes(look === 'list' ? 'list-table' : 'ledger', cards && 'cards', fixed && 'fixed', className)} style={fixed && minWidth ? ({ '--table-min': minWidth } as CSSProperties) : undefined}>
         {caption && <caption className="visually-hidden">{caption}</caption>}
+        {fixed && (
+          <colgroup>
+            {cols!.map((col, index) => {
+              const { width, narrow, wideOnly } = typeof col === 'string' ? { width: col } : col;
+              const style = { ...(width && { '--col': width }), ...(narrow && { '--col-narrow': narrow }) } as CSSProperties;
+              return <col key={index} className={wideOnly ? 'wide-only' : undefined} style={style} />;
+            })}
+          </colgroup>
+        )}
         {children}
       </table>
     </div>

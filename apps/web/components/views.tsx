@@ -40,6 +40,7 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
   const tabs = FILTERS.map((each) => ({
     key: each.key,
     label: each.label,
+    tone: each.tone,
     count: filterCount(each, totals, summary.invoicesHeld),
     href: query(`${base}/invoices`, { status: filterKey(each) }),
   }));
@@ -123,7 +124,16 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
         </div>
       ) : (
         // A region the keyboard can scroll; on a phone each row is a card.
-        <Table label="Invoices" cards caption={`Invoices, newest first, ${showing?.toLowerCase() ?? ''}`}>
+        // Short columns fit their longest value (a file name, a date, this year's moment, "Open findings", "+$12,345.67");
+        // carrier and status share the rest. Below 1440 px Open findings hides, as the status pill gives the count, and the
+        // carrier's short names give the status pill room for its longest words.
+        <Table
+          label="Invoices"
+          cards
+          caption={`Invoices, newest first, ${showing?.toLowerCase() ?? ''}`}
+          cols={['8.25rem', { width: '', narrow: '12%' }, '', '8rem', '10.25rem', { width: '8.25rem', wideOnly: true }, '7.25rem', '7.25rem', '7.75rem']}
+          minWidth="67.5rem"
+        >
           <thead>
             <tr>
               <Th>Invoice</Th>
@@ -131,7 +141,9 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
               <Th>Status</Th>
               <Th>Issued</Th>
               <Th>Received</Th>
-              <Th num>Open findings</Th>
+              <Th num className="wide-only">
+                Open findings
+              </Th>
               <Th num>Billed</Th>
               <Th num>Expected</Th>
               <Th num>Difference</Th>
@@ -162,7 +174,7 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
                   <Td card="hide">
                     <Moment value={node.createdAt} />
                   </Td>
-                  <Td card="hide" num>
+                  <Td card="hide" num className="wide-only">
                     {money && (node.openDiscrepancyCount > 0 ? <strong>{node.openDiscrepancyCount}</strong> : <span className="faint">0</span>)}
                   </Td>
                   <Td card="hide" num>
@@ -202,7 +214,9 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
           </Empty>
         </div>
       ) : (
-        <Table cards>
+        // The decision column fits its note and two buttons, on one line where the screen allows; a decided finding only
+        // needs its badge. Evidence takes what is left.
+        <Table cards cols={['11%', '9.5rem', '11%', '7.25rem', '7.25rem', '', edges.some(({ node }) => !readOnly && node.status === 'OPEN' && node.invoice.status === 'RECONCILED') ? 'clamp(20rem, 24vw, 33rem)' : '9rem']} minWidth="66rem">
           <thead>
             <tr>
               <Th>Finding</Th>
@@ -232,7 +246,7 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
                   <Money cents={node.billedCents} currency={node.invoice.currency} />
                 </Td>
                 {/* The evidence keeps the smaller size, so it wraps to fewer lines. */}
-                <Td card="wide" className="muted small-cell" style={{ maxWidth: 360 }}>
+                <Td card="wide" className="muted small-cell">
                   {findingText(node, node.lineItem, undefined, node.invoice.currency)}
                 </Td>
                 <Td card="wide" className="decision-cell">
@@ -273,7 +287,9 @@ export function DeadLetterList({ data, replayed, after, base, readOnly }: Where 
           </Empty>
         </div>
       ) : (
-        <Table cards>
+        // Short columns fit their longest value (a moment with its year, "Reconciliation", a file name, "Attempts", the
+        // Replay button or a moment); the error takes the rest.
+        <Table cards cols={['13.25rem', '8.25rem', '8.25rem', '', '6.25rem', replayed ? '13.25rem' : '6.25rem']} minWidth="57rem">
           <thead>
             <tr>
               <Th>Failed</Th>
@@ -300,7 +316,7 @@ export function DeadLetterList({ data, replayed, after, base, readOnly }: Where 
                     <span className="faint">TMS sync</span>
                   )}
                 </Td>
-                <Td card="wide" style={{ maxWidth: 420 }}>
+                <Td card="wide">
                   {node.error}
                 </Td>
                 <Td card="aside" num label="Attempts">

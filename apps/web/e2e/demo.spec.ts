@@ -351,9 +351,12 @@ test('the list tabs stay links with their counts, one underline slides to the cu
   expect(await tabs.evaluate((element) => getComputedStyle(element, '::after').transitionDuration)).not.toBe('0s');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   expect(await tabs.evaluate((element) => getComputedStyle(element, '::after').transitionDuration)).toBe('0s');
-  // The table keeps every column; the card labels are for the phone, where no header shows.
-  const headers = await page.getByRole('region', { name: 'Invoices' }).getByRole('columnheader').allTextContents();
-  expect(headers).toEqual(['Invoice', 'Carrier', 'Status', 'Issued', 'Received', 'Open findings', 'Billed', 'Expected', 'Difference']);
+  // The table keeps every column from 1440 px; below it Open findings hides, as the status pill gives the count. The card
+  // labels are for the phone, where no header shows.
+  const headers = () => page.getByRole('region', { name: 'Invoices' }).getByRole('columnheader').allTextContents();
+  expect(await headers()).toEqual(['Invoice', 'Carrier', 'Status', 'Issued', 'Received', 'Billed', 'Expected', 'Difference']);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect.poll(headers).toEqual(['Invoice', 'Carrier', 'Status', 'Issued', 'Received', 'Open findings', 'Billed', 'Expected', 'Difference']);
   await expect(page.locator('.card-label').first()).toBeHidden();
   // The review queue's decision tabs work the same way, and its evidence keeps the smaller size.
   await page.goto('/demo/discrepancies');

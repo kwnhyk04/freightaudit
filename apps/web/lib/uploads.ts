@@ -4,6 +4,13 @@ import { MAX_PDF_PAGES, MAX_UPLOAD_LABEL, type UploadCheck } from '@freightaudit
 // The upload page's words and rules for the files a reviewer picks, before and while they are sent. Pure, so the browser
 // and the tests load it alike.
 
+// Sent by a request the page makes on its own (StatusPoller's checks): it needs the session but never renews it, so a
+// page left open overnight does not keep its session alive (proxy.ts).
+export const BACKGROUND_HEADER = 'x-fa-background';
+// What a polling page watches, as one string: each invoice's id and status. The page renders it and /api/progress
+// answers it, so StatusPoller refreshes the page only when a status moved.
+export const progressKey = (invoices: { id: string; status: string }[]) => invoices.map(({ id, status }) => `${id}:${status.toLowerCase()}`).join(',');
+
 // A size as people read it: 312 KB, 1.2 MB.
 export const sizeLabel = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
 

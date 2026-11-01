@@ -22,8 +22,8 @@ import { createLimiter } from '../lib/limiter.ts';
 import { retryCode } from '../lib/uploads.ts';
 import { verifyPassword } from '../lib/password.ts';
 import { SAMPLES } from '../lib/samples.ts';
-import { ApiError, clientKey, currentSession, env, forgetSummary, gql, isLive, log, markOffline, requireSession, rest, REVIEWER } from '../lib/server.ts';
-import { createToken, safeNext, SESSION_COOKIE, SESSION_COOKIE_ATTRIBUTES, SESSION_SECONDS } from '../lib/session.ts';
+import { ApiError, clientKey, currentSession, env, forgetSummary, gql, isLive, log, markOffline, requireSession, rest, REVIEWER, sessionLimits } from '../lib/server.ts';
+import { createToken, safeNext, SESSION_COOKIE, SESSION_COOKIE_ATTRIBUTES } from '../lib/session.ts';
 
 // error is the API's refusal as a sentence, with its code (CONFLICT means the page is out of date; lib/uploads.ts lists
 // the codes worth a retry); done says what worked, and id is the invoice a new upload made; existing is the invoice an
@@ -45,7 +45,7 @@ export async function login(_: ActionState, form: FormData): Promise<ActionState
     return { error: 'Wrong password.' };
   }
   limiter.clear(client);
-  (await cookies()).set(SESSION_COOKIE, createToken(REVIEWER, env().SESSION_SECRET), { ...SESSION_COOKIE_ATTRIBUTES, maxAge: SESSION_SECONDS });
+  (await cookies()).set(SESSION_COOKIE, createToken(REVIEWER, env().SESSION_SECRET), { ...SESSION_COOKIE_ATTRIBUTES, maxAge: sessionLimits().maxSeconds });
   redirect(safeNext(form.get('next')));
 }
 
