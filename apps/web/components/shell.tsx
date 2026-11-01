@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { START_PAGE } from '../lib/session.ts';
-import { NavLinks } from './client.tsx';
+import { Icon } from './icons.tsx';
+import { Sidebar, type NavLink } from './sidebar.tsx';
 
 // The frame of every page: a skip link, the sidebar with its counts, an optional banner and the work. base is '' for
 // live pages and '/demo' for the read-only sample; counts are missing while they cannot be read. The name leads to the
@@ -20,36 +21,54 @@ export function Shell({
   children: ReactNode;
 }) {
   const sample = base === '/demo';
-  const links = [
-    { href: `${base}/dashboard`, label: 'Overview' },
-    { href: `${base}/invoices`, label: 'Invoices' },
-    { href: `${base}/discrepancies`, label: 'Review queue', count: counts?.openFindings, unit: 'open finding', tone: 'warn' as const },
-    { href: `${base}/dead-letters`, label: 'Dead letters', count: counts?.openDeadLetters, unit: 'open dead letter' },
-    ...(sample ? [] : [{ href: '/upload', label: 'Upload' }]),
+  const audit: NavLink[] = [
+    { href: `${base}/dashboard`, label: 'Overview', icon: 'overview' },
+    { href: `${base}/invoices`, label: 'Invoices', icon: 'invoices' },
+    { href: `${base}/discrepancies`, label: 'Review queue', icon: 'queue', count: counts?.openFindings, unit: 'open finding', tone: 'warn' },
   ];
+  const operations: NavLink[] = [
+    { href: `${base}/dead-letters`, label: 'Dead letters', icon: 'deadLetters', count: counts?.openDeadLetters, unit: 'open dead letter' },
+    ...(sample ? [] : [{ href: '/upload', label: 'Upload', icon: 'upload' } as const]),
+  ];
+  const foot = (
+    <>
+      <p className="who">
+        <span className="label">{sample ? 'Sample data' : 'Signed in as reviewer'}</span>
+      </p>
+      {sample && signedIn && (
+        <Link className="foot-action" href={START_PAGE}>
+          <Icon name="live" />
+          <span className="label">Try live data</span>
+        </Link>
+      )}
+      {signedIn ? (
+        <form method="post" action="/logout">
+          <button className="foot-action">
+            <Icon name="signOut" />
+            <span className="label">Sign out</span>
+          </button>
+        </form>
+      ) : (
+        <Link className="foot-action" href="/login">
+          <Icon name="signIn" />
+          <span className="label">Sign in</span>
+        </Link>
+      )}
+    </>
+  );
   return (
     <div className="shell">
       <a className="skip" href="#main">
         Skip to content
       </a>
-      <aside className="sidebar">
-        <Link href={sample ? '/demo/invoices' : START_PAGE} className="wordmark">
-          FreightAudit {sample && <span>sample</span>}
-        </Link>
-        <NavLinks links={links} />
-        <div className="sidebar-foot">
-          {sample && signedIn && <Link href={START_PAGE}>Try live data</Link>}
-          {signedIn ? (
-            <form method="post" action="/logout">
-              <button className="button small">Sign out</button>
-            </form>
-          ) : (
-            <Link className="button small" href="/login">
-              Sign in
-            </Link>
-          )}
-        </div>
-      </aside>
+      <Sidebar
+        home={sample ? '/demo/invoices' : START_PAGE}
+        groups={[
+          { label: 'Audit', links: audit },
+          { label: 'Operations', links: operations },
+        ]}
+        foot={foot}
+      />
       <main className="main" id="main">
         {banner && (
           <p className="banner" role="status">
