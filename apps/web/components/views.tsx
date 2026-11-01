@@ -18,8 +18,8 @@ import {
   statusReason,
   statusTotals,
 } from '../lib/labels.ts';
-import { ActionForm, DecideForm } from './client.tsx';
-import { Badge, Day, Difference, Empty, Moment, Money, Pager, StatusBadge, Tabs } from './ui.tsx';
+import { ActionForm, DecideForm, Tabs } from './client.tsx';
+import { Badge, Day, Difference, Empty, Moment, Money, Pager, StatusBadge } from './ui.tsx';
 
 // Views shared by the live pages and the public /demo pages: base prefixes every link, readOnly hides every action.
 export type Where = { base: string; readOnly: boolean };
@@ -95,22 +95,20 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
       </dl>
       <div className="list-bar">
         <Tabs items={tabs} current={filter.key} label="Filter by status" unit="invoices" />
-        <form role="search" className="search" action={`${base}/invoices`}>
-          {status && <input type="hidden" name="status" value={filter.key} />}
-          <label className="visually-hidden" htmlFor="invoice-search">
-            Search invoices
-          </label>
-          <input id="invoice-search" type="search" name="q" defaultValue={search} maxLength={100} placeholder="Invoice, PRO or carrier" />
-          <button type="submit" className="button">
-            Search
-          </button>
-        </form>
+        <div className="list-tools">
+          <form role="search" className="search" action={`${base}/invoices`}>
+            {status && <input type="hidden" name="status" value={filter.key} />}
+            <label className="visually-hidden" htmlFor="invoice-search">
+              Search invoices
+            </label>
+            <input id="invoice-search" type="search" name="q" defaultValue={search} maxLength={100} placeholder="Invoice, PRO or carrier" />
+            <button type="submit" className="button">
+              Search
+            </button>
+          </form>
+          {note && <p className="faint">{note}</p>}
+        </div>
       </div>
-      {note && (
-        <p className="faint" style={{ marginBottom: 12 }}>
-          {note}
-        </p>
-      )}
       {edges.length === 0 ? (
         <div className="table-wrap">
           {search ? (
@@ -125,8 +123,8 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
         </div>
       ) : (
         // A region the keyboard can scroll: on a phone every column stays and the table scrolls inside it.
-        <div className="table-wrap" role="region" aria-label="Invoices" tabIndex={0}>
-          <table>
+        <div className="table-wrap list" role="region" aria-label="Invoices" tabIndex={0}>
+          <table className="list-table invoice-rows">
             <caption className="visually-hidden">
               Invoices, newest first, {showing?.toLowerCase()}
             </caption>
@@ -179,7 +177,14 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
                     <td className="num">{money && (node.openDiscrepancyCount > 0 ? <strong>{node.openDiscrepancyCount}</strong> : <span className="faint">0</span>)}</td>
                     <td className="num">{node.totalCents !== null && <Money cents={node.totalCents} currency={node.currency} />}</td>
                     <td className="num muted">{money && <Money cents={money.expectedCents} currency={node.currency} />}</td>
-                    <td className="num">{money && <Difference cents={money.standingCents} currency={node.currency} />}</td>
+                    <td className="num">
+                      {money && (
+                        <>
+                          <span className="card-label">Over contract</span>
+                          <Difference cents={money.standingCents} currency={node.currency} />
+                        </>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -205,8 +210,8 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
           </Empty>
         </div>
       ) : (
-        <div className="table-wrap">
-          <table>
+        <div className="table-wrap list">
+          <table className="list-table finding-rows">
             <thead>
               <tr>
                 <th scope="col">Finding</th>
@@ -230,9 +235,11 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
                   </td>
                   <td>{node.lineItem ? `${node.lineItem.lineNumber}. ${lineLabel(node.lineItem.description)}` : <span className="faint">Whole invoice</span>}</td>
                   <td className="num">
+                    <span className="card-label">Expected</span>
                     <Money cents={node.expectedCents} currency={node.invoice.currency} />
                   </td>
                   <td className="num">
+                    <span className="card-label">Billed</span>
                     <Money cents={node.billedCents} currency={node.invoice.currency} />
                   </td>
                   <td className="muted" style={{ maxWidth: 360 }}>

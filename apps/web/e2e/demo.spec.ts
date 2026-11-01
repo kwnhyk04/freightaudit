@@ -315,8 +315,118 @@ test('a finding names its charge as the invoice prints it, not by its code in ca
   for (const text of cells) expect(text).not.toMatch(code);
 });
 
+test('the sidebar folds to its icons, every link keeps its name, and the fold is remembered', async ({ page }) => {
+  await page.goto('/demo/invoices');
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  const links = { Audit: ['Overview', 'Invoices', /^Review queue, \d+ open findings?$/], Operations: [/^Dead letters, \d+ open dead letters?$/] };
+  await page.getByRole('button', { name: 'Collapse sidebar' }).click();
+  await expect(page.getByRole('button', { name: 'Expand sidebar' })).toHaveAttribute('aria-expanded', 'false');
+  expect(Math.round((await page.locator('aside.sidebar').boundingBox())!.width)).toBe(64);
+  for (const [group, names] of Object.entries(links)) {
+    for (const name of names) await expect(nav.getByRole('group', { name: group }).getByRole('link', { name, exact: true })).toBeVisible();
+  }
+  await expect(nav.getByRole('link', { name: 'Invoices', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.sidebar-foot')).toContainText('Sample data');
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Expand sidebar' })).toBeVisible();
+  await page.getByRole('button', { name: 'Expand sidebar' }).click();
+  expect(Math.round((await page.locator('aside.sidebar').boundingBox())!.width)).toBe(232);
+});
+
+test('the list tabs stay links with their counts, one underline slides to the current one, and still motion holds it', async ({ page }) => {
+  const underline = (nav: ReturnType<typeof page.getByRole>) =>
+    nav.evaluate((element: HTMLElement) => {
+      const tab = element.querySelector<HTMLElement>('[aria-current="page"]')!;
+      return { slide: element.dataset.slide, x: element.style.getPropertyValue('--x'), left: `${tab.offsetLeft}px`, w: element.style.getPropertyValue('--w'), width: String(tab.offsetWidth) };
+    });
+  await page.goto('/demo/invoices');
+  const tabs = page.getByRole('navigation', { name: 'Filter by status' });
+  await expect(tabs.getByRole('link', { name: /^All \d+ invoices$/ })).toHaveAttribute('aria-current', 'page');
+  await tabs.getByRole('link', { name: /^Billing issues \d+ invoices$/ }).click();
+  await expect(page).toHaveURL(/status=billing_issues/);
+  await expect(tabs.getByRole('link', { name: /^Billing issues/ })).toHaveAttribute('aria-current', 'page');
+  const placed = await underline(tabs);
+  expect(placed.slide).toBe('true');
+  expect([placed.x, placed.w]).toEqual([placed.left, placed.width]);
+  expect(await tabs.evaluate((element) => getComputedStyle(element, '::after').transitionDuration)).not.toBe('0s');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await tabs.evaluate((element) => getComputedStyle(element, '::after').transitionDuration)).toBe('0s');
+  // The table keeps every column; the card labels are for the phone, where no header shows.
+  const headers = await page.getByRole('region', { name: 'Invoices' }).getByRole('columnheader').allTextContents();
+  expect(headers).toEqual(['Invoice', 'Carrier', 'Status', 'Issued', 'Received', 'Open findings', 'Billed', 'Expected', 'Difference']);
+  await expect(page.locator('.card-label').first()).toBeHidden();
+  // The review queue's decision tabs work the same way, and its evidence keeps the smaller size.
+  await page.goto('/demo/discrepancies');
+  const decisions = page.getByRole('navigation', { name: 'Filter by decision' });
+  await expect(decisions.getByRole('link', { name: 'Open' })).toHaveAttribute('aria-current', 'page');
+  expect((await underline(decisions)).slide).toBe('true');
+  expect(await page.locator('tbody td:nth-child(6)').first().evaluate((cell) => getComputedStyle(cell).fontSize)).toBe('13px');
+});
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
+
+  test('each invoice is a card with its number, carrier, status and amount over contract, and the whole card opens it', async ({ page }) => {
+    test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
+    const id = sampleId('g066.pdf');
+    await page.goto('/demo/invoices');
+    const row = page.getByRole('row').filter({ has: page.locator(`a[href="/demo/invoices/${id}"]`) });
+    await expect(row.getByRole('link', { name: '76644482' })).toBeVisible();
+    await expect(row.getByText('Bramblewood Express')).toBeVisible();
+    await expect(row.locator('.badge')).toBeVisible();
+    // The label is text in the page, so a screen reader reads it with the amount.
+    await expect(row.getByText('Over contract', { exact: true })).toBeVisible();
+    await expect(row.getByText('+$801.54')).toBeVisible();
+    for (const column of [4, 5, 6, 7, 8]) await expect(row.locator(`td:nth-child(${column})`)).toBeHidden();
+    // A tap on the card, away from the number, opens the invoice.
+    await row.scrollIntoViewIfNeeded();
+    const card = (await row.boundingBox())!;
+    await page.mouse.click(card.x + card.width / 2, card.y + card.height - 8);
+    await expect(page).toHaveURL(new RegExp(`/demo/invoices/${id}$`));
+  });
+
+  test('the status tabs scroll sideways with a fade at the edge, and the page never does', async ({ page }) => {
+    await page.goto('/demo/invoices?status=approved');
+    const tabs = page.getByRole('navigation', { name: 'Filter by status' });
+    const strip = await tabs.evaluate((element) => ({ scrolls: element.scrollWidth > element.clientWidth, mask: getComputedStyle(element).maskImage }));
+    expect(strip.scrolls).toBe(true);
+    expect(strip.mask).toContain('linear-gradient');
+    // The current tab is scrolled into the strip.
+    const [box, current] = await Promise.all([tabs.boundingBox(), tabs.locator('[aria-current="page"]').boundingBox()]);
+    expect(current!.x + current!.width).toBeLessThanOrEqual(box!.x + box!.width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+
+  test('each finding is a card with its amounts labelled in text', async ({ page }) => {
+    await page.goto('/demo/discrepancies');
+    const row = page.locator('tbody tr').first();
+    await expect(row.getByText('Billed', { exact: true })).toBeVisible();
+    await expect(row.getByText('Expected', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+
+  test('the menu opens the sidebar as a drawer that keeps focus until Escape, and a link closes it', async ({ page }) => {
+    await page.goto('/demo/invoices');
+    const nav = page.getByRole('navigation', { name: 'Main' });
+    const menu = page.getByRole('button', { name: 'Open menu' });
+    await expect(nav).toBeHidden();
+    await menu.click();
+    await expect(menu).toHaveAttribute('aria-expanded', 'true');
+    await expect(nav).toBeVisible();
+    // Tabbing past the drawer's last control leaves the page, never for the work behind the drawer.
+    for (let i = 0; i < 10; i++) {
+      await page.keyboard.press('Tab');
+      expect(await page.evaluate(() => document.activeElement === document.body || Boolean(document.activeElement?.closest('aside.sidebar'))), `tab ${i + 1}`).toBe(true);
+    }
+    await page.keyboard.press('Escape');
+    await expect(nav).toBeHidden();
+    await expect(menu).toBeFocused();
+    await menu.click();
+    await nav.getByRole('link', { name: 'Overview' }).click();
+    await expect(page).toHaveURL(/\/demo\/dashboard$/);
+    await expect(nav).toBeHidden();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
 
   test('a charge keeps its finding type on one line, and only the table scrolls sideways', async ({ page }) => {
     test.skip(sample.invoices.edges.length === 0, 'the sample is empty');

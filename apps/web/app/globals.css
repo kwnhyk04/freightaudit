@@ -28,11 +28,19 @@
   --chart-bad: #b42318;
   --focus: 0 0 0 3px rgb(43 76 126 / 35%);
   --radius: 6px;
+  /* Containers that hold a list, such as the invoice table and its phone cards. */
+  --radius-lg: 10px;
   --sans: var(--font-plex-sans), system-ui, sans-serif;
   --mono: var(--font-plex-mono), ui-monospace, monospace;
   /* Hover and press: a color change only, quick enough never to lag the pointer. */
   --dur-1: 120ms;
+  /* The sidebar folding to icons and the phone drawer sliding in: a layout change, still under 300 ms. */
+  --dur-2: 220ms;
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --sidebar-wide: 232px;
+  --sidebar-rail: 64px;
+  --scrim: rgb(22 25 29 / 32%);
+  --drawer-shadow: 0 8px 32px rgb(22 25 29 / 18%);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -60,6 +68,8 @@
     --chart-warn: #c98500;
     --chart-bad: #d03b3b;
     --focus: 0 0 0 3px rgb(143 176 230 / 40%);
+    --scrim: rgb(0 0 0 / 55%);
+    --drawer-shadow: 0 8px 32px rgb(0 0 0 / 50%);
   }
 }
 
@@ -137,41 +147,125 @@ h1.id {
   white-space: nowrap;
 }
 
-/* Shell: a quiet sidebar, the work on a wide canvas. */
+/* Shell: a quiet sidebar in two groups that folds to its icons, the work on a wide canvas. Icons keep one column in
+   both widths, so folding moves nothing but the labels. */
 .shell {
   display: grid;
-  grid-template-columns: 216px 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   min-height: 100dvh;
 }
+.topbar,
+.scrim,
+.sidebar .close {
+  display: none;
+}
 .sidebar {
+  width: var(--sidebar-wide);
   border-right: 1px solid var(--rule);
   background: var(--surface);
-  padding: 16px 12px;
+  padding: 12px 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 12px;
   position: sticky;
   top: 0;
   height: 100dvh;
+  overflow: hidden auto;
+}
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 .wordmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: var(--radius);
   font-weight: 600;
   font-size: 15px;
-  padding: 4px 8px 16px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.wordmark:hover {
+  text-decoration: none;
+}
+.monogram {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+}
+.icon-button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+.icon-button:hover {
+  background: var(--sunken);
   color: var(--text);
 }
-.wordmark span {
+.nav {
+  display: grid;
+  gap: 16px;
+}
+.nav [role='group'] {
+  display: grid;
+  gap: 2px;
+}
+.nav-group {
+  margin: 0;
+  padding: 0 12px 4px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-3);
-  font-weight: 400;
+  white-space: nowrap;
 }
-.nav a {
+.nav a,
+.foot-action {
+  position: relative;
   display: flex;
-  justify-content: space-between;
-  padding: 6px 8px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
   border-radius: var(--radius);
+  background: none;
   color: var(--text-2);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
 }
-.nav a:hover {
+.nav .icon,
+.foot-action .icon {
+  flex: none;
+  color: var(--text-3);
+}
+.nav a:hover,
+.foot-action:hover {
   background: var(--sunken);
   color: var(--text);
   text-decoration: none;
@@ -181,13 +275,70 @@ h1.id {
   color: var(--text);
   font-weight: 500;
 }
+.nav a[aria-current='page'] .icon {
+  color: var(--accent);
+}
+.nav .label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .nav .count {
-  color: var(--text-3);
-  font-size: 12px;
+  min-width: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--neutral-tint);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 .nav .count.warn {
+  background: var(--warn-tint);
   color: var(--warn);
+}
+.who {
+  margin: 0;
+  padding: 0 12px 4px;
+  font-size: 13px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+/* Folded: the labels leave the screen but not the page, so every link and button keeps its name. */
+@media (min-width: 721px) {
+  .sidebar[data-collapsed='true'] {
+    width: var(--sidebar-rail);
+  }
+  .sidebar[data-collapsed='true'] .sidebar-head {
+    flex-direction: column;
+  }
+  .sidebar[data-collapsed='true'] :is(.label, .nav-group) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .sidebar[data-collapsed='true'] .who {
+    padding: 0;
+  }
+  .sidebar[data-collapsed='true'] .nav .count {
+    position: absolute;
+    top: 0;
+    left: 26px;
+    min-width: 18px;
+    padding: 0 4px;
+    font-size: 12px;
+    line-height: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .scrim {
+    transition: none;
+  }
 }
 /* Hidden until a keyboard reaches it: the first stop on every page jumps past the sidebar. */
 .skip {
@@ -207,9 +358,8 @@ h1.id {
 .sidebar-foot {
   margin-top: auto;
   display: grid;
-  justify-items: start;
-  gap: 8px;
-  padding: 8px;
+  gap: 2px;
+  padding-top: 12px;
   border-top: 1px solid var(--rule);
 }
 .main {
@@ -370,9 +520,10 @@ td .decide input {
   }
 }
 
-/* Tabs as links: the filter lives in the URL. */
+/* Tabs as links: the filter lives in the URL. One accent underline slides to the current tab (Tabs in client.tsx sets
+   --x and --w); before script has measured, the current tab draws its own. */
 /* Scrollers are positioned, so the visually hidden text inside them is clipped with them instead of widening the page. */
-/* The rule is an inset shadow the current tab's underline covers from inside: a pixel outside would scroll, and Windows draws a scrollbar for it. */
+/* The rule and underlines are inset shadows: a pixel outside would scroll, and Windows draws a scrollbar for it. */
 .tabs {
   position: relative;
   display: flex;
@@ -380,21 +531,53 @@ td .decide input {
   box-shadow: inset 0 -1px var(--rule);
   margin-bottom: 12px;
   overflow-x: auto;
+  scrollbar-width: none;
 }
 .tabs a {
-  padding: 8px;
+  padding: 10px 8px 11px;
+  border-radius: var(--radius) var(--radius) 0 0;
   color: var(--text-2);
-  border-bottom: 2px solid transparent;
   white-space: nowrap;
+  transition:
+    color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
 }
 .tabs a:hover {
   color: var(--text);
   text-decoration: none;
+  box-shadow: inset 0 -2px var(--rule-strong);
 }
 .tabs a[aria-current='page'] {
   color: var(--text);
-  border-bottom-color: var(--accent);
   font-weight: 500;
+  box-shadow: inset 0 -2px var(--accent);
+}
+.tabs[data-slide] a[aria-current='page'] {
+  box-shadow: none;
+}
+/* Inside the scroller an outer ring would be clipped, so focus draws inside the tab. */
+.tabs a:focus-visible,
+.tabs[data-slide] a[aria-current='page']:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.tabs[data-slide]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 2px;
+  background: var(--accent);
+  transform-origin: left;
+  transform: translateX(var(--x)) scaleX(var(--w));
+  transition: transform var(--dur-2) var(--ease-out);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tabs a,
+  .tabs[data-slide]::after {
+    transition: none;
+  }
 }
 
 /* Tables are the product: compact rows, a sticky header, numbers right-aligned. */
@@ -449,6 +632,44 @@ tr.flagged td:first-child {
 }
 .pager > .muted {
   margin-right: auto;
+}
+.page-button {
+  justify-content: center;
+  width: 32px;
+  padding: 0;
+  color: var(--text-2);
+}
+/* The invoice list and the review queue: a rounded container, a plain header and roomier rows that tint on hover. */
+.table-wrap.list {
+  border-radius: var(--radius-lg);
+}
+.list-table {
+  font-size: 14px;
+}
+.list-table th {
+  height: 40px;
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--text);
+  vertical-align: middle;
+}
+.list-table td {
+  padding: 12px;
+  vertical-align: middle;
+}
+.list-table tbody tr {
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+.list-table tbody tr:hover {
+  background: var(--sunken);
+}
+/* The review queue's evidence keeps the smaller size, so it wraps to fewer lines. */
+.finding-rows td:nth-child(6) {
+  font-size: 13px;
+}
+/* A card's labels: the column headers say it on a desktop, so they show only on a phone. */
+.card-label {
+  display: none;
 }
 .button[aria-disabled='true'] {
   opacity: 0.55;
@@ -511,33 +732,43 @@ td .reason {
 .stats dd.stat .num {
   text-align: left;
 }
-/* The tabs keep their own rule and their full width: where the search does not fit beside them, it wraps below. */
+/* The tabs keep their own row and rule; under them the search, then what the list shows. */
 .list-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 8px 16px;
+  display: grid;
+  gap: 12px;
   margin-bottom: 12px;
 }
 .list-bar .tabs {
   margin-bottom: 0;
-  flex: 1 1 auto;
   min-width: 0;
 }
 .tabs .count {
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
+.list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.list-tools > .faint {
+  margin: 0;
+}
 .search {
   display: flex;
   gap: 8px;
-  flex: 0 0 auto;
-  margin-left: auto;
-  padding-bottom: 6px;
 }
 .search input {
-  width: 200px;
+  width: 320px;
   min-width: 0;
+  height: 36px;
+  background: var(--sunken);
+  border-color: var(--rule);
+}
+.search .button {
+  height: 36px;
 }
 
 /* The overview: the overbilling figure beside the counts, then the weekly charts, the carriers and the pipeline. */
@@ -1777,20 +2008,65 @@ table.audit-ledger tbody th {
 }
 @media (max-width: 720px) {
   .shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
-  /* Phone: the sidebar stacks above the work, each section on its own line and sign-out under them. */
-  .sidebar {
-    position: static;
-    height: auto;
-    border-right: 0;
+  /* Phone: a bar with the name and a menu button; the sidebar opens over the work as a drawer, always unfolded. */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    padding: 0 6px 0 8px;
     border-bottom: 1px solid var(--rule);
+    background: var(--surface);
   }
-  .wordmark {
-    padding: 4px 8px 12px;
+  .topbar .icon-button,
+  .sidebar .close {
+    display: grid;
+    width: 44px;
+    height: 44px;
   }
-  .sidebar-foot {
-    margin-top: 6px;
+  .sidebar .collapse {
+    display: none;
+  }
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: min(288px, 86vw);
+    border-right: 0;
+    box-shadow: var(--drawer-shadow);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform var(--dur-2) var(--ease-out),
+      visibility 0s linear var(--dur-2);
+  }
+  .sidebar[data-open='true'] {
+    transform: none;
+    visibility: visible;
+    transition: transform var(--dur-2) var(--ease-out);
+  }
+  .scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: var(--scrim);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-2) var(--ease-out);
+  }
+  .scrim[data-open='true'] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .nav a,
+  .foot-action {
+    height: 44px;
   }
   .main {
     padding: 16px;
@@ -1822,17 +2098,109 @@ table.audit-ledger tbody th {
   .health > div {
     padding: 10px;
   }
-  /* One column: wrapped, a column is as wide as the whole tab strip and the page scrolls. */
-  .list-bar {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: stretch;
+  /* Phone: the tab strip scrolls sideways and fades at its end; its padding lets the last tab scroll clear of the fade. */
+  .tabs {
+    padding-inline-end: 32px;
+    mask-image: linear-gradient(to left, transparent, black 32px);
   }
   .search {
-    margin-left: 0;
+    flex: 1 1 100%;
   }
   .search input {
     flex: 1;
+    width: auto;
+  }
+  /* Phone: each list row is a card. An invoice shows its number, carrier, status and what it bills over contract, and
+     the whole card opens it; a finding shows what was found, on which invoice and line, the amounts and the decision. */
+  .table-wrap.list {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+  .list-table,
+  .list-table tbody {
+    display: block;
+  }
+  .list-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .list-table tbody tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    margin-bottom: 8px;
+    padding: 12px 14px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+  }
+  .list-table tbody td,
+  .list-table tbody tr:last-child td {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+  .invoice-rows td:nth-child(n + 4):nth-child(-n + 8) {
+    display: none;
+  }
+  .invoice-rows td:nth-child(1) {
+    grid-area: 1 / 1;
+  }
+  .invoice-rows td:nth-child(2) {
+    grid-area: 2 / 1;
+  }
+  .invoice-rows td:nth-child(3) {
+    grid-area: 3 / 1 / auto / -1;
+    margin-top: 4px;
+  }
+  .invoice-rows td:nth-child(9) {
+    grid-area: 1 / 2 / span 2;
+  }
+  .invoice-rows .id::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-lg);
+  }
+  .finding-rows td:nth-child(1) {
+    grid-area: 1 / 1;
+    font-weight: 500;
+  }
+  .finding-rows td:nth-child(5) {
+    grid-area: 1 / 2;
+  }
+  .finding-rows td:nth-child(2) {
+    grid-area: 2 / 1;
+  }
+  .finding-rows td:nth-child(4) {
+    grid-area: 2 / 2;
+  }
+  .finding-rows td:nth-child(3),
+  .finding-rows td:nth-child(6),
+  .finding-rows td:nth-child(7) {
+    grid-column: 1 / -1;
+  }
+  .finding-rows td:nth-child(7) {
+    margin-top: 6px;
+  }
+  .card-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-3);
+  }
+  /* In a card the decision wraps: the note takes its own line, the buttons share the next. */
+  .finding-rows td .decide {
+    flex-wrap: wrap;
+  }
+  .finding-rows td .decide input {
+    flex: 1 1 100%;
+    width: auto;
   }
   .trail li {
     grid-template-columns: 1fr;

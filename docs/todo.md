@@ -52,6 +52,13 @@ Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push t
 
 ## In Progress
 
+- [ ] App shell and tables (user, 2026-11-01): one PR on branch `app-shell-and-tables` from main `272b616`, not committed.
+  - [x] Sidebar after 21st.dev's Wensity sidebar: groups, icon rail, phone drawer; e2e tests for the fold and the drawer; screenshots refreshed.
+  - [x] Invoice list and review queue tables, toolbar, pager and underline tabs: preview approved with the evidence at 13 px and card labels as text.
+  - [x] Tables' real build and e2e tests; screenshots refreshed.
+  - [x] The cnippet-table licence confirmed by the user: MIT (docs/third-party.md).
+  - [ ] The user ships.
+
 - [ ] Claude first everywhere (user, 2026-10-31): one PR on branch `claude-first-everywhere` from main `b7fc85a`, not committed. Plan approved with the user's four answers (docs/memory.md, 2026-10-31). Tests first; no live call in a test.
   - [x] Runtime: Claude Haiku 5.5 first at every step (read, repair, and the third pass only if Claude has not replied), each step's free model behind it. The tier spend-cap 429 (`enforced_spend_limit_reached`) and the new `LLM_CLAUDE_SPEND_CAP_USD` switch Claude off for good. A 429, 529, 5xx or other 4xx goes to the free model for that call only, with its reservation refunded; a timeout or lost connection leaves the rest of that attempt to the free models. The backup mode and role pins on `anthropic` are gone.
   - [x] Evals: Claude first by default; `--config free` for CI, floors and `--subset compare`. Every report gives each model's share of calls. The README and the landing page show the Claude-first run beside the free one.

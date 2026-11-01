@@ -2,7 +2,7 @@
 import type { InvoiceDecision } from '@freightaudit/contracts/graphql';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { type ReactNode, useActionState, useEffect, useRef } from 'react';
+import { type ReactNode, useActionState, useEffect, useLayoutEffect, useRef } from 'react';
 import { type ActionState, login, review, upload, uploadSample } from '../app/actions.ts';
 import { duplicateParts } from '../lib/labels.ts';
 
@@ -11,21 +11,38 @@ import { duplicateParts } from '../lib/labels.ts';
 // there sends the browser to sign-in.
 export const sendUpload = (form: FormData) => upload({}, form);
 
-// The sidebar's links, marking the section the reader is in, with a count where one waits; screen readers hear the
-// count as words.
-export function NavLinks({ links }: { links: { href: string; label: string; count?: number; unit?: string; tone?: 'warn' }[] }) {
-  const path = usePathname();
+// Filters as links, so the filter lives in the URL; a count is followed by its unit for screen readers. One underline
+// slides to the current tab: measured here and drawn by CSS, which shows a still underline until this has run.
+export function Tabs({ items, current, label, unit }: { items: { href: string; label: string; key: string; count?: number }[]; current: string; label: string; unit?: string }) {
+  const nav = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const box = nav.current;
+    const active = box?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!box || !active) return;
+    const place = () => {
+      box.style.setProperty('--x', `${active.offsetLeft}px`);
+      box.style.setProperty('--w', String(active.offsetWidth));
+      box.dataset.slide = 'true';
+    };
+    place();
+    // On a phone the strip scrolls: the current tab is brought into it.
+    if (active.offsetLeft + active.offsetWidth > box.scrollLeft + box.clientWidth) box.scrollLeft = active.offsetLeft - 16;
+    const sizes = new ResizeObserver(place);
+    sizes.observe(active);
+    return () => sizes.disconnect();
+  }, [current]);
   return (
-    <nav className="nav" aria-label="Main">
-      {links.map((link) => (
-        <Link
-          key={link.href}
-          href={link.href}
-          aria-current={path.startsWith(link.href) ? 'page' : undefined}
-          aria-label={link.count ? `${link.label}, ${link.count} ${link.unit}${link.count === 1 ? '' : 's'}` : undefined}
-        >
-          {link.label}
-          {link.count !== undefined && link.count > 0 && <span className={`count${link.tone ? ` ${link.tone}` : ''}`}>{link.count}</span>}
+    <nav ref={nav} className="tabs" aria-label={label}>
+      {items.map((item) => (
+        <Link key={item.key} href={item.href} aria-current={item.key === current ? 'page' : undefined}>
+          {item.label}
+          {item.count !== undefined && (
+            <>
+              {' '}
+              <span className="count">{item.count}</span>
+              {unit && <span className="visually-hidden"> {unit}</span>}
+            </>
+          )}
         </Link>
       ))}
     </nav>
