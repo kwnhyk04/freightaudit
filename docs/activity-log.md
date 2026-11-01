@@ -19,6 +19,41 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-11-02: Landing round 1: header, hero and logo (branch `landing-hero-and-logo`, not committed)
+
+- The two reference images the brief named were not on disk.
+  - What happened: `_tmp/21st/h5-hero.png` and `_tmp/logos/fa-logo-sheet.png` did not exist. `_tmp/logos/` held `freight-audit-logo.png` and `filing-lens-logo.png`.
+  - Why: not confirmed; the files may have been saved under other names.
+  - What we did: used `freight-audit-logo.png`, which shows exactly the variant the brief describes (a slanted F, its middle bar a ledger line with a check), and the pasted component code as the hero reference. This avoided stopping on a missing file when the content needed was in hand.
+- The hero's source has no licence, and its prompt asked to install packages.
+  - What happened: the 21st.dev page for "Event Dashboard Hero" (`hero4`, anelkabag) states "License: no-license". The pasted prompt asked to copy it into `components/ui` and install motion and lucide-react, on a Tailwind and shadcn setup this app does not have.
+  - Why: the user's rule is that no licence means a visual reference only; AGENTS.md asks before any new dependency.
+  - What we did: rebuilt the layout in FA's own CSS, tokens and shared components (`Badge`, `StatusBadge`, `Difference`, `ThemeSwitch`), with no package installed, and recorded the source in `docs/third-party.md`.
+- Header and hero.
+  - What happened: the header became sticky with the mark, the section links, `ThemeSwitch compact` (icons only, same `fa-theme` cookie, read in `app/page.tsx`), Sign in and Open the demo. Below 1024 px the links fold into `LandingMenu`, a native `<details>` that closes when a link is followed; below 721 px Open the demo joins them. The hero kept its headline, lead and buttons, added a "Live demo" pill and overcharge recall (97.4%, Claude first, measured October 31, 2026, read from `lib/eval-results.json`), and replaced the reconciliation with g066 as an invoice card in the app's style, on a tilted card, over two faint circles and a 40 px grid.
+  - Why: the user's brief.
+  - What we did: left out the Features link, because round 2 adds that section and a link to nothing is a dead control. The card names the line ("Linehaul billed", not "Billed"), since $6,145.14 is the Linehaul charge and the invoice total is $7,124.09. The finding uses the app's own words ("Linehaul above the rate card") and buttons (`decideWords`: Approve charge, Dispute), shown only and hidden from screen readers.
+- Logo.
+  - What happened: redrew the mark as SVG on a 48-unit grid: bars 8 units thick, radius 2.5, one `skewX(-12)`. The check is a cut-out from 24 px and left out below. It is in the sidebar tile (replacing the "FA" text), the landing header, `app/icon.svg` and `app/apple-icon.png`, with light, dark, one-colour and app-icon files in `docs/brand/`.
+  - Why: neither accent reads on both backgrounds: #2b4c7e is 2.14:1 on the dark canvas, #8fb0e6 is 2.21:1 on white.
+  - What we did: added `--brand: #2563eb` (5.17:1 on white, 3.57:1 on the dark canvas), and wrote the apple icon by rendering `docs/brand/fa-app-icon.svg` at 180 px with Playwright from a scratch script. The data-URI favicon in `app/layout.tsx` gave way to the file icons, and `proxy.ts` now leaves `/icon.svg` and `/apple-icon.png` public; `proxy.test.ts` asserted that first and failed until the matcher changed.
+- The preview server failed to start three times.
+  - What happened: `pnpm start` exited on missing settings; `node --env-file=e2e/e2e.env ... next start` exited on a missing `DEMO_PASSWORD_HASH`; a plain placeholder failed its argon2id format check.
+  - Why: the e2e config hashes a per-run password at run time, so `e2e.env` holds no hash.
+  - What we did: started `next start` on 127.0.0.1:3000 with `e2e.env` and a placeholder in argon2id format that matches no password; the landing and the demo never sign in. Stopped it after the screenshots.
+- A note failed contrast.
+  - What happened: the recall's run and date in `--text-3` measured 4.48:1 on the light canvas.
+  - Why: `--text-3` is set against the surface, not the canvas.
+  - What we did: the note uses `--text-2` on its own line.
+- The first e2e run failed one test.
+  - What happened: `demo.spec.ts:42` failed at the card's figures: `div` that has the `dt` also matched the card's wrapping divs, so the locator found several `dd`s.
+  - Why: the card wraps the list in two more divs.
+  - What we did: scoped the locator to `dl > div`, and added checks for the pill, the recall figure, no "Trusted by" and Sign in's link. The second run passed.
+- GateGuard asked for stated facts before the first edit of each file; they were stated each time.
+- Files: apps/web/components/landing.tsx, apps/web/components/logo.tsx, apps/web/components/client.tsx, apps/web/components/sidebar.tsx, apps/web/app/page.tsx, apps/web/app/layout.tsx, apps/web/app/icon.svg, apps/web/app/apple-icon.png, apps/web/app/globals.css, apps/web/proxy.ts, apps/web/proxy.test.ts, apps/web/e2e/demo.spec.ts, docs/brand/*, docs/third-party.md, docs/design.md, docs/context.md, docs/todo.md, docs/activity-log.md
+- Validation: `pnpm turbo run build typecheck lint test`: 44 of 44. `pnpm e2e`: 66 of 66 on the second run. Screenshots at 1280, 1440, 1920 and 390 px in both themes, the phone menu open, the sidebar open and folded, and a logo sheet at 16 to 128 px, in `_tmp/fa-landing-1/`: no page scrolls sideways at any width. The dev containers were stopped afterwards; `freightaudit-prod` was not touched.
+- Outstanding: `pnpm e2e:screenshots` not run (`docs/screenshots/ui` shows the old landing). Round 2 and its Features link.
+
 ### 2026-11-02: Invoices fits at 1280 px again (same branch, not committed)
 
 - What happened: after the column follow-up, Invoices scrolled 151 px at 1280 px with the sidebar open, worse than the 55 px before the branch. The user asked to hide Open findings below 1440 px, since the status pill gives the count.

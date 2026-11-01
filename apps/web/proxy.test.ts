@@ -9,7 +9,7 @@ test('the landing page at / is public, and every live page and route still needs
   for (const path of ['/invoices', '/invoices/1', '/dashboard', '/upload', '/discrepancies', '/dead-letters', '/api/invoices/1/document', '/nowhere', '/demo', '/demo/invoices/1']) {
     expect([path, checked(path)]).toEqual([path, true]);
   }
-  for (const path of ['/', '/?ref=home', '/login', '/logout', '/healthz', '/readyz', '/_next/static/chunks/main.js', '/favicon.ico']) {
+  for (const path of ['/', '/?ref=home', '/login', '/logout', '/healthz', '/readyz', '/_next/static/chunks/main.js', '/favicon.ico', '/icon.svg', '/apple-icon.png']) {
     expect([path, checked(path)]).toEqual([path, false]);
   }
 });

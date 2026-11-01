@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './icons.tsx';
+import { LogoMark } from './logo.tsx';
 
 export type NavLink = { href: string; label: string; icon: IconName; count?: number; unit?: string; tone?: 'warn' };
 const STORE = 'fa-sidebar-collapsed';
@@ -63,8 +64,8 @@ export function Sidebar({ home, groups, foot }: { home: string; groups: { label:
       <aside ref={drawer} id={id} className="sidebar" data-collapsed={collapsed} data-open={open}>
         <div className="sidebar-head">
           <Link href={home} className="wordmark" title={collapsed ? 'FreightAudit' : undefined}>
-            <span className="monogram" aria-hidden="true">
-              FA
+            <span className="monogram">
+              <LogoMark />
             </span>
             <span className="label">FreightAudit</span>
           </Link>

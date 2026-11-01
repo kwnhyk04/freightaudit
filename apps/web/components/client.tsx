@@ -54,8 +54,8 @@ export function Tabs({ items, current, label, unit }: { items: { href: string; l
 }
 
 // System, Light or Dark as one radio group: a choice applies at once and its cookie keeps it, so the server renders the
-// next page in it. In the folded sidebar only the icons show; each radio keeps its name.
-export function ThemeSwitch({ initial }: { initial: Theme }) {
+// next page in it. In the folded sidebar and compact (the landing header) only the icons show; each radio keeps its name.
+export function ThemeSwitch({ initial, compact }: { initial: Theme; compact?: boolean }) {
   const [theme, setTheme] = useState(initial);
   const choose = (next: Theme) => {
     setTheme(next);
@@ -64,7 +64,7 @@ export function ThemeSwitch({ initial }: { initial: Theme }) {
     else document.documentElement.dataset.theme = next;
   };
   return (
-    <fieldset className="segmented theme-switch">
+    <fieldset className={`segmented theme-switch${compact ? ' compact' : ''}`}>
       <legend className="visually-hidden">Theme</legend>
       {THEMES.map((each) => (
         <label key={each} title={THEME_LABEL[each]}>
@@ -74,6 +74,19 @@ export function ThemeSwitch({ initial }: { initial: Theme }) {
         </label>
       ))}
     </fieldset>
+  );
+}
+
+// The landing header's phone menu: a native disclosure, closed again once one of its links is followed.
+export function LandingMenu({ children }: { children: ReactNode }) {
+  const menu = useRef<HTMLDetailsElement>(null);
+  return (
+    <details ref={menu} className="landing-menu" onClick={(event) => (event.target as HTMLElement).closest('a') && menu.current?.removeAttribute('open')}>
+      <summary aria-label="Menu">
+        <Icon name="menu" />
+      </summary>
+      <div className="landing-menu-panel">{children}</div>
+    </details>
   );
 }
 

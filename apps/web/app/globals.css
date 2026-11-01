@@ -14,6 +14,8 @@
   --accent-hover: #213c65;
   --accent-tint: #e8eef7;
   --on-accent: #ffffff;
+  /* The logo's ledger bar, one blue in both themes: at least 3:1 on white and on the dark canvas (docs/design.md). */
+  --brand: #2563eb;
   --ok: #1e6b3a;
   --ok-tint: #e7f4ec;
   --warn: #8a4b00;
@@ -43,6 +45,10 @@
   --sidebar-rail: 64px;
   --scrim: rgb(22 25 29 / 32%);
   --drawer-shadow: 0 8px 32px rgb(22 25 29 / 18%);
+  --card-shadow: 0 8px 40px -8px rgb(22 25 29 / 14%);
+  /* The landing hero's faint circles and grid, a few percent of the text colour, so both themes follow. */
+  --hero-shape: color-mix(in srgb, var(--text) 4%, transparent);
+  --hero-grid: color-mix(in srgb, var(--text) 5%, transparent);
 }
 /* Dark: the device's scheme, unless the reviewer chose Light, or Dark whatever the device says (data-theme, set on the
    server from the theme cookie). The two blocks hold the same values; lib/theme.test.ts fails when they differ. */
@@ -75,6 +81,7 @@
     --focus: 0 0 0 3px rgb(143 176 230 / 40%);
     --scrim: rgb(0 0 0 / 55%);
     --drawer-shadow: 0 8px 32px rgb(0 0 0 / 50%);
+    --card-shadow: 0 8px 40px -8px rgb(0 0 0 / 60%);
   }
 }
 :root[data-theme='dark'] {
@@ -105,6 +112,7 @@
   --focus: 0 0 0 3px rgb(143 176 230 / 40%);
   --scrim: rgb(0 0 0 / 55%);
   --drawer-shadow: 0 8px 32px rgb(0 0 0 / 50%);
+  --card-shadow: 0 8px 40px -8px rgb(0 0 0 / 60%);
 }
 
 *,
@@ -227,16 +235,17 @@ h1.id {
 .wordmark:hover {
   text-decoration: none;
 }
+/* The logo mark, in the sidebar tile and the landing header: text-coloured bars, the ledger bar in --brand. */
 .monogram {
   display: grid;
   place-items: center;
   flex: none;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: var(--on-accent);
-  font-size: 12px;
+}
+.logo-mark {
+  display: block;
+  color: var(--text);
 }
 .icon-button {
   display: grid;
@@ -1828,31 +1837,127 @@ td.wrap {
   margin: 0 auto;
   padding: 0 24px;
 }
+/* The header stays on top while the page scrolls: the mark and name, the section links, then the theme, sign-in and demo. */
 .landing-top {
-  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--rule);
 }
 .landing-top .landing-wrap {
   display: flex;
   align-items: center;
   gap: 28px;
-  min-height: 58px;
+  min-height: 60px;
 }
 .landing-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: var(--text);
   font-size: 16px;
   font-weight: 600;
+}
+.landing-name:hover {
+  text-decoration: none;
 }
 .landing-nav {
   display: flex;
   gap: 20px;
 }
-.landing-nav a {
+.landing-nav a,
+.landing-signin {
   color: var(--text-2);
 }
-.landing-top .button {
+.landing-nav a:hover,
+.landing-signin:hover {
+  color: var(--text);
+}
+.landing-signin {
+  font-weight: 500;
+}
+.landing-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
   margin-left: auto;
+}
+.landing-top .button {
   font-size: 14px;
+}
+/* The theme switch, icons only, beside sign-in. */
+.theme-switch.compact {
+  margin: 0;
+}
+.theme-switch.compact label {
+  flex: none;
+  width: 32px;
+  padding: 0;
+}
+.theme-switch.compact .label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* The phone menu: a disclosure whose panel drops under the header. */
+.landing-menu {
+  display: none;
+  position: relative;
+}
+.landing-menu summary {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  color: var(--text-2);
+  list-style: none;
+  cursor: pointer;
+}
+.landing-menu summary::-webkit-details-marker {
+  display: none;
+}
+.landing-menu summary:hover {
+  background: var(--sunken);
+  color: var(--text);
+}
+.landing-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  gap: 2px;
+  width: min(280px, calc(100vw - 32px));
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--drawer-shadow);
+}
+.landing-menu-panel nav {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+.landing-menu-panel a:not(.button) {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  color: var(--text);
+}
+.landing-menu-panel a:not(.button):hover {
+  background: var(--sunken);
+  text-decoration: none;
+}
+.landing-menu-panel .button {
+  justify-content: center;
+  height: 44px;
+  margin-top: 4px;
 }
 .button.large {
   height: 48px;
@@ -1875,15 +1980,145 @@ td.wrap {
   }
 }
 
-/* The hero: the claim beside the sample's reconciliation, then the eval's two runs on the three rows a buyer asks about. */
+/* The hero: the claim beside the sample invoice as the app shows it, then the eval's two runs on the three rows a buyer
+   asks about. Two faint circles and a 40 px grid sit behind it for depth. */
 .hero {
-  padding: 80px 0 72px;
+  position: relative;
+  overflow: hidden;
+  padding: 72px 0;
+  background-image: linear-gradient(to right, var(--hero-grid) 1px, transparent 1px), linear-gradient(to bottom, var(--hero-grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.hero::before,
+.hero::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: var(--hero-shape);
+  pointer-events: none;
+}
+.hero::before {
+  top: -160px;
+  right: -140px;
+  width: 500px;
+  height: 500px;
+}
+.hero::after {
+  bottom: -280px;
+  left: -240px;
+  width: 600px;
+  height: 600px;
 }
 .hero .landing-wrap {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
-  gap: 48px 56px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 56px 64px;
   align-items: center;
+}
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 24px;
+  padding: 3px 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.hero-stat {
+  margin: 28px 0 0;
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 22px;
+}
+.hero-stat strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.hero-stat-note {
+  display: block;
+}
+/* The sample invoice card, in the app's panel style, on a card tilted behind it. */
+.invoice-figure {
+  display: grid;
+  gap: 20px;
+  margin: 0;
+}
+.invoice-figure figcaption {
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 20px;
+}
+.invoice-stack {
+  position: relative;
+}
+.invoice-stack::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-lg);
+  background: var(--sunken);
+  transform: translate(14px, 12px) rotate(3.5deg);
+}
+.invoice-card {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--card-shadow);
+}
+.invoice-card p {
+  margin: 0;
+}
+.invoice-card-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rule);
+}
+.invoice-card-title {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.decide-preview .button {
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .live-dot {
+    animation: live 2s ease-in-out infinite;
+  }
+  .invoice-card {
+    animation: rise 500ms var(--ease-out) 100ms both;
+  }
+}
+@keyframes live {
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
 }
 .hero-copy h1 {
   max-width: 14em;
@@ -1905,45 +2140,37 @@ td.wrap {
   gap: 10px;
   margin-top: 28px;
 }
-.recon-figure {
-  margin: 0;
-  display: grid;
-  gap: 16px;
-}
-.recon-figure figcaption {
-  color: var(--text-2);
-  font-size: 15px;
-  line-height: 20px;
-}
+/* The card's three figures as tiles: billed, contract, and the held difference in the finding's red. */
 .recon {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
   margin: 0;
 }
 .recon div {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 24px;
-  padding: 14px 0;
-  border-top: 1px solid var(--rule);
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--sunken);
 }
 .recon .recon-held {
-  border-top: 2px solid var(--text);
+  border-color: color-mix(in srgb, var(--bad) 35%, var(--rule));
+  background: var(--bad-tint);
 }
 .recon dt {
   color: var(--text-2);
-  font-size: 15px;
+  font-size: 13px;
+  line-height: 18px;
 }
 .recon dd {
-  margin: 0;
-  font-size: clamp(28px, 3.4vw, 44px);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  font-weight: 500;
+  margin: 4px 0 0;
+  font-size: 20px;
+  line-height: 26px;
+  letter-spacing: -0.01em;
+  font-weight: 600;
 }
 .recon-held dd {
   color: var(--bad);
-  font-weight: 600;
 }
 .hero-proof {
   grid-column: 1 / -1;
@@ -2100,18 +2327,51 @@ table.audit-ledger tbody th {
   font-size: 14px;
   line-height: 20px;
 }
+/* Below 1024 px the hero stacks, and the section links and sign-in fold into the menu. */
 @media (max-width: 1023px) {
   .hero .landing-wrap {
     grid-template-columns: minmax(0, 1fr);
   }
+  .landing-nav,
+  .landing-signin {
+    display: none;
+  }
+  .landing-menu {
+    display: block;
+  }
+  .landing-actions {
+    gap: 8px;
+  }
 }
-/* Phone: the hero stacks, the in-page links give way to the demo button, the trail folds each row into a card-free block. */
+/* Phone: the demo button joins the menu, the card's figures stack, the trail folds each row into a card-free block. */
 @media (max-width: 720px) {
   .landing-wrap {
     padding: 0 16px;
   }
-  .landing-nav {
+  .landing-top .landing-wrap {
+    gap: 12px;
+  }
+  .landing-actions > .button {
     display: none;
+  }
+  .invoice-card {
+    padding: 16px;
+  }
+  .recon {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .recon div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .recon dd {
+    margin: 0;
+  }
+  .invoice-stack::before {
+    transform: translate(6px, 8px) rotate(2deg);
   }
   .hero {
     padding: 40px 0 48px;
