@@ -2,7 +2,8 @@ import { type APIRequestContext, expect, type Page, test } from '@playwright/tes
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import pg from 'pg';
-import { olderBrowser, PASSWORD } from './env.ts';
+import { createToken } from '../lib/session.ts';
+import { e2eEnv, olderBrowser, PASSWORD } from './env.ts';
 
 const env = parseEnv(readFileSync(new URL('e2e.env', import.meta.url), 'utf8'));
 async function db<Row>(sql: string) {
@@ -96,6 +97,26 @@ test.describe('login', () => {
     expect([signOut.status(), (await signOut.allHeaders())['clear-site-data']]).toEqual([303, '"cache"']);
     await expect(page).toHaveURL(/\/login$/);
     expect((await context.cookies()).some((each) => each.name === '__Host-session')).toBe(false);
+    await context.close();
+  });
+
+  test('30 minutes without activity end the session: the next page asks for sign-in, says why, and returns there after', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const page = await context.newPage();
+    await page.goto('/login');
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    // Fast-forward 31 minutes: the server's clock cannot move from here, so the cookie is re-signed as the server issued
+    // it then, signed in and last active 31 minutes ago.
+    const cookie = (await context.cookies()).find((each) => each.name === '__Host-session')!;
+    await context.addCookies([{ ...cookie, value: createToken('reviewer', e2eEnv.SESSION_SECRET!, Date.now() - 31 * 60_000) }]);
+    await page.goto('/invoices?status=open');
+    await expect(page).toHaveURL(/\/login\?next=%2Finvoices%3Fstatus%3Dopen&ended=idle$/);
+    await expect(page.locator('.form-notice')).toHaveText('You were signed out after 30 minutes without activity.');
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL(/\/invoices\?status=open$/);
     await context.close();
   });
 });

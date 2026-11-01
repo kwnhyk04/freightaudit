@@ -20,6 +20,8 @@
   --warn-tint: #fdf1dc;
   --bad: #b42318;
   --bad-tint: #fcebea;
+  /* Text on a solid --bad fill (the Failed pill). */
+  --on-bad: #ffffff;
   --neutral-tint: #eef0f3;
   /* Chart fills, run through the dataviz palette validator against the card surface in both modes (docs/memory.md):
      blue for a single series and for invoices that matched, amber for those that needed a reviewer, red for failures. */
@@ -65,6 +67,7 @@
     --warn-tint: #2e2210;
     --bad: #f59a8e;
     --bad-tint: #331614;
+    --on-bad: #121417;
     --neutral-tint: #22272d;
     --chart: #3987e5;
     --chart-warn: #c98500;
@@ -94,6 +97,7 @@
   --warn-tint: #2e2210;
   --bad: #f59a8e;
   --bad-tint: #331614;
+  --on-bad: #121417;
   --neutral-tint: #22272d;
   --chart: #3987e5;
   --chart-warn: #c98500;
@@ -502,18 +506,25 @@ label {
   color: var(--bad);
   font-size: 13px;
 }
+/* Why a session ended, above the password. */
+.form-notice {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--sunken);
+  color: var(--text);
+  font-size: 13px;
+}
 /* The note gives way before a decision's buttons wrap. */
 .decide input {
   flex: 1 1 120px;
   max-width: 180px;
 }
-/* In the queue a decision stays on one line; the evidence column gives way. */
-td .decide {
-  flex-wrap: nowrap;
-}
+/* In the queue the note fills the decision column: one line with its buttons where the column is wide enough, else
+   the buttons wrap under it. */
 td .decide input {
-  flex: 0 1 auto;
-  width: 150px;
+  flex: 1 1 150px;
+  min-width: 0;
+  max-width: none;
 }
 
 /* Status: a tinted pill with its word and a dot, never color alone. */
@@ -549,6 +560,11 @@ td .decide input {
   background: var(--bad-tint);
   color: var(--bad);
 }
+/* Failed: the one solid pill, stronger than the soft red of billing issues. */
+.badge.fail {
+  background: var(--bad);
+  color: var(--on-bad);
+}
 .badge.busy::before {
   animation: pulse 1.4s ease-in-out infinite;
 }
@@ -577,7 +593,7 @@ td .decide input {
   scrollbar-width: none;
 }
 .tabs a {
-  padding: 10px 8px 11px;
+  padding: 10px 6px 11px;
   border-radius: var(--radius) var(--radius) 0 0;
   color: var(--text-2);
   white-space: nowrap;
@@ -710,6 +726,40 @@ tr.flagged td:first-child {
 .list-table td.small-cell {
   font-size: 13px;
 }
+/* Set column widths (Table's cols): the spare width is spread over the columns instead of going to the longest text.
+   Long text, a two-word header and a date wrap inside their column; amounts stay on one line, right-aligned. Phones keep
+   the cards, or the natural layout and sideways scroll. */
+@media (min-width: 721px) {
+  .list-table.fixed {
+    table-layout: fixed;
+    min-width: var(--table-min, 0);
+  }
+  .list-table.fixed col {
+    width: var(--col, auto);
+  }
+  .list-table.fixed th,
+  .list-table.fixed time {
+    white-space: normal;
+  }
+  .list-table.fixed td {
+    overflow-wrap: anywhere;
+  }
+  /* A long status wraps inside its pill rather than past its column. */
+  .list-table.fixed .badge {
+    height: auto;
+    min-height: 22px;
+    white-space: normal;
+  }
+}
+/* A column that shows only from 1440 px (Table cols' wideOnly), such as the count the status pill already gives. */
+@media (min-width: 721px) and (max-width: 1439px) {
+  .list-table .wide-only {
+    display: none;
+  }
+  .list-table.fixed col {
+    width: var(--col-narrow, var(--col, auto));
+  }
+}
 /* A card's labels: the column headers say it on a desktop, so they show only on a phone. */
 .card-label {
   display: none;
@@ -788,6 +838,30 @@ td .reason {
 .tabs .count {
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
+}
+/* A status tab's count in its status pill's colours (labels.ts FILTERS); a neutral count stays plain grey text. */
+.tabs .count:is(.ok, .warn, .bad, .fail) {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.tabs .count.ok {
+  background: var(--ok-tint);
+  color: var(--ok);
+}
+.tabs .count.warn {
+  background: var(--warn-tint);
+  color: var(--warn);
+}
+.tabs .count.bad {
+  background: var(--bad-tint);
+  color: var(--bad);
+}
+.tabs .count.fail {
+  background: var(--bad);
+  color: var(--on-bad);
 }
 .list-tools {
   display: flex;

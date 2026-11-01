@@ -52,12 +52,22 @@ Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push t
 
 ## In Progress
 
-- [ ] Shared UI, theme switch and upload card (user, 2026-11-01): one PR on branch `shared-ui-theme-upload` from main `438f086`, not committed.
+- [ ] Idle timeout and table polish (user, 2026-11-02): one PR on branch `idle-timeout-and-table-polish` from main `bed3129`, not committed.
+  - [x] A. Sign-in ends after 30 idle minutes and 8 hours from sign-in (`SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS`), renewed in `proxy.ts` at most every 5 minutes; sign-in says why and returns to the page. Unit tests first, then e2e.
+  - [x] B. `Table cols` and `minWidth`: fixed layout above 720 px for Invoices, Findings, Dead letters, Recent uploads and the chart tables.
+  - [x] C. Status colours through `statusTone`, on pills and on the status tabs' counts, AA in both themes.
+  - [x] Checks and screenshots in `_tmp/fa-table-polish/` (docs/activity-log.md, 2026-11-02).
+  - [x] Follow-ups (user): short columns sized to their longest real value, only long text shares the spare width; background polls no longer renew the session.
+  - [x] Last fix (user): Invoices hides Open findings below 1440 px, so it no longer scrolls at 1280 px with the sidebar open.
+  - [ ] `pnpm e2e:screenshots` to refresh `docs/screenshots/ui` (not run).
+  - [ ] The user ships. A Vercel redeploy signs out every current session once, since old tokens count as ended.
+
+- [x] Shared UI, theme switch and upload card (user, 2026-11-01): one PR on branch `shared-ui-theme-upload` from main `438f086`, shipped as `bed3129` (#67).
   - [x] One shared `Table` (with `Th`, `Td` and a phone-card mode), `Tabs`, `Pager` and `StatusBadge` for every table; the rule in AGENTS.md and docs/design.md.
   - [x] Theme switch (System, Light, Dark) in the sidebar and the phone drawer, kept in a cookie and applied on the server.
   - [x] The upload page as one card after the 21st.dev upload component, with FA's rules and states.
   - [x] Checks and screenshots for the user's review (docs/activity-log.md, 2026-11-01).
-  - [ ] The user ships.
+  - [x] Shipped as `bed3129` (#67).
 
 - [x] App shell and tables (user, 2026-11-01): one PR on branch `app-shell-and-tables` from main `272b616`, shipped as `438f086` (#66).
   - [x] Sidebar after 21st.dev's Wensity sidebar: groups, icon rail, phone drawer; e2e tests for the fold and the drawer; screenshots refreshed.

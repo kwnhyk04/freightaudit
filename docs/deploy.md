@@ -139,6 +139,7 @@ Nothing to add. The release workflow publishes the images; nothing deploys from 
 | `API_KEYS` | `.env.prod` | Keys the api accepts, comma-separated, 32+ characters | Append a new key, `pnpm demo:up`, set Vercel's `API_KEY` to it and redeploy, then drop the old key and `pnpm demo:up` again |
 | `API_KEY` | Vercel | The web's key, one of `API_KEYS` | As above |
 | `SESSION_SECRET` | Vercel (and root `.env` for dev) | Signs session cookies, 32+ characters | New value, redeploy; everyone is signed out |
+| `SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS` | Vercel, optional (defaults 30 and 8) | A session ends after this many idle minutes, and this many hours after sign-in | New value, redeploy; sessions are judged by it from then on |
 | `DEMO_PASSWORD_HASH` | Vercel (and root `.env`) | argon2id hash of the reviewer's password | `hash-password --write-env`, copy to Vercel, redeploy |
 | `API_URL` | Vercel | The Funnel URL `pnpm demo:up` prints | Changes only with `TS_HOSTNAME` or the tailnet name |
 | `AI_ENABLED` | Vercel `true`; `.env.prod` `true` | Web: live pages or the sample. Worker: model calls on or off | Redeploy, or `pnpm demo:up` |

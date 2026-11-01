@@ -286,7 +286,7 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
         {rows.length === 0 ? (
           <p className="faint">Nothing uploaded yet. Choose a file, or try a sample.</p>
         ) : (
-          <Table labelledBy="recent-title">
+          <Table labelledBy="recent-title" cols={['28%', '', '36%']} minWidth="36rem">
             <thead>
               <tr>
                 <Th>File</Th>

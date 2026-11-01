@@ -3,6 +3,7 @@ import { holdOf } from '@freightaudit/contracts/hold';
 import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import type { MarkValues } from '../lib/marks.ts';
+import { progressKey } from '../lib/uploads.ts';
 import {
   ALREADY_BILLED,
   alreadyBilled,
@@ -133,7 +134,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
         </div>
         {!readOnly && <InvoiceActions invoice={invoice} findings={findings} money={money} />}
       </div>
-      <StatusPoller active={IN_FLIGHT.has(invoice.status)} label={statusLabel(invoice.status, open, hold, matched)} />
+      <StatusPoller active={IN_FLIGHT.has(invoice.status)} label={statusLabel(invoice.status, open, hold, matched)} watch={`invoice=${invoice.id}`} now={progressKey([invoice])} />
       <div className="review">
         {example ? (
           <section className="doc" aria-label="Invoice document">

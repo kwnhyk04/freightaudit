@@ -10,10 +10,10 @@ import { parseEnv } from 'node:util';
 import createClient from 'openapi-fetch';
 import { cache } from 'react';
 import { createLiveCheck } from './live.ts';
-import { readToken, SESSION_COOKIE } from './session.ts';
+import { limitsFrom, readToken, SESSION_COOKIE } from './session.ts';
 
 // The web's settings; the API key and the session secret never leave this server.
-export const WEB_KEYS = ['API_URL', 'API_KEY', 'SESSION_SECRET', 'DEMO_PASSWORD_HASH', 'AI_ENABLED'] as const;
+export const WEB_KEYS = ['API_URL', 'API_KEY', 'SESSION_SECRET', 'SESSION_IDLE_MINUTES', 'SESSION_MAX_HOURS', 'DEMO_PASSWORD_HASH', 'AI_ENABLED'] as const;
 const load = () => loadEnv([...WEB_KEYS]);
 let settings: ReturnType<typeof load> | undefined;
 export const env = () => (settings ??= load());
@@ -40,7 +40,9 @@ export const REVIEWER = 'reviewer';
 export const log = (level: 'info' | 'warn' | 'error', msg: string, fields: Record<string, unknown> = {}) =>
   console[level === 'info' ? 'log' : level](JSON.stringify({ level, time: Date.now(), msg, ...fields }));
 
-export const currentSession = cache(async () => readToken((await cookies()).get(SESSION_COOKIE)?.value, env().SESSION_SECRET));
+export const sessionLimits = () => limitsFrom(env());
+// Refuses a token past either limit; proxy.ts renews the cookie, since a server component may not set one.
+export const currentSession = cache(async () => readToken((await cookies()).get(SESSION_COOKIE)?.value, env().SESSION_SECRET, sessionLimits()));
 
 export async function requireSession() {
   const session = await currentSession();

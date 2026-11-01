@@ -19,6 +19,91 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-11-02: Invoices fits at 1280 px again (same branch, not committed)
+
+- What happened: after the column follow-up, Invoices scrolled 151 px at 1280 px with the sidebar open, worse than the 55 px before the branch. The user asked to hide Open findings below 1440 px, since the status pill gives the count.
+- Why: the short columns at their full widths need about 800 px of the 990 px box.
+- What we did:
+  - Gave `Table cols` object entries:
+    - `wideOnly`: the column, its `Th` and its `Td` are classed `wide-only`, and hidden from 721 to 1439 px.
+    - `narrow`: another width in that range, through `--col-narrow`.
+  - Open findings is `wideOnly`; the phone cards already hid it (`card="hide"`).
+  - The first measurement left Status 154 px, so "Approved as billed" and "Reading needs a check" wrapped. Carrier now narrows to 11% below 1440 px.
+  - At 11% "Bramblewood" broke mid-word, so it is 12%.
+  - Pills in sized tables may wrap rather than run past their column.
+  - The floor (`minWidth`) is 67.5rem.
+- Result: Invoices at 1280 px has no overflow and no clipped cell in either theme (Carrier 119 px, Status 189 px). At 1440 and 1920 px every column measures as before.
+- e2e: `demo.spec.ts`'s tabs test asserted all nine headers at Playwright's default 1280 px and failed (three reruns, same diff). Its assertion now matches the rule: eight headers at 1280 px, all nine at 1440 px.
+- Validation: turbo build, typecheck, lint and test 44 of 44; `pnpm e2e` 66 of 66. Containers stopped afterwards; freightaudit-prod untouched; ports 3000 and 4000 free.
+
+### 2026-11-02: Follow-ups: short columns sized to their values, and polls that never keep a session alive (same branch, not committed)
+
+- Column widths:
+  - What happened: the user found the 1920 px tables uneven. On Invoices, Issued and Received were too wide while the amounts were squeezed, and "+$1,263.11" touched the edge. On Dead letters, Failed and Step each took a fifth of the width.
+  - Why: those columns were `''` shares, so they split the spare width with the text columns. The money columns at 6rem (84 px) had no room for five-digit amounts.
+  - What we did:
+    - Measured the longest real values in a list cell (scratch `text-widths.mjs`): a date 86 px, a moment 119 px this year and 159 px with a year, "+$12,345.67" 84 px, a file name 89 px, "Reconciliation" 89 px, "Open findings" 89 px, "Attempts" 60 px, the Replay button 62 px.
+    - Set each short column to that plus 24 px of padding. Only Carrier and Status (Invoices), Error (Dead letters) and Evidence (Findings) share the spare width.
+    - Findings' amounts went to the same 7.25rem.
+    - Invoices' Received is sized to this year's moment; a moment with its year wraps to two lines.
+  - Result: no clipped cell at 1280, 1440 or 1920 px in either theme. On Invoices at 1280 px with the sidebar open, the short columns plus Status's minimum need about 1140 px against a 990 px box, so the table scrolls 151 px inside its box (55 px before this branch); it fits from 1440 px.
+- Polling and the idle timeout:
+  - What happened: the user asked which pages poll and whether polling can keep a session alive.
+  - Findings:
+    - `StatusPoller` (`components/client.tsx`) runs on an invoice in flight and on Upload while an upload is in flight. It calls `router.refresh()` every 5 s, then every 60 s after 2 minutes, while the tab is visible, and stops when nothing is in flight.
+    - An upload waiting for the next day's model budget, or stuck while the worker is down, stays in flight, so a visible tab could poll, and renew the session, all night.
+    - Next 16 marks a refresh with no header of its own (checked in `fetch-server-response.js`), so the proxy cannot tell a refresh from a navigation.
+  - What we did:
+    - Test first: a request with `x-fa-background` or Next's `next-router-prefetch` passes with a live session but never renews it, and after 31 minutes of such polls alone the next poll gets 401 (`lib/auth.test.ts`).
+    - The poller now asks the new route `/api/progress` (`?invoice=<id>` is one REST call, `?recent=1` the upload page's query), sent with `x-fa-background`. It compares the answer with the key the page was rendered with (`progressKey` in `lib/uploads.ts`), and refreshes only when a status moved; a 401 refreshes once, so the proxy sends the page to sign-in.
+    - `BACKGROUND_HEADER` lives in `lib/uploads.ts`, because `lib/session.ts` imports `node:crypto` and the browser cannot load it.
+- Files: apps/web: components/{views,client,detail}.tsx, app/api/progress/route.ts (new), app/(app)/upload/page.tsx, proxy.ts, lib/uploads.ts, lib/auth.test.ts; docs/{threat-notes,design,context,todo}.md.
+- Validation: turbo build, typecheck, lint and test 44 of 44; `pnpm e2e` 66 of 66; 18 shots retaken in `_tmp/fa-table-polish/`. Containers stopped as before; freightaudit-prod untouched.
+- Not run: `pnpm e2e:screenshots`.
+
+### 2026-11-02: Sign-in idle timeout, even column spacing, and status colours (branch idle-timeout-and-table-polish from main `bed3129`, not committed)
+
+- The user reported signing in one night, closing the tab, and finding the site still signed in the next day, and asked for three changes in one branch: an idle timeout (A), even column spacing in list tables (B) and one meaning colour per status (C).
+- A, the idle timeout:
+  - What happened: the cookie was `{ sub, exp }`, valid 8 hours from sign-in with no idle limit.
+  - Why: by design until now (docs/threat-notes.md).
+  - What we did:
+    - Tests first: `lib/auth.test.ts` covers idle expiry, the 8-hour limit, a renewal extending the idle window, tampered and foreign tokens, an old `{ sub, exp }` token, and the proxy's redirect with `next` and `ended`. They failed, then passed.
+    - `lib/session.ts`: the token is now `{ sub, iat, at }`. `checkToken` returns the session or why it ended (`idle`, `max`, `old`), `renewToken` reissues it once 5 minutes have passed, keeping `iat`, and `endedMessage` gives the sign-in page's line.
+    - `proxy.ts` renews the cookie: a proxy may set cookies, a server component may not. It sends a timed-out session to `/login?next=…&ended=…`.
+    - `currentSession` checks both limits.
+    - New settings `SESSION_IDLE_MINUTES` (30) and `SESSION_MAX_HOURS` (8) are validated at startup in `@freightaudit/config`, with the web's keys, and added to `.env.example` and docs/deploy.md.
+    - `/demo` now passes through the proxy, so a signed-in visit there counts as activity, but it never redirects; `proxy.test.ts` was updated to say so.
+    - e2e: sign in, re-sign the cookie as last active 31 minutes ago (Playwright cannot move the server's clock), and the next page asks for sign-in, says why and returns there.
+  - Small events:
+    - Jest read `@freightaudit/config` from its stale `dist`, so `loadEnv` failed with "expected a Zod schema" until `pnpm --filter @freightaudit/config build`.
+    - `jest.useFakeTimers` is not defined in this ESM setup; the proxy tests set `Date.now` and restore it after each test.
+- B, column spacing:
+  - What happened: measured before the change, the spare width went to the longest text: Status 415 px, Evidence 395 px and Error 646 px at 1920. Invoices overflowed by 55 px and Findings by 87 px at 1280, since the Decision column (438 px) never wrapped.
+  - Why: auto table layout, plus inline `maxWidth` caps on Evidence and Error.
+  - What we did:
+    - `Table` takes `cols` (a rem width keeps a column fixed, a percentage gives a share, `''` splits the rest evenly) and `minWidth`. The CSS lays such tables out fixed only above 720 px, through `--col` and `--table-min`, so phones keep the cards or the natural layout.
+    - Headers and dates may wrap; long text breaks anywhere; amounts stay on one line.
+    - The decision's note fills its column and its buttons wrap under it where the column is narrow.
+    - The two `maxWidth` caps were removed.
+    - Widths were measured in a scratch script at 1280, 1440 and 1920 px until no cell clipped and nothing overflowed.
+    - The charges table keeps the natural layout and the #67 fit (decision recorded in docs/design.md).
+  - Small events:
+    - The root font is 14 px, so `27.5rem` came out at 385 px and the Decision cap was raised.
+    - The first shots broke file names mid-word ("27136423.p / df"), so the Invoice column grew.
+- C, status colours: `statusTone` in `lib/labels.ts` sets each pill's colour.
+  - Colours: billing issues soft red, ready to approve soft green, a confirmed duplicate and reading needs a check amber, failed solid red (new `fail` tone and `--on-bad` token), approved, rejected and the waiting statuses neutral.
+  - The status tabs' coloured counts carry the same colour.
+  - Lowest measured contrast is 5.3:1 (light) and 6.5:1 (dark).
+- A mistake caught by e2e: the first tab-count pills widened the tabs, and `main.spec.ts`'s "the tab strip fits from 1280 px" failed. Neutral counts went back to plain text, the pills got 4 px padding, and tabs 6 px instead of 8.
+- Containers: `pnpm e2e` used this project's postgres, redis and minio; afterwards `docker stop freightaudit-postgres-1 freightaudit-redis-1 freightaudit-minio-1`. freightaudit-prod untouched; ports 3000 and 4000 free.
+- Files:
+  - apps/web: lib/session.ts, lib/server.ts, lib/labels.ts, lib/auth.test.ts, lib/labels.test.ts, proxy.ts, proxy.test.ts, app/actions.ts, app/login/page.tsx, app/globals.css, components/{ui,client,views,overview,upload}.tsx, e2e/main.spec.ts.
+  - Elsewhere: packages/config/src/env.ts, .env.example, docs/{threat-notes,context,deploy,design,todo}.md.
+- Validation: turbo build, typecheck, lint and test 44 of 44; `pnpm e2e` 66 of 66 (one failure fixed, above). 18 review shots in `_tmp/fa-table-polish/` (three tables, 1280/1440/1920, light and dark): no overflow, no clipped cell.
+- Not run: `pnpm e2e:screenshots`, so `docs/screenshots/ui` shows the old tables and colours; `pnpm test:int` (no api or database change).
+- Outstanding: the user's review and ship. Shipping signs everyone out once, since tokens from before count as ended.
+
 ### 2026-11-01: Charges table fits at 1280 px again on CI (same branch shared-ui-theme-upload, PR #67, not committed)
 
 - CI's e2e failed in one test, `e2e/main.spec.ts:724` (the charges table shows every column from 1280 px; on a phone only the table scrolls sideways). It passed locally.

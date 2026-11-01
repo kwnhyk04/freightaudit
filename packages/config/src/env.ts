@@ -97,6 +97,9 @@ export const settings = {
   API_KEY: z.string().min(32, 'API_KEY needs at least 32 characters'),
   // HMAC key of the session cookie; changing it signs everyone out.
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET needs at least 32 characters'),
+  // A session ends after this many minutes without activity, and this many hours after sign-in however active.
+  SESSION_IDLE_MINUTES: z.string().regex(/^\d+$/).transform(Number).pipe(z.int().min(1).max(1440)).default(30),
+  SESSION_MAX_HOURS: z.string().regex(/^\d+$/).transform(Number).pipe(z.int().min(1).max(720)).default(8),
   // The reviewer's password as an argon2id hash in PHC form.
   DEMO_PASSWORD_HASH: z
     .string()

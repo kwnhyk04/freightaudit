@@ -4,6 +4,7 @@ import { UploadArea } from '../../../components/upload.tsx';
 import { finishedNote, IN_FLIGHT, plural, uploadState } from '../../../lib/labels.ts';
 import { GOLDEN_SET_URL, SAMPLES } from '../../../lib/samples.ts';
 import { gql, livePage } from '../../../lib/server.ts';
+import { progressKey } from '../../../lib/uploads.ts';
 
 export default async function UploadPage() {
   // Uploads need the live backend; while it is offline the sample invoices are shown instead.
@@ -27,7 +28,12 @@ export default async function UploadPage() {
           <p className="muted">The pipeline reads it, matches it to a shipment and checks every line against the rate card.</p>
         </div>
       </div>
-      <StatusPoller active={working > 0} label={working > 0 ? `${plural(working, 'upload')} in progress` : 'Every upload is done'} />
+      <StatusPoller
+        active={working > 0}
+        label={working > 0 ? `${plural(working, 'upload')} in progress` : 'Every upload is done'}
+        watch="recent=1"
+        now={progressKey(invoices.edges.map(({ node }) => node))}
+      />
       <div className="upload">
         <UploadArea rows={rows} allowlist={uploadAllowlist ?? null} />
         <aside className="panel samples" aria-labelledby="samples-title">
