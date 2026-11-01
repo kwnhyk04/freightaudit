@@ -1324,16 +1324,20 @@ td .reason {
 .charges-note {
   margin-bottom: 8px;
 }
-/* Charge cells keep 8 px a side, so every column, Difference included, fits beside the document from 1280 px. */
+/* Charges keep 13 px type and 6 px a side, so every column, Difference included, fits beside the document from 1280 px,
+   even in a wider fallback font. */
+table.charges {
+  font-size: 13px;
+}
 table.charges th,
 table.charges td {
-  padding-left: 8px;
-  padding-right: 8px;
+  padding-left: 6px;
+  padding-right: 6px;
 }
 table.charges tfoot th,
 table.charges tfoot td {
   position: static;
-  padding: 7px 8px;
+  padding: 7px 6px;
   border-top: 1px solid var(--rule);
   background: none;
   color: var(--text);

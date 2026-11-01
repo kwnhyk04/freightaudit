@@ -19,6 +19,23 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-11-01: Charges table fits at 1280 px again on CI (same branch shared-ui-theme-upload, PR #67, not committed)
+
+- CI's e2e failed in one test, `e2e/main.spec.ts:724` (the charges table shows every column from 1280 px; on a phone only the table scrolls sideways). It passed locally.
+  - What happened: measured at 1280 px against the e2e data (`digital.pdf`), the charges box is 499 px wide and the table needed all but 6 px of it.
+  - Why: the shared list look (`.list-table`, 14 px) replaced the charges table's old 13 px type in this branch, which ate most of its margin; CI's Linux rendering then went past it. The fonts are self-hosted Plex on both, so the exact CI difference (hinting or rasterizing) is not confirmed.
+  - What we did, in `globals.css`: `table.charges` is set back to 13 px, and its cell padding is 6 px a side instead of 8 (tfoot too). The test is unchanged. The page grid, the finding type staying on one line (a demo test) and the amounts not wrapping were left as they are.
+- Font fallback check: a scratch script (`scratchpad/charges-slack.mjs`, not in the repo) measured the table's room at 1280 px, both as shipped and with the fonts forced to Verdana or DejaVu Sans and Courier New, which are as wide as Linux's fallback.
+  - Before: Plex at 14 px had 6 px to spare, and the fallback overflowed by 19 px.
+  - After: Plex at 13 px has 45 px to spare, and the fallback has 5 px.
+- Small events:
+  - The script's sign-in kept reloading, because the e2e lockout test leaves sign-in locked for 15 minutes. The script then used the e2e run's saved session (`e2e/.auth/reviewer.json`).
+  - `next dev` kept recompiling and reloading the page mid-measure (cause not confirmed). We switched to `next start` on the production build, which is what e2e uses.
+- Files: apps/web/app/globals.css
+- Validation: turbo build, typecheck, lint and test 44 of 44; `pnpm e2e` 65 of 65, the charges test included. Containers stopped afterwards (`docker stop freightaudit-postgres-1 freightaudit-redis-1 freightaudit-minio-1`); freightaudit-prod untouched, ports 3000 and 4000 free.
+- Not run: `pnpm e2e:screenshots`; the charges table in `docs/screenshots/ui` still shows 8 px padding.
+- Outstanding: CI's result on the next push (the user runs ship).
+
 ### 2026-11-01: Upload template checked for copied code; spend cap ticked (same branch shared-ui-theme-upload, not committed)
 
 - The user reported that the upload template's 21st.dev page shows no licence, and asked how much of its code is in our files.
