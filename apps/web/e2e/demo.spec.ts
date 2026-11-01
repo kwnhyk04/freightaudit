@@ -46,14 +46,20 @@ test('the landing page at / is public and static: no redirect, no api call, no k
   expect([response!.status(), new URL(page.url()).pathname]).toEqual([200, '/']);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(HEADLINE);
   expect(await response!.text()).not.toContain(env.API_KEY!);
-  // The reconciliation beside the headline is g066's open finding, labelled as the sample it is.
+  // The pill is true, the one figure under the buttons is the eval's overcharge recall, and no partner logos stand in for proof.
+  await expect(page.locator('.hero-pill')).toHaveText('Live demo');
+  const recall = results.rows.find((row) => row.label === 'Overcharge recall')!;
+  await expect(page.locator('.hero-stat')).toContainText(`${(recall.claudeFirst ?? recall.free)!.result} overcharge recall on ${results.cases} synthetic test invoices`);
+  await expect(page.getByText('Trusted by')).toHaveCount(0);
+  await expect(page.getByRole('banner').getByRole('link', { name: 'Sign in', exact: true })).toHaveAttribute('href', '/login');
+  // The invoice card beside the headline is g066's open finding, labelled as the sample it is.
   const recon = page.locator('figure[data-seenry-signature]');
   for (const [term, cents] of [
-    ['Billed', g066.billedCents],
+    ['Linehaul billed', g066.billedCents],
     ['Contract, rate card v2', g066.expectedCents],
     ['Held for review', g066.billedCents - g066.expectedCents],
   ] as const) {
-    await expect(recon.locator('div', { has: page.locator('dt', { hasText: term }) }).locator('dd')).toHaveText(usd(cents));
+    await expect(recon.locator('dl > div', { has: page.locator('dt', { hasText: term }) }).locator('dd')).toHaveText(usd(cents));
   }
   await expect(recon).toContainText('Sample invoice from the demo set');
   // The results are the two official runs' from eval-results.json, each dated: each run's column shows its cell, or

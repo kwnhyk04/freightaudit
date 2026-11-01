@@ -3,9 +3,12 @@ import Link from 'next/link';
 import { demoInvoiceFile } from '../lib/demo.ts';
 import evalResults from '../lib/eval-results.json';
 import { ENGINEERING, REPOSITORY, sourceLink } from '../lib/engineering.ts';
-import { findingText, findingTitle, modelName, overcharge, resultBadge, trailRows } from '../lib/labels.ts';
+import { decideWords, decisionLabel, findingText, findingTitle, modelName, overcharge, resultBadge, trailRows } from '../lib/labels.ts';
 import { START_PAGE } from '../lib/session.ts';
-import { Badge, Table, Td, Th } from './ui.tsx';
+import type { Theme } from '../lib/theme.ts';
+import { LandingMenu, ThemeSwitch } from './client.tsx';
+import { LogoMark } from './logo.tsx';
+import { Badge, Difference, StatusBadge, Table, Td, Th } from './ui.tsx';
 
 // The public landing page, from files this server holds (the two official eval runs' results, the engineering evidence
 // scripts/evidence.ts copies, and the sample): it calls no api and holds no key. Every claim on it has a source in the
@@ -62,16 +65,32 @@ function sample() {
   return { invoice, findings, finding, line, billed: money(line.amountCents), expected: money(finding.expectedCents), over: money(overcharge(finding)) };
 }
 
+// The hero's one figure: overcharge recall from lib/eval-results.json (written by evals/harness/landing.ts), Claude
+// first's run when it is measured, else the free models'.
+function recall() {
+  const row = results.rows.find((each) => each.label === 'Overcharge recall');
+  const [name, cell, run] = row?.claudeFirst ? ['Claude first', row.claudeFirst, results.claudeFirst] : ['free models only', row?.free, results.free];
+  return cell && run ? { result: cell.result, note: `${name}, ${measured(run)}` } : null;
+}
+
 function Hero() {
   const facts = sample();
   if (!facts) return null;
-  const { invoice, billed, expected, over } = facts;
+  // Every figure in the card is g066's, from public/demo/invoice-details.json through sample().
+  const { invoice, finding, line, billed, expected, over } = facts;
   const shipment = invoice.shipment;
+  const decision = decisionLabel(finding.status, finding.type);
+  const words = decideWords(finding.type);
+  const stat = recall();
   const strip = ['Overcharge recall', 'Overcharge precision', 'Cost per invoice, paid-equivalent (digital / scanned)'];
   return (
     <section className="hero" aria-labelledby="headline">
       <div className="landing-wrap">
         <div className="hero-copy">
+          <p className="hero-pill">
+            <span className="live-dot" data-seenry-dot aria-hidden="true" />
+            Live demo
+          </p>
           <h1 id="headline">Pay the contract rate, not the invoice.</h1>
           <p className="lead">Every carrier charge checked against your rate card. AI reads the invoice; code does the math; a person approves.</p>
           <div className="actions">
@@ -82,22 +101,58 @@ function Hero() {
               See sample invoices, no sign-in
             </Link>
           </div>
+          {stat && (
+            <p className="hero-stat">
+              <strong className="num">{stat.result}</strong> overcharge recall on {results.cases} synthetic test invoices
+              <span className="hero-stat-note">{stat.note}</span>
+            </p>
+          )}
         </div>
-        <figure className="recon-figure" data-seenry-signature data-seenry-hero-visual>
-          <dl className="recon">
-            <div>
-              <dt>Billed</dt>
-              <dd className="num">{billed}</dd>
+        <figure className="invoice-figure" data-seenry-signature data-seenry-hero-visual>
+          <div className="invoice-stack">
+            <div className="invoice-card">
+              <div className="invoice-card-head">
+                <div>
+                  <p className="invoice-card-title">
+                    Sample invoice <span className="num">{invoice.number}</span>
+                  </p>
+                  <p className="muted">{invoice.carrier}</p>
+                </div>
+                <StatusBadge status={invoice.status} open={invoice.openDiscrepancyCount} />
+              </div>
+              <dl className="recon">
+                <div>
+                  <dt>{line.description} billed</dt>
+                  <dd className="num">{billed}</dd>
+                </div>
+                <div>
+                  <dt>Contract, rate card v{invoice.rateCardVersion?.version}</dt>
+                  <dd className="num">{expected}</dd>
+                </div>
+                <div className="recon-held">
+                  <dt>Held for review</dt>
+                  <dd className="num">{over}</dd>
+                </div>
+              </dl>
+              <div className="findings">
+                <article aria-label="Finding">
+                  <div className="finding-body">
+                    <div className="row">
+                      <h3>{findingTitle(finding.type, line.description)}</h3>
+                      <Badge tone={decision.tone}>{decision.label}</Badge>
+                    </div>
+                    <p className="muted">{findingText(finding, line, invoice.rateCardVersion?.version, invoice.currency)}</p>
+                  </div>
+                  <Difference cents={overcharge(finding)} currency={invoice.currency} />
+                  {/* The app's own two decision buttons, shown only: the landing page decides nothing. */}
+                  <div className="row decide-preview" aria-hidden="true">
+                    <span className="button small">{words.dismiss}</span>
+                    <span className="button small danger">{words.confirm}</span>
+                  </div>
+                </article>
+              </div>
             </div>
-            <div>
-              <dt>Contract, rate card v{invoice.rateCardVersion?.version}</dt>
-              <dd className="num">{expected}</dd>
-            </div>
-            <div className="recon-held">
-              <dt>Held for review</dt>
-              <dd className="num">{over}</dd>
-            </div>
-          </dl>
+          </div>
           <figcaption>
             Sample invoice from the demo set: Linehaul on {invoice.carrier} #{invoice.number}
             {shipment ? `, ${shipment.origin} to ${shipment.destination}` : ''}. The carrier and places are synthetic.{' '}
@@ -287,28 +342,60 @@ function Engineering() {
   );
 }
 
-export function Landing() {
+// The header's links; Features joins them in round 2, with its section.
+const SECTIONS = [
+  { href: '#how', label: 'How it works' },
+  { href: '#results', label: 'Results' },
+  { href: '#engineering', label: 'Engineering' },
+  { href: REPOSITORY, label: 'GitHub' },
+];
+
+// The header: the mark and name, the section links, the theme switch, sign-in and the demo. On a phone the links, sign-in
+// and the demo fold into the menu.
+function Header({ theme }: { theme: Theme }) {
+  const links = SECTIONS.map(({ href, label }) => (
+    <a key={label} href={href}>
+      {label}
+    </a>
+  ));
+  return (
+    <header className="landing-top">
+      <div className="landing-wrap">
+        <Link href="/" className="landing-name">
+          <LogoMark />
+          FreightAudit
+        </Link>
+        <nav className="landing-nav" aria-label="Sections">
+          {links}
+        </nav>
+        <div className="landing-actions">
+          <ThemeSwitch initial={theme} compact />
+          <Link href="/login" className="landing-signin">
+            Sign in
+          </Link>
+          <Link href={START_PAGE} className="button primary">
+            Open the demo
+          </Link>
+          <LandingMenu>
+            <nav aria-label="Sections">{links}</nav>
+            <Link href="/login">Sign in</Link>
+            <Link href={START_PAGE} className="button primary">
+              Open the demo
+            </Link>
+          </LandingMenu>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export function Landing({ theme }: { theme: Theme }) {
   return (
     <>
       <a className="skip" href="#main">
         Skip to content
       </a>
-      <header className="landing-top">
-        <div className="landing-wrap">
-          <Link href="/" className="landing-name">
-            FreightAudit
-          </Link>
-          <nav className="landing-nav" aria-label="Sections">
-            <a href="#how">How it works</a>
-            <a href="#results">Results</a>
-            <a href="#engineering">Engineering</a>
-            <a href={REPOSITORY}>GitHub</a>
-          </nav>
-          <Link href={START_PAGE} className="button primary">
-            Open the demo
-          </Link>
-        </div>
-      </header>
+      <Header theme={theme} />
       <main id="main">
         <Hero />
         <Trail />

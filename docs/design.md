@@ -8,6 +8,14 @@ How FreightAudit's screens are built, so a new screen looks like the rest. The a
 - Light is the default set. Dark is the same token names with dark values, applied when the device prefers dark (unless the reviewer chose Light) or when the reviewer chose Dark. The two dark blocks must hold the same values; `apps/web/lib/theme.test.ts` fails when they differ.
 - The theme switch (System, Light, Dark) sits at the sidebar's foot and in the phone drawer. The choice is kept in the `fa-theme` cookie, and the root layout sets `html[data-theme]` on the server, so a page never flashes the wrong theme. System is no cookie.
 
+## Logo
+
+- The mark (`LogoMark` in `apps/web/components/logo.tsx`) is a slanted F whose middle bar is the ledger line, with a check cut out of it. On a 48-unit grid every bar is 8 units thick with a 2.5 radius, and one `skewX(-12)` slants them all.
+- The bars take the text colour and the ledger bar `--brand` (#2563eb, the same in both themes). The app's `--accent` cannot carry the mark: #2b4c7e is 2.14:1 on the dark canvas and the dark #8fb0e6 is 2.21:1 on white. #2563eb is 5.17:1 on white, 4.82:1 on the light canvas, 3.57:1 on the dark canvas and 3.31:1 on the dark surface (measured 2026-11-02), above 3:1 for a graphic.
+- Below 24 px the check is left out, so it never smudges: the favicon (`app/icon.svg`, whose bars follow the browser's scheme) and any `LogoMark` under 24. From 24 px the check is a cut-out, so it shows whatever sits behind it.
+- Files: `docs/brand/fa-logo-light.svg`, `fa-logo-dark.svg`, `fa-logo-mono.svg` (currentColor) and `fa-app-icon.svg`, the source of `app/apple-icon.png` (180 px, the mark on the dark canvas). Use the standalone files at 24 px and up. `proxy.ts` leaves `/icon.svg` and `/apple-icon.png` public.
+- It stands in the sidebar's tile and the landing header, beside the name.
+
 ## Shared components
 
 New tables, tabs, pagers and badges must use the shared components below, never a page-specific copy. Change the shared component, or add an option to it, when a page needs something it lacks.

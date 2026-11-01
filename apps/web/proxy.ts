@@ -32,8 +32,8 @@ export function proxy(request: NextRequest) {
 }
 
 // Public: the landing page at / exactly (.+ leaves it out), the sign-in page, sign-out (which checks the origin itself,
-// so an expired session can still sign out), the probes, and Next's own assets. The read-only sample demo and its files
+// so an expired session can still sign out), the probes, Next's own assets and the two icons (app/icon.svg, app/apple-icon.png). The read-only sample demo and its files
 // pass through here only so that a signed-in visit there counts as activity.
 export const config = {
-  matcher: ['/((?!login|logout|healthz|readyz|_next/|favicon\\.ico).+)'],
+  matcher: ['/((?!login|logout|healthz|readyz|_next/|favicon\\.ico|icon\\.svg|apple-icon\\.png).+)'],
 };

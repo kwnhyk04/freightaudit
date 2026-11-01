@@ -52,7 +52,15 @@ Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push t
 
 ## In Progress
 
-- [ ] Idle timeout and table polish (user, 2026-11-02): one PR on branch `idle-timeout-and-table-polish` from main `bed3129`, not committed.
+- [ ] Landing round 1 of 2: header, hero and logo (user, 2026-11-02): one PR on branch `landing-hero-and-logo` from main `405b971`, not committed.
+  - [x] Header and hero after 21st.dev's "Event Dashboard Hero" (no licence: visual reference only, no code or packages copied).
+  - [x] Logo mark redrawn as SVG in `--brand` #2563eb: sidebar tile, landing header, favicon and apple icon; light, dark and one-colour files in `docs/brand/`.
+  - [x] Checks, e2e and screenshots in `_tmp/fa-landing-1/` (docs/activity-log.md, 2026-11-02).
+  - [ ] Round 2 (user): features, how it works, closing; the header's Features link comes with its section.
+  - [ ] `pnpm e2e:screenshots` to refresh `docs/screenshots/ui` (not run).
+  - [ ] The user ships.
+
+- [x] Idle timeout and table polish (user, 2026-11-02): one PR on branch `idle-timeout-and-table-polish` from main `bed3129`, shipped as `405b971` (#68).
   - [x] A. Sign-in ends after 30 idle minutes and 8 hours from sign-in (`SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS`), renewed in `proxy.ts` at most every 5 minutes; sign-in says why and returns to the page. Unit tests first, then e2e.
   - [x] B. `Table cols` and `minWidth`: fixed layout above 720 px for Invoices, Findings, Dead letters, Recent uploads and the chart tables.
   - [x] C. Status colours through `statusTone`, on pills and on the status tabs' counts, AA in both themes.
@@ -60,7 +68,7 @@ Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push t
   - [x] Follow-ups (user): short columns sized to their longest real value, only long text shares the spare width; background polls no longer renew the session.
   - [x] Last fix (user): Invoices hides Open findings below 1440 px, so it no longer scrolls at 1280 px with the sidebar open.
   - [ ] `pnpm e2e:screenshots` to refresh `docs/screenshots/ui` (not run).
-  - [ ] The user ships. A Vercel redeploy signs out every current session once, since old tokens count as ended.
+  - [x] The user ships. A Vercel redeploy signs out every current session once, since old tokens count as ended. Shipped as `405b971` (#68).
 
 - [x] Shared UI, theme switch and upload card (user, 2026-11-01): one PR on branch `shared-ui-theme-upload` from main `438f086`, shipped as `bed3129` (#67).
   - [x] One shared `Table` (with `Th`, `Td` and a phone-card mode), `Tabs`, `Pager` and `StatusBadge` for every table; the rule in AGENTS.md and docs/design.md.
