@@ -5,7 +5,7 @@ import evalResults from '../lib/eval-results.json';
 import { ENGINEERING, REPOSITORY, sourceLink } from '../lib/engineering.ts';
 import { findingText, findingTitle, modelName, overcharge, resultBadge, trailRows } from '../lib/labels.ts';
 import { START_PAGE } from '../lib/session.ts';
-import { Badge } from './ui.tsx';
+import { Badge, Table, Td, Th } from './ui.tsx';
 
 // The public landing page, from files this server holds (the two official eval runs' results, the engineering evidence
 // scripts/evidence.ts copies, and the sample): it calls no api and holds no key. Every claim on it has a source in the
@@ -27,27 +27,27 @@ const figure = (text: string) => text.replaceAll(' ', ' ').replaceAll('/ ', '/ '
 function Result({ cell, run }: { cell: Cell; run: string }) {
   if (!cell)
     return (
-      <td className="faint" data-run={run}>
+      <Td className="faint" data-run={run}>
         Not measured yet
-      </td>
+      </Td>
     );
   const badge = resultBadge(cell.met);
   return (
-    <td data-run={run}>
+    <Td data-run={run}>
       <span className="row">
         <strong className="num">{figure(cell.result)}</strong>
         <Badge tone={badge.tone}>{badge.label}</Badge>
       </span>
-    </td>
+    </Td>
   );
 }
 
 function RunHead({ name, run }: { name: string; run: Run }) {
   return (
-    <th scope="col">
+    <Th>
       {name}
       <span className="run-date">{run ? dateOf(run.date) : 'Not measured yet'}</span>
-    </th>
+    </Th>
   );
 }
 
@@ -104,11 +104,10 @@ function Hero() {
             <Link href={`/demo/invoices/${invoice.id}`}>Open it in the sample</Link>
           </figcaption>
         </figure>
-        <div className="table-wrap hero-proof" role="region" aria-label={`Evaluation on ${results.cases} synthetic test invoices`} tabIndex={0}>
-          <table className="ledger">
+        <Table look="ledger" wrapClassName="hero-proof" label={`Evaluation on ${results.cases} synthetic test invoices`}>
             <thead>
               <tr>
-                <th scope="col">On {results.cases} synthetic test invoices</th>
+                <Th>On {results.cases} synthetic test invoices</Th>
                 <RunHead name="Claude first" run={results.claudeFirst} />
                 <RunHead name="Free models only" run={results.free} />
               </tr>
@@ -118,14 +117,13 @@ function Hero() {
                 .filter((row) => strip.includes(row.label))
                 .map((row) => (
                   <tr key={row.label}>
-                    <td>{row.label}</td>
+                    <Td>{row.label}</Td>
                     <Result cell={row.claudeFirst} run="Claude first" />
                     <Result cell={row.free} run="Free models only" />
                   </tr>
                 ))}
             </tbody>
-          </table>
-        </div>
+          </Table>
       </div>
     </section>
   );
@@ -178,27 +176,26 @@ function Trail() {
         <p className="intro">
           The audit trail of sample invoice {invoice.number}, recorded {day.format(new Date(start))}. Times are UTC; every step is in the trail the reviewer sees.
         </p>
-        <div className="table-wrap" role="region" aria-label="Audit trail of the sample invoice" tabIndex={0}>
-          <table className="ledger audit-ledger">
+        <Table look="ledger" className="audit-ledger" label="Audit trail of the sample invoice">
             <thead>
               <tr>
-                <th scope="col">Time</th>
-                <th scope="col">Stage</th>
-                <th scope="col">What happened</th>
-                <th scope="col" className="num">
+                <Th>Time</Th>
+                <Th>Stage</Th>
+                <Th>What happened</Th>
+                <Th num>
                   Held
-                </th>
+                </Th>
               </tr>
             </thead>
             <tbody>
               {stages.map((each) => (
                 <tr key={each.stage}>
-                  <td className="num trail-time">
+                  <Td num className="trail-time">
                     {clock.format(new Date(each.at))}
                     <span className="faint">{elapsed(each.at)}</span>
-                  </td>
-                  <th scope="row">{each.stage}</th>
-                  <td>
+                  </Td>
+                  <Th scope="row">{each.stage}</Th>
+                  <Td>
                     <p className="trail-what">{each.what}</p>
                     {each.notes.map((note) => (
                       <p key={note} className="trail-note">
@@ -206,13 +203,12 @@ function Trail() {
                       </p>
                     ))}
                     <p className="trail-rule">{RULE[each.stage]}</p>
-                  </td>
-                  <td className="num trail-amount">{each.amount}</td>
+                  </Td>
+                  <Td num className="trail-amount">{each.amount}</Td>
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+          </Table>
       </div>
     </section>
   );
@@ -228,14 +224,13 @@ function Results() {
           {measured(results.claudeFirst)}). The free models alone are what CI checks on every change to extraction, and what reads once Claude&apos;s credits end (
           {measured(results.free)}).
         </p>
-        <div className="table-wrap" role="region" aria-label="Results by metric" tabIndex={0}>
-          <table className="ledger results">
+        <Table look="ledger" className="results" label="Results by metric">
             <thead>
               <tr>
-                <th scope="col">Metric</th>
-                <th scope="col" className="num">
+                <Th>Metric</Th>
+                <Th num>
                   Target
-                </th>
+                </Th>
                 <RunHead name="Claude first" run={results.claudeFirst} />
                 <RunHead name="Free models only" run={results.free} />
               </tr>
@@ -243,17 +238,16 @@ function Results() {
             <tbody>
               {results.rows.map((row) => (
                 <tr key={row.label}>
-                  <td>{row.label}</td>
-                  <td className="num muted" data-run="Target">
+                  <Td>{row.label}</Td>
+                  <Td num className="muted" data-run="Target">
                     {figure(row.target)}
-                  </td>
+                  </Td>
                   <Result cell={row.claudeFirst} run="Claude first" />
                   <Result cell={row.free} run="Free models only" />
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+          </Table>
         <p className="landing-note">
           Complete results with 95% confidence intervals are published in the <a href={`${REPOSITORY}#eval-results`}>repository README</a>.
         </p>

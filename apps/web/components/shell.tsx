@@ -1,13 +1,16 @@
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { START_PAGE } from '../lib/session.ts';
+import { parseTheme, THEME_COOKIE } from '../lib/theme.ts';
+import { ThemeSwitch } from './client.tsx';
 import { Icon } from './icons.tsx';
 import { Sidebar, type NavLink } from './sidebar.tsx';
 
 // The frame of every page: a skip link, the sidebar with its counts, an optional banner and the work. base is '' for
 // live pages and '/demo' for the read-only sample; counts are missing while they cannot be read. The name leads to the
 // start page, or in the sample to its invoices, where /demo opens.
-export function Shell({
+export async function Shell({
   base,
   signedIn,
   banner,
@@ -30,8 +33,10 @@ export function Shell({
     { href: `${base}/dead-letters`, label: 'Dead letters', icon: 'deadLetters', count: counts?.openDeadLetters, unit: 'open dead letter' },
     ...(sample ? [] : [{ href: '/upload', label: 'Upload', icon: 'upload' } as const]),
   ];
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   const foot = (
     <>
+      <ThemeSwitch initial={theme} />
       <p className="who">
         <span className="label">{sample ? 'Sample data' : 'Signed in as reviewer'}</span>
       </p>

@@ -2,9 +2,11 @@
 import type { InvoiceDecision } from '@freightaudit/contracts/graphql';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { type ReactNode, useActionState, useEffect, useLayoutEffect, useRef } from 'react';
+import { type ReactNode, useActionState, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { type ActionState, login, review, upload, uploadSample } from '../app/actions.ts';
 import { duplicateParts } from '../lib/labels.ts';
+import { type Theme, THEME_LABEL, themeCookie, THEMES } from '../lib/theme.ts';
+import { Icon } from './icons.tsx';
 
 // One file through the upload action, for components/upload.tsx. Called here, the action ships with every page that loads
 // this file: proxy.ts sends a sessionless upload to /login, which runs only actions it carries, and the session check
@@ -46,6 +48,30 @@ export function Tabs({ items, current, label, unit }: { items: { href: string; l
         </Link>
       ))}
     </nav>
+  );
+}
+
+// System, Light or Dark as one radio group: a choice applies at once and its cookie keeps it, so the server renders the
+// next page in it. In the folded sidebar only the icons show; each radio keeps its name.
+export function ThemeSwitch({ initial }: { initial: Theme }) {
+  const [theme, setTheme] = useState(initial);
+  const choose = (next: Theme) => {
+    setTheme(next);
+    document.cookie = themeCookie(next);
+    if (next === 'system') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = next;
+  };
+  return (
+    <fieldset className="segmented theme-switch">
+      <legend className="visually-hidden">Theme</legend>
+      {THEMES.map((each) => (
+        <label key={each} title={THEME_LABEL[each]}>
+          <input type="radio" name="theme" value={each} checked={theme === each} onChange={() => choose(each)} />
+          <Icon name={each} size={16} />
+          <span className="label">{THEME_LABEL[each]}</span>
+        </label>
+      ))}
+    </fieldset>
   );
 }
 

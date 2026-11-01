@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import { olderBrowser, PASSWORD } from './env.ts';
@@ -363,8 +363,72 @@ test('the list tabs stay links with their counts, one underline slides to the cu
   expect(await page.locator('tbody td:nth-child(6)').first().evaluate((cell) => getComputedStyle(cell).fontSize)).toBe('13px');
 });
 
+// The page's canvas, light or dark, as the browser computes it.
+const LIGHT = 'rgb(246, 247, 249)';
+const DARK = 'rgb(18, 20, 23)';
+const canvas = (page: Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+
+test('the theme follows the device until a reviewer picks Light or Dark, which the server applies from then on, landing and sign-in included', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/demo/invoices');
+  const themes = page.getByRole('group', { name: 'Theme' });
+  await expect(themes.getByRole('radio', { name: 'System' })).toBeChecked();
+  expect(await page.locator('html').getAttribute('data-theme')).toBeNull();
+  expect(await canvas(page)).toBe(DARK);
+  // Light wins over a dark device at once, and from the next page on the server renders it: the HTML carries it.
+  await themes.getByRole('radio', { name: 'Light' }).check();
+  expect(await canvas(page)).toBe(LIGHT);
+  for (const path of ['/demo/invoices', '/', '/login']) {
+    const response = await page.goto(path);
+    expect(await response!.text(), path).toMatch(/<html[^>]* data-theme="light"/);
+    expect(await canvas(page), path).toBe(LIGHT);
+  }
+  // Dark wins over a light device, remembered after a reload.
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/demo/invoices');
+  await themes.getByRole('radio', { name: 'Dark' }).check();
+  expect(await canvas(page)).toBe(DARK);
+  await page.reload();
+  await expect(themes.getByRole('radio', { name: 'Dark' })).toBeChecked();
+  expect(await canvas(page)).toBe(DARK);
+  // System forgets the choice: no cookie, and the device decides again.
+  await themes.getByRole('radio', { name: 'System' }).check();
+  expect(await canvas(page)).toBe(LIGHT);
+  expect((await page.context().cookies()).some((cookie) => cookie.name === 'fa-theme')).toBe(false);
+  await page.reload();
+  expect(await page.locator('html').getAttribute('data-theme')).toBeNull();
+});
+
+test('no flash: a page in a chosen theme paints in it before any script runs', async ({ page, context }) => {
+  await context.addCookies([{ name: 'fa-theme', value: 'dark', url: 'http://127.0.0.1' }]);
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.route('**/*.js', (route) => route.abort());
+  await page.goto('/demo/invoices');
+  expect(await canvas(page)).toBe(DARK);
+});
+
+test('every table in the app is the shared one, a list table or the landing page ledger', async ({ page }) => {
+  test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
+  for (const path of ['/demo/invoices', '/demo/discrepancies', '/demo/dead-letters', '/demo/dashboard', `/demo/invoices/${sampleId('g066.pdf')}`, '/']) {
+    await page.goto(path);
+    await page.locator('details.table-view summary').evaluateAll((summaries) => summaries.forEach((summary) => (summary.parentElement as HTMLDetailsElement).open = true));
+    const tables = await page.locator('table').evaluateAll((all) => all.map((table) => table.className));
+    expect(tables.length, path).toBeGreaterThan(0);
+    for (const name of tables) expect(name, path).toMatch(/\b(list-table|ledger)\b/);
+  }
+});
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
+
+  test('the phone drawer holds the theme switch too', async ({ page }) => {
+    await page.goto('/demo/invoices');
+    await page.getByRole('button', { name: 'Open menu' }).click();
+    const themes = page.getByRole('group', { name: 'Theme' });
+    await expect(themes).toBeVisible();
+    await themes.getByRole('radio', { name: 'Dark' }).check();
+    expect(await canvas(page)).toBe(DARK);
+  });
 
   test('each invoice is a card with its number, carrier, status and amount over contract, and the whole card opens it', async ({ page }) => {
     test.skip(sample.invoices.edges.length === 0, 'the sample is empty');

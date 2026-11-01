@@ -1,5 +1,5 @@
 'use client';
-import { checkUpload, MAX_PDF_PAGES, MAX_UPLOAD_LABEL } from '@freightaudit/contracts/limits';
+import { checkUpload, MAX_BATCH_FILES, MAX_PDF_PAGES, MAX_UPLOAD_LABEL } from '@freightaudit/contracts/limits';
 import Link from 'next/link';
 import type { PDFDocumentLoadingTask } from 'pdfjs-dist';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -7,7 +7,8 @@ import type { ActionState } from '../app/actions.ts';
 import { duplicateParts, plural, STEPS, type UploadState, type Words } from '../lib/labels.ts';
 import { answered, type Picked, pickProblem, progressLabel, RETRYABLE, sizeLabel, uploadedToast, uploadLabel } from '../lib/uploads.ts';
 import { sendUpload } from './client.tsx';
-import { Said } from './ui.tsx';
+import { Icon } from './icons.tsx';
+import { Badge, Said, Table, Td, Th } from './ui.tsx';
 
 // A recent upload's row, and the toast it gets once the pipeline settles it while the page is open.
 export type RecentRow = UploadState & { id: string; filename: string; inFlight: boolean; finished: { text: string; tone: 'ok' | 'bad' } };
@@ -162,87 +163,107 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
         focused.current = event.target;
       }}
     >
-      <div
-        className={`drop${over ? ' over' : ''}`}
-        onDragOver={(event) => {
-          event.preventDefault();
-          setOver(true);
-        }}
-        onDragLeave={() => setOver(false)}
-        onDrop={(event) => {
-          event.preventDefault();
-          setOver(false);
-          add(event.dataTransfer.files);
-        }}
-      >
-        <svg className="drop-icon" aria-hidden="true" viewBox="0 0 24 24" width="24" height="24">
-          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5 M12 17v-6 M9.5 13.5 12 11l2.5 2.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <p>
-          <strong>Drop invoices here, or </strong>
-          <label htmlFor={CHOOSER} className="link">
-            choose files
-          </label>
-        </p>
-        <input
-          id={CHOOSER}
-          className="visually-hidden"
-          type="file"
-          multiple
-          aria-label="Invoice files"
-          aria-describedby="upload-hint"
-          accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
-          disabled={!ready}
-          onChange={(event) => {
-            if (event.target.files) add(event.target.files);
-            event.target.value = '';
-          }}
-        />
-        <p id="upload-hint" className="faint">
-          PDF, PNG or JPG, up to {MAX_UPLOAD_LABEL}, one invoice per file. A PDF may have up to {MAX_PDF_PAGES} pages. Files wait in the list below until you upload them.
-        </p>
-      </div>
-      <p className="visually-hidden" role="status">
-        {progress ? progressLabel(progress.at, progress.of) : ''}
-      </p>
-      {picks.length > 0 && (
-        <section className="panel picks" aria-labelledby="picks-title">
-          <div className="picks-head">
-            <h2 id="picks-title">Files to upload</h2>
-            <div className="row">
-              <button type="button" className="button" onClick={clear} disabled={sending}>
-                Clear
-              </button>
-              {(sending || count > 0) && (
-                <button type="button" className="button primary" onClick={() => void send(picks.filter(sendable))} disabled={sending}>
-                  {progress ? (
-                    <>
-                      <span className="spinner" aria-hidden="true" /> {progressLabel(progress.at, progress.of)}
-                    </>
-                  ) : (
-                    uploadLabel(count)
-                  )}
-                </button>
-              )}
-            </div>
+      <section className="panel upload-card" aria-labelledby="add-title">
+        <div className="upload-card-head">
+          <span className="upload-mark" aria-hidden="true">
+            <Icon name="upload" />
+          </span>
+          <div>
+            <h2 id="add-title">Add invoices</h2>
+            <p className="faint">Files wait in the list below until you upload them.</p>
           </div>
-          <ul className="picks-list" aria-label="Files to upload">
-            {picks.map((pick) => (
-              <li key={pick.id} className="pick">
-                {pick.thumb ? <img className="thumb" src={pick.thumb} alt="" /> : <span className="thumb" aria-hidden="true" />}
-                <div className="pick-body">
-                  <span className="id pick-name">{pick.file.name}</span>
-                  <span className="faint">{[sizeLabel(pick.file.size), pick.pages === undefined ? undefined : plural(pick.pages, 'page')].filter(Boolean).join(' · ')}</span>
-                  <PickNote pick={pick} />
-                </div>
-                <button type="button" id={`remove-${pick.id}`} className="button small" aria-label={`Remove ${pick.file.name}`} onClick={() => remove(pick.id)} disabled={sending}>
-                  Remove
+        </div>
+        <div
+          className={`drop${over ? ' over' : ''}`}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setOver(true);
+          }}
+          onDragLeave={() => setOver(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setOver(false);
+            add(event.dataTransfer.files);
+          }}
+        >
+          <span className="drop-icon">
+            <Icon name="cloudUpload" size={32} />
+          </span>
+          <p>
+            <strong>Drop invoices here, or choose files.</strong>
+          </p>
+          <p id="upload-hint" className="faint">
+            PDF, PNG or JPG, one invoice per file, up to {MAX_UPLOAD_LABEL} each; a PDF may have up to {MAX_PDF_PAGES} pages. A batch takes up to {MAX_BATCH_FILES} files.
+          </p>
+          <label htmlFor={CHOOSER} className="button">
+            Choose files
+          </label>
+          <input
+            id={CHOOSER}
+            className="visually-hidden"
+            type="file"
+            multiple
+            aria-label="Invoice files"
+            aria-describedby="upload-hint"
+            accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+            disabled={!ready}
+            onChange={(event) => {
+              if (event.target.files) add(event.target.files);
+              event.target.value = '';
+            }}
+          />
+        </div>
+        <p className="visually-hidden" role="status">
+          {progress ? progressLabel(progress.at, progress.of) : ''}
+        </p>
+        {picks.length > 0 && (
+          <section className="picks" aria-labelledby="picks-title">
+            <div className="picks-head">
+              <h3 id="picks-title">Files to upload</h3>
+              <div className="row">
+                <button type="button" className="button" onClick={clear} disabled={sending}>
+                  Clear
                 </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+                {(sending || count > 0) && (
+                  <button type="button" className="button primary" onClick={() => void send(picks.filter(sendable))} disabled={sending}>
+                    {progress ? (
+                      <>
+                        <span className="spinner" aria-hidden="true" /> {progressLabel(progress.at, progress.of)}
+                      </>
+                    ) : (
+                      uploadLabel(count)
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+            <ul className="picks-list" aria-label="Files to upload">
+              {picks.map((pick) => (
+                <li key={pick.id} className="pick">
+                  {pick.thumb ? (
+                    <img className="thumb" src={pick.thumb} alt="" />
+                  ) : (
+                    <span className="thumb" aria-hidden="true">
+                      <Icon name="invoices" />
+                    </span>
+                  )}
+                  <div className="pick-body">
+                    <span className="id pick-name">{pick.file.name}</span>
+                    <span className="pick-meta">
+                      <span className="faint">{[sizeLabel(pick.file.size), pick.pages === undefined ? undefined : plural(pick.pages, 'page')].filter(Boolean).join(' · ')}</span>
+                      <PickState pick={pick} />
+                    </span>
+                    <PickNote pick={pick} />
+                  </div>
+                  <button type="button" id={`remove-${pick.id}`} className="icon-button" aria-label={`Remove ${pick.file.name}`} title="Remove" onClick={() => remove(pick.id)} disabled={sending}>
+                    <Icon name="close" size={18} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </section>
       <div className="toasts" aria-live="polite">
         {toasts.map((item) => (
           <ToastCard
@@ -265,63 +286,69 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
         {rows.length === 0 ? (
           <p className="faint">Nothing uploaded yet. Choose a file, or try a sample.</p>
         ) : (
-          <div className="table-wrap" role="region" aria-labelledby="recent-title" tabIndex={0}>
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">File</th>
-                  <th scope="col">Progress</th>
-                  <th scope="col" className="num">
-                    Result
-                  </th>
+          <Table labelledBy="recent-title">
+            <thead>
+              <tr>
+                <Th>File</Th>
+                <Th>Progress</Th>
+                <Th num>Result</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <Td>
+                    <Link href={`/invoices/${row.id}`} className="id">
+                      {row.filename}
+                    </Link>
+                  </Td>
+                  <Td>
+                    {row.step === undefined ? (
+                      <span className="text-ok">{row.done}</span>
+                    ) : (
+                      <ol className="steps" aria-label="Progress">
+                        {STEPS.map((step, index) => (
+                          <li key={step} className={index < row.step! ? 'done' : index === row.step ? 'now' : undefined} aria-current={index === row.step ? 'step' : undefined}>
+                            {step}
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </Td>
+                  <Td num className={`wrap text-${row.tone}`}>
+                    {row.result}
+                    {row.rebill && (
+                      <div className="muted">
+                        <Said words={row.rebill} base="" />
+                      </div>
+                    )}
+                  </Td>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>
-                      <Link href={`/invoices/${row.id}`} className="id">
-                        {row.filename}
-                      </Link>
-                    </td>
-                    <td>
-                      {row.step === undefined ? (
-                        <span className="text-ok">{row.done}</span>
-                      ) : (
-                        <ol className="steps" aria-label="Progress">
-                          {STEPS.map((step, index) => (
-                            <li key={step} className={index < row.step! ? 'done' : index === row.step ? 'now' : undefined} aria-current={index === row.step ? 'step' : undefined}>
-                              {step}
-                            </li>
-                          ))}
-                        </ol>
-                      )}
-                    </td>
-                    <td className={`num wrap text-${row.tone}`}>
-                      {row.result}
-                      {row.rebill && (
-                        <div className="muted">
-                          <Said words={row.rebill} base="" />
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </Table>
         )}
       </section>
     </div>
   );
 }
 
-// Where a picked file stands: being read, why it would be refused, then its upload's outcome.
+// A picked file's state as a pill: being read, refused, ready to send, waiting, sending, already an invoice, or not
+// uploaded.
+function PickState({ pick }: { pick: Picked }) {
+  if (!pick.checked) return <Badge tone="busy">Checking</Badge>;
+  if (pick.problem) return <Badge tone="warn">Refused</Badge>;
+  if (pick.state === 'queued') return <Badge tone="neutral">Waiting</Badge>;
+  if (pick.state === 'sending') return <Badge tone="busy">Uploading</Badge>;
+  if (pick.state === 'existing') return <Badge tone="neutral">Duplicate</Badge>;
+  if (pick.state === 'failed') return <Badge tone="bad">Failed</Badge>;
+  return <Badge tone="ok">Ready to send</Badge>;
+}
+
+// Why a picked file stands where it does: why it would be refused, the invoice it already is, or why it was not
+// uploaded.
 function PickNote({ pick }: { pick: Picked }) {
-  if (!pick.checked) return <span className="faint">Checking the file…</span>;
   if (pick.problem) return <span className="text-warn">{pick.problem}</span>;
-  if (pick.state === 'queued') return <span className="faint">Waiting</span>;
-  if (pick.state === 'sending') return <span className="muted">Uploading…</span>;
   if (pick.state === 'existing' && pick.existing) {
     return (
       <span className="muted">

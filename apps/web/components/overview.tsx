@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { capital, duration, plural } from '../lib/labels.ts';
 import { changeNote, costText, moneyTick, RANGES, type Range, rangeKey, ticksFor, tokensText, weekLabel, wholeDollars } from '../lib/overview.ts';
-import { Badge, Day, Money } from './ui.tsx';
+import { Badge, Day, Money, Table, Td, Th } from './ui.tsx';
 import { query } from './views.tsx';
 
 type Data = DashboardQuery['dashboard'];
@@ -209,35 +209,33 @@ function WeekChart({ name, weeks, series, format, marked, empty }: { name: strin
       </div>
       <details className="table-view">
         <summary>Show as a table</summary>
-        {/* A region the keyboard can scroll, as the invoice list's: on a phone the table scrolls inside it. */}
-        <div className="table-wrap" role="region" aria-label={`${name}, as a table`} tabIndex={0}>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Week of</th>
+        {/* A region the keyboard can scroll: on a phone the table scrolls inside it. */}
+        <Table label={`${name}, as a table`}>
+          <thead>
+            <tr>
+              <Th>Week of</Th>
+              {series.map((each) => (
+                <Th key={each.key} num>
+                  {each.label}
+                </Th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {weeks.map((week) => (
+              <tr key={week.start}>
+                <Td>
+                  <Day value={week.start} />
+                </Td>
                 {series.map((each) => (
-                  <th key={each.key} scope="col" className="num">
-                    {each.label}
-                  </th>
+                  <Td key={each.key} num>
+                    {format.text(week[each.key])}
+                  </Td>
                 ))}
               </tr>
-            </thead>
-            <tbody>
-              {weeks.map((week) => (
-                <tr key={week.start}>
-                  <td>
-                    <Day value={week.start} />
-                  </td>
-                  {series.map((each) => (
-                    <td key={each.key} className="num">
-                      {format.text(week[each.key])}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Table>
       </details>
     </>
   );

@@ -6,6 +6,8 @@ export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 export const MAX_UPLOAD_LABEL = '4 MB';
 // Most pages one uploaded PDF may have.
 export const MAX_PDF_PAGES = 20;
+// Most files one batch request may carry; the web sends its files one at a time.
+export const MAX_BATCH_FILES = 500;
 // pdf-lib decodes a PNG in memory, and pdf.js decodes a JPEG when the worker renders it, so image size is capped too.
 export const MAX_IMAGE_SIDE = 10_000;
 export const MAX_IMAGE_PIXELS = 25_000_000;

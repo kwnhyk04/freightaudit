@@ -19,7 +19,7 @@ import {
   statusTotals,
 } from '../lib/labels.ts';
 import { ActionForm, DecideForm, Tabs } from './client.tsx';
-import { Badge, Day, Difference, Empty, Moment, Money, Pager, StatusBadge } from './ui.tsx';
+import { Badge, Day, Difference, Empty, Moment, Money, Pager, StatusBadge, Table, Td, Th } from './ui.tsx';
 
 // Views shared by the live pages and the public /demo pages: base prefixes every link, readOnly hides every action.
 export type Where = { base: string; readOnly: boolean };
@@ -110,7 +110,7 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
         </div>
       </div>
       {edges.length === 0 ? (
-        <div className="table-wrap">
+        <div className="table-wrap list">
           {search ? (
             <Empty title={`No${where} invoices match “${search}”.`}>
               <p>The search looks at invoice numbers, PRO numbers and carrier names.</p>
@@ -122,75 +122,67 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
           )}
         </div>
       ) : (
-        // A region the keyboard can scroll: on a phone every column stays and the table scrolls inside it.
-        <div className="table-wrap list" role="region" aria-label="Invoices" tabIndex={0}>
-          <table className="list-table invoice-rows">
-            <caption className="visually-hidden">
-              Invoices, newest first, {showing?.toLowerCase()}
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Invoice</th>
-                <th scope="col">Carrier</th>
-                <th scope="col">Status</th>
-                <th scope="col">Issued</th>
-                <th scope="col">Received</th>
-                <th scope="col" className="num">
-                  Open findings
-                </th>
-                <th scope="col" className="num">
-                  Billed
-                </th>
-                <th scope="col" className="num">
-                  Expected
-                </th>
-                <th scope="col" className="num">
-                  Difference
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {edges.map(({ node }) => {
-                const findings = node.discrepancies.edges.map((edge) => edge.node);
-                // Only a priced invoice has an expected amount.
-                const money = node.rateCardVersion && node.totalCents !== null ? invoiceAmounts(node.totalCents, findings) : undefined;
-                const matched = node.shipment !== null;
-                const reason = statusReason({ ...node, findings: findings.length, matched });
-                return (
-                  <tr key={node.id} className="link-row">
-                    <td>
-                      <Link href={`${base}/invoices/${node.id}`} className="id">
-                        {node.number ?? node.filename}
-                      </Link>
-                    </td>
-                    <td>{node.carrier ?? <span className="faint">{IN_FLIGHT.has(node.status) ? 'Not matched yet' : 'Not matched'}</span>}</td>
-                    <td>
-                      <StatusBadge status={node.status} open={node.openDiscrepancyCount} hold={node.hold} matched={matched} />
-                      {reason && <div className="faint reason">{reason}</div>}
-                    </td>
-                    <td>
-                      <Day value={node.issuedOn} />
-                    </td>
-                    <td>
-                      <Moment value={node.createdAt} />
-                    </td>
-                    <td className="num">{money && (node.openDiscrepancyCount > 0 ? <strong>{node.openDiscrepancyCount}</strong> : <span className="faint">0</span>)}</td>
-                    <td className="num">{node.totalCents !== null && <Money cents={node.totalCents} currency={node.currency} />}</td>
-                    <td className="num muted">{money && <Money cents={money.expectedCents} currency={node.currency} />}</td>
-                    <td className="num">
-                      {money && (
-                        <>
-                          <span className="card-label">Over contract</span>
-                          <Difference cents={money.standingCents} currency={node.currency} />
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        // A region the keyboard can scroll; on a phone each row is a card.
+        <Table label="Invoices" cards caption={`Invoices, newest first, ${showing?.toLowerCase() ?? ''}`}>
+          <thead>
+            <tr>
+              <Th>Invoice</Th>
+              <Th>Carrier</Th>
+              <Th>Status</Th>
+              <Th>Issued</Th>
+              <Th>Received</Th>
+              <Th num>Open findings</Th>
+              <Th num>Billed</Th>
+              <Th num>Expected</Th>
+              <Th num>Difference</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {edges.map(({ node }) => {
+              const findings = node.discrepancies.edges.map((edge) => edge.node);
+              // Only a priced invoice has an expected amount.
+              const money = node.rateCardVersion && node.totalCents !== null ? invoiceAmounts(node.totalCents, findings) : undefined;
+              const matched = node.shipment !== null;
+              const reason = statusReason({ ...node, findings: findings.length, matched });
+              return (
+                <tr key={node.id} className="link-row">
+                  <Td card="title">
+                    <Link href={`${base}/invoices/${node.id}`} className="id">
+                      {node.number ?? node.filename}
+                    </Link>
+                  </Td>
+                  <Td card="meta">{node.carrier ?? <span className="faint">{IN_FLIGHT.has(node.status) ? 'Not matched yet' : 'Not matched'}</span>}</Td>
+                  <Td card="wide">
+                    <StatusBadge status={node.status} open={node.openDiscrepancyCount} hold={node.hold} matched={matched} />
+                    {reason && <div className="faint reason">{reason}</div>}
+                  </Td>
+                  <Td card="hide">
+                    <Day value={node.issuedOn} />
+                  </Td>
+                  <Td card="hide">
+                    <Moment value={node.createdAt} />
+                  </Td>
+                  <Td card="hide" num>
+                    {money && (node.openDiscrepancyCount > 0 ? <strong>{node.openDiscrepancyCount}</strong> : <span className="faint">0</span>)}
+                  </Td>
+                  <Td card="hide" num>
+                    {node.totalCents !== null && <Money cents={node.totalCents} currency={node.currency} />}
+                  </Td>
+                  <Td card="hide" num className="muted">
+                    {money && <Money cents={money.expectedCents} currency={node.currency} />}
+                  </Td>
+                  {money ? (
+                    <Td card="amount" num label="Over contract">
+                      <Difference cents={money.standingCents} currency={node.currency} />
+                    </Td>
+                  ) : (
+                    <Td card="amount" num />
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
       )}
       <Pager showing={showing} previous={previous} next={next} />
     </>
@@ -204,59 +196,56 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
     <>
       <Tabs items={tabs} current={status} label="Filter by decision" />
       {edges.length === 0 ? (
-        <div className="table-wrap">
+        <div className="table-wrap list">
           <Empty title={status === 'OPEN' ? 'No open findings.' : `No findings are ${DECISION[status].label.toLowerCase()}.`}>
             <p>Overcharges found while reconciling wait here for a decision.</p>
           </Empty>
         </div>
       ) : (
-        <div className="table-wrap list">
-          <table className="list-table finding-rows">
-            <thead>
-              <tr>
-                <th scope="col">Finding</th>
-                <th scope="col">Invoice</th>
-                <th scope="col">Line</th>
-                <th scope="col" className="num">Expected</th>
-                <th scope="col" className="num">Billed</th>
-                <th scope="col">Evidence</th>
-                <th scope="col">Decision</th>
+        <Table cards>
+          <thead>
+            <tr>
+              <Th>Finding</Th>
+              <Th>Invoice</Th>
+              <Th>Line</Th>
+              <Th num>Expected</Th>
+              <Th num>Billed</Th>
+              <Th>Evidence</Th>
+              <Th>Decision</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {edges.map(({ node }) => (
+              <tr key={node.id}>
+                <Td card="title">{FINDING[node.type]}</Td>
+                <Td card="meta">
+                  <Link href={`${base}/invoices/${node.invoice.id}`} className="id">
+                    {node.invoice.number ?? node.invoice.filename}
+                  </Link>
+                  <div className="faint nowrap">{node.invoice.carrier}</div>
+                </Td>
+                <Td card="wide">{node.lineItem ? `${node.lineItem.lineNumber}. ${lineLabel(node.lineItem.description)}` : <span className="faint">Whole invoice</span>}</Td>
+                <Td card="aside" num label="Expected">
+                  <Money cents={node.expectedCents} currency={node.invoice.currency} />
+                </Td>
+                <Td card="aside" num label="Billed">
+                  <Money cents={node.billedCents} currency={node.invoice.currency} />
+                </Td>
+                {/* The evidence keeps the smaller size, so it wraps to fewer lines. */}
+                <Td card="wide" className="muted small-cell" style={{ maxWidth: 360 }}>
+                  {findingText(node, node.lineItem, undefined, node.invoice.currency)}
+                </Td>
+                <Td card="wide" className="decision-cell">
+                  {!readOnly && node.status === 'OPEN' && node.invoice.status === 'RECONCILED' ? (
+                    <DecideForm id={node.id} words={decideWords(node.type)} />
+                  ) : (
+                    <Badge tone={decisionLabel(node.status, node.type).tone}>{decisionLabel(node.status, node.type).label}</Badge>
+                  )}
+                </Td>
               </tr>
-            </thead>
-            <tbody>
-              {edges.map(({ node }) => (
-                <tr key={node.id}>
-                  <td>{FINDING[node.type]}</td>
-                  <td>
-                    <Link href={`${base}/invoices/${node.invoice.id}`} className="id">
-                      {node.invoice.number ?? node.invoice.filename}
-                    </Link>
-                    <div className="faint nowrap">{node.invoice.carrier}</div>
-                  </td>
-                  <td>{node.lineItem ? `${node.lineItem.lineNumber}. ${lineLabel(node.lineItem.description)}` : <span className="faint">Whole invoice</span>}</td>
-                  <td className="num">
-                    <span className="card-label">Expected</span>
-                    <Money cents={node.expectedCents} currency={node.invoice.currency} />
-                  </td>
-                  <td className="num">
-                    <span className="card-label">Billed</span>
-                    <Money cents={node.billedCents} currency={node.invoice.currency} />
-                  </td>
-                  <td className="muted" style={{ maxWidth: 360 }}>
-                    {findingText(node, node.lineItem, undefined, node.invoice.currency)}
-                  </td>
-                  <td>
-                    {!readOnly && node.status === 'OPEN' && node.invoice.status === 'RECONCILED' ? (
-                      <DecideForm id={node.id} words={decideWords(node.type)} />
-                    ) : (
-                      <Badge tone={decisionLabel(node.status, node.type).tone}>{decisionLabel(node.status, node.type).label}</Badge>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Table>
       )}
       <Pager
         labels={['First page', 'Next 25']}
@@ -278,48 +267,52 @@ export function DeadLetterList({ data, replayed, after, base, readOnly }: Where 
     <>
       <Tabs items={tabs} current={status} label="Filter by state" />
       {edges.length === 0 ? (
-        <div className="table-wrap">
+        <div className="table-wrap list">
           <Empty title={replayed ? 'Nothing was replayed yet.' : 'No dead letters.'}>
             <p>A job that uses up its retries lands here with its error, ready to replay once the cause is fixed.</p>
           </Empty>
         </div>
       ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Failed</th>
-                <th scope="col">Step</th>
-                <th scope="col">Invoice</th>
-                <th scope="col">Error</th>
-                <th scope="col" className="num">Attempts</th>
-                <th scope="col">{replayed ? 'Replayed' : 'Action'}</th>
+        <Table cards>
+          <thead>
+            <tr>
+              <Th>Failed</Th>
+              <Th>Step</Th>
+              <Th>Invoice</Th>
+              <Th>Error</Th>
+              <Th num>Attempts</Th>
+              <Th>{replayed ? 'Replayed' : 'Action'}</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {edges.map(({ node }) => (
+              <tr key={node.id}>
+                <Td card="meta">
+                  <Moment value={node.createdAt} />
+                </Td>
+                <Td card="title">{QUEUE[node.queue] ?? node.queue}</Td>
+                <Td card="meta">
+                  {node.invoice ? (
+                    <Link href={`${base}/invoices/${node.invoice.id}`} className="id">
+                      {node.invoice.number ?? node.invoice.filename}
+                    </Link>
+                  ) : (
+                    <span className="faint">TMS sync</span>
+                  )}
+                </Td>
+                <Td card="wide" style={{ maxWidth: 420 }}>
+                  {node.error}
+                </Td>
+                <Td card="aside" num label="Attempts">
+                  {node.attempts}
+                </Td>
+                <Td card="wide" label={replayed ? 'Replayed' : undefined}>
+                  {replayed ? <Moment value={node.replayedAt} /> : !readOnly && <ActionForm hidden={{ intent: 'replay', id: node.id }} submit="Replay" confirm="Run this job again?" />}
+                </Td>
               </tr>
-            </thead>
-            <tbody>
-              {edges.map(({ node }) => (
-                <tr key={node.id}>
-                  <td>
-                    <Moment value={node.createdAt} />
-                  </td>
-                  <td>{QUEUE[node.queue] ?? node.queue}</td>
-                  <td>
-                    {node.invoice ? (
-                      <Link href={`${base}/invoices/${node.invoice.id}`} className="id">
-                        {node.invoice.number ?? node.invoice.filename}
-                      </Link>
-                    ) : (
-                      <span className="faint">TMS sync</span>
-                    )}
-                  </td>
-                  <td style={{ maxWidth: 420 }}>{node.error}</td>
-                  <td className="num">{node.attempts}</td>
-                  <td>{replayed ? <Moment value={node.replayedAt} /> : !readOnly && <ActionForm hidden={{ intent: 'replay', id: node.id }} submit="Replay" confirm="Run this job again?" />}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Table>
       )}
       <Pager
         labels={['First page', 'Next 25']}

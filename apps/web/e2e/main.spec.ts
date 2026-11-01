@@ -233,6 +233,34 @@ test.describe('upload', () => {
     await expect(page).toHaveURL(new RegExp(`/invoices/${again.id}$`));
   });
 
+  test('each listed file says where it stands: refused with its reason, ready to send, a duplicate with its invoice, failed with its reason and Retry', async ({ page }) => {
+    const again = await duplicateOf('digital.pdf');
+    await page.goto('/upload');
+    const file = page.getByLabel('Invoice files');
+    await expect(file).toBeEnabled();
+    const state = (name: string) => pick(page, name).locator('.badge');
+    await file.setInputFiles([
+      { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') },
+      { name: 'digital.pdf', mimeType: 'application/pdf', buffer: digital },
+    ]);
+    await expect(state('notes.txt')).toHaveText('Refused');
+    await expect(pick(page, 'notes.txt')).toContainText("It isn't a PDF, PNG or JPG.");
+    await expect(state('digital.pdf')).toHaveText('Ready to send');
+    await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
+    await expect(state('digital.pdf')).toHaveText('Duplicate');
+    await expect(pick(page, 'digital.pdf').getByRole('link', { name: again.name })).toHaveAttribute('href', `/invoices/${again.id}`);
+    // No answer: the file fails with its reason, and its toast offers Retry.
+    await page.route('**/upload', (route) => (route.request().method() === 'POST' ? route.abort() : route.continue()));
+    await file.setInputFiles({ name: 'lost.pdf', mimeType: 'application/pdf', buffer: Buffer.concat([digital, Buffer.from('\n%lost\n')]) });
+    await expect(state('lost.pdf')).toHaveText('Ready to send');
+    await page.getByRole('button', { name: 'Upload 1 invoice' }).click();
+    await expect(state('lost.pdf')).toHaveText('Failed');
+    await expect(pick(page, 'lost.pdf')).toContainText('Not uploaded: The upload did not reach the server.');
+    await expect(page.locator('.toast', { hasText: 'Not uploaded' }).getByRole('button', { name: 'Retry' })).toBeVisible();
+    // The hint states the real rules.
+    await expect(page.locator('#upload-hint')).toHaveText('PDF, PNG or JPG, one invoice per file, up to 4 MB each; a PDF may have up to 20 pages. A batch takes up to 500 files.');
+  });
+
   test('a PNG is listed with its picture and one page, then kept as a one-page PDF', async ({ page }) => {
     await page.setContent('<p style="font: 32px serif; padding: 40px">Invoice 4242 from a phone</p>');
     const png = await page.screenshot();
