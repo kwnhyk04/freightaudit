@@ -102,6 +102,20 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
       </label>
     </>
   );
+  // At most one card explains the state first: a reading to check, a shipment not matched, or a failure.
+  const alert = invoice.status === 'NEEDS_REVIEW' || Boolean(unmatched) || invoice.status === 'FAILED';
+  // The document, beside the charges from 1024 px; the wrapper spans the rows it sits beside, so the viewer stays sticky.
+  const documentCard = (
+    <div className="b-doc">
+      {example ? (
+        <section className="doc" aria-label="Invoice document">
+          <p className="empty">Example data: the seed created this invoice without a document.</p>
+        </section>
+      ) : (
+        <DocumentViewer key={documentSrc} src={documentSrc} filename={invoice.filename} values={markValues(invoice, lines, byLine)} />
+      )}
+    </div>
+  );
   // Why each closed finding closed: its closing row's reason.
   const closedWhy = new Map(invoice.auditTrail.filter((entry) => entry.action === 'DISCREPANCY_CLOSED').map((entry) => [entry.discrepancyId, entry.detail]));
   return (
@@ -135,103 +149,99 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
         {!readOnly && <InvoiceActions invoice={invoice} findings={findings} money={money} />}
       </div>
       <StatusPoller active={IN_FLIGHT.has(invoice.status)} label={statusLabel(invoice.status, open, hold, matched)} watch={`invoice=${invoice.id}`} now={progressKey([invoice])} />
-      <div className="review">
-        {example ? (
-          <section className="doc" aria-label="Invoice document">
-            <p className="empty">Example data: the seed created this invoice without a document.</p>
-          </section>
-        ) : (
-          <DocumentViewer key={documentSrc} src={documentSrc} filename={invoice.filename} values={markValues(invoice, lines, byLine)} />
-        )}
-        <div>
-          {invoice.status === 'NEEDS_REVIEW' && (
-            <section className="panel attention" aria-label="Reading needs a check">
-              <h2>Reading needs a check</h2>
-              <p>{reviewReason(invoice.reviewReason)}</p>
-              {extraction && extraction.problems.length > 0 && (
-                <ul className="faint">
-                  {extraction.problems.map((problem) => (
-                    <li key={problem}>{problem}</li>
-                  ))}
-                </ul>
-              )}
-              {correctable && (
-                <div id="correct" style={{ marginTop: 12 }}>
-                  {readOnly ? (
-                    <>
-                      <div className="row">{correction}</div>
-                      <p className="faint" style={{ marginTop: 8 }}>
-                        In the live app a reviewer corrects the carrier or PRO number here, then re-runs matching.
-                      </p>
-                    </>
-                  ) : (
-                    <ActionForm hidden={{ intent: 'correct', id: invoice.id }} submit="Re-run matching" tone="primary">
-                      {correction}
-                    </ActionForm>
-                  )}
-                </div>
-              )}
-            </section>
-          )}
-          {unmatched && (
-            <section className="panel attention" aria-labelledby="unmatched-title">
-              <h2 id="unmatched-title">{unmatched.title}</h2>
-              <p>{unmatched.text}</p>
-              {unmatched.match && <p className="muted">{unmatched.match}</p>}
-              {/* While its possible duplicate is open, a misread carrier or number is corrected here and looked up again. */}
-              {!readOnly && hold === 'POSSIBLE_DUPLICATE' && (
-                <div style={{ marginTop: 12 }}>
-                  <ActionForm hidden={{ intent: 'correct', id: invoice.id }} submit="Check again">
-                    {carrierField}
-                    <label>
-                      Invoice number
-                      <input name="number" defaultValue={invoice.number ?? ''} className="id" maxLength={64} />
-                    </label>
+      {/* A bento grid of cards in the samples' style: DOM order is the phone's reading order, and from 1024 px the
+          layout (full, clean or unread) places them on twelve columns with the document beside the charges. */}
+      <div className="bento-page" data-layout={unread ? 'unread' : findings.length > 0 ? 'full' : 'clean'} data-alert={alert ? '' : undefined}>
+        <Summary invoice={invoice} money={money} open={open} hold={hold} matched={matched} />
+        {invoice.status === 'NEEDS_REVIEW' && (
+          <section className="panel bento-card b-alert attention" aria-label="Reading needs a check">
+            <h2>Reading needs a check</h2>
+            <p>{reviewReason(invoice.reviewReason)}</p>
+            {extraction && extraction.problems.length > 0 && (
+              <ul className="faint">
+                {extraction.problems.map((problem) => (
+                  <li key={problem}>{problem}</li>
+                ))}
+              </ul>
+            )}
+            {correctable && (
+              <div id="correct" style={{ marginTop: 12 }}>
+                {readOnly ? (
+                  <>
+                    <div className="row">{correction}</div>
+                    <p className="faint" style={{ marginTop: 8 }}>
+                      In the live app a reviewer corrects the carrier or PRO number here, then re-runs matching.
+                    </p>
+                  </>
+                ) : (
+                  <ActionForm hidden={{ intent: 'correct', id: invoice.id }} submit="Re-run matching" tone="primary">
+                    {correction}
                   </ActionForm>
-                </div>
-              )}
-            </section>
-          )}
-          {invoice.status === 'FAILED' && (
-            <section className="panel attention bad" aria-label="Failure">
-              <h2>Why it failed</h2>
-              <p>{invoice.failureReason ?? 'The step used up its retries.'}</p>
-            </section>
-          )}
-          {findings.length > 0 && (
-            <section className="panel" aria-labelledby="findings-title">
-              <h2 id="findings-title">
-                Findings <span className="faint-heading">{open} open</span>
-              </h2>
-              <div className="findings">
-                {findings.map((finding) => {
-                  const line = finding.lineItem && lines.find((each) => each.lineNumber === finding.lineItem!.lineNumber);
-                  const where = before.get(finding.id);
-                  const title = `finding-${finding.id}`;
-                  const decision = decisionLabel(finding.status, finding.type, closedWhy.get(finding.id));
-                  return (
-                    <article key={finding.id} aria-labelledby={title}>
-                      {/* Read as title, text, amount, then the decision; CSS keeps the amount in the left column. */}
-                      <div className="finding-body">
-                        <div className="row">
-                          <h3 id={title}>{findingTitle(finding.type, line?.description)}</h3>
-                          <Badge tone={decision.tone}>{decision.label}</Badge>
-                        </div>
-                        <p className="muted">
-                          {line && where ? <Said words={rebilledText(line.description, where)} base={base} /> : findingText(finding, line, invoice.rateCardVersion?.version, invoice.currency)}
-                        </p>
-                        {finding.note && <p className="faint">Note: {finding.note}</p>}
-                      </div>
-                      <Difference cents={overcharge(finding)} currency={invoice.currency} />
-                      {!readOnly && finding.status === 'OPEN' && invoice.status === 'RECONCILED' && <DecideForm id={finding.id} describedBy={title} words={decideWords(finding.type)} />}
-                    </article>
-                  );
-                })}
+                )}
               </div>
-            </section>
-          )}
-          {unread ? (
-            <section className="panel" aria-label="Invoice details">
+            )}
+          </section>
+        )}
+        {unmatched && (
+          <section className="panel bento-card b-alert attention" aria-labelledby="unmatched-title">
+            <h2 id="unmatched-title">{unmatched.title}</h2>
+            <p>{unmatched.text}</p>
+            {unmatched.match && <p className="muted">{unmatched.match}</p>}
+            {/* While its possible duplicate is open, a misread carrier or number is corrected here and looked up again. */}
+            {!readOnly && hold === 'POSSIBLE_DUPLICATE' && (
+              <div style={{ marginTop: 12 }}>
+                <ActionForm hidden={{ intent: 'correct', id: invoice.id }} submit="Check again">
+                  {carrierField}
+                  <label>
+                    Invoice number
+                    <input name="number" defaultValue={invoice.number ?? ''} className="id" maxLength={64} />
+                  </label>
+                </ActionForm>
+              </div>
+            )}
+          </section>
+        )}
+        {invoice.status === 'FAILED' && (
+          <section className="panel bento-card b-alert attention bad" aria-label="Failure">
+            <h2>Why it failed</h2>
+            <p>{invoice.failureReason ?? 'The step used up its retries.'}</p>
+          </section>
+        )}
+        {findings.length > 0 && (
+          <section className="panel bento-card b-findings" aria-labelledby="findings-title">
+            <h2 id="findings-title">
+              Findings <span className="faint-heading">{open} open</span>
+            </h2>
+            <div className="findings">
+              {findings.map((finding) => {
+                const line = finding.lineItem && lines.find((each) => each.lineNumber === finding.lineItem!.lineNumber);
+                const where = before.get(finding.id);
+                const title = `finding-${finding.id}`;
+                const decision = decisionLabel(finding.status, finding.type, closedWhy.get(finding.id));
+                return (
+                  <article key={finding.id} aria-labelledby={title}>
+                    {/* Read as title, text, amount, then the decision; CSS keeps the amount in the left column. */}
+                    <div className="finding-body">
+                      <div className="row">
+                        <h3 id={title}>{findingTitle(finding.type, line?.description)}</h3>
+                        <Badge tone={decision.tone}>{decision.label}</Badge>
+                      </div>
+                      <p className="muted">
+                        {line && where ? <Said words={rebilledText(line.description, where)} base={base} /> : findingText(finding, line, invoice.rateCardVersion?.version, invoice.currency)}
+                      </p>
+                      {finding.note && <p className="faint">Note: {finding.note}</p>}
+                    </div>
+                    <Difference cents={overcharge(finding)} currency={invoice.currency} />
+                    {!readOnly && finding.status === 'OPEN' && invoice.status === 'RECONCILED' && <DecideForm id={finding.id} describedBy={title} words={decideWords(finding.type)} />}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+        {unread ? (
+          <>
+            <section className="panel bento-card b-charges" aria-label="Invoice details">
               <dl className="facts">
                 <dt>File</dt>
                 <dd>
@@ -243,105 +253,107 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                 {example ? 'Example data: there is no file to read.' : invoice.status === 'FAILED' ? 'Nothing was read from the file.' : 'The pipeline has not read the file yet.'}
               </p>
             </section>
-          ) : (
-            <>
-              <section className="panel" aria-labelledby="charges-title">
-                <h2 id="charges-title">{priced ? 'Charges against the rate card' : 'Charges as read'}</h2>
-                {priced && already.size > 0 && <p className="faint charges-note">{ALREADY_BILLED}</p>}
-                {lines.length === 0 ? (
-                  <p className="faint">No lines were read.</p>
-                ) : (
-                  <Table labelledBy="charges-title" className="charges">
-                    <thead>
-                      <tr>
-                        <Th num>#</Th>
-                        <Th>Description</Th>
-                        <Th>Code</Th>
-                        <Th num>Billed</Th>
-                        {priced && (
-                          <>
-                            <Th num>Expected</Th>
-                            <Th num>Difference</Th>
-                          </>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {lines.map((line) => {
-                        const finding = byLine.get(line.lineNumber);
-                        const amounts = lineAmounts(line.amountCents, finding);
-                        const billed = already.get(line.lineNumber);
-                        return (
-                          <tr key={line.lineNumber} className={finding && finding.status !== 'DISMISSED' ? 'flagged' : undefined}>
-                            <Td num>{line.lineNumber}</Td>
-                            <Td>
-                              {lineLabel(line.description)}
-                              {finding && <div className="faint nowrap">{FINDING[finding.type]}</div>}
-                            </Td>
-                            <Td className="id">{line.chargeCode ? codeBreaks(line.chargeCode) : <span className="faint">None</span>}</Td>
-                            <Td num>
-                              <Money cents={line.amountCents} currency={invoice.currency} />
-                            </Td>
-                            {priced && (
-                              <>
-                                <Td num className={billed ? 'muted wrap' : 'muted'}>
-                                  {billed ? <Said words={billed} base={base} /> : <Money cents={amounts.expectedCents} currency={invoice.currency} />}
-                                </Td>
-                                <Td num>
-                                  <Difference cents={amounts.differenceCents} currency={invoice.currency} />
-                                </Td>
-                              </>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <Th scope="row" colSpan={3}>
-                          Total
-                        </Th>
-                        <Td num>
-                          <Money cents={invoice.totalCents} currency={invoice.currency} />
-                        </Td>
-                        {priced && money && (
-                          <>
-                            <Td num>
-                              <Money cents={money.expectedCents} currency={invoice.currency} />
-                            </Td>
-                            <Td num>
-                              <Difference cents={money.standingCents} currency={invoice.currency} />
-                            </Td>
-                          </>
-                        )}
-                      </tr>
-                    </tfoot>
-                  </Table>
-                )}
-              </section>
-              <InvoiceFacts invoice={invoice} correct={correctable && !readOnly} example={example} />
-            </>
-          )}
-          <section className="panel" aria-labelledby="trail-title">
-            <h2 id="trail-title">Audit trail</h2>
-            <ol className="trail">
-              {trailRows(invoice, findings, example).map((row) => (
-                <li key={row.id}>
-                  <Moment value={row.at} />
-                  <div>
-                    <strong>{row.verb}</strong>
-                    {row.rest && <span className="by"> {row.rest}</span>}
-                    {row.notes.map((note) => (
-                      <div key={note} className="faint">
-                        {note}
-                      </div>
-                    ))}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </div>
+            {documentCard}
+          </>
+        ) : (
+          <>
+            <section className="panel bento-card b-charges" aria-labelledby="charges-title">
+              <h2 id="charges-title">{priced ? 'Charges against the rate card' : 'Charges as read'}</h2>
+              {priced && already.size > 0 && <p className="faint charges-note">{ALREADY_BILLED}</p>}
+              {lines.length === 0 ? (
+                <p className="faint">No lines were read.</p>
+              ) : (
+                <Table labelledBy="charges-title" className="charges">
+                  <thead>
+                    <tr>
+                      <Th num>#</Th>
+                      <Th>Description</Th>
+                      <Th>Code</Th>
+                      <Th num>Billed</Th>
+                      {priced && (
+                        <>
+                          <Th num>Expected</Th>
+                          <Th num>Difference</Th>
+                        </>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lines.map((line) => {
+                      const finding = byLine.get(line.lineNumber);
+                      const amounts = lineAmounts(line.amountCents, finding);
+                      const billed = already.get(line.lineNumber);
+                      return (
+                        <tr key={line.lineNumber} className={finding && finding.status !== 'DISMISSED' ? 'flagged' : undefined}>
+                          <Td num>{line.lineNumber}</Td>
+                          <Td>
+                            {lineLabel(line.description)}
+                            {finding && <div className="faint nowrap">{FINDING[finding.type]}</div>}
+                          </Td>
+                          <Td className="id">{line.chargeCode ? codeBreaks(line.chargeCode) : <span className="faint">None</span>}</Td>
+                          <Td num>
+                            <Money cents={line.amountCents} currency={invoice.currency} />
+                          </Td>
+                          {priced && (
+                            <>
+                              <Td num className={billed ? 'muted wrap' : 'muted'}>
+                                {billed ? <Said words={billed} base={base} /> : <Money cents={amounts.expectedCents} currency={invoice.currency} />}
+                              </Td>
+                              <Td num>
+                                <Difference cents={amounts.differenceCents} currency={invoice.currency} />
+                              </Td>
+                            </>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <Th scope="row" colSpan={3}>
+                        Total
+                      </Th>
+                      <Td num>
+                        <Money cents={invoice.totalCents} currency={invoice.currency} />
+                      </Td>
+                      {priced && money && (
+                        <>
+                          <Td num>
+                            <Money cents={money.expectedCents} currency={invoice.currency} />
+                          </Td>
+                          <Td num>
+                            <Difference cents={money.standingCents} currency={invoice.currency} />
+                          </Td>
+                        </>
+                      )}
+                    </tr>
+                  </tfoot>
+                </Table>
+              )}
+            </section>
+            {documentCard}
+            <InvoiceFacts invoice={invoice} correct={correctable && !readOnly} example={example} />
+          </>
+        )}
+        <section className="panel bento-card b-trail" aria-labelledby="trail-title">
+          <h2 id="trail-title">Audit trail</h2>
+          <ol className="trail">
+            {trailRows(invoice, findings, example).map((row) => (
+              <li key={row.id}>
+                <Moment value={row.at} />
+                <div>
+                  <strong>{row.verb}</strong>
+                  {row.rest && <span className="by"> {row.rest}</span>}
+                  {row.notes.map((note) => (
+                    <div key={note} className="faint">
+                      {note}
+                    </div>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
       </div>
     </>
   );
@@ -415,12 +427,33 @@ function approval(invoice: Detail, findings: Finding[], money?: Amounts) {
   return <ActionForm hidden={{ intent: 'approve', id: invoice.id }} submit="Approve for payment" tone="primary" />;
 }
 
+// The invoice at a glance: its status, what was billed, what the rate card expects and the difference still standing, the
+// same figures as the charges table's Total row. Before pricing only the billed total is known.
+function Summary({ invoice, money, open, hold, matched }: { invoice: Detail; money?: Amounts; open: number; hold: ReturnType<typeof holdOf>; matched: boolean }) {
+  return (
+    <section className="panel bento-card b-summary" aria-labelledby="summary-title">
+      <h2 id="summary-title">Summary</h2>
+      <StatusBadge status={invoice.status} open={open} hold={hold} matched={matched} />
+      <dl className="summary-figures">
+        <dt>Billed</dt>
+        <dd>
+          <Money cents={invoice.totalCents} currency={invoice.currency} />
+        </dd>
+        <dt>Expected</dt>
+        <dd>{money ? <Money cents={money.expectedCents} currency={invoice.currency} /> : <span className="faint">Not priced yet</span>}</dd>
+        <dt>Difference</dt>
+        <dd>{money ? <Difference cents={money.standingCents} currency={invoice.currency} /> : <span className="faint">None</span>}</dd>
+      </dl>
+    </section>
+  );
+}
+
 // What was read from the invoice and what it was matched to. correct links to the correction form when one applies;
 // example data was written by the seed, not read.
 function InvoiceFacts({ invoice, correct, example }: { invoice: Detail; correct: boolean; example: boolean }) {
   const extraction = invoice.extraction;
   return (
-    <section className="panel" aria-labelledby="details-title">
+    <section className="panel bento-card b-details" aria-labelledby="details-title">
       <div className="panel-head">
         <div>
           <h2 id="details-title">Invoice details</h2>
