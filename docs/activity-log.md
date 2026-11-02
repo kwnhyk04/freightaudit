@@ -19,6 +19,23 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-11-02: fa-polish-3 CI fix: the evals test of the spend cap expected the raw string (not committed)
+
+- CI failed in evals.
+  - What happened: `evals/harness/no-claude-in-ci.test.ts` (line 63) expected `LLM_CLAUDE_SPEND_CAP_USD.parse('15')` to be `'15'`, and the branch now keeps `'15.00'`.
+  - Why: before handing over, unit tests ran only for web and config, not for every package. The evals package also tests the config's settings, and this was missed (our mistake).
+  - What we did: the test now expects `15` to `15.00`, `15.00` to `15.00`, `0.5` to `0.50` and `120.25` to `120.25`. The rejected cases are unchanged.
+- Every other reader of the setting was checked against the normalized form:
+  - `llmRoles` only tests that the value is not empty;
+  - `createLimits` passes it to `microUsd`, which takes either form;
+  - the worker logs it, and its int test already sets and expects `15.00`;
+  - `limits.int.test.ts` passes `0.001` straight to `createLimits`, not through the setting;
+  - the prod compose file passes the raw value, which the worker parses at startup.
+  - None needed a change.
+- Files: evals/harness/no-claude-in-ci.test.ts, docs/activity-log.md
+- Validation: `pnpm test` at the root passes on all 18 tasks (evals 49, web 157, llm 66, domain 45, api 12, config 3 and the rest), `pnpm lint` on 12 of 12 and `pnpm typecheck` on 21 of 21.
+- Outstanding: `pnpm test:int` not run. The user ships.
+
 ### 2026-11-02: fa-polish-3: Recent uploads as phone cards, decisions on several rows, whole-dollar spend cap (not committed)
 
 - Tests came first and failed as expected: the config test got `15` back instead of `15.00`, and the labels suite failed on the missing `bulkResult`.
