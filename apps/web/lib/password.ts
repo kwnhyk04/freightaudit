@@ -2,7 +2,7 @@ import { argon2, randomBytes, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 
 // The reviewer's password hash: argon2id from node:crypto (Node 24.7 and later) in standard PHC form, so another argon2
-// library, such as @node-rs/argon2 on an older runtime, verifies the same strings (docs/todo.md, step 10).
+// library, such as @node-rs/argon2 on an older runtime, verifies the same strings.
 const PHC = /^[$]argon2id[$]v=19[$]m=([0-9]+),t=([0-9]+),p=([0-9]+)[$]([A-Za-z0-9+/]+)[$]([A-Za-z0-9+/]+)$/;
 // OWASP's minimum for argon2id: 19 MiB, 2 passes, 1 lane.
 const COST = { memory: 19_456, passes: 2, parallelism: 1 };

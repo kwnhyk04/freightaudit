@@ -1,4 +1,4 @@
-// Turns eval runs into evals/reports/<date>[-<version>][-<subset>].json and .md: every target of docs/context.md met or
+// Turns eval runs into evals/reports/<date>[-<version>][-<subset>].json and .md: every target in metrics.ts met or
 // missed, the regression floors of evals/thresholds[-<version>].json beside them, and on a full run of the default set
 // the eval table that opens the README. The exit code is 2 when a quota stop left cases unrun, 1 when a metric breaks
 // its floor, else 0.
@@ -11,7 +11,7 @@ import { failuresOf, type Measured, measure, meets, type Metric, METRICS, replie
 import type { Roles, Run, Subset } from './run.ts';
 
 // Floors per subset: a minimum for metrics where higher is better, a maximum for the others. Floors only tighten;
-// loosening one needs a written reason in docs/memory.md naming the run that justified it. `from` names the run that
+// loosening one needs a written reason naming the run that justified it. `from` names the run that
 // set the floor, or is "design target" for a floor set to the target by such a reason.
 type Floor = { min?: number; max?: number; from: string };
 type Thresholds = { _rules?: string } & Partial<Record<Subset, Record<string, Floor>>>;
@@ -176,7 +176,7 @@ export function readmeSection({ claudeFirst, free }: Officials, loadRows: string
     official ? `${fmt(metric.unit, m?.value ?? undefined)} | ${ci(metric.unit, m?.ci ?? undefined)} | ${meets(m?.value ?? undefined, metric.target!) ? 'yes' : 'no'}` : 'not measured | - | -';
   const line = (label: string, about: string, official?: Official) =>
     official
-      ? `- **${label}** (${about}): measured ${official.json.date}${official.json.modelUse ? `; served: ${servedBy(official.json.modelUse)}` : ` with ${official.json.pins}`}. Full report: \`evals/reports/${official.name}.md\`.`
+      ? `- **${label}** (${about}): measured ${official.json.date}${official.json.modelUse ? `; served: ${servedBy(official.json.modelUse)}` : ` with ${official.json.pins}`}. Full report: [\`evals/reports/${official.name}.md\`](reports/${official.name}.md).`
       : `- **${label}**: not measured yet.`;
   return [
     '<!-- eval:start -->',
@@ -197,13 +197,45 @@ export function readmeSection({ claudeFirst, free }: Officials, loadRows: string
   ].join('\n');
 }
 
-async function writeReadme(root: URL, officials: Officials) {
-  const table = readmeSection(officials, await loadTestRows(root));
-  const readmeUrl = new URL('README.md', root);
-  const readme = await readFile(readmeUrl, 'utf8');
-  const marked = /<!-- eval:start -->[\s\S]*<!-- eval:end -->/;
-  // A function, so a "$1" in a dollar amount is never read as a capture group.
-  await writeFile(readmeUrl, marked.test(readme) ? readme.replace(marked, () => table) : readme.replace(/^(# .*\n)/, (heading) => `${heading}\n${table}\n`));
+// The README's three headline results, each run's value linked to its report: the overcharges caught, the clean charges
+// flagged and the cost of a scanned invoice; the whole table is the eval card's (evals/README.md).
+const HEADLINES = [
+  { metric: 'overcharge_recall', label: 'Overcharges caught' },
+  { metric: 'false_flag_rate', label: 'Clean charges flagged' },
+  { metric: 'cost_per_invoice_scanned_usd', label: 'Cost per scanned invoice, paid-equivalent' },
+];
+const headlinePercent = (value: number) => `${Number((value * 100).toFixed(1))}%`;
+export function headlineSection({ claudeFirst, free }: Officials) {
+  const cases = (claudeFirst ?? free)?.json.cases ?? 0;
+  const part = (run: string, metric: string, official?: Official) => {
+    const value = official?.json.metrics.find((m) => m.metric === metric)?.value;
+    if (value === undefined || value === null) return [];
+    return [`**${metricOf(metric).unit === 'usd' ? fmt('usd', value) : headlinePercent(value)}** with ${run} ([report](evals/reports/${official!.name}.md))`];
+  };
+  const lines = HEADLINES.flatMap(({ metric, label }) => {
+    const parts = [...part('Claude first', metric, claudeFirst), ...part('the free models only', metric, free)];
+    return parts.length > 0 ? [`- ${label}: ${parts.join(', ')}.`] : [];
+  });
+  return [
+    '<!-- results:start -->',
+    `On ${cases} synthetic invoices with known ground truth (golden set ${DEFAULT_GOLDEN}); every metric with its 95% interval is in the [eval card](evals/README.md).`,
+    '',
+    ...lines,
+    '<!-- results:end -->',
+  ].join('\n');
+}
+
+// Puts a generated block in place of the one between its markers, else under the file's first heading, else in a new
+// file with that heading. A function replacement, so a "$1" in a dollar amount is never read as a capture group.
+async function writeBlock(url: URL, block: string, name: string, heading: string) {
+  const marked = new RegExp(`<!-- ${name}:start -->[\\s\\S]*<!-- ${name}:end -->`);
+  const text = await readFile(url, 'utf8').catch(() => `${heading}\n`);
+  await writeFile(url, marked.test(text) ? text.replace(marked, () => block) : text.replace(/^(# .*\n)/, (top) => `${top}\n${block}\n`));
+}
+
+export async function writeReadme(root: URL, officials: Officials) {
+  await writeBlock(new URL('evals/README.md', root), readmeSection(officials, await loadTestRows(root)), 'eval', '# FreightAudit evaluation');
+  await writeBlock(new URL('README.md', root), headlineSection(officials), 'results', '# FreightAudit');
 }
 
 export type Breakdown = { by: 'kind' | 'trait'; name: string; cases: number; header: [number, number]; carrier: [number, number]; count: [number, number]; outcome: [number, number] };

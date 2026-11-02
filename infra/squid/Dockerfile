@@ -1,4 +1,4 @@
-# The public demo's egress proxy (infra/squid.conf, docs/deploy.md): Ubuntu's squid from noble-security, nothing else.
+# The public demo's egress proxy (infra/squid.conf; see the private deploy notes): Ubuntu's squid from noble-security, nothing else.
 # Build from the repository root: docker build -f infra/squid/Dockerfile .
 # The newest build is installed, not an exact version: Ubuntu drops superseded builds from its archive. The build fails on
 # anything older than the release with the 2026 ICP, FTP gateway and cache digest fixes; a new base digest from

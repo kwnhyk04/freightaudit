@@ -41,9 +41,12 @@ export default async function UploadPage() {
             <h2 id="samples-title">Try a sample invoice</h2>
             <p className="faint">No file needed. Each sample is synthetic and shows a different case.</p>
           </div>
-          {SAMPLES.map((sample) => (
-            <SampleButton key={sample.key} sample={sample.key} label={sample.label} note={sample.note} />
-          ))}
+          {/* A bento grid after Aceternity UI's (docs/third-party.md): each sample a card, its drawing on top. */}
+          <div className="sample-grid">
+            {SAMPLES.map((sample) => (
+              <SampleButton key={sample.key} sample={sample.key} art={sample.art} label={sample.label} note={sample.note} />
+            ))}
+          </div>
           <div className="notice">
             <p>Demo mode uses synthetic data. Please don&apos;t upload real invoices.</p>
             <p className="note">

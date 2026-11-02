@@ -1,5 +1,5 @@
 // Whether the backend counts as live, from its /readyz answer, which is kept a while so most pages skip the probe. The
-// public path often takes 2 to 6 s (docs/context.md, Known Limitations), so the probe waits 8 s and a live answer is
+// public path often takes 2 to 6 s, so the probe waits 8 s and a live answer is
 // kept 30 s; a failed one is kept 5 s, so the site comes back soon after the backend does.
 export const READYZ_TIMEOUT_MS = 8_000;
 export const LIVE_FOR_MS = 30_000;

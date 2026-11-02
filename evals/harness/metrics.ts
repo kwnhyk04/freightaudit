@@ -1,4 +1,4 @@
-// Scores eval cases against the golden ground truth and aggregates them into the metrics of docs/context.md, each with a
+// Scores eval cases against the golden ground truth and aggregates them into the metrics of METRICS below, each with a
 // 95% bootstrap interval over cases. Pure functions: no I/O.
 import { checkArithmetic } from '@freightaudit/domain';
 import type { GoldenCase } from '../golden/build.ts';

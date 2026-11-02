@@ -1,6 +1,6 @@
 # The public demo's backend on this PC, layered on docker-compose.yml as its own compose project, so its containers,
 # volumes and networks never mix with the dev stack's. Run it through pnpm demo:up (scripts/demo.ts), which passes
-# --env-file .env.prod; docs/deploy.md lists every setting. No service publishes a host port: the internet reaches only
+# --env-file .env.prod; every setting is in the private deploy notes. No service publishes a host port: the internet reaches only
 # the api, through the tailscale container's Funnel (infra/tailscale/serve.json).
 name: freightaudit-prod
 

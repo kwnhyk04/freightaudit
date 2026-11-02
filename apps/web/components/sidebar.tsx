@@ -54,6 +54,7 @@ export function Sidebar({ home, groups, foot }: { home: string; groups: { label:
     <>
       <header className="topbar">
         <Link href={home} className="wordmark">
+          <LogoMark />
           FreightAudit
         </Link>
         <button ref={menu} type="button" className="icon-button" aria-label="Open menu" aria-expanded={open} aria-controls={id} onClick={() => setOpen(true)}>

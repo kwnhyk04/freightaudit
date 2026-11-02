@@ -105,5 +105,9 @@
         "met": true
       }
     }
+  ],
+  "notes": [
+    "Header field accuracy (scanned) is below target for Claude first. Claude first measured 92.8% (95% interval 84.8% to 98.7%), the free models alone 94.3% (86.8% to 99.4%). The intervals overlap, so the difference is within the margin of error.",
+    "On these runs Claude first is ahead on header field accuracy (digital), overcharge recall, extraction latency p50 / p95 (3 pages or fewer) and cost per invoice, paid-equivalent (digital / scanned), and the free models alone on header field accuracy (scanned) and line-item F1 (scanned)."
   ]
 }

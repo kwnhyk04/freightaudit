@@ -14,3 +14,17 @@ apps/web/playwright-report/
 apps/web/test-results/
 apps/web/e2e/.auth/
 .playwright-mcp/
+# Private working notes, agent instructions and tool settings: kept on the working PC, never published.
+AGENTS.md
+CLAUDE.md
+.claude/
+.impeccable/
+apps/web/.impeccable/
+.seenry/
+docs/*
+!docs/third-party.md
+!docs/screenshots/
+docs/screenshots/*
+!docs/screenshots/ui/
+docs/screenshots/ui/round-*/
+*.plan.md

@@ -8,12 +8,13 @@ const sample = JSON.parse(readFileSync(new URL('../public/demo/invoices.json', i
 };
 const sampleId = (file: string) => sample.invoices.edges.find(({ node }) => node.filename === file)!.node.id;
 type Cell = { result: string; met: boolean } | null;
-type Run = { date: string } | null;
+type Run = { date: string; report: string } | null;
 const results = JSON.parse(readFileSync(new URL('../lib/eval-results.json', import.meta.url), 'utf8')) as {
   cases: number;
   claudeFirst: Run;
   free: Run;
   rows: { label: string; target: string; claudeFirst: Cell; free: Cell }[];
+  notes: string[];
 };
 // The hero's figures are g066's open finding, as the sample stores it.
 const details = JSON.parse(readFileSync(new URL('../public/demo/invoice-details.json', import.meta.url), 'utf8')) as Record<
@@ -87,6 +88,15 @@ test('the landing page at / is public and static: no redirect, no api call, no k
       await expect(shown).toContainText(cell.result);
       await expect(shown).toContainText(cell.met ? 'Met' : 'Below target');
     }
+  }
+  // Under the table, the notes written from the same reports, then each run's report on GitHub.
+  expect(results.notes.length).toBeGreaterThan(0);
+  for (const note of results.notes) await expect(page.getByText(note, { exact: true })).toBeVisible();
+  for (const [name, run] of [
+    ['Claude first', results.claudeFirst],
+    ['free models only', results.free],
+  ] as const) {
+    await expect(page.getByRole('link', { name, exact: true })).toHaveAttribute('href', new RegExp(`/blob/main/${run!.report}$`));
   }
   // How it works is three steps, each with its title; the header links every section, Features included.
   await expect(page.locator('#how .how-steps h3')).toHaveText(['Upload', 'Check', 'Decide']);

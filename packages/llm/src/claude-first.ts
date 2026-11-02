@@ -2,8 +2,8 @@ import { ClaudeSkippedError, ClaudeUnavailableError, PermanentError, TransientEr
 import type { GenerateInput, Provider, Usage } from './extract.ts';
 import { callCost } from './prices.ts';
 
-// Caps while Claude reads first, sized from Haiku's real use on the golden PDFs the demo accepts (its 2026-10-17 run,
-// docs/memory.md) with about 10% headroom, so it is never cut off mid-work on them.
+// Caps while Claude reads first, sized from Haiku's real use on the golden PDFs the demo accepts (its 2026-10-17 run)
+// with about 10% headroom, so it is never cut off mid-work on them.
 // Output per call: the largest reply was 462 tokens (g084); g083, which never ran on Haiku, projects to about 510.
 export const CLAUDE_FIRST_MAX_TOKENS = 560;
 // Input per call, estimated before sending: the largest prompt was 6,373 tokens (g079, a 3-page scan), estimated 6,521.

@@ -146,6 +146,23 @@ test('round 1, phone, without sideways scrolling', async ({ page }) => {
   }
 });
 
+// The sample cards beside the upload card at 1280 px, where the side panel is narrowest, and on a phone, in both themes.
+for (const scheme of ['light', 'dark'] as const) {
+  test(`upload samples at 1280 px and on a phone, ${scheme}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    for (const [size, viewport] of [
+      ['1280', { width: 1280, height: 900 }],
+      ['phone', { width: 390, height: 844 }],
+    ] as const) {
+      await page.setViewportSize(viewport);
+      await page.goto('/upload');
+      await settle(page);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth), `upload fits ${viewport.width} px`).toBeLessThanOrEqual(viewport.width);
+      await page.locator('.samples').screenshot({ path: fileURLToPath(new URL(`upload-samples-${size}-${scheme}.png`, out)) });
+    }
+  });
+}
+
 for (const scheme of ['light', 'dark'] as const) {
   test(`main screens, ${scheme}`, async ({ page, browser }) => {
     const { uploaded, findings, review, failed } = await ids();

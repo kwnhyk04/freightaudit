@@ -1,5 +1,5 @@
 // The public demo's backend on this PC: compose project freightaudit-prod with the settings in .env.prod
-// (docs/deploy.md). pnpm demo:init | demo:up | demo:down | db:backup | db:reset-demo. Prints no secret.
+// (see the private deploy notes). pnpm demo:init | demo:up | demo:down | db:backup | db:reset-demo. Prints no secret.
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';

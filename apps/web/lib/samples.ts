@@ -4,18 +4,21 @@ export const SAMPLES = [
   {
     key: 'g001',
     file: 'clean-digital-g001.pdf',
+    art: 'clean',
     label: 'Clean digital invoice',
     note: 'Every line matches the rate card, so it reconciles with no findings and waits only for approval.',
   },
   {
     key: 'g067',
     file: 'scanned-uncontracted-g067.pdf',
+    art: 'scanned',
     label: 'Scanned invoice with an overcharge',
     note: "Read from the page image; it bills residential delivery, which isn't on the rate card.",
   },
   {
     key: 'g062',
     file: 'duplicate-fuel-g062.pdf',
+    art: 'duplicate',
     label: 'Fuel surcharge billed twice',
     note: 'The same charge appears on two lines of one invoice.',
   },
