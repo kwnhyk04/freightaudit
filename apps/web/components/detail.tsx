@@ -102,9 +102,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
       </label>
     </>
   );
-  // At most one card explains the state first: a reading to check, a shipment not matched, or a failure.
-  const alert = invoice.status === 'NEEDS_REVIEW' || Boolean(unmatched) || invoice.status === 'FAILED';
-  // The document, beside the charges from 1024 px; the wrapper spans the rows it sits beside, so the viewer stays sticky.
+  // The document: the left column from 1024 px, its viewer sticky down the whole column; after the findings below that.
   const documentCard = (
     <div className="b-doc">
       {example ? (
@@ -149,98 +147,99 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
         {!readOnly && <InvoiceActions invoice={invoice} findings={findings} money={money} />}
       </div>
       <StatusPoller active={IN_FLIGHT.has(invoice.status)} label={statusLabel(invoice.status, open, hold, matched)} watch={`invoice=${invoice.id}`} now={progressKey([invoice])} />
-      {/* A bento grid of cards in the samples' style: DOM order is the phone's reading order, and from 1024 px the
-          layout (full, clean or unread) places them on twelve columns with the document beside the charges. */}
-      <div className="bento-page" data-layout={unread ? 'unread' : findings.length > 0 ? 'full' : 'clean'} data-alert={alert ? '' : undefined}>
-        <Summary invoice={invoice} money={money} open={open} hold={hold} matched={matched} />
-        {invoice.status === 'NEEDS_REVIEW' && (
-          <section className="panel bento-card b-alert attention" aria-label="Reading needs a check">
-            <h2>Reading needs a check</h2>
-            <p>{reviewReason(invoice.reviewReason)}</p>
-            {extraction && extraction.problems.length > 0 && (
-              <ul className="faint">
-                {extraction.problems.map((problem) => (
-                  <li key={problem}>{problem}</li>
-                ))}
-              </ul>
-            )}
-            {correctable && (
-              <div id="correct" style={{ marginTop: 12 }}>
-                {readOnly ? (
-                  <>
-                    <div className="row">{correction}</div>
-                    <p className="faint" style={{ marginTop: 8 }}>
-                      In the live app a reviewer corrects the carrier or PRO number here, then re-runs matching.
-                    </p>
-                  </>
-                ) : (
-                  <ActionForm hidden={{ intent: 'correct', id: invoice.id }} submit="Re-run matching" tone="primary">
-                    {correction}
-                  </ActionForm>
-                )}
-              </div>
-            )}
-          </section>
-        )}
-        {unmatched && (
-          <section className="panel bento-card b-alert attention" aria-labelledby="unmatched-title">
-            <h2 id="unmatched-title">{unmatched.title}</h2>
-            <p>{unmatched.text}</p>
-            {unmatched.match && <p className="muted">{unmatched.match}</p>}
-            {/* While its possible duplicate is open, a misread carrier or number is corrected here and looked up again. */}
-            {!readOnly && hold === 'POSSIBLE_DUPLICATE' && (
-              <div style={{ marginTop: 12 }}>
-                <ActionForm hidden={{ intent: 'correct', id: invoice.id }} submit="Check again">
-                  {carrierField}
-                  <label>
-                    Invoice number
-                    <input name="number" defaultValue={invoice.number ?? ''} className="id" maxLength={64} />
-                  </label>
-                </ActionForm>
-              </div>
-            )}
-          </section>
-        )}
-        {invoice.status === 'FAILED' && (
-          <section className="panel bento-card b-alert attention bad" aria-label="Failure">
-            <h2>Why it failed</h2>
-            <p>{invoice.failureReason ?? 'The step used up its retries.'}</p>
-          </section>
-        )}
-        {findings.length > 0 && (
-          <section className="panel bento-card b-findings" aria-labelledby="findings-title">
-            <h2 id="findings-title">
-              Findings <span className="faint-heading">{open} open</span>
-            </h2>
-            <div className="findings">
-              {findings.map((finding) => {
-                const line = finding.lineItem && lines.find((each) => each.lineNumber === finding.lineItem!.lineNumber);
-                const where = before.get(finding.id);
-                const title = `finding-${finding.id}`;
-                const decision = decisionLabel(finding.status, finding.type, closedWhy.get(finding.id));
-                return (
-                  <article key={finding.id} aria-labelledby={title}>
-                    {/* Read as title, text, amount, then the decision; CSS keeps the amount in the left column. */}
-                    <div className="finding-body">
-                      <div className="row">
-                        <h3 id={title}>{findingTitle(finding.type, line?.description)}</h3>
-                        <Badge tone={decision.tone}>{decision.label}</Badge>
-                      </div>
-                      <p className="muted">
-                        {line && where ? <Said words={rebilledText(line.description, where)} base={base} /> : findingText(finding, line, invoice.rateCardVersion?.version, invoice.currency)}
+      {/* The document on the left, sticky, beside the cards stacked on the right, as before the bento. Below 1024 px one
+          column, where the right column dissolves so the document reads after the findings. */}
+      <div className="review">
+        {documentCard}
+        <div className="review-cards">
+          <Summary invoice={invoice} money={money} open={open} hold={hold} matched={matched} />
+          {invoice.status === 'NEEDS_REVIEW' && (
+            <section className="panel bento-card b-alert attention" aria-label="Reading needs a check">
+              <h2>Reading needs a check</h2>
+              <p>{reviewReason(invoice.reviewReason)}</p>
+              {extraction && extraction.problems.length > 0 && (
+                <ul className="faint">
+                  {extraction.problems.map((problem) => (
+                    <li key={problem}>{problem}</li>
+                  ))}
+                </ul>
+              )}
+              {correctable && (
+                <div id="correct" style={{ marginTop: 12 }}>
+                  {readOnly ? (
+                    <>
+                      <div className="row">{correction}</div>
+                      <p className="faint" style={{ marginTop: 8 }}>
+                        In the live app a reviewer corrects the carrier or PRO number here, then re-runs matching.
                       </p>
-                      {finding.note && <p className="faint">Note: {finding.note}</p>}
-                    </div>
-                    <Difference cents={overcharge(finding)} currency={invoice.currency} />
-                    {!readOnly && finding.status === 'OPEN' && invoice.status === 'RECONCILED' && <DecideForm id={finding.id} describedBy={title} words={decideWords(finding.type)} />}
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        )}
-        {unread ? (
-          <>
+                    </>
+                  ) : (
+                    <ActionForm hidden={{ intent: 'correct', id: invoice.id }} submit="Re-run matching" tone="primary">
+                      {correction}
+                    </ActionForm>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+          {unmatched && (
+            <section className="panel bento-card b-alert attention" aria-labelledby="unmatched-title">
+              <h2 id="unmatched-title">{unmatched.title}</h2>
+              <p>{unmatched.text}</p>
+              {unmatched.match && <p className="muted">{unmatched.match}</p>}
+              {/* While its possible duplicate is open, a misread carrier or number is corrected here and looked up again. */}
+              {!readOnly && hold === 'POSSIBLE_DUPLICATE' && (
+                <div style={{ marginTop: 12 }}>
+                  <ActionForm hidden={{ intent: 'correct', id: invoice.id }} submit="Check again">
+                    {carrierField}
+                    <label>
+                      Invoice number
+                      <input name="number" defaultValue={invoice.number ?? ''} className="id" maxLength={64} />
+                    </label>
+                  </ActionForm>
+                </div>
+              )}
+            </section>
+          )}
+          {invoice.status === 'FAILED' && (
+            <section className="panel bento-card b-alert attention bad" aria-label="Failure">
+              <h2>Why it failed</h2>
+              <p>{invoice.failureReason ?? 'The step used up its retries.'}</p>
+            </section>
+          )}
+          {findings.length > 0 && (
+            <section className="panel bento-card b-findings" aria-labelledby="findings-title">
+              <h2 id="findings-title">
+                Findings <span className="faint-heading">{open} open</span>
+              </h2>
+              <div className="findings">
+                {findings.map((finding) => {
+                  const line = finding.lineItem && lines.find((each) => each.lineNumber === finding.lineItem!.lineNumber);
+                  const where = before.get(finding.id);
+                  const title = `finding-${finding.id}`;
+                  const decision = decisionLabel(finding.status, finding.type, closedWhy.get(finding.id));
+                  return (
+                    <article key={finding.id} aria-labelledby={title}>
+                      {/* Read as title, text, amount, then the decision; CSS keeps the amount in the left column. */}
+                      <div className="finding-body">
+                        <div className="row">
+                          <h3 id={title}>{findingTitle(finding.type, line?.description)}</h3>
+                          <Badge tone={decision.tone}>{decision.label}</Badge>
+                        </div>
+                        <p className="muted">
+                          {line && where ? <Said words={rebilledText(line.description, where)} base={base} /> : findingText(finding, line, invoice.rateCardVersion?.version, invoice.currency)}
+                        </p>
+                        {finding.note && <p className="faint">Note: {finding.note}</p>}
+                      </div>
+                      <Difference cents={overcharge(finding)} currency={invoice.currency} />
+                      {!readOnly && finding.status === 'OPEN' && invoice.status === 'RECONCILED' && <DecideForm id={finding.id} describedBy={title} words={decideWords(finding.type)} />}
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+          {unread ? (
             <section className="panel bento-card b-charges" aria-label="Invoice details">
               <dl className="facts">
                 <dt>File</dt>
@@ -253,107 +252,105 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                 {example ? 'Example data: there is no file to read.' : invoice.status === 'FAILED' ? 'Nothing was read from the file.' : 'The pipeline has not read the file yet.'}
               </p>
             </section>
-            {documentCard}
-          </>
-        ) : (
-          <>
-            <section className="panel bento-card b-charges" aria-labelledby="charges-title">
-              <h2 id="charges-title">{priced ? 'Charges against the rate card' : 'Charges as read'}</h2>
-              {priced && already.size > 0 && <p className="faint charges-note">{ALREADY_BILLED}</p>}
-              {lines.length === 0 ? (
-                <p className="faint">No lines were read.</p>
-              ) : (
-                <Table labelledBy="charges-title" className="charges">
-                  <thead>
-                    <tr>
-                      <Th num>#</Th>
-                      <Th>Description</Th>
-                      <Th>Code</Th>
-                      <Th num>Billed</Th>
-                      {priced && (
-                        <>
-                          <Th num>Expected</Th>
-                          <Th num>Difference</Th>
-                        </>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lines.map((line) => {
-                      const finding = byLine.get(line.lineNumber);
-                      const amounts = lineAmounts(line.amountCents, finding);
-                      const billed = already.get(line.lineNumber);
-                      return (
-                        <tr key={line.lineNumber} className={finding && finding.status !== 'DISMISSED' ? 'flagged' : undefined}>
-                          <Td num>{line.lineNumber}</Td>
-                          <Td>
-                            {lineLabel(line.description)}
-                            {finding && <div className="faint nowrap">{FINDING[finding.type]}</div>}
-                          </Td>
-                          <Td className="id">{line.chargeCode ? codeBreaks(line.chargeCode) : <span className="faint">None</span>}</Td>
-                          <Td num>
-                            <Money cents={line.amountCents} currency={invoice.currency} />
-                          </Td>
-                          {priced && (
-                            <>
-                              <Td num className={billed ? 'muted wrap' : 'muted'}>
-                                {billed ? <Said words={billed} base={base} /> : <Money cents={amounts.expectedCents} currency={invoice.currency} />}
-                              </Td>
-                              <Td num>
-                                <Difference cents={amounts.differenceCents} currency={invoice.currency} />
-                              </Td>
-                            </>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <Th scope="row" colSpan={3}>
-                        Total
-                      </Th>
-                      <Td num>
-                        <Money cents={invoice.totalCents} currency={invoice.currency} />
-                      </Td>
-                      {priced && money && (
-                        <>
-                          <Td num>
-                            <Money cents={money.expectedCents} currency={invoice.currency} />
-                          </Td>
-                          <Td num>
-                            <Difference cents={money.standingCents} currency={invoice.currency} />
-                          </Td>
-                        </>
-                      )}
-                    </tr>
-                  </tfoot>
-                </Table>
-              )}
-            </section>
-            {documentCard}
-            <InvoiceFacts invoice={invoice} correct={correctable && !readOnly} example={example} />
-          </>
-        )}
-        <section className="panel bento-card b-trail" aria-labelledby="trail-title">
-          <h2 id="trail-title">Audit trail</h2>
-          <ol className="trail">
-            {trailRows(invoice, findings, example).map((row) => (
-              <li key={row.id}>
-                <Moment value={row.at} />
-                <div>
-                  <strong>{row.verb}</strong>
-                  {row.rest && <span className="by"> {row.rest}</span>}
-                  {row.notes.map((note) => (
-                    <div key={note} className="faint">
-                      {note}
-                    </div>
-                  ))}
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
+          ) : (
+            <>
+              <section className="panel bento-card b-charges" aria-labelledby="charges-title">
+                <h2 id="charges-title">{priced ? 'Charges against the rate card' : 'Charges as read'}</h2>
+                {priced && already.size > 0 && <p className="faint charges-note">{ALREADY_BILLED}</p>}
+                {lines.length === 0 ? (
+                  <p className="faint">No lines were read.</p>
+                ) : (
+                  <Table labelledBy="charges-title" className="charges">
+                    <thead>
+                      <tr>
+                        <Th num>#</Th>
+                        <Th>Description</Th>
+                        <Th>Code</Th>
+                        <Th num>Billed</Th>
+                        {priced && (
+                          <>
+                            <Th num>Expected</Th>
+                            <Th num>Difference</Th>
+                          </>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lines.map((line) => {
+                        const finding = byLine.get(line.lineNumber);
+                        const amounts = lineAmounts(line.amountCents, finding);
+                        const billed = already.get(line.lineNumber);
+                        return (
+                          <tr key={line.lineNumber} className={finding && finding.status !== 'DISMISSED' ? 'flagged' : undefined}>
+                            <Td num>{line.lineNumber}</Td>
+                            <Td>
+                              {lineLabel(line.description)}
+                              {finding && <div className="faint nowrap">{FINDING[finding.type]}</div>}
+                            </Td>
+                            <Td className="id">{line.chargeCode ? codeBreaks(line.chargeCode) : <span className="faint">None</span>}</Td>
+                            <Td num>
+                              <Money cents={line.amountCents} currency={invoice.currency} />
+                            </Td>
+                            {priced && (
+                              <>
+                                <Td num className={billed ? 'muted wrap' : 'muted'}>
+                                  {billed ? <Said words={billed} base={base} /> : <Money cents={amounts.expectedCents} currency={invoice.currency} />}
+                                </Td>
+                                <Td num>
+                                  <Difference cents={amounts.differenceCents} currency={invoice.currency} />
+                                </Td>
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <Th scope="row" colSpan={3}>
+                          Total
+                        </Th>
+                        <Td num>
+                          <Money cents={invoice.totalCents} currency={invoice.currency} />
+                        </Td>
+                        {priced && money && (
+                          <>
+                            <Td num>
+                              <Money cents={money.expectedCents} currency={invoice.currency} />
+                            </Td>
+                            <Td num>
+                              <Difference cents={money.standingCents} currency={invoice.currency} />
+                            </Td>
+                          </>
+                        )}
+                      </tr>
+                    </tfoot>
+                  </Table>
+                )}
+              </section>
+              <InvoiceFacts invoice={invoice} correct={correctable && !readOnly} example={example} />
+            </>
+          )}
+          <section className="panel bento-card b-trail" aria-labelledby="trail-title">
+            <h2 id="trail-title">Audit trail</h2>
+            <ol className="trail">
+              {trailRows(invoice, findings, example).map((row) => (
+                <li key={row.id}>
+                  <Moment value={row.at} />
+                  <div>
+                    <strong>{row.verb}</strong>
+                    {row.rest && <span className="by"> {row.rest}</span>}
+                    {row.notes.map((note) => (
+                      <div key={note} className="faint">
+                        {note}
+                      </div>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
       </div>
     </>
   );

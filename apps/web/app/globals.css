@@ -1257,75 +1257,33 @@ td .reason {
   background-size: 200% 100%;
 }
 
-/* The invoice page as a bento grid: one column in reading order (summary, any alert, findings, charges, document,
-   details, trail) until 1024 px, then twelve columns in one of three layouts. Full: summary beside findings, the
-   document beside the charges and details, the trail last. Clean (no findings): details take the findings' place.
-   Unread: the file card beside the summary, the document beside the trail. Any alert takes a full row on top. */
-.bento-page {
+/* The invoice page: the document on the left, sticky, beside the cards stacked on the right with even gaps, the
+   columns main had before the bento (equal from 1440 px, 9 to 11 below). Below 1024 px one column: the right column
+   dissolves, so the document reads after the findings. */
+.review {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
 }
-.bento-page > .panel {
-  margin: 0;
+.review-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   min-width: 0;
 }
-.bento-page > .panel.attention {
+.review-cards > .panel {
+  margin: 0;
+}
+.review-cards > .panel.attention {
   box-shadow: inset 3px 0 0 var(--warn), var(--card-shadow);
 }
-.bento-page > .panel.attention.bad {
+.review-cards > .panel.attention.bad {
   box-shadow: inset 3px 0 0 var(--bad), var(--card-shadow);
 }
 .b-doc > .doc {
   border-radius: var(--radius-lg);
   box-shadow: var(--card-shadow);
-}
-@media (min-width: 1024px) {
-  .bento-page {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    --alert-area: ;
-    --alert-row: ;
-  }
-  .bento-page[data-alert] {
-    --alert-area: 'a a a a a a a a a a a a';
-    --alert-row: auto;
-  }
-  /* The details row is flexible, so a document taller than the charges and details grows that row, not the gap
-     between them. */
-  .bento-page[data-layout='full'] {
-    grid-template-areas: var(--alert-area) 's s s s f f f f f f f f' 'd d d d d c c c c c c c' 'd d d d d i i i i i i i' 't t t t t t t t t t t t';
-    grid-template-rows: var(--alert-row) auto auto 1fr auto;
-  }
-  .bento-page[data-layout='clean'] {
-    grid-template-areas: var(--alert-area) 's s s s i i i i i i i i' 'd d d d d c c c c c c c' 't t t t t t t t t t t t';
-  }
-  .bento-page[data-layout='unread'] {
-    grid-template-areas: var(--alert-area) 's s s s c c c c c c c c' 'd d d d d t t t t t t t';
-  }
-  .b-alert {
-    grid-area: a;
-  }
-  .b-summary {
-    grid-area: s;
-  }
-  .b-findings {
-    grid-area: f;
-  }
-  .b-charges {
-    grid-area: c;
-  }
-  .b-details {
-    grid-area: i;
-  }
-  .b-trail {
-    grid-area: t;
-  }
-  /* The wrapper fills its rows, so the viewer inside can stay in view while the charges scroll past. */
-  .b-doc {
-    grid-area: d;
-    align-self: stretch;
-  }
 }
 .summary-figures {
   display: grid;
@@ -3387,6 +3345,18 @@ table.ledger strong {
   }
 }
 
+/* The document's wrapper fills its column, so the viewer stays in view down the whole page. */
+@media (min-width: 1024px) {
+  .b-doc {
+    align-self: stretch;
+  }
+}
+/* Below 1440 px the checks take a little more of the width than the document, so the charges table keeps every column. */
+@media (max-width: 1439px) {
+  .review {
+    grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
+  }
+}
 /* Below 1280 px the overview's counts move under its figure, where each keeps room for its line. */
 @media (max-width: 1279px) {
   .overview-top {
@@ -3394,9 +3364,38 @@ table.ledger strong {
   }
 }
 @media (max-width: 1023px) {
+  .review,
   .upload,
   .overview-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* One column: summary, any alert, findings, the document, charges, details, trail, 16 px apart. */
+  .review {
+    gap: 16px;
+  }
+  .review-cards {
+    display: contents;
+  }
+  .b-summary {
+    order: 1;
+  }
+  .b-alert {
+    order: 2;
+  }
+  .b-findings {
+    order: 3;
+  }
+  .b-doc {
+    order: 4;
+  }
+  .b-charges {
+    order: 5;
+  }
+  .b-details {
+    order: 6;
+  }
+  .b-trail {
+    order: 7;
   }
   /* The samples' panel spans the page here, so its cards sit three across. */
   .sample-grid {
