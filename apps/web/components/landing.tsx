@@ -217,7 +217,7 @@ const STEPS: { icon: IconName; title: string; line: string; points: string[] }[]
 function HowItWorks() {
   return (
     <section id="how" className="landing-section plain" aria-labelledby="how-title">
-      <div className="landing-wrap">
+      <div className="landing-wrap how-wrap">
         <h2 id="how-title">How it works: one invoice, start to finish</h2>
         <p className="intro">Three steps, each one recorded in the audit trail the reviewer sees.</p>
         <ol className="how-steps">
