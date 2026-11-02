@@ -1443,6 +1443,44 @@ table.charges tfoot td {
   justify-items: end;
   gap: 6px;
 }
+/* A row's box for a decision on several rows, and the bar above the list that acts on the ticked ones: select all, the
+   count, a shared note where decisions take one, the buttons, then what happened on a line of its own. */
+input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+.bulk-bar .check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+}
+.bulk-bar input[name='note'] {
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+.bulk-bar .form-error,
+.bulk-bar .form-done {
+  flex-basis: 100%;
+  margin: 0;
+}
+.form-done {
+  color: var(--ok);
+  font-size: 13px;
+}
 .facts {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -2902,9 +2940,19 @@ table.ledger strong {
   .cards td[data-card='wide'] {
     grid-column: 1 / -1;
     margin-top: 4px;
+    text-align: left;
   }
   .cards td[data-card='hide'] {
     display: none;
+  }
+  /* A row's box keeps out of the grid, so the card lays out as it does without one. */
+  .cards tbody tr:has(td[data-card='select']) {
+    padding-left: 44px;
+  }
+  .cards td[data-card='select'] {
+    position: absolute;
+    top: 14px;
+    left: 14px;
   }
   .cards tr.link-row .id::after {
     content: '';

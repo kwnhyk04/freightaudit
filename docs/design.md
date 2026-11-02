@@ -24,7 +24,8 @@ New tables, tabs, pagers and badges must use the shared components below, never 
 | Need | Use | Where |
 | --- | --- | --- |
 | A table | `Table` with `Th` and `Td` | `apps/web/components/ui.tsx` |
-| A table that becomes cards on a phone | `Table cards`, with each `Td`'s `card` role (`title`, `meta`, `amount`, `aside`, `wide`, `hide`) and its `label` | same |
+| A table that becomes cards on a phone | `Table cards`, with each `Td`'s `card` role (`title`, `meta`, `amount`, `aside`, `wide`, `hide`, `select` for a row's box) and its `label` | same |
+| A decision or replay on ticked rows | `BulkBar`, with each row's checkbox `form="bulk"` and named by its kind | `apps/web/components/client.tsx` |
 | Filter tabs that live in the URL | `Tabs` | `apps/web/components/client.tsx` |
 | Previous and next pages | `Pager` | `apps/web/components/ui.tsx` |
 | An invoice's status | `StatusBadge` | same |

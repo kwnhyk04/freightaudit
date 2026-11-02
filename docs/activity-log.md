@@ -19,6 +19,48 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-11-02: fa-polish-3 CI fix: the evals test of the spend cap expected the raw string (not committed)
+
+- CI failed in evals.
+  - What happened: `evals/harness/no-claude-in-ci.test.ts` (line 63) expected `LLM_CLAUDE_SPEND_CAP_USD.parse('15')` to be `'15'`, and the branch now keeps `'15.00'`.
+  - Why: before handing over, unit tests ran only for web and config, not for every package. The evals package also tests the config's settings, and this was missed (our mistake).
+  - What we did: the test now expects `15` to `15.00`, `15.00` to `15.00`, `0.5` to `0.50` and `120.25` to `120.25`. The rejected cases are unchanged.
+- Every other reader of the setting was checked against the normalized form:
+  - `llmRoles` only tests that the value is not empty;
+  - `createLimits` passes it to `microUsd`, which takes either form;
+  - the worker logs it, and its int test already sets and expects `15.00`;
+  - `limits.int.test.ts` passes `0.001` straight to `createLimits`, not through the setting;
+  - the prod compose file passes the raw value, which the worker parses at startup.
+  - None needed a change.
+- Files: evals/harness/no-claude-in-ci.test.ts, docs/activity-log.md
+- Validation: `pnpm test` at the root passes on all 18 tasks (evals 49, web 157, llm 66, domain 45, api 12, config 3 and the rest), `pnpm lint` on 12 of 12 and `pnpm typecheck` on 21 of 21.
+- Outstanding: `pnpm test:int` not run. The user ships.
+
+### 2026-11-02: fa-polish-3: Recent uploads as phone cards, decisions on several rows, whole-dollar spend cap (not committed)
+
+- Tests came first and failed as expected: the config test got `15` back instead of `15.00`, and the labels suite failed on the missing `bulkResult`.
+- Recent uploads is `Table cards` (file as title, progress and result as wide cells). The rows are not `link-row`, since a full-card link would cover the re-bill link in the result.
+- Decisions on several rows: `BulkBar` (client) and `reviewMany` (server action) send one `resolveDiscrepancy` or `replayDeadLetter` per ticked row, so each is recorded as a single one is. A dead letter the api no longer holds open (NOT_FOUND) reads "It was replayed already."; other refusals use the api's words.
+- The spend cap already accepted `15` (its regex allowed no cents) but kept it as `15`; it now keeps `15.00`. The error message names both forms. The config test is plain JS beside `jest-orphans.test.js`, so the package needs no `@types/jest`.
+- Two e2e selectors were wrong on the first run, and the code was right:
+  - What happened: `input[value=id]` also matched the row's hidden `id` input in the decision form, and the name "Recent uploads" belongs to both the section and the table's wrapper (strict-mode violations).
+  - Why: both names and values are shared on those pages.
+  - What we did: scoped the first to `input[type="checkbox"]` and the second to `.table-wrap[aria-labelledby="recent-title"]`, then ran `pnpm e2e` again.
+- The phone check showed the review card's box taking the top-right slot, which pushed Billed below the line. We added a `select` card role (`ui.tsx`) that pins the box at the card's left edge outside the grid.
+- A web build failed with `ERR_MEMORY_ALLOCATION_FAILED` in tsc while the preview server ran from `.next`.
+  - Why: not confirmed; memory pressure from the running server is likely.
+  - What we did: stopped the preview server and built again; it passed.
+- Screenshots used the api and web started by hand on 4000 and 3000 with the e2e settings (`scratchpad/preview.env`), against the data the e2e run left. Both servers were stopped after.
+- Files: apps/web/lib/labels.ts, apps/web/lib/labels.test.ts, apps/web/app/actions.ts, apps/web/components/client.tsx, apps/web/components/views.tsx, apps/web/components/upload.tsx, apps/web/components/ui.tsx, apps/web/app/globals.css, apps/web/e2e/main.spec.ts, packages/config/src/env.ts, packages/config/env.test.js, .env.example, docs/deploy.md, docs/context.md, docs/design.md, docs/todo.md, docs/activity-log.md
+- Validation:
+  - Lint and typecheck pass on all 33 tasks. The web build passes.
+  - Unit tests pass: web 157, config 3.
+  - `pnpm e2e` passes 70 of 70, run twice (the second after the card-role fix). The dev containers were started for it and stopped after.
+  - Upload, Review queue and Dead letters were shot at 1280, 1440 and 390 px in both themes (`_tmp/fa-polish-bulk/`), and no page or table scrolls sideways.
+- Outstanding:
+  - `pnpm test:int` not run; the change doesn't touch the api or worker code.
+  - The user ships.
+
 ### 2026-11-02: Landing round 2: Evaluation results as a boxed table, Engineering files stacked (same branch, not committed)
 
 - Evaluation results moved from the ledger to the shared list table.

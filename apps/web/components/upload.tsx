@@ -286,7 +286,8 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
         {rows.length === 0 ? (
           <p className="faint">Nothing uploaded yet. Choose a file, or try a sample.</p>
         ) : (
-          <Table labelledBy="recent-title" cols={['28%', '', '36%']} minWidth="36rem">
+          // On a phone each upload is a card, as on the invoices list: its file, then its progress, then its result.
+          <Table labelledBy="recent-title" cards cols={['28%', '', '36%']} minWidth="36rem">
             <thead>
               <tr>
                 <Th>File</Th>
@@ -297,12 +298,12 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id}>
-                  <Td>
+                  <Td card="title">
                     <Link href={`/invoices/${row.id}`} className="id">
                       {row.filename}
                     </Link>
                   </Td>
-                  <Td>
+                  <Td card="wide">
                     {row.step === undefined ? (
                       <span className="text-ok">{row.done}</span>
                     ) : (
@@ -315,7 +316,7 @@ export function UploadArea({ rows, allowlist }: { rows: RecentRow[]; allowlist: 
                       </ol>
                     )}
                   </Td>
-                  <Td num className={`wrap text-${row.tone}`}>
+                  <Td card="wide" num className={`wrap text-${row.tone}`}>
                     {row.result}
                     {row.rebill && (
                       <div className="muted">

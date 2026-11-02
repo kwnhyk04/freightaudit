@@ -161,9 +161,10 @@ export function Table({
 export const Th = ({ num, scope = 'col', className, ...rest }: ComponentProps<'th'> & { num?: boolean }) => <th scope={scope} className={classes(num && 'num', className)} {...rest} />;
 
 // Where a cell sits in a phone card: title and meta stack on the left, amount (two lines tall) or aside on the right,
-// wide takes a line of its own, hide leaves the card. label names the cell inside a card, where no header shows; it is
-// text in the page, so a screen reader reads it with the value.
-export type CardRole = 'title' | 'meta' | 'amount' | 'aside' | 'wide' | 'hide';
+// wide takes a line of its own, hide leaves the card, select (a row's box) sits at the card's left edge beside the rest.
+// label names the cell inside a card, where no header shows; it is text in the page, so a screen reader reads it with
+// the value.
+export type CardRole = 'title' | 'meta' | 'amount' | 'aside' | 'wide' | 'hide' | 'select';
 export function Td({ num, card, label, className, children, ...rest }: ComponentProps<'td'> & { num?: boolean; card?: CardRole; label?: string }) {
   return (
     <td className={classes(num && 'num', className)} data-card={card} {...rest}>

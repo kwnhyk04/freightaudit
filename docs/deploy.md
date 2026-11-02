@@ -149,7 +149,7 @@ Nothing to add. The release workflow publishes the images; nothing deploys from 
 | `ANTHROPIC_API_KEY` | `.env.prod`; root `.env` for the local Claude eval | Claude Haiku's key | New key in the console, `pnpm demo:up`, delete the old key |
 | `LLM_CLAUDE_MODEL` | `.env.prod`: `claude-haiku-5-5` | Turns Claude on, and then needs the next two; empty keeps the free chain | Edit, `pnpm demo:up` |
 | `LLM_CLAUDE_FIRST_UNTIL` | `.env.prod`: `2026-11-10` | The last UTC day Claude reads first; then the free chain for good | Edit, `pnpm demo:up` |
-| `LLM_CLAUDE_SPEND_CAP_USD` | `.env.prod`: `15.00` | The most Claude may ever bill, in dollars and cents; reaching it switches Claude off for good | Raise it, then resume (Claude first, below) |
+| `LLM_CLAUDE_SPEND_CAP_USD` | `.env.prod`: `15.00` | The most Claude may ever bill, in whole dollars (`15`) or dollars and cents (`15.00`), kept as dollars and cents; reaching it switches Claude off for good | Raise it, then resume (Claude first, below) |
 | `DAILY_CLAUDE_TOKEN_BUDGET` | `.env.prod`, default 1,400,000 | Claude's own tokens a UTC day, reserved before each call; a full day skips Claude until 00:00 UTC | Edit, `pnpm demo:up` |
 | `POSTGRES_PASSWORD` | `.env.prod` | Demo database password (used once, when the volume is created) | `ALTER USER freightaudit PASSWORD '<new>'` in the container, edit `.env.prod`, `pnpm demo:up` |
 | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | `.env.prod` | Demo object store credentials | Edit, `pnpm demo:up` |

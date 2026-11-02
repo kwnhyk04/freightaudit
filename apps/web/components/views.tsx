@@ -18,7 +18,7 @@ import {
   statusReason,
   statusTotals,
 } from '../lib/labels.ts';
-import { ActionForm, DecideForm, Tabs } from './client.tsx';
+import { ActionForm, BulkBar, DecideForm, Tabs } from './client.tsx';
 import { Badge, Day, Difference, Empty, Moment, Money, Pager, StatusBadge, Table, Td, Th } from './ui.tsx';
 
 // Views shared by the live pages and the public /demo pages: base prefixes every link, readOnly hides every action.
@@ -204,9 +204,16 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
 export function DiscrepancyList({ data, status, after, base, readOnly }: Where & { data: DiscrepanciesQuery; status: DiscrepancyStatus; after?: string }) {
   const { edges, pageInfo } = data.discrepancies;
   const tabs = (['OPEN', 'CONFIRMED', 'DISMISSED'] as const).map((key) => ({ key, label: DECISION[key].label, href: query(`${base}/discrepancies`, { status: key.toLowerCase() }) }));
+  // A finding takes a decision while it is open on a checked invoice; a possible duplicate is ticked as its own kind.
+  const decidable = (node: (typeof edges)[number]['node']) => !readOnly && node.status === 'OPEN' && node.invoice.status === 'RECONCILED';
+  const kindOf = (node: (typeof edges)[number]['node']) => (node.type === 'DUPLICATE_INVOICE' ? 'duplicate' : 'finding');
+  const kinds = new Set(edges.filter(({ node }) => decidable(node)).map(({ node }) => kindOf(node)));
+  const actions = [...(kinds.has('finding') ? (['approve', 'dispute'] as const) : []), ...(kinds.has('duplicate') ? (['confirm', 'not-duplicate'] as const) : [])];
+  const select = actions.length > 0;
   return (
     <>
       <Tabs items={tabs} current={status} label="Filter by decision" />
+      {select && <BulkBar id="bulk" label="Selected findings" actions={actions} note />}
       {edges.length === 0 ? (
         <div className="table-wrap list">
           <Empty title={status === 'OPEN' ? 'No open findings.' : `No findings are ${DECISION[status].label.toLowerCase()}.`}>
@@ -216,9 +223,14 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
       ) : (
         // The decision column fits its note and two buttons, on one line where the screen allows; a decided finding only
         // needs its badge. Evidence takes what is left.
-        <Table cards cols={['11%', '9.5rem', '11%', '7.25rem', '7.25rem', '', edges.some(({ node }) => !readOnly && node.status === 'OPEN' && node.invoice.status === 'RECONCILED') ? 'clamp(20rem, 24vw, 33rem)' : '9rem']} minWidth="66rem">
+        <Table cards cols={[...(select ? ['3rem'] : []), '11%', '9.5rem', '11%', '7.25rem', '7.25rem', '', select ? 'clamp(20rem, 24vw, 33rem)' : '9rem']} minWidth={select ? '69rem' : '66rem'}>
           <thead>
             <tr>
+              {select && (
+                <Th>
+                  <span className="visually-hidden">Select</span>
+                </Th>
+              )}
               <Th>Finding</Th>
               <Th>Invoice</Th>
               <Th>Line</Th>
@@ -231,6 +243,19 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
           <tbody>
             {edges.map(({ node }) => (
               <tr key={node.id}>
+                {select && (
+                  <Td card="select">
+                    {decidable(node) && (
+                      <input
+                        type="checkbox"
+                        form="bulk"
+                        name={kindOf(node)}
+                        value={node.id}
+                        aria-label={`Select ${FINDING[node.type]} on invoice ${node.invoice.number ?? node.invoice.filename}${node.lineItem ? `, line ${node.lineItem.lineNumber}` : ''}`}
+                      />
+                    )}
+                  </Td>
+                )}
                 <Td card="title">{FINDING[node.type]}</Td>
                 <Td card="meta">
                   <Link href={`${base}/invoices/${node.invoice.id}`} className="id">
@@ -250,7 +275,7 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
                   {findingText(node, node.lineItem, undefined, node.invoice.currency)}
                 </Td>
                 <Td card="wide" className="decision-cell">
-                  {!readOnly && node.status === 'OPEN' && node.invoice.status === 'RECONCILED' ? (
+                  {decidable(node) ? (
                     <DecideForm id={node.id} words={decideWords(node.type)} />
                   ) : (
                     <Badge tone={decisionLabel(node.status, node.type).tone}>{decisionLabel(node.status, node.type).label}</Badge>
@@ -277,9 +302,11 @@ export function DeadLetterList({ data, replayed, after, base, readOnly }: Where 
     { key: 'open', label: 'Open', href: `${base}/dead-letters` },
     { key: 'replayed', label: 'Replayed', href: `${base}/dead-letters?status=replayed` },
   ];
+  const select = !readOnly && !replayed && edges.length > 0;
   return (
     <>
       <Tabs items={tabs} current={status} label="Filter by state" />
+      {select && <BulkBar id="bulk" label="Selected dead letters" actions={['replay']} />}
       {edges.length === 0 ? (
         <div className="table-wrap list">
           <Empty title={replayed ? 'Nothing was replayed yet.' : 'No dead letters.'}>
@@ -287,11 +314,16 @@ export function DeadLetterList({ data, replayed, after, base, readOnly }: Where 
           </Empty>
         </div>
       ) : (
-        // Short columns fit their longest value (a moment with its year, "Reconciliation", a file name, "Attempts", the
-        // Replay button or a moment); the error takes the rest.
-        <Table cards cols={['13.25rem', '8.25rem', '8.25rem', '', '6.25rem', replayed ? '13.25rem' : '6.25rem']} minWidth="57rem">
+        // Short columns fit their longest value (a box, a moment with its year, "Reconciliation", a file name, "Attempts",
+        // the Replay button or a moment); the error takes the rest.
+        <Table cards cols={[...(select ? ['3rem'] : []), '13.25rem', '8.25rem', '8.25rem', '', '6.25rem', replayed ? '13.25rem' : '6.25rem']} minWidth={select ? '60rem' : '57rem'}>
           <thead>
             <tr>
+              {select && (
+                <Th>
+                  <span className="visually-hidden">Select</span>
+                </Th>
+              )}
               <Th>Failed</Th>
               <Th>Step</Th>
               <Th>Invoice</Th>
@@ -303,6 +335,17 @@ export function DeadLetterList({ data, replayed, after, base, readOnly }: Where 
           <tbody>
             {edges.map(({ node }) => (
               <tr key={node.id}>
+                {select && (
+                  <Td card="select">
+                    <input
+                      type="checkbox"
+                      form="bulk"
+                      name="letter"
+                      value={node.id}
+                      aria-label={`Select ${QUEUE[node.queue] ?? node.queue} for ${node.invoice ? `invoice ${node.invoice.number ?? node.invoice.filename}` : 'TMS sync'}`}
+                    />
+                  </Td>
+                )}
                 <Td card="meta">
                   <Moment value={node.createdAt} />
                 </Td>

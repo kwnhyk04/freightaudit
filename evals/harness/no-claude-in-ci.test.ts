@@ -60,7 +60,8 @@ test('Claude first needs a real end date and a spend cap in dollars and cents, a
   expect(() => settings.LLM_CLAUDE_FIRST_UNTIL.parse('next week')).toThrow();
   expect(() => settings.LLM_CLAUDE_FIRST_UNTIL.parse('2026-02-30')).toThrow();
   expect(settings.LLM_CLAUDE_SPEND_CAP_USD.parse(undefined)).toBe('');
-  for (const cap of ['15', '15.00', '0.5', '120.25']) expect(settings.LLM_CLAUDE_SPEND_CAP_USD.parse(cap)).toBe(cap);
+  // Whole dollars or dollars and cents, kept as dollars and cents.
+  for (const [cap, kept] of [['15', '15.00'], ['15.00', '15.00'], ['0.5', '0.50'], ['120.25', '120.25']]) expect(settings.LLM_CLAUDE_SPEND_CAP_USD.parse(cap)).toBe(kept);
   for (const cap of ['15.001', '-1', '1e3', '$15', 'fifteen', '15,00']) expect(() => settings.LLM_CLAUDE_SPEND_CAP_USD.parse(cap)).toThrow();
   expect(configuredRoles({ ...FREE, LLM_CLAUDE_FIRST_UNTIL: '2026-11-10' }).problems).toEqual(['LLM_CLAUDE_FIRST_UNTIL is set, which needs LLM_CLAUDE_MODEL']);
 });

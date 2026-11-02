@@ -17,7 +17,7 @@ import { redirect } from 'next/navigation';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { duplicateNote, refusal } from '../lib/labels.ts';
+import { BULK, type BulkAction, bulkResult, duplicateNote, refusal, REPLAYED_ALREADY } from '../lib/labels.ts';
 import { createLimiter } from '../lib/limiter.ts';
 import { retryCode } from '../lib/uploads.ts';
 import { verifyPassword } from '../lib/password.ts';
@@ -96,6 +96,41 @@ export async function review(_: ActionState, form: FormData): Promise<ActionStat
   forgetSummary();
   refresh();
   return {};
+}
+
+// One decision or replay on the rows ticked on a page, sent one by one through the same call as a single row's, so each
+// is recorded exactly as one would be; a refusal stops only its own row. At most a page of rows.
+export async function reviewMany(_: ActionState, form: FormData): Promise<ActionState> {
+  const name = text(form, 'action');
+  const action = (Object.keys(BULK) as BulkAction[]).find((each) => each === name);
+  if (!action) return { error: 'Unknown action.' };
+  const bulk: { kind: string; decision?: 'CONFIRM' | 'DISMISS' } = BULK[action];
+  const ids = form.getAll(bulk.kind).map(String);
+  if (ids.length === 0) return { error: 'Select at least one row.' };
+  if (ids.length > 25) return { error: 'Unknown action.' };
+  const note = text(form, 'note') || null;
+  const refusals: string[] = [];
+  try {
+    await asReviewer();
+    for (const id of ids) {
+      try {
+        if (bulk.decision) await gql(ResolveDiscrepancyDocument, { id, decision: bulk.decision, note }, REVIEWER);
+        else await gql(ReplayDeadLetterDocument, { id }, REVIEWER);
+      } catch (err) {
+        if (!(err instanceof ApiError)) throw err;
+        refusals.push(action === 'replay' && err.code === 'NOT_FOUND' ? REPLAYED_ALREADY : refusal(err.message));
+      }
+    }
+  } catch (err) {
+    if (err instanceof ApiError) return { error: refusal(err.message), code: err.code };
+    throw err;
+  }
+  if (refusals.length < ids.length) {
+    forgetSummary();
+    refresh();
+  }
+  const said = bulkResult(action, ids.length, refusals);
+  return refusals.length === 0 ? { done: said } : { error: said };
 }
 
 const NO_ANSWER = 'The FreightAudit API did not answer. Try again in a moment.';
