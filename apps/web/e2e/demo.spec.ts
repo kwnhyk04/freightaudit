@@ -13,7 +13,7 @@ const results = JSON.parse(readFileSync(new URL('../lib/eval-results.json', impo
   cases: number;
   claudeFirst: Run;
   free: Run;
-  rows: { label: string; claudeFirst: Cell; free: Cell }[];
+  rows: { label: string; target: string; claudeFirst: Cell; free: Cell }[];
 };
 // The hero's figures are g066's open finding, as the sample stores it.
 const details = JSON.parse(readFileSync(new URL('../public/demo/invoice-details.json', import.meta.url), 'utf8')) as Record<
@@ -65,6 +65,8 @@ test('the landing page at / is public and static: no redirect, no api call, no k
   // The results are the two official runs' from eval-results.json, each dated: each run's column shows its cell, or
   // that it is not measured yet, and every row is there.
   const table = page.getByRole('region', { name: 'Results by metric' });
+  // It is the app's boxed list table, as on Invoices, not a loose ledger.
+  await expect(table.locator('table')).toHaveClass(/\blist-table\b/);
   await expect(page.getByText(`${results.cases} synthetic invoices with known ground truth`)).toBeVisible();
   for (const [name, run] of [
     ['Claude first', results.claudeFirst],
@@ -86,13 +88,41 @@ test('the landing page at / is public and static: no redirect, no api call, no k
       await expect(shown).toContainText(cell.met ? 'Met' : 'Below target');
     }
   }
-  // How it works is g066's own trail; its Read stage says the sample predates Claude first.
-  const trail = page.getByRole('region', { name: 'Audit trail of the sample invoice' });
+  // How it works is three steps, each with its title; the header links every section, Features included.
+  await expect(page.locator('#how .how-steps h3')).toHaveText(['Upload', 'Check', 'Decide']);
+  await expect(page.getByRole('banner').getByRole('link', { name: 'Features', exact: true })).toHaveAttribute('href', '#features');
+  // Features' timeline is g066's own trail, timed from receipt; its Read step says the sample predates Claude first.
+  const trail = page.getByRole('list', { name: 'Audit trail of the sample invoice' });
+  await expect(trail.getByRole('listitem')).toHaveCount(4);
+  await expect(trail.getByRole('listitem').nth(1)).toContainText('+3.3 s');
   await expect(trail.getByText('Rate card version 2 sets Linehaul at $5,343.60; billed $6,145.14.')).toBeVisible();
   await expect(trail).toContainText('before Claude first went live, so Gemini 3.5 Flash-Lite read it.');
+  // The other cards: a second sample finding with its amount, the eval's cost, and the demo's dead letter.
+  const features = page.locator('#features');
+  const findings = features.getByRole('article', { name: 'Finding', exact: true });
+  await expect(findings).toHaveCount(3);
+  await expect(findings.nth(0)).toContainText('Linehaul is billed twice.');
+  await expect(findings.nth(1)).toContainText('The rate card sets Fuel surcharge at $860.27; billed $963.50.');
+  await expect(findings.nth(2)).toContainText('Inside delivery is not on the rate card.');
+  // The cost bars are Claude first's digital and scanned cost, each against its target.
+  const costRow = results.rows.find((row) => row.label.startsWith('Cost per invoice'))!;
+  const cost = costRow.claudeFirst!.result.split(' / ');
+  const target = costRow.target.replace(/^[^$]*/, '').split(' / ');
+  await expect(features.locator('.cost-bars dt')).toHaveText(['Digital', 'Scanned']);
+  await expect(features.locator('.cost-value')).toHaveText([`${cost[0]} of a ${target[0]} target`, `${cost[1]} of a ${target[1]} target`]);
+  // The decision card shows how the disputed fuel finding was recorded in its invoice's trail.
+  await expect(features.locator('.decided')).toContainText('Overcharge disputed by reviewer');
+  await expect(features.locator('.decided')).toContainText('Fuel billed above the contracted rate; disputed with the carrier.');
+  await expect(features).toContainText('shipment has no miles');
+  // The close leads to the demo.
+  await expect(page.locator('.closing').getByRole('link', { name: 'Open the demo' })).toHaveAttribute('href', '/dashboard');
   // Every engineering proof links to its file on main.
   const proofs = page.locator('.evidence-links a');
   expect(await proofs.count()).toBeGreaterThan(0);
+  // A claim's files stack, one per line.
+  const pair = page.locator('.evidence-links').filter({ has: page.locator('a:nth-child(2)') }).first().locator('a');
+  const [first, second] = [await pair.nth(0).boundingBox(), await pair.nth(1).boundingBox()];
+  expect(second!.y).toBeGreaterThan(first!.y + first!.height - 1);
   for (const href of await proofs.evaluateAll((links) => links.map((link) => link.getAttribute('href')))) {
     expect(href).toMatch(/^https:\/\/github\.com\/kwnhyk04\/freightaudit\/(blob|tree)\/main\/\S+$/);
   }
@@ -406,6 +436,23 @@ test('the theme follows the device until a reviewer picks Light or Dark, which t
   expect((await page.context().cookies()).some((cookie) => cookie.name === 'fa-theme')).toBe(false);
   await page.reload();
   expect(await page.locator('html').getAttribute('data-theme')).toBeNull();
+});
+
+test('on a phone the landing header has one theme button, which steps System, Light, Dark and back', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/');
+  const banner = page.getByRole('banner');
+  await expect(banner.getByRole('group', { name: 'Theme' })).toBeHidden();
+  for (const [now, next, theme] of [
+    ['System', 'Light', 'light'],
+    ['Light', 'Dark', 'dark'],
+    ['Dark', 'System', null],
+  ] as const) {
+    await banner.getByRole('button', { name: `Theme: ${now}. Switch to ${next}` }).click();
+    expect(await page.locator('html').getAttribute('data-theme')).toBe(theme);
+  }
+  expect(await canvas(page)).toBe(LIGHT);
 });
 
 test('no flash: a page in a chosen theme paints in it before any script runs', async ({ page, context }) => {
