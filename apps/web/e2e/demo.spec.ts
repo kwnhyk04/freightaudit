@@ -207,9 +207,11 @@ test('on a wide screen a list table takes the full width, every column gets the 
       expect(Math.abs(box.x + box.width / 2 - centre)).toBeLessThan(1.5);
       expect(Math.abs(text.right - box.right)).toBeLessThan(0.5);
     }
+    // The browser sizes the block in ch from the longest amount's length, so it is never narrower than the widest
+    // amount, in any font, and only a few px wider.
     const widest = Math.max(...blocks.map(({ text }) => text.width));
-    expect(blocks[0]!.box.width - widest).toBeGreaterThanOrEqual(-0.5);
-    expect(blocks[0]!.box.width - widest).toBeLessThan(4);
+    expect(blocks[0]!.box.width).toBeGreaterThanOrEqual(widest);
+    expect(blocks[0]!.box.width - widest).toBeLessThan(8);
   }
   const count = (await page.getByRole('columnheader', { name: 'Open findings' }).boundingBox())!;
   const value = (await page.locator('tbody td:nth-child(6) strong').first().boundingBox())!;

@@ -19,6 +19,23 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-11-03: CI: the amount blocks' width no longer depends on the server's font measurements
+
+- CI failed the wide-screen table test, `e2e/demo.spec.ts:171`.
+  - What happened: the first amount block was 0.64 px narrower than its widest amount (expected >= -0.5, got -0.640625). The user reported this from CI.
+  - Why: the server set each block's width in ch from character widths measured on this PC, and CI's Linux renders the same text slightly wider (the user's diagnosis; the exact rendering cause is not confirmed).
+  - What we did, at the user's direction, without loosening the test:
+    - `figureWidth` now returns only the longest amount's length in characters: a figure, `$`, `+` or minus 1, a comma, point or space 0.5, a hyphen 0.7, a letter 1.15.
+    - CSS sizes the block as `calc(length * 1ch + 0.5ch)` with tabular figures, so the browser measures it in the font it renders.
+    - The test now requires the block to be at least as wide as the widest amount, and less than 8 px wider.
+- Our first counts were too generous, and the e2e test caught it.
+  - What happened: with letters counted 1.3, the Billed block was 9.17 px wider than "CA$5,291.50" (limit 8).
+  - Why: its C and A are 1.014 and 1.092 ch in IBM Plex.
+  - What we did: letters now count 1.15, above the widest capital we measured (U, 1.13), and the rerun passed.
+- Files: apps/web/components/ui.tsx, apps/web/app/globals.css, apps/web/e2e/demo.spec.ts, docs/design.md.
+- Validation: `pnpm test` 18 of 18, `pnpm lint` 12 of 12, `pnpm typecheck` 21 of 21, `pnpm e2e` 72 of 72 on the rerun, after the failure above. Not run on Linux here; CI is the check.
+- Outstanding: CI's result on the next push.
+
 ### 2026-11-03: fa-final, last table change: centred counts and amount blocks (not committed)
 
 - Counts and amounts now sit centred in their columns above 720 px.

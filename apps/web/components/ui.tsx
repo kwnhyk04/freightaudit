@@ -172,12 +172,13 @@ export const Th = ({ num, center, scope = 'col', className, ...rest }: Component
   <th scope={scope} className={classes(num && 'num', center && 'center', className)} {...rest} />
 );
 
-// The width of a column's widest amount, for Td's figure block: each character in ch (the width of a tabular 0), as
-// measured in the list's font on 2026-11-03 (a comma or point 0.453, a hyphen 0.665, a space 0.393, a capital up to
-// 1.13); letters count 1.2, so the block is never narrower than a value and the points stay in line.
-const CH: Record<string, number> = { ',': 0.46, '.': 0.46, '-': 0.67, ' ': 0.4 };
+// The length of a column's longest amount in characters, for Td's figure block, which CSS sizes in ch (the width of a
+// tabular 0 in whatever font the browser has) plus half a ch: a figure, $, + or minus counts 1, a comma, point or space
+// half and a hyphen 0.7 (in IBM Plex 0.453 and 0.665), and a letter (a currency's) 1.15 (the widest capital there is
+// 1.13), so with the half ch on top the block is never narrower.
+const CHARS: Record<string, number> = { ',': 0.5, '.': 0.5, ' ': 0.5, '-': 0.7 };
 export const figureWidth = (values: (string | null | undefined)[]) =>
-  `${Math.max(0, ...values.map((value) => [...(value ?? '')].reduce((sum, c) => sum + (CH[c] ?? (/[\d$+−]/.test(c) ? 1 : 1.2)), 0))).toFixed(2)}ch`;
+  Math.max(0, ...values.map((value) => [...(value ?? '')].reduce((sum, c) => sum + (CHARS[c] ?? (/[\d$+−]/.test(c) ? 1 : 1.15)), 0)));
 
 // Where a cell sits in a phone card: title and meta stack on the left, amount (two lines tall) or aside on the right,
 // wide takes a line of its own, hide leaves the card, select (a row's box) sits at the card's left edge beside the rest.
@@ -185,11 +186,11 @@ export const figureWidth = (values: (string | null | undefined)[]) =>
 // the value. figure (a figureWidth) centres the value in its column above 720 px, as a block that wide with the value
 // right-aligned in it, so a column of amounts sits centred under its header with its points in line.
 export type CardRole = 'title' | 'meta' | 'amount' | 'aside' | 'wide' | 'hide' | 'select';
-export function Td({ num, card, label, figure, className, children, style, ...rest }: ComponentProps<'td'> & { num?: boolean; card?: CardRole; label?: string; figure?: string }) {
+export function Td({ num, card, label, figure, className, children, style, ...rest }: ComponentProps<'td'> & { num?: boolean; card?: CardRole; label?: string; figure?: number }) {
   return (
-    <td className={classes(num && 'num', figure && 'figure', className)} data-card={card} style={figure ? ({ ...style, '--figure': figure } as CSSProperties) : style} {...rest}>
+    <td className={classes(num && 'num', figure !== undefined && 'figure', className)} data-card={card} style={figure !== undefined ? ({ ...style, '--figure': figure } as CSSProperties) : style} {...rest}>
       {label && <span className="card-label">{label}</span>}
-      {figure ? <span className="figure-block">{children}</span> : children}
+      {figure !== undefined ? <span className="figure-block">{children}</span> : children}
     </td>
   );
 }

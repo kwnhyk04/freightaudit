@@ -772,7 +772,8 @@ tr.flagged td:first-child {
   }
   .list-table .figure-block {
     display: inline-block;
-    min-width: var(--figure);
+    min-width: calc(var(--figure) * 1ch + 0.5ch);
+    font-variant-numeric: tabular-nums lining-nums;
     text-align: right;
   }
 }
