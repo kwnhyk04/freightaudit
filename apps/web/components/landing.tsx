@@ -93,6 +93,7 @@ function Hero() {
             <span className="live-dot" data-seenry-dot aria-hidden="true" />
             Live demo
           </p>
+          <Marquee />
           <h1 id="headline">Pay the contract rate, not the invoice.</h1>
           <p className="lead">Every carrier charge checked against your rate card. AI reads the invoice; code does the math; a person approves.</p>
           <div className="actions">
@@ -597,18 +598,22 @@ function Engineering() {
   );
 }
 
-// The close: one line and the demo, over the name scrolling large and faint. The loop is two identical halves slid by
-// half their width, so each half repeats the name enough to stay wider than the widest screen.
+// The name scrolling large and faint behind the hero's headline, the page's one moving band. The loop is two identical
+// halves slid by half their width, so each half repeats the name enough to stay wider than the widest screen.
 const MARQUEE = 'FreightAudit · '.repeat(4);
+const Marquee = () => (
+  <div className="marquee" aria-hidden="true">
+    <div className="marquee-track">
+      <span>{MARQUEE}</span>
+      <span>{MARQUEE}</span>
+    </div>
+  </div>
+);
+
+// The close: one line and the demo, on a plain tinted band.
 function Closing() {
   return (
     <section className="closing" aria-labelledby="closing-title">
-      <div className="marquee" aria-hidden="true">
-        <div className="marquee-track">
-          <span>{MARQUEE}</span>
-          <span>{MARQUEE}</span>
-        </div>
-      </div>
       <div className="landing-wrap">
         <h2 id="closing-title">Check the next invoice against the contract.</h2>
         <p className="lead">Open the live demo and decide a finding yourself.</p>

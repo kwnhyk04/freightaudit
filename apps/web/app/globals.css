@@ -711,6 +711,8 @@ tr.flagged td:first-child {
 }
 /* The invoice list and the review queue: a rounded container, a plain header and roomier rows that tint on hover. */
 .table-wrap.list {
+  /* Its width is the 100cqw that Table's cols share out between the columns. */
+  container-type: inline-size;
   border-radius: var(--radius-lg);
 }
 .list-table {
@@ -760,6 +762,18 @@ tr.flagged td:first-child {
     height: auto;
     min-height: 22px;
     white-space: normal;
+  }
+  /* A count sits centred under its header; amounts sit centred as one block as wide as the column's widest (Td's
+     figure), each right-aligned in it, so their points stay in line. Phone cards keep their own alignment. */
+  .list-table th.center,
+  .list-table td.center,
+  .list-table td.figure {
+    text-align: center;
+  }
+  .list-table .figure-block {
+    display: inline-block;
+    min-width: var(--figure);
+    text-align: right;
   }
 }
 /* A column that shows only from 1440 px (Table cols' wideOnly), such as the count the status pill already gives. */
@@ -2892,21 +2906,17 @@ table.ledger strong {
   }
 }
 
-/* The close, after a 21st.dev call to action (docs/third-party.md): one line and the demo button, centred, over the name
-   scrolling large and faint behind it. It stands still with reduced motion. */
-.closing {
-  position: relative;
-  overflow: hidden;
-  padding: 128px 0;
-  border-top: 1px solid var(--rule);
-  text-align: center;
-}
-.marquee {
+/* The name scrolling large and faint behind the hero's headline (a 21st.dev call to action's band, docs/third-party.md).
+   It sits where the headline starts, spans the screen from the page's centre, and the hero clips it; inside the hero's
+   wrap, z-index -1 keeps it under the copy, the card and the table. It stands still with reduced motion. */
+.hero .marquee {
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
+  z-index: -1;
+  left: 50%;
+  width: 100vw;
+  margin: -0.1em 0 0 -50vw;
   overflow: hidden;
+  font-size: clamp(88px, 16vw, 280px);
   pointer-events: none;
   user-select: none;
 }
@@ -2915,7 +2925,6 @@ table.ledger strong {
   flex-shrink: 0;
   width: max-content;
   color: var(--hero-grid);
-  font-size: clamp(88px, 16vw, 280px);
   line-height: 1;
   letter-spacing: -0.04em;
   font-weight: 600;
@@ -2931,8 +2940,14 @@ table.ledger strong {
     transform: translateX(-50%);
   }
 }
+/* The close: one line and the demo button, centred on a plain tinted band, so the moving name shows only once. */
+.closing {
+  padding: 128px 0;
+  border-top: 1px solid var(--rule);
+  background: var(--sunken);
+  text-align: center;
+}
 .closing .landing-wrap {
-  position: relative;
   max-width: 52rem;
 }
 .closing h2 {
@@ -3363,7 +3378,9 @@ table.ledger strong {
     margin-top: 4px;
     text-align: left;
   }
-  .cards td[data-card='hide'] {
+  /* The last row too, whose cells the rule above names with more weight. */
+  .cards td[data-card='hide'],
+  .cards tbody tr:last-child td[data-card='hide'] {
     display: none;
   }
   /* A row's box keeps out of the grid, so the card lays out as it does without one. */
