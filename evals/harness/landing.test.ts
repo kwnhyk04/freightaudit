@@ -1,17 +1,19 @@
 import { readFileSync } from 'node:fs';
-import { landingResults, namedReports } from './landing.ts';
-import { officialReports } from './report.ts';
+import { landingResults, namedReports, notes } from './landing.ts';
+import { headlineSection, officialReports } from './report.ts';
 
 // The landing page's results table (apps/web/lib/eval-results.json) holds the latest official report of each run, the two
-// the README's eval table names, so the page never shows a number a report does not hold.
+// the eval card's table names (evals/README.md), so the page never shows a number a report does not hold; the README's
+// headline results come from the same two.
 const root = new URL('../../', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
 
-test("the landing page's results are landing.ts's from the latest official report of each run, the two the README names", async () => {
+test("the landing page's results are landing.ts's from the latest official report of each run, the two the eval card and the README name", async () => {
   const officials = await officialReports(root);
   expect(officials.free?.name).toBe('2026-10-27-v2');
   expect(officials.claudeFirst?.name).toMatch(/^\d{4}-\d{2}-\d{2}-v2-full-claude-first$/);
-  expect(namedReports(read('README.md'))).toEqual([officials.claudeFirst!.name, officials.free!.name]);
+  expect(namedReports(read('evals/README.md'))).toEqual([officials.claudeFirst!.name, officials.free!.name]);
+  expect(read('README.md')).toContain(headlineSection(officials));
   expect(JSON.parse(read('apps/web/lib/eval-results.json'))).toEqual(landingResults(officials));
 });
 
@@ -35,4 +37,18 @@ test('each row reads as the README does, a pair of metrics in one row, met only 
   expect(rowsOf.find((row) => row.label.startsWith('Extraction latency'))!.claudeFirst).toEqual({ result: '2 s / 12.5 s', met: false });
   expect(rowsOf[0]!.claudeFirst).toEqual({ result: 'n/a', met: false });
   expect(rowsOf[0]!.free).toBeNull();
+});
+
+test("the notes say whether a missed row's two intervals overlap, and where each run is ahead", () => {
+  const report = (name: string, scanned: number, ci: [number, number], recall: number) => ({
+    name,
+    json: { metrics: [{ metric: 'header_accuracy_scanned', value: scanned, ci }, { metric: 'overcharge_recall', value: recall, ci: [recall, recall] as [number, number] }] },
+  });
+  const [first, free] = [report('a', 0.928, [0.848, 0.987], 0.974), report('b', 0.943, [0.868, 0.994], 0.949)];
+  expect(notes(first, free)).toEqual([
+    'Header field accuracy (scanned) is below target for Claude first. Claude first measured 92.8% (95% interval 84.8% to 98.7%), the free models alone 94.3% (86.8% to 99.4%). The intervals overlap, so the difference is within the margin of error.',
+    'On these runs Claude first is ahead on overcharge recall, and the free models alone on header field accuracy (scanned).',
+  ]);
+  expect(notes(report('a', 0.8, [0.75, 0.85], 0.9), free)[0]).toContain('The intervals do not overlap, so the difference is larger than the margin of error.');
+  expect(notes(first)).toEqual([]);
 });

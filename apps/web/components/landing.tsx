@@ -14,13 +14,13 @@ import { Badge, Difference, StatusBadge, Table, Td, Th } from './ui.tsx';
 
 // The public landing page, from files this server holds (the two official eval runs' results, the engineering evidence
 // scripts/evidence.ts copies, and the sample): it calls no api and holds no key. Every claim on it has a source in the
-// repository (docs/memory.md, UI round 2).
+// repository.
 const day = new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' });
 
 // The runs' results as evals/harness/landing.ts writes them: a run, or its cell in a row, is null until it is measured.
 type Cell = { result: string; met: boolean } | null;
-type Run = { date: string } | null;
-const results: { cases: number; claudeFirst: Run; free: Run; rows: { label: string; target: string; claudeFirst: Cell; free: Cell }[] } = evalResults;
+type Run = { date: string; report: string } | null;
+const results: { cases: number; claudeFirst: Run; free: Run; rows: { label: string; target: string; claudeFirst: Cell; free: Cell }[]; notes: string[] } = evalResults;
 const dateOf = (date: string) => day.format(new Date(`${date}T00:00:00Z`));
 const measured = (run: Run) => (run ? `measured ${dateOf(run.date)}` : 'not measured yet');
 // A figure keeps each measure whole, so a pair such as "2.4 s / 10.7 s" wraps only after its slash.
@@ -87,13 +87,13 @@ function Hero() {
   const strip = ['Overcharge recall', 'Overcharge precision', 'Cost per invoice, paid-equivalent (digital / scanned)'];
   return (
     <section className="hero" aria-labelledby="headline">
+      <Marquee />
       <div className="landing-wrap">
         <div className="hero-copy">
           <p className="hero-pill">
             <span className="live-dot" data-seenry-dot aria-hidden="true" />
             Live demo
           </p>
-          <Marquee />
           <h1 id="headline">Pay the contract rate, not the invoice.</h1>
           <p className="lead">Every carrier charge checked against your rate card. AI reads the invoice; code does the math; a person approves.</p>
           <div className="actions">
@@ -470,8 +470,8 @@ function Features() {
               <a className="code-head" href={`${sourceLink(RATE_CHECK.path)}#L${RATE_CHECK.first}-L${RATE_CHECK.first + RATE_CHECK.lines.length - 1}`}>
                 {RATE_CHECK.path}
               </a>
-              {/* Focusable, so a keyboard can scroll its long lines. */}
-              <pre tabIndex={0} role="region" aria-label={`The rate-card check, lines ${RATE_CHECK.first} to ${RATE_CHECK.first + RATE_CHECK.lines.length - 1}`}>
+              {/* A long line wraps inside the window, under its own text, so nothing is cut off or needs scrolling. */}
+              <pre>
                 <code>
                   {RATE_CHECK.lines.map((code, index) => (
                     <span key={index} className="code-line" data-mark={code.includes('amountCents > finding.expectedCents') || undefined}>
@@ -559,8 +559,18 @@ function Results() {
             ))}
           </tbody>
         </Table>
+        {/* Written from the same two reports (evals/harness/landing.ts): whether a miss is within the margin of error, and
+            where each run is ahead. */}
+        {results.notes.map((note) => (
+          <p key={note} className="landing-note">
+            {note}
+          </p>
+        ))}
         <p className="landing-note">
-          Complete results with 95% confidence intervals are published in the <a href={`${REPOSITORY}#eval-results`}>repository README</a>.
+          Complete results with 95% confidence intervals are in the eval reports:{' '}
+          {results.claudeFirst && <a href={`${REPOSITORY}/blob/main/${results.claudeFirst.report}`}>Claude first</a>}
+          {results.claudeFirst && results.free && ' and '}
+          {results.free && <a href={`${REPOSITORY}/blob/main/${results.free.report}`}>free models only</a>}.
         </p>
       </div>
     </section>
@@ -598,7 +608,7 @@ function Engineering() {
   );
 }
 
-// The name scrolling large and faint behind the hero's headline, the page's one moving band. The loop is two identical
+// The name scrolling large and faint across the middle of the hero, behind everything in it: the page's one moving band. The loop is two identical
 // halves slid by half their width, so each half repeats the name enough to stay wider than the widest screen.
 const MARQUEE = 'FreightAudit · '.repeat(4);
 const Marquee = () => (

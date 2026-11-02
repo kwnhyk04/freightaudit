@@ -1,8 +1,8 @@
 import { useId } from 'react';
 
-// The FreightAudit mark: a slanted F whose middle bar is the ledger line, its check cut out (docs/design.md, Logo). Every
+// The FreightAudit mark: a slanted F whose middle bar is the ledger line, its check cut out. Every
 // bar is 8 units thick with a 2.5 radius and one skew slants them all; below 24 px the check is left out so it never smudges.
-// The standalone files in docs/brand/ and app/icon.svg draw the same geometry.
+// app/icon.svg draws the same geometry.
 const BARS = [
   { x: 10, y: 6, width: 28, height: 8 },
   { x: 10, y: 30, width: 16, height: 8 },

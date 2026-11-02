@@ -8,7 +8,7 @@ import { send, type TraceCarrier } from './tracing.ts';
 type Deps = { db: NodePgDatabase; queues: Queues };
 type JobData = { tenantId: string; invoiceId?: string; otel?: TraceCarrier };
 
-// Lifecycle (docs/context.md): the status an invoice holds while a queue's step runs, and the one a replay restores.
+// Lifecycle: the status an invoice holds while a queue's step runs, and the one a replay restores.
 const RUNNING = { extract: 'extracting', reconcile: 'reconciling' } as const;
 const REPLAYED = { extract: 'received', reconcile: 'extracted' } as const;
 const isInvoiceStep = (queue: QueueName): queue is keyof typeof RUNNING => queue in RUNNING;

@@ -29,7 +29,7 @@ export function startup() {
   }
   env();
   if (typeof crypto.argon2 !== 'function') {
-    log('error', 'crypto.argon2 needs Node 24.7 or later; see docs/todo.md, step 10');
+    log('error', 'crypto.argon2 needs Node 24.7 or later');
     process.exit(1);
   }
 }

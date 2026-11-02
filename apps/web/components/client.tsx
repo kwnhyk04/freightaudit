@@ -184,19 +184,53 @@ function DuplicateNotice({ existing, role }: { existing: NonNullable<ActionState
   );
 }
 
-// One sample, one tap: the server reads the file by its key and uploads it through the same checks as a chosen file.
-export function SampleButton({ sample, label, note }: { sample: string; label: string; note: string }) {
+// A sample's small drawing: a page of lines, drawn, never its data. A clean digital invoice has a tick; a scan sits
+// tilted and grainy with its overcharged line marked; a duplicate has the same line marked twice.
+export type SampleArt = 'clean' | 'scanned' | 'duplicate';
+function SamplePicture({ art }: { art: SampleArt }) {
+  const lines = [22, 30, 38, 46, 54];
+  const marked = art === 'scanned' ? [38] : art === 'duplicate' ? [30, 46] : [];
+  return (
+    <svg viewBox="0 0 120 84" className={`sample-picture ${art}`} aria-hidden="true">
+      <g transform={art === 'scanned' ? 'rotate(-3 60 42)' : undefined}>
+        <rect className="sheet" x="30" y="6" width="60" height="74" rx="3" />
+        <rect className="ink" x="36" y="12" width="22" height="4" rx="1" />
+        {lines.map((y) => (
+          <g key={y}>
+            {marked.includes(y) && <rect className="mark" x="33" y={y - 2} width="54" height="7" rx="1.5" />}
+            <rect className="ink faint-ink" x="36" y={y} width="30" height="3" rx="1" />
+            <rect className="ink faint-ink" x="72" y={y} width="12" height="3" rx="1" />
+          </g>
+        ))}
+        <rect className="ink" x="64" y="66" width="20" height="4" rx="1" />
+        {art === 'scanned' && [14, 44, 60, 72].map((y, i) => <circle key={y} className="grain" cx={40 + i * 13} cy={y} r="0.9" />)}
+      </g>
+      {art === 'clean' && <path className="tick" d="M88 60 l5 5 l10 -11" />}
+    </svg>
+  );
+}
+
+// One sample, one tap: the whole card is the button. The server reads the file by its key and uploads it through the
+// same checks as a chosen file. The card's name is its title alone, and its line describes it.
+export function SampleButton({ sample, art, label, note }: { sample: string; art: SampleArt; label: string; note: string }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(uploadSample, {});
   const id = `sample-${sample}`;
   return (
     <form action={action} className="sample">
       <input type="hidden" name="sample" value={sample} />
-      <button className="link" aria-describedby={`${id}-note`} disabled={pending}>
-        {pending ? 'Uploading…' : label}
+      <button className="sample-card" aria-labelledby={`${id}-title`} aria-describedby={`${id}-note`} disabled={pending}>
+        <span className="sample-visual">
+          <SamplePicture art={art} />
+        </span>
+        <span className="sample-text">
+          <span id={`${id}-title`} className="sample-title">
+            {pending ? 'Uploading…' : label}
+          </span>
+          <span id={`${id}-note`} className="sample-note">
+            {note}
+          </span>
+        </span>
       </button>
-      <p id={`${id}-note`} className="faint">
-        {note}
-      </p>
       {state.existing && !pending && <DuplicateNotice existing={state.existing} role="status" />}
       {state.error && (
         <p className="form-error" role="alert">

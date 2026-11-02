@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 // standalone: the Docker image runs .next/standalone's server.js with only the files the build traced.
 const config: NextConfig = {
   output: 'standalone',
-  // The repo's own AGENTS.md is the agent guide; next dev must not write a second one into apps/web.
+  // The repo root keeps the one agent guide; next dev must not write another into apps/web.
   agentRules: false,
   // Uploads reach the api through a server action: a 4 MiB file plus multipart overhead, under Vercel's 4.5 MB cap.
   experimental: { serverActions: { bodySizeLimit: '4.5mb' } },

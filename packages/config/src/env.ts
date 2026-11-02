@@ -53,7 +53,7 @@ export const settings = {
   AI_ENABLED: z.stringbool().default(false),
   DAILY_AI_TOKEN_BUDGET: integer(1_000_000),
   // Model roles: provider, model, base URL and the model's free-tier requests and tokens per minute. Models pinned on
-  // 2026-10-15 from each key's model list; limits from the providers' pages that day (docs/memory.md).
+  // 2026-10-15 from each key's model list; limits from the providers' pages that day.
   LLM_PRIMARY_PROVIDER: llmProvider.default('gemini'),
   LLM_PRIMARY_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
   LLM_PRIMARY_BASE_URL: baseUrl,

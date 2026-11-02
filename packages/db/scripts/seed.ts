@@ -28,7 +28,7 @@ type Accessorial = keyof typeof ACCESSORIAL_RATES;
 const ACCESSORIALS = Object.keys(ACCESSORIAL_RATES) as Accessorial[];
 // General rate increase: version 1 prices shipments before this day, version 2 from it on.
 const GRI_DAY = '2026-01-01';
-// Invoice lifecycle (docs/context.md): most invoices are approved, a few are still in flight, and needs_review holds
+// Invoice lifecycle: most invoices are approved, a few are still in flight, and needs_review holds
 // the extractions that could not be trusted.
 const STATUSES = [
   { value: 'received', weight: 4 },

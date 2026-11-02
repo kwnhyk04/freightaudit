@@ -1,5 +1,5 @@
 /* FreightAudit: a calm, dense tool for accounts-payable review. Neutral surfaces, one ink-blue accent, and color only
-   for state, always beside its word. Contrast of every text token is checked against its surface (docs/memory.md). */
+   for state, always beside its word. Contrast of every text token is checked against its surface. */
 :root {
   color-scheme: light;
   --canvas: #f6f7f9;
@@ -14,7 +14,7 @@
   --accent-hover: #213c65;
   --accent-tint: #e8eef7;
   --on-accent: #ffffff;
-  /* The logo's ledger bar, one blue in both themes: at least 3:1 on white and on the dark canvas (docs/design.md). */
+  /* The logo's ledger bar, one blue in both themes: at least 3:1 on white and on the dark canvas. */
   --brand: #2563eb;
   --ok: #1e6b3a;
   --ok-tint: #e7f4ec;
@@ -25,7 +25,7 @@
   /* Text on a solid --bad fill (the Failed pill). */
   --on-bad: #ffffff;
   --neutral-tint: #eef0f3;
-  /* Chart fills, run through the dataviz palette validator against the card surface in both modes (docs/memory.md):
+  /* Chart fills, run through the dataviz palette validator against the card surface in both modes:
      blue for a single series and for invoices that matched, amber for those that needed a reviewer, red for failures. */
   --chart: #2a78d6;
   --chart-warn: #eda100;
@@ -1824,26 +1824,114 @@ td.wrap {
   padding: 0;
   overflow: hidden;
 }
-.samples-head,
-.sample {
+.samples-head {
   padding: 12px 16px;
   border-bottom: 1px solid var(--rule);
 }
 .samples-head h2 {
   margin-bottom: 2px;
 }
+/* The samples as a bento grid, after Aceternity UI's Bento Grid (MIT, docs/third-party.md): each a card whose drawing
+   sits on top and its title and line below, the whole card one button. One column in the side panel; three across once
+   the panel spans the page (721 to 1023 px). */
+.sample-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
 .sample {
   display: grid;
-  gap: 2px;
-  justify-items: start;
+  gap: 8px;
 }
-.sample .link {
-  font-weight: 500;
+.sample-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(22 25 29 / 5%);
+  color: var(--text);
+  font: inherit;
   text-align: left;
-  text-decoration: none;
+  cursor: pointer;
 }
-.sample .link:hover {
-  text-decoration: underline;
+.sample-card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+.sample-card:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+.sample-visual {
+  display: grid;
+  place-items: center;
+  height: 92px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--canvas);
+}
+.sample-picture {
+  width: 120px;
+  height: 84px;
+}
+.sample-picture .sheet {
+  fill: var(--surface);
+  stroke: var(--rule-strong);
+}
+.sample-picture .ink,
+.sample-picture .grain {
+  fill: var(--text-3);
+}
+.sample-picture .faint-ink {
+  opacity: 0.5;
+}
+.sample-picture .mark {
+  fill: var(--bad-tint);
+  stroke: var(--bad);
+  stroke-width: 0.6;
+}
+.sample-picture .tick {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sample-text {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 10px 12px 12px;
+}
+.sample-title {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.sample-note {
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 18px;
+}
+/* A pointer lifts the drawing and tints the card, as the reference's cards do; still motion keeps them in place. */
+@media (hover: hover) {
+  .sample-card:not(:disabled):hover {
+    border-color: var(--rule-strong);
+    background: var(--sunken);
+  }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .sample-picture {
+    transition: transform var(--dur-1) var(--ease-out);
+  }
+  .sample-card:not(:disabled):hover .sample-picture {
+    transform: translateY(-3px);
+  }
 }
 .notice {
   display: grid;
@@ -2310,10 +2398,12 @@ table.ledger strong {
   font-weight: 400;
 }
 
-/* How it works: three cards, their numbers above them joined by a rule. */
+/* How it works: three cards of one height, each number centred above its card, the numbers joined by a rule from
+   centre to centre. */
 .how-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
   gap: 24px;
   margin: 0;
   padding: 0;
@@ -2332,8 +2422,9 @@ table.ledger strong {
 }
 .step-number {
   position: absolute;
+  z-index: 1;
   top: -48px;
-  left: 24px;
+  left: calc(50% - 16px);
   display: grid;
   place-items: center;
   width: 32px;
@@ -2344,13 +2435,14 @@ table.ledger strong {
   font-size: 14px;
   font-weight: 600;
 }
-/* The rule runs back from each number to the one before it, across the gap. */
+/* The rule runs back from each number's centre to the one before it: a card's width plus the gap, the card's border
+   included, as every card has the same width. */
 .how-steps > li + li::before {
   content: '';
   position: absolute;
   top: -32px;
-  right: calc(100% - 24px);
-  width: calc(100% - 8px);
+  right: 50%;
+  width: calc(100% + 24px + 2px);
   height: 1px;
   background: var(--rule-strong);
 }
@@ -2784,27 +2876,24 @@ table.ledger strong {
   font-size: 12px;
   color: var(--text-2);
 }
-/* Each line stays whole, as in an editor; a long one scrolls sideways inside the window, never the card. */
+/* A long line wraps inside the window, its continuation under its own text beside the line number, as an editor with
+   word wrap shows it; nothing is cut off and nothing scrolls. */
 .code-window pre {
   margin: 0;
   padding: 10px 0;
-  overflow-x: auto;
   font-family: var(--mono);
   font-size: 13px;
   line-height: 1.7;
   color: var(--text-2);
-}
-.code-window pre:focus-visible {
-  outline: none;
-  box-shadow: inset var(--focus);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .code-window code {
   display: grid;
-  min-width: max-content;
 }
 .code-line {
   display: grid;
-  grid-template-columns: 2.5em max-content;
+  grid-template-columns: 2.5em minmax(0, 1fr);
   padding-right: 12px;
 }
 .code-line[data-mark] {
@@ -2907,15 +2996,14 @@ table.ledger strong {
   }
 }
 
-/* The name scrolling large and faint behind the hero's headline (a 21st.dev call to action's band, docs/third-party.md).
-   It sits where the headline starts, spans the screen from the page's centre, and the hero clips it; inside the hero's
-   wrap, z-index -1 keeps it under the copy, the card and the table. It stands still with reduced motion. */
+/* The name scrolling large and faint across the hero (a 21st.dev call to action's band, docs/third-party.md): it fills
+   the hero's box and centres in it, under the hero's wrap (z-index 1), so behind the copy, the card and the table. The
+   hero clips it, and it stands still with reduced motion. */
 .hero .marquee {
   position: absolute;
-  z-index: -1;
-  left: 50%;
-  width: 100vw;
-  margin: -0.1em 0 0 -50vw;
+  inset: 0;
+  display: flex;
+  align-items: center;
   overflow: hidden;
   font-size: clamp(88px, 16vw, 280px);
   pointer-events: none;
@@ -3206,6 +3294,10 @@ table.ledger strong {
   .overview-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* The samples' panel spans the page here, so its cards sit three across. */
+  .sample-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .upload-card-head {
     padding: 16px 16px 0;
   }
@@ -3220,6 +3312,10 @@ table.ledger strong {
 }
 @media (max-width: 720px) {
   .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* A phone stacks the sample cards again. */
+  .sample-grid {
     grid-template-columns: minmax(0, 1fr);
   }
   /* Phone: a bar with the name and a menu button; the sidebar opens over the work as a drawer, always unfolded. */

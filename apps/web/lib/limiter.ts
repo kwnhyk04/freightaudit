@@ -1,6 +1,6 @@
 // Failed sign-ins per client: at most 5 in 15 minutes, then refused until the oldest leaves the window; a success clears
 // them. ponytail: memory of one server instance, so on Vercel each instance counts alone; a hosted Redis when it must
-// hold across instances (docs/memory.md).
+// hold across instances.
 export const MAX_FAILURES = 5;
 export const WINDOW_MS = 15 * 60_000;
 

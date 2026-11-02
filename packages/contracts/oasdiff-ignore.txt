@@ -1,2 +1,2 @@
 # Breaking changes reviewed and accepted, each under its reason. oasdiff skips a change whose method, path and text match
-# a line here. Delete the lines once main contains the change (docs/todo.md).
+# a line here. Delete the lines once main contains the change.

@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import type { GoldenCase } from '../golden/build.ts';
 import { landingResults, namedReports } from './landing.ts';
 import type { Measured, Score } from './metrics.ts';
-import { byKindAndTrait, DEFAULT_GOLDEN, latestOfficial, readmeSection, report, reportName, thresholdsFile, writesReadme } from './report.ts';
+import { byKindAndTrait, DEFAULT_GOLDEN, headlineSection, latestOfficial, readmeSection, report, reportName, thresholdsFile, writesReadme } from './report.ts';
 import type { Run, Subset } from './run.ts';
 
 test('report names keep v1 as it was, and give v2 its version, dev its prompt, a Claude-first run its config and repeated reads their count', () => {
@@ -65,10 +65,12 @@ test('the README leads with the Claude-first run, labelled, with the free models
   expect(section).toMatch(/<!-- eval:end -->$/);
   expect(section).toContain('Golden set v2 (98 synthetic invoices');
   expect(section).toContain('- **Claude first**');
-  expect(section).toContain('measured 2026-11-01; served: anthropic/claude-haiku-5-5 90.0% of calls, groq/qwen/qwen3.8-27b 10.0%. Full report: `evals/reports/2026-11-01-v2-full-claude-first.md`.');
+  expect(section).toContain(
+    'measured 2026-11-01; served: anthropic/claude-haiku-5-5 90.0% of calls, groq/qwen/qwen3.8-27b 10.0%. Full report: [`evals/reports/2026-11-01-v2-full-claude-first.md`](reports/2026-11-01-v2-full-claude-first.md).',
+  );
   expect(section).toContain('- **Free models only**');
   expect(section).toContain('what CI checks');
-  expect(section).toContain('measured 2026-10-27 with primary gemini/g, text groq/t, fallback groq/f. Full report: `evals/reports/2026-10-27-v2.md`.');
+  expect(section).toContain('measured 2026-10-27 with primary gemini/g, text groq/t, fallback groq/f. Full report: [`evals/reports/2026-10-27-v2.md`](reports/2026-10-27-v2.md).');
   expect(section).toContain('| Metric | Target | Claude first | 95% CI | Met | Free models only | 95% CI | Met |');
   expect(section).toContain('| Header field accuracy (digital) | ≥ 0.980 | 0.990 | 0.980 to 0.990 | yes | 0.970 | 0.960 to 0.970 | no |');
   expect(section).toContain('| k6 row |');
@@ -88,13 +90,29 @@ test('the README leads with the Claude-first run, labelled, with the free models
   expect(writesReadme({ subset: 'ci', version: 'v2' })).toBe(false);
 });
 
+test("the README's headline results give each run's value linked to its report, and skip a run or a metric not measured", () => {
+  const metrics = [measured('overcharge_recall', 0.974), measured('false_flag_rate', 0), measured('cost_per_invoice_scanned_usd', 0.0012)];
+  const claudeFirst = { name: '2026-11-01-v2-full-claude-first', json: { date: '2026-11-01', cases: 98, pins: 'p', metrics } };
+  const free = { name: '2026-10-27-v2', json: { date: '2026-10-27', cases: 98, pins: 'p', metrics: [measured('overcharge_recall', 0.949)] } };
+  expect(headlineSection({ claudeFirst, free }).split('\n')).toEqual([
+    '<!-- results:start -->',
+    'On 98 synthetic invoices with known ground truth (golden set v2); every metric with its 95% interval is in the [eval card](evals/README.md).',
+    '',
+    '- Overcharges caught: **97.4%** with Claude first ([report](evals/reports/2026-11-01-v2-full-claude-first.md)), **94.9%** with the free models only ([report](evals/reports/2026-10-27-v2.md)).',
+    '- Clean charges flagged: **0%** with Claude first ([report](evals/reports/2026-11-01-v2-full-claude-first.md)).',
+    '- Cost per scanned invoice, paid-equivalent: **$0.0012** with Claude first ([report](evals/reports/2026-11-01-v2-full-claude-first.md)).',
+    '<!-- results:end -->',
+  ]);
+});
+
 // CI's smoke and the weekly run read the default set's floors file; without it, or without a subset's floors, nothing gates.
 test('the default set has floors for the ci subset and the full set', async () => {
   const thresholds = JSON.parse(await readFile(new URL(`../${thresholdsFile(DEFAULT_GOLDEN)}`, import.meta.url), 'utf8')) as Record<string, object>;
   expect([Object.keys(thresholds.ci ?? {}).length > 0, Object.keys(thresholds.full ?? {}).length > 0]).toEqual([true, true]);
 });
 
-const OLDER_README = '# FreightAudit\n\n<!-- eval:start -->\nan older table\n<!-- eval:end -->\n';
+const OLDER_README = '# FreightAudit\n\n<!-- results:start -->\nolder results\n<!-- results:end -->\n';
+const OLDER_CARD = '# FreightAudit evaluation\n\n<!-- eval:start -->\nan older table\n<!-- eval:end -->\n';
 const goldenCase = async (id: string) => JSON.parse(await readFile(new URL(`../golden/v2/cases/${id}.json`, import.meta.url), 'utf8')) as GoldenCase;
 const role = (provider: 'gemini' | 'groq', model: string) => ({ provider, model, baseUrl: 'http://127.0.0.1:9', apiKey: 'test-key', rpm: 30, tpm: 6_000 });
 // A run of the default set over these cases, with a result holding these calls for each one it read.
@@ -143,6 +161,7 @@ async function reportIn(
     await mkdir(new URL('evals/reports/', root), { recursive: true });
     await mkdir(new URL('apps/web/lib/', root), { recursive: true });
     await writeFile(new URL('README.md', root), OLDER_README);
+    await writeFile(new URL('evals/README.md', root), OLDER_CARD);
     for (const [file, json] of Object.entries(files)) await writeFile(new URL(`evals/reports/${file}`, root), JSON.stringify(json));
     if (thresholds) await writeFile(new URL(`evals/${thresholdsFile(DEFAULT_GOLDEN)}`, root), JSON.stringify(thresholds));
     console.log = () => {};
@@ -150,7 +169,7 @@ async function reportIn(
     console.log = log;
     const written = await readdir(new URL('evals/reports/', root));
     const reports = Object.fromEntries(await Promise.all(written.filter((file) => !Object.hasOwn(files, file)).map(async (file) => [file, await read(`evals/reports/${file}`)] as const)));
-    return { code, readme: await read('README.md'), landing: await read('apps/web/lib/eval-results.json'), reports };
+    return { code, readme: await read('README.md'), card: await read('evals/README.md'), landing: await read('apps/web/lib/eval-results.json'), reports };
   } finally {
     console.log = log;
     await rm(dir, { recursive: true, force: true });
@@ -158,14 +177,16 @@ async function reportIn(
 }
 
 // The landing page's results are built from the reports the README names, so a run's report must be on disk first.
-test('a full run of the default set writes its report, then the README table and the landing results that name it', async () => {
+test("a full run of the default set writes its report, then the eval card's table, the README's headline results and the landing results that name it", async () => {
   const golden = await goldenCase('g2-001');
-  const { code, readme, landing, reports } = await reportIn(runOf([golden], [golden]));
+  const { code, readme, card, landing, reports } = await reportIn(runOf([golden], [golden]));
   expect(code).toBe(0);
-  const [name, ...others] = namedReports(readme!);
+  const [name, ...others] = namedReports(card!);
   const written = JSON.parse(reports[`${name}.json`]!);
   // The name carries the date report() took, so the test never reads a clock of its own that 00:00 UTC could move.
   expect([name, others]).toEqual([`${written.date}-v2`, []]);
+  expect(card).toMatch(/^# FreightAudit evaluation\n\n<!-- eval:start -->\n## Eval results\n[\s\S]*<!-- eval:end -->\n$/);
+  expect(readme).toBe(`# FreightAudit\n\n${headlineSection({ free: { name: name!, json: written } })}\n`);
   expect(JSON.parse(landing!)).toEqual(landingResults({ free: { name: name!, json: written } }));
 });
 
@@ -175,10 +196,10 @@ test("a full Claude-first run is never held to floors nor sets them; its report 
   const golden = await goldenCase('g2-001');
   const run = { ...runOf([golden], [golden], [claudeCall, call('error', 0)]), claude: { provider: 'anthropic', model: 'claude-haiku-5-5' } } as Run;
   const free = { date: '2026-10-27', cases: 1, pins: 'primary gemini/p, text groq/t, fallback groq/f', metrics: [], scores: [] };
-  const { code, readme, landing, reports } = await reportIn(run, { config: 'claude-first', thresholds: { full: { failed_calls: { max: 0, from: 'test' } } }, files: { '2026-10-27-v2.json': free } });
+  const { code, card, landing, reports } = await reportIn(run, { config: 'claude-first', thresholds: { full: { failed_calls: { max: 0, from: 'test' } } }, files: { '2026-10-27-v2.json': free } });
   // One failed call would break the free floor; a Claude-first run is never held to it.
   expect(code).toBe(0);
-  const [name, freeName] = namedReports(readme!);
+  const [name, freeName] = namedReports(card!);
   expect([name, freeName]).toEqual([expect.stringMatching(/^\d{4}-\d{2}-\d{2}-v2-full-claude-first$/), '2026-10-27-v2']);
   const md = reports[`${name}.md`]!;
   expect(md).toContain('Served: anthropic/claude-haiku-5-5 50.0% of calls, groq/t 50.0%.');
@@ -199,13 +220,13 @@ test("a full Claude-first run is never held to floors nor sets them; its report 
   expect(JSON.parse(landing!)).toEqual(landingResults({ claudeFirst: { name: name!, json }, free: { name: '2026-10-27-v2', json: free } }));
 });
 
-test('a full run that left a case unread, as --cached does on a partial cache, writes its report but not the README table or the landing results', async () => {
+test('a full run that left a case unread, as --cached does on a partial cache, writes its report but not the eval card, the README or the landing results', async () => {
   const [read, unread] = await Promise.all([goldenCase('g2-001'), goldenCase('g2-002')]);
-  const { code, readme, landing, reports } = await reportIn(runOf([read, unread], [read]));
+  const { code, readme, card, landing, reports } = await reportIn(runOf([read, unread], [read]));
   expect(code).toBe(0);
   const json = Object.entries(reports).find(([file]) => file.endsWith('.json'))![1]!;
   expect([Object.keys(reports).length, JSON.parse(json).cases]).toEqual([2, 1]);
-  expect([readme, landing]).toEqual([OLDER_README, undefined]);
+  expect([readme, card, landing]).toEqual([OLDER_README, OLDER_CARD, undefined]);
 });
 
 // The report's two latency p95 rows, as its table prints them.

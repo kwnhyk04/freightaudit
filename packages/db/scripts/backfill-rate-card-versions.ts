@@ -3,7 +3,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import pg from 'pg';
 import { logJson, type Log } from '../src/log.ts';
 
-// Expand/contract step between 0002 and 0003a (docs/migrations.md): gives every flat rate and invoice line a version.
+// Expand/contract step between 0002 and 0003a: gives every flat rate and invoice line a version.
 // Resumable: it only touches rows that are still null, so a rerun continues where a crash stopped.
 
 // Retries a statement that hit lock_timeout (SQLSTATE 55P03), backing off 1 s, 2 s, then 4 s.

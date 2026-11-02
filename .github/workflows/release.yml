@@ -89,4 +89,4 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.app }}
 
   # Nothing deploys from here: the backend on the PC is reachable only through Tailscale Funnel, so it pulls these
-  # images itself (pnpm demo:up, docs/deploy.md). The UI deploys from Vercel's Git integration.
+  # images itself (pnpm demo:up; see the private deploy notes). The UI deploys from Vercel's Git integration.
