@@ -128,12 +128,13 @@ test('the landing page at / is public and static: no redirect, no api call, no k
   await expect(features.locator('.keycap')).toHaveText(['Approve charge', 'Dispute']);
   await expect(features).toContainText('Synthetic data only');
   await expect(features.locator('.masked')).toHaveText(['[Redacted]', '[Redacted]']);
-  // The close keeps its words and leads to the demo, over the name scrolling large and faint.
+  // The close keeps its words and leads to the demo; the name scrolls large and faint once, behind the hero's headline.
   const closing = page.locator('.closing');
   await expect(closing.getByRole('heading', { level: 2 })).toHaveText('Check the next invoice against the contract.');
   await expect(closing).toContainText('Open the live demo and decide a finding yourself.');
   await expect(closing.getByRole('link', { name: 'Open the demo' })).toHaveAttribute('href', '/dashboard');
-  await expect(closing.locator('.marquee')).toContainText('FreightAudit');
+  await expect(page.locator('.marquee')).toHaveCount(1);
+  await expect(page.locator('.hero .marquee')).toContainText('FreightAudit');
   // Every engineering proof links to its file on main.
   const proofs = page.locator('.evidence-links a');
   expect(await proofs.count()).toBeGreaterThan(0);
@@ -165,6 +166,56 @@ test('the landing page at / is public and static: no redirect, no api call, no k
 test('the invoice list leads with the invoice, then its carrier and status', async ({ page }) => {
   await page.goto('/demo/invoices');
   await expect(page.locator('thead th')).toHaveText(['Invoice', 'Carrier', 'Status', 'Issued', 'Received', 'Open findings', 'Billed', 'Expected', 'Difference']);
+});
+
+test('on a wide screen a list table takes the full width, every column gets the same extra over its base, and amounts sit centred with their points in line', async ({ page }) => {
+  for (const width of [1920, 2560]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const path of ['/demo/invoices', '/demo/discrepancies', '/demo/dead-letters']) {
+      await page.goto(path);
+      const table = (await page.locator('table.list-table').boundingBox())!;
+      const main = (await page.locator('.main').boundingBox())!;
+      // The main column's 28 px padding a side, and the wrapper's 1 px border a side.
+      expect(table.width).toBeGreaterThanOrEqual(main.width - 2 * 28 - 2 - 1);
+      // Each column's base is the first term of its calc, in rem of 14 px; what it got beyond that is the same for all.
+      const extra = await page.locator('table.list-table col').evaluateAll((cols) =>
+        cols.map((col, i) => {
+          const base = parseFloat(/calc\(([\d.]+)rem/.exec(getComputedStyle(col).getPropertyValue('--col'))![1]!) * 14;
+          return document.querySelectorAll('table.list-table thead th')[i]!.getBoundingClientRect().width - base;
+        }),
+      );
+      expect(Math.min(...extra)).toBeGreaterThan(0);
+      expect(Math.max(...extra) - Math.min(...extra)).toBeLessThan(2);
+    }
+  }
+  // Each amount column is one block, centred under its centred header and as wide as its widest amount, with every
+  // amount right-aligned in it, so the points line up; the count is centred.
+  await page.goto('/demo/invoices');
+  for (const [name, column] of [
+    ['Billed', 7],
+    ['Expected', 8],
+    ['Difference', 9],
+  ] as const) {
+    const header = (await page.getByRole('columnheader', { name }).boundingBox())!;
+    const blocks = await page.locator(`tbody td:nth-child(${column}) .figure-block`).evaluateAll((spans) =>
+      // An unpriced invoice's block is empty.
+      spans.filter((span) => span.firstElementChild).map((span) => ({ box: span.getBoundingClientRect(), text: span.firstElementChild!.getBoundingClientRect() })),
+    );
+    expect(blocks.length).toBeGreaterThan(3);
+    const centre = header.x + header.width / 2;
+    for (const { box, text } of blocks) {
+      expect(Math.abs(box.x + box.width / 2 - centre)).toBeLessThan(1.5);
+      expect(Math.abs(text.right - box.right)).toBeLessThan(0.5);
+    }
+    // The browser sizes the block in ch from the longest amount's length, so it is never narrower than the widest
+    // amount, in any font, and only a few px wider.
+    const widest = Math.max(...blocks.map(({ text }) => text.width));
+    expect(blocks[0]!.box.width).toBeGreaterThanOrEqual(widest);
+    expect(blocks[0]!.box.width - widest).toBeLessThan(8);
+  }
+  const count = (await page.getByRole('columnheader', { name: 'Open findings' }).boundingBox())!;
+  const value = (await page.locator('tbody td:nth-child(6) strong').first().boundingBox())!;
+  expect(Math.abs(value.x + value.width / 2 - (count.x + count.width / 2))).toBeLessThan(1.5);
 });
 
 test("the sample opens on its invoices, and Overview in its sidebar shows the sample's one week, without cost or tokens", async ({ page }) => {
@@ -521,6 +572,12 @@ test.describe('on a phone', () => {
     const card = (await row.boundingBox())!;
     await page.mouse.click(card.x + card.width / 2, card.y + card.height - 8);
     await expect(page).toHaveURL(new RegExp(`/demo/invoices/${id}$`));
+  });
+
+  test('the last invoice card hides the same cells as every other card', async ({ page }) => {
+    await page.goto('/demo/invoices');
+    const last = page.locator('tbody tr').last();
+    for (const column of [4, 5, 6, 7, 8]) await expect(last.locator(`td:nth-child(${column})`)).toBeHidden();
   });
 
   test('the status tabs scroll sideways with a fade at the edge, and the page never does', async ({ page }) => {

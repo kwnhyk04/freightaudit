@@ -1,4 +1,5 @@
 import type { DeadLettersQuery, DiscrepanciesQuery, DiscrepancyStatus, InvoicesQuery, InvoiceSummaryQuery } from '@freightaudit/contracts/graphql';
+import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import {
   DECISION,
@@ -19,7 +20,7 @@ import {
   statusTotals,
 } from '../lib/labels.ts';
 import { ActionForm, BulkBar, DecideForm, Tabs } from './client.tsx';
-import { Badge, Day, Difference, Empty, Moment, Money, Pager, StatusBadge, Table, Td, Th } from './ui.tsx';
+import { Badge, Day, Difference, Empty, figureWidth, Moment, Money, Pager, StatusBadge, Table, Td, Th } from './ui.tsx';
 
 // Views shared by the live pages and the public /demo pages: base prefixes every link, readOnly hides every action.
 export type Where = { base: string; readOnly: boolean };
@@ -44,6 +45,17 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
     count: filterCount(each, totals, summary.invoicesHeld),
     href: query(`${base}/invoices`, { status: filterKey(each) }),
   }));
+  // Each row's findings and amounts; only a priced invoice has an expected amount.
+  const rows = edges.map(({ node }) => {
+    const findings = node.discrepancies.edges.map((edge) => edge.node);
+    return { node, findings, money: node.rateCardVersion && node.totalCents !== null ? invoiceAmounts(node.totalCents, findings) : undefined };
+  });
+  // The amount columns' blocks, each as wide as the column's widest amount as Money and Difference print it.
+  const figures = {
+    billed: figureWidth(rows.map(({ node }) => (node.totalCents === null ? null : formatMoney(node.totalCents, node.currency ?? 'USD')))),
+    expected: figureWidth(rows.map(({ node, money }) => money && formatMoney(money.expectedCents, node.currency ?? 'USD'))),
+    difference: figureWidth(rows.map(({ node, money }) => money && `${money.standingCents > 0n ? '+' : ''}${formatMoney(money.standingCents, node.currency ?? 'USD')}`)),
+  };
   const showing = totalCount > 0 ? `Showing ${offset + 1} to ${offset + edges.length} of ${totalCount}` : undefined;
   // Back to the plain first page once within a page of it, so invoices uploaded since never leave a short first page.
   const previous = !pageInfo.hasPreviousPage || !pageInfo.startCursor ? null : offset <= PAGE_SIZE ? list({}) : list({ before: pageInfo.startCursor });
@@ -124,14 +136,26 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
         </div>
       ) : (
         // A region the keyboard can scroll; on a phone each row is a card.
-        // Short columns fit their longest value (a file name, a date, this year's moment, "Open findings", "+$12,345.67");
-        // carrier and status share the rest. Below 1440 px Open findings hides, as the status pill gives the count, and the
-        // carrier's short names give the status pill room for its longest words.
+        // Each column's base fits its longest value on one line (a file name, "Halcyon Ridge Freight", the pill "Ready to
+        // approve as billed" over its note "Not checked against the rate card", a date, this year's moment, a count under
+        // its two-line header, "CA$5,291.50", "+$12,345.67"), and every column gets the same share of the rest. Below
+        // 1440 px Open findings hides, as the status pill gives the count, and those bases do not fit: there a long carrier
+        // or pill wraps and the amounts keep 7.25 rem, so the dates stay on one line at 1280 px.
         <Table
           label="Invoices"
           cards
           caption={`Invoices, newest first, ${showing?.toLowerCase() ?? ''}`}
-          cols={['8.25rem', { width: '', narrow: '12%' }, '', '8rem', '10.25rem', { width: '8.25rem', wideOnly: true }, '7.25rem', '7.25rem', '7.75rem']}
+          cols={[
+            '8.25rem',
+            { width: '11.8rem', narrow: '8.7rem' },
+            { width: '15rem', narrow: '13.25rem' },
+            '8rem',
+            '10.25rem',
+            { width: '6rem', wideOnly: true },
+            { width: '7.75rem', narrow: '7.25rem' },
+            { width: '7.75rem', narrow: '7.25rem' },
+            '7.75rem',
+          ]}
           minWidth="67.5rem"
         >
           <thead>
@@ -141,19 +165,16 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
               <Th>Status</Th>
               <Th>Issued</Th>
               <Th>Received</Th>
-              <Th num className="wide-only">
+              <Th center className="wide-only">
                 Open findings
               </Th>
-              <Th num>Billed</Th>
-              <Th num>Expected</Th>
-              <Th num>Difference</Th>
+              <Th center>Billed</Th>
+              <Th center>Expected</Th>
+              <Th center>Difference</Th>
             </tr>
           </thead>
           <tbody>
-            {edges.map(({ node }) => {
-              const findings = node.discrepancies.edges.map((edge) => edge.node);
-              // Only a priced invoice has an expected amount.
-              const money = node.rateCardVersion && node.totalCents !== null ? invoiceAmounts(node.totalCents, findings) : undefined;
+            {rows.map(({ node, findings, money }) => {
               const matched = node.shipment !== null;
               const reason = statusReason({ ...node, findings: findings.length, matched });
               return (
@@ -174,17 +195,17 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
                   <Td card="hide">
                     <Moment value={node.createdAt} />
                   </Td>
-                  <Td card="hide" num className="wide-only">
+                  <Td card="hide" num className="wide-only center">
                     {money && (node.openDiscrepancyCount > 0 ? <strong>{node.openDiscrepancyCount}</strong> : <span className="faint">0</span>)}
                   </Td>
-                  <Td card="hide" num>
+                  <Td card="hide" num figure={figures.billed}>
                     {node.totalCents !== null && <Money cents={node.totalCents} currency={node.currency} />}
                   </Td>
-                  <Td card="hide" num className="muted">
+                  <Td card="hide" num figure={figures.expected} className="muted">
                     {money && <Money cents={money.expectedCents} currency={node.currency} />}
                   </Td>
                   {money ? (
-                    <Td card="amount" num label="Over contract">
+                    <Td card="amount" num figure={figures.difference} label="Over contract">
                       <Difference cents={money.standingCents} currency={node.currency} />
                     </Td>
                   ) : (
@@ -203,6 +224,12 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
 
 export function DiscrepancyList({ data, status, after, base, readOnly }: Where & { data: DiscrepanciesQuery; status: DiscrepancyStatus; after?: string }) {
   const { edges, pageInfo } = data.discrepancies;
+  // The amount columns' blocks, as wide as each column's widest amount as Money prints it ("None" with none).
+  const amount = (cents: number | null | undefined, currency: string | null | undefined) => (cents === null || cents === undefined ? 'None' : formatMoney(cents, currency ?? 'USD'));
+  const figures = {
+    expected: figureWidth(edges.map(({ node }) => amount(node.expectedCents, node.invoice.currency))),
+    billed: figureWidth(edges.map(({ node }) => amount(node.billedCents, node.invoice.currency))),
+  };
   const tabs = (['OPEN', 'CONFIRMED', 'DISMISSED'] as const).map((key) => ({ key, label: DECISION[key].label, href: query(`${base}/discrepancies`, { status: key.toLowerCase() }) }));
   // A finding takes a decision while it is open on a checked invoice; a possible duplicate is ticked as its own kind.
   const decidable = (node: (typeof edges)[number]['node']) => !readOnly && node.status === 'OPEN' && node.invoice.status === 'RECONCILED';
@@ -222,8 +249,18 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
         </div>
       ) : (
         // The decision column fits its note and two buttons, on one line where the screen allows; a decided finding only
-        // needs its badge. Evidence takes what is left.
-        <Table cards cols={[...(select ? ['3rem'] : []), '11%', '9.5rem', '11%', '7.25rem', '7.25rem', '', select ? 'clamp(20rem, 24vw, 33rem)' : '9rem']} minWidth={select ? '69rem' : '66rem'}>
+        // needs its badge. Each column's base fits its longest value on one line (the evidence a short sentence, shorter
+        // below 1440 px so the table fits at 1280 px), and every column gets the same share of the rest. With the select boxes the decision column is too wide for that
+        // below 1440 px, so there the finding and line take a share and the evidence what is left.
+        <Table
+          cards
+          cols={
+            select
+              ? ['3rem', { width: '9.25rem', narrow: '11%' }, '10.5rem', { width: '9rem', narrow: '11%' }, '7.25rem', '7.25rem', { width: '12rem', narrow: 'auto' }, 'clamp(20rem, 24vw, 33rem)']
+              : ['9.25rem', '10.5rem', '12.5rem', '7.25rem', '7.25rem', { width: '20rem', narrow: '15rem' }, '9rem']
+          }
+          minWidth={select ? '69rem' : '66rem'}
+        >
           <thead>
             <tr>
               {select && (
@@ -234,8 +271,8 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
               <Th>Finding</Th>
               <Th>Invoice</Th>
               <Th>Line</Th>
-              <Th num>Expected</Th>
-              <Th num>Billed</Th>
+              <Th center>Expected</Th>
+              <Th center>Billed</Th>
               <Th>Evidence</Th>
               <Th>Decision</Th>
             </tr>
@@ -264,10 +301,10 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
                   <div className="faint nowrap">{node.invoice.carrier}</div>
                 </Td>
                 <Td card="wide">{node.lineItem ? `${node.lineItem.lineNumber}. ${lineLabel(node.lineItem.description)}` : <span className="faint">Whole invoice</span>}</Td>
-                <Td card="aside" num label="Expected">
+                <Td card="aside" num figure={figures.expected} label="Expected">
                   <Money cents={node.expectedCents} currency={node.invoice.currency} />
                 </Td>
-                <Td card="aside" num label="Billed">
+                <Td card="aside" num figure={figures.billed} label="Billed">
                   <Money cents={node.billedCents} currency={node.invoice.currency} />
                 </Td>
                 {/* The evidence keeps the smaller size, so it wraps to fewer lines. */}
@@ -315,8 +352,8 @@ export function DeadLetterList({ data, replayed, after, base, readOnly }: Where 
         </div>
       ) : (
         // Short columns fit their longest value (a box, a moment with its year, "Reconciliation", a file name, "Attempts",
-        // the Replay button or a moment); the error takes the rest.
-        <Table cards cols={[...(select ? ['3rem'] : []), '13.25rem', '8.25rem', '8.25rem', '', '6.25rem', replayed ? '13.25rem' : '6.25rem']} minWidth={select ? '60rem' : '57rem'}>
+        // the Replay button or a moment) as their base, the error a short sentence; every column gets the same share of the rest.
+        <Table cards cols={[...(select ? ['3rem'] : []), '13.25rem', '8.25rem', '8.25rem', '20rem', '6.25rem', replayed ? '13.25rem' : '6.25rem']} minWidth={select ? '60rem' : '57rem'}>
           <thead>
             <tr>
               {select && (
@@ -328,7 +365,7 @@ export function DeadLetterList({ data, replayed, after, base, readOnly }: Where 
               <Th>Step</Th>
               <Th>Invoice</Th>
               <Th>Error</Th>
-              <Th num>Attempts</Th>
+              <Th center>Attempts</Th>
               <Th>{replayed ? 'Replayed' : 'Action'}</Th>
             </tr>
           </thead>
@@ -362,7 +399,7 @@ export function DeadLetterList({ data, replayed, after, base, readOnly }: Where 
                 <Td card="wide">
                   {node.error}
                 </Td>
-                <Td card="aside" num label="Attempts">
+                <Td card="aside" num className="center" label="Attempts">
                   {node.attempts}
                 </Td>
                 <Td card="wide" label={replayed ? 'Replayed' : undefined}>

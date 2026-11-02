@@ -107,10 +107,12 @@ const classes = (...names: (string | false | undefined)[]) => names.filter(Boole
 // Td. A label (or labelledBy) makes the wrapper a named region the keyboard can scroll. look 'list' is the app's table;
 // 'ledger' is the landing page's. With cards, below 720 px each row becomes a card laid out by its cells' card roles.
 // cols, one per column, lays a list table out fixed above 720 px, so its spare width is spread instead of going to the
-// longest text: a rem width keeps a narrow column fixed, a percentage gives a text column its share, and '' splits
-// what is left evenly. minWidth keeps the shares from collapsing; below it the wrapper scrolls. A column given as an
-// object can take another width below 1440 px (narrow), or, with wideOnly and its Th and Td classed 'wide-only', show
-// only from 1440 px (never on a phone).
+// longest text: a percentage gives a text column its share, and '' splits what is left evenly. When every column shown
+// has a length (rem, or a clamp of them), that length is its base and each column gets the same share of the rest:
+// base + (table width - all bases) / columns, the table width being the wrapper's 100cqw (a 100% there makes Chrome
+// treat the whole calc as a percentage). minWidth keeps the shares from collapsing; below it the wrapper scrolls. A
+// column given as an object can take another width below 1440 px (narrow), or, with wideOnly and its Th and Td classed
+// 'wide-only', show only from 1440 px (never on a phone).
 export function Table({
   label,
   labelledBy,
@@ -138,15 +140,23 @@ export function Table({
 }) {
   const region = label || labelledBy ? ({ role: 'region', 'aria-label': label, 'aria-labelledby': labelledBy, tabIndex: 0 } as const) : {};
   const fixed = Boolean(cols) && look === 'list';
+  const entries = (cols ?? []).map((col) => (typeof col === 'string' ? { width: col } : col));
+  // Each column's width in a set of columns: base plus an equal share when every base is a length, else as given.
+  const shared = (widths: string[]) => {
+    const all = widths.every((width) => width !== '' && width !== 'auto' && !width.includes('%'));
+    return (width: string) => (all ? `calc(${width} + (100cqw - (${widths.join(' + ')})) / ${widths.length})` : width);
+  };
+  const wide = shared(entries.map((entry) => entry.width));
+  const narrow = shared(entries.filter((entry) => !entry.wideOnly).map((entry) => entry.narrow ?? entry.width));
   return (
     <div className={classes('table-wrap', look === 'list' && 'list', cards && 'card-list', wrapClassName)} {...region} {...(busy && { 'aria-busy': true, 'aria-label': 'Loading' })}>
       <table className={classes(look === 'list' ? 'list-table' : 'ledger', cards && 'cards', fixed && 'fixed', className)} style={fixed && minWidth ? ({ '--table-min': minWidth } as CSSProperties) : undefined}>
         {caption && <caption className="visually-hidden">{caption}</caption>}
         {fixed && (
           <colgroup>
-            {cols!.map((col, index) => {
-              const { width, narrow, wideOnly } = typeof col === 'string' ? { width: col } : col;
-              const style = { ...(width && { '--col': width }), ...(narrow && { '--col-narrow': narrow }) } as CSSProperties;
+            {entries.map(({ width, narrow: below, wideOnly }, index) => {
+              const [atWide, atNarrow] = [wide(width), wideOnly ? '' : narrow(below ?? width)];
+              const style = { ...(atWide && { '--col': atWide }), ...(atNarrow && atNarrow !== atWide && { '--col-narrow': atNarrow }) } as CSSProperties;
               return <col key={index} className={wideOnly ? 'wide-only' : undefined} style={style} />;
             })}
           </colgroup>
@@ -157,19 +167,30 @@ export function Table({
   );
 }
 
-// A column header; num right-aligns it over its figures.
-export const Th = ({ num, scope = 'col', className, ...rest }: ComponentProps<'th'> & { num?: boolean }) => <th scope={scope} className={classes(num && 'num', className)} {...rest} />;
+// A column header; num right-aligns it over its figures, center centres it over a count or a column of amounts.
+export const Th = ({ num, center, scope = 'col', className, ...rest }: ComponentProps<'th'> & { num?: boolean; center?: boolean }) => (
+  <th scope={scope} className={classes(num && 'num', center && 'center', className)} {...rest} />
+);
+
+// The length of a column's longest amount in characters, for Td's figure block, which CSS sizes in ch (the width of a
+// tabular 0 in whatever font the browser has) plus half a ch: a figure, $, + or minus counts 1, a comma, point or space
+// half and a hyphen 0.7 (in IBM Plex 0.453 and 0.665), and a letter (a currency's) 1.15 (the widest capital there is
+// 1.13), so with the half ch on top the block is never narrower.
+const CHARS: Record<string, number> = { ',': 0.5, '.': 0.5, ' ': 0.5, '-': 0.7 };
+export const figureWidth = (values: (string | null | undefined)[]) =>
+  Math.max(0, ...values.map((value) => [...(value ?? '')].reduce((sum, c) => sum + (CHARS[c] ?? (/[\d$+−]/.test(c) ? 1 : 1.15)), 0)));
 
 // Where a cell sits in a phone card: title and meta stack on the left, amount (two lines tall) or aside on the right,
 // wide takes a line of its own, hide leaves the card, select (a row's box) sits at the card's left edge beside the rest.
 // label names the cell inside a card, where no header shows; it is text in the page, so a screen reader reads it with
-// the value.
+// the value. figure (a figureWidth) centres the value in its column above 720 px, as a block that wide with the value
+// right-aligned in it, so a column of amounts sits centred under its header with its points in line.
 export type CardRole = 'title' | 'meta' | 'amount' | 'aside' | 'wide' | 'hide' | 'select';
-export function Td({ num, card, label, className, children, ...rest }: ComponentProps<'td'> & { num?: boolean; card?: CardRole; label?: string }) {
+export function Td({ num, card, label, figure, className, children, style, ...rest }: ComponentProps<'td'> & { num?: boolean; card?: CardRole; label?: string; figure?: number }) {
   return (
-    <td className={classes(num && 'num', className)} data-card={card} {...rest}>
+    <td className={classes(num && 'num', figure !== undefined && 'figure', className)} data-card={card} style={figure !== undefined ? ({ ...style, '--figure': figure } as CSSProperties) : style} {...rest}>
       {label && <span className="card-label">{label}</span>}
-      {children}
+      {figure !== undefined ? <span className="figure-block">{children}</span> : children}
     </td>
   );
 }
