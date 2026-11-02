@@ -1958,19 +1958,38 @@ td.wrap {
   justify-items: start;
   max-width: 560px;
 }
-.login {
+/* The sign-in page: the landing header on top, the form centred in the rest, a way home under it. */
+.login-page {
   min-height: 100dvh;
   display: grid;
-  place-items: center;
+  grid-template-rows: auto 1fr;
+}
+.login {
+  display: grid;
+  grid-template-columns: min(340px, 100%);
+  place-content: center;
+  gap: 16px;
   padding: 16px;
+}
+.login-home {
+  justify-self: start;
+  font-size: 14px;
+}
+/* Sign-out's note at the top of the landing page, gone at the next navigation. */
+.landing-notice {
+  margin: 16px 0 0;
+  padding: 8px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--sunken);
+  color: var(--text);
+  font-size: 14px;
+  text-align: center;
 }
 .login form {
   width: min(340px, 100%);
   display: grid;
   gap: 14px;
-}
-.login .home {
-  color: inherit;
 }
 
 /* The landing page: the public front door in the app's own tokens, set as a ledger: hairline rules, tabular figures,

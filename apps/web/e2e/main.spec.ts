@@ -95,8 +95,66 @@ test.describe('login', () => {
     ]);
     // allHeaders(): headers() leaves out the ones Playwright counts as security-related.
     expect([signOut.status(), (await signOut.allHeaders())['clear-site-data']]).toEqual([303, '"cache"']);
-    await expect(page).toHaveURL(/\/login$/);
+    // It lands on the landing page with a short note, which the next navigation drops.
+    await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/[?]signed-out=1$/);
+    await expect(page.locator('.landing-notice')).toHaveText("You're signed out. Thanks for stopping by.");
     expect((await context.cookies()).some((each) => each.name === '__Host-session')).toBe(false);
+    await page.getByRole('banner').getByRole('link', { name: 'FreightAudit' }).click();
+    await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/$/);
+    await expect(page.locator('.landing-notice')).toHaveCount(0);
+    await context.close();
+  });
+
+  test('signed in, the logo, the landing page and the sign-in page never show the sign-in form', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const page = await context.newPage();
+    const password = page.getByLabel('Password');
+    // Signed out, the landing page's Sign in opens the form; signed in, going back to it does not show it again.
+    await page.goto('/');
+    await page.getByRole('banner').getByRole('link', { name: 'Sign in', exact: true }).click();
+    await password.fill(PASSWORD);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(password).toHaveCount(0);
+    // The app's logo stays in the app.
+    await page.locator('.sidebar .wordmark').click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(password).toHaveCount(0);
+    // The landing page's logo and Sign in: the landing page, then the start page, never the form.
+    await page.goto('/');
+    await page.getByRole('banner').getByRole('link', { name: 'FreightAudit' }).click();
+    await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/$/);
+    await expect(password).toHaveCount(0);
+    await page.getByRole('banner').getByRole('link', { name: 'Sign in', exact: true }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(password).toHaveCount(0);
+    await page.goto('/login');
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(password).toHaveCount(0);
+    await context.close();
+  });
+
+  test('an expired session never shows Sign out: the sample offers Sign in, and live pages ask for sign-in', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const page = await context.newPage();
+    await page.goto('/login');
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+    // The cookie is re-signed as last active 31 minutes ago, past the 30-minute idle limit.
+    const cookie = (await context.cookies()).find((each) => each.name === '__Host-session')!;
+    await context.addCookies([{ ...cookie, value: createToken('reviewer', e2eEnv.SESSION_SECRET!, Date.now() - 31 * 60_000) }]);
+    await page.goto('/demo/invoices');
+    await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0);
+    await expect(page.locator('.sidebar').getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
+    await page.goto('/');
+    await expect(page.getByText('Sign out')).toHaveCount(0);
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/login\?next=%2Fdashboard&ended=idle$/);
+    await expect(page.getByLabel('Password')).toBeVisible();
     await context.close();
   });
 
