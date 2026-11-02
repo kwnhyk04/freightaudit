@@ -7,11 +7,13 @@ type ClaudeOptions = { apiKey: string; model: string; baseUrl?: string | undefin
 
 // Claude through the official SDK: structured output to the extraction schema, scans as base64 JPEG (Haiku 5.5 takes
 // images, per its Models API capabilities). Thinking is off, since it counts against max_tokens and could cut the answer
-// short. No temperature: Haiku 5.5 refuses a non-default one. SDK retries are off; the ladder and the job's retries
+// short: { type: 'disabled' }, which Sonnet 5.5 refuses with a 400, so it gets its own way off, { type: 'between_tools' }
+// (no tools here, so it never thinks). No temperature: Haiku 5.5 and Sonnet 5.5 refuse a non-default one. SDK retries are off; the ladder and the job's retries
 // handle failures. Every call passes Claude's gate (claude-first.ts), which keeps Claude off once its account cannot be
 // used.
 export function createClaudeProvider({ apiKey, model, baseUrl, timeoutMs = 60_000, fetch, maxTokens = CLAUDE_FIRST_MAX_TOKENS }: ClaudeOptions): Provider {
   const client = new Anthropic({ apiKey, baseURL: baseUrl, timeout: timeoutMs, maxRetries: 0, ...(fetch ? { fetch } : {}) });
+  const thinking: Anthropic.ThinkingConfigParam = model.startsWith('claude-sonnet-5-5') ? { type: 'between_tools' } : { type: 'disabled' };
   return {
     name: 'anthropic',
     model,
@@ -21,7 +23,7 @@ export function createClaudeProvider({ apiKey, model, baseUrl, timeoutMs = 60_00
         const reply = await client.messages.create({
           model,
           max_tokens: maxTokens,
-          thinking: { type: 'disabled' },
+          thinking,
           system: prompt,
           messages: [{ role: 'user', content: userContent(parts) }],
           output_config: { format: { type: 'json_schema', schema: schema as Record<string, unknown> } },

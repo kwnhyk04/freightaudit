@@ -1,9 +1,9 @@
 // The extraction eval: runs eval cases through the real worker (extract, repair, fallback, reconcile) against the small
-// seed in throwaway Postgres and Redis, with its chain pinned: Claude Haiku 5.5 first at every step with the configured
+// seed in throwaway Postgres and Redis, with its chain pinned: Claude Sonnet 5.5 first at every step with the configured
 // free models behind it (the default, the demo's chain), or the free models alone (--config free, which CI runs and floors
 // come from). The provider 429 fallback is off, so a 429 waits and retries; each case's result is cached, so a quota stop
 // resumes later instead of starting over. Usage: pnpm eval --suite extraction --subset ci|dev|test|full|compare
-// [--config claude-first|free] [--golden v1|v2] [--repeat <n>] [--fresh] [--set-floors] [--concurrency 4]
+// [--config claude-first|free] [--claude-model <id>] [--golden v1|v2] [--repeat <n>] [--fresh] [--set-floors] [--concurrency 4]
 import { LLM_SETTINGS, llmRoles, type LlmRole, settings } from '@freightaudit/config/env';
 import { createPool, deadLetters, discrepancies, extractions, invoiceLines, invoices, llmCalls, tenants } from '@freightaudit/db';
 import { migrate } from '@freightaudit/db/migrate';
@@ -80,11 +80,15 @@ export function configOf({ subset, flag, setFloors }: { subset: Subset; flag: st
   if (setFloors && config !== 'free') throw new Error('--set-floors needs --config free: floors come from the free models alone');
   return config;
 }
-// Claude Haiku 5.5, pinned, first at every step through the demo's gate and caps, with the configured free models behind
-// it. It runs on this PC only: CI holds no Anthropic key and runs --config free.
-export function claudeFirst(source: Record<string, string | undefined> = process.env): LlmRole {
+// Claude Sonnet 5.5 (Haiku 5.5 until 2026-11-03), pinned, first at every step through the demo's gate and caps, with the
+// configured free models behind it. It runs on this PC only: CI holds no Anthropic key and runs --config free.
+// --claude-model trials another Claude model in its place; .env's LLM_CLAUDE_MODEL never moves the pin, and turbo passes
+// the eval no Claude setting.
+export const CLAUDE_FIRST_MODEL = 'claude-sonnet-5-5';
+export function claudeFirst(source: Record<string, string | undefined> = process.env, model = CLAUDE_FIRST_MODEL): LlmRole {
   if (source.CI) throw new Error('a Claude-first eval runs on this PC only, never in CI: use --config free');
-  const { claude } = configuredRoles({ ...source, LLM_CLAUDE_MODEL: 'claude-haiku-5-5' });
+  if (!hasPrice('anthropic', model)) throw new Error(`--claude-model ${model} has no price in packages/llm/prices.json, so its cost cannot be reported`);
+  const { claude } = configuredRoles({ ...source, LLM_CLAUDE_MODEL: model });
   if (!claude?.apiKey) throw new Error('a Claude-first eval needs ANTHROPIC_API_KEY in .env; --config free runs the free models alone');
   return claude;
 }
@@ -429,6 +433,7 @@ async function main() {
       concurrency: { type: 'string', default: '4' },
       cached: { type: 'boolean', default: false },
       config: { type: 'string' },
+      'claude-model': { type: 'string' },
       golden: { type: 'string' },
       repeat: { type: 'string', default: '1' },
     },
@@ -443,7 +448,8 @@ async function main() {
   const { roles, problems } = evalRoles();
   const unpriced = Object.values(roles).flatMap(({ provider, model }) => (hasPrice(provider, model) ? [] : [`${provider}/${model} has no entry in packages/llm/prices.json`]));
   if (problems.length + unpriced.length > 0) throw new Error([...problems, ...unpriced].join('\n'));
-  const claude = config === 'claude-first' ? claudeFirst() : undefined;
+  if (values['claude-model'] && config !== 'claude-first') throw new Error('--claude-model needs the claude-first config');
+  const claude = config === 'claude-first' ? claudeFirst(process.env, values['claude-model'] || undefined) : undefined;
   const started = Date.now();
   // The comparison pins only the primary differently: gemini-3.8-flash beside the configured one, on the comparison set.
   const plans =

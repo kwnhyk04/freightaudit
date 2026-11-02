@@ -89,10 +89,13 @@ test('an eval reads Claude first by default; the free models alone run with --co
   expect(() => configOf({ subset: 'full', flag: 'claude-primary', setFloors: false })).toThrow(/--config must be claude-first or free/);
 });
 
-test('the Claude-first eval runs only on this PC, with a key, pinned to Haiku; a local .env with part of the demo settings blocks no eval', () => {
+test('the Claude-first eval runs only on this PC, with a key, pinned to Sonnet 5.5; a local .env with part of the demo settings blocks no eval', () => {
   const local = { ANTHROPIC_API_KEY: 'anthropic-key' };
-  expect(claudeFirst(local)).toMatchObject({ provider: 'anthropic', model: 'claude-haiku-5-5', apiKey: 'anthropic-key' });
-  expect(claudeFirst({ ...local, LLM_CLAUDE_MODEL: 'claude-sonnet-5-5' })).toMatchObject({ model: 'claude-haiku-5-5' });
+  expect(claudeFirst(local)).toMatchObject({ provider: 'anthropic', model: 'claude-sonnet-5-5', apiKey: 'anthropic-key' });
+  expect(claudeFirst({ ...local, LLM_CLAUDE_MODEL: 'claude-haiku-5-5' })).toMatchObject({ model: 'claude-sonnet-5-5' });
+  // A trial of another Claude model names it on the command line alone, and only a model the price list can cost.
+  expect(claudeFirst(local, 'claude-haiku-5-5')).toMatchObject({ provider: 'anthropic', model: 'claude-haiku-5-5' });
+  expect(() => claudeFirst(local, 'claude-unpriced-9')).toThrow(/prices\.json/);
   expect(() => claudeFirst({ ...local, CI: 'true' })).toThrow(/never in CI/);
   expect(() => claudeFirst({})).toThrow(/ANTHROPIC_API_KEY.*--config free/);
   // The demo's Claude settings never block an eval, which pins Claude itself; a role on Claude still does.

@@ -17,12 +17,12 @@ The carriers are fictional and every invoice is synthetic.
 <!-- results:start -->
 On 98 synthetic invoices with known ground truth (golden set v2); every metric with its 95% interval is in the [eval card](evals/README.md).
 
-- Overcharges caught: **97.4%** with Claude first ([report](evals/reports/2026-10-31-v2-full-claude-first.md)), **94.9%** with the free models only ([report](evals/reports/2026-10-27-v2.md)).
-- Clean charges flagged: **0%** with Claude first ([report](evals/reports/2026-10-31-v2-full-claude-first.md)), **0%** with the free models only ([report](evals/reports/2026-10-27-v2.md)).
-- Cost per scanned invoice, paid-equivalent: **$0.0012** with Claude first ([report](evals/reports/2026-10-31-v2-full-claude-first.md)), **$0.0020** with the free models only ([report](evals/reports/2026-10-27-v2.md)).
+- Overcharges caught: **97.4%** with Claude first ([report](evals/reports/2026-11-02-v2-full-claude-first.md)), **94.9%** with the free models only ([report](evals/reports/2026-10-27-v2.md)).
+- Clean charges flagged: **0%** with Claude first ([report](evals/reports/2026-11-02-v2-full-claude-first.md)), **0%** with the free models only ([report](evals/reports/2026-10-27-v2.md)).
+- Cost per scanned invoice, paid-equivalent: **$0.0105** with Claude first ([report](evals/reports/2026-11-02-v2-full-claude-first.md)), **$0.0020** with the free models only ([report](evals/reports/2026-10-27-v2.md)).
 <!-- results:end -->
 
-**Built with** TypeScript, Fastify, GraphQL Yoga, BullMQ on Redis, Postgres with Drizzle, Next.js, Claude Haiku with free Gemini and Groq models behind it, OpenTelemetry, Playwright and Jest.
+**Built with** TypeScript, Fastify, GraphQL Yoga, BullMQ on Redis, Postgres with Drizzle, Next.js, Claude Sonnet with free Gemini and Groq models behind it, OpenTelemetry, Playwright and Jest.
 
 ## Run it locally
 

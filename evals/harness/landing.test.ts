@@ -6,7 +6,8 @@ import { headlineSection, officialReports } from './report.ts';
 // the eval card's table names (evals/README.md), so the page never shows a number a report does not hold; the README's
 // headline results come from the same two.
 const root = new URL('../../', import.meta.url);
-const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
+// With LF endings, as the writer makes them, whatever a checkout turned them into.
+const read = (path: string) => readFileSync(new URL(path, root), 'utf8').replaceAll('\r\n', '\n');
 
 test("the landing page's results are landing.ts's from the latest official report of each run, the two the eval card and the README name", async () => {
   const officials = await officialReports(root);

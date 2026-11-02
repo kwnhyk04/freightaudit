@@ -75,6 +75,16 @@ test('Claude reads with thinking off, at most 560 output tokens, no temperature,
   ]);
 });
 
+// Sonnet 5.5 refuses thinking { type: 'disabled' } with a 400; between_tools is its way to read with thinking off.
+test('Claude Sonnet 5.5 reads with thinking off as between_tools, and nothing else about the request changes', async () => {
+  const api = anthropic(valid);
+  const sonnet = createClaudeProvider({ apiKey: KEY, model: 'claude-sonnet-5-5', baseUrl: 'http://claude.test', fetch: api.fetch });
+  await sonnet.generate({ prompt: 'p', parts: text, schema: {} } as Parameters<Provider['generate']>[0]);
+  expect(api.bodies[0]).toMatchObject({ model: 'claude-sonnet-5-5', max_tokens: CLAUDE_FIRST_MAX_TOKENS, thinking: { type: 'between_tools' }, output_config: { format: { type: 'json_schema' } } });
+  expect(api.bodies[0]).not.toHaveProperty('temperature');
+  expect(api.bodies[0]).not.toHaveProperty('output_config.effort');
+});
+
 test('without LLM_CLAUDE_MODEL the chain is the free one: main model, its repair, then the free fallback', async () => {
   const { models, free } = chain(valid);
   const calls: Call[] = [];
