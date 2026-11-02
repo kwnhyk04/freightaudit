@@ -3,8 +3,8 @@ import type { InvoiceDecision } from '@freightaudit/contracts/graphql';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { type ReactNode, useActionState, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { type ActionState, login, review, upload, uploadSample } from '../app/actions.ts';
-import { duplicateParts, type Tone } from '../lib/labels.ts';
+import { type ActionState, login, review, reviewMany, upload, uploadSample } from '../app/actions.ts';
+import { BULK, type BulkAction, type BulkKind, BULK_KINDS, bulkQuestion, duplicateParts, plural, type Tone } from '../lib/labels.ts';
 import { type Theme, THEME_LABEL, themeCookie, THEMES } from '../lib/theme.ts';
 import { BACKGROUND_HEADER } from '../lib/uploads.ts';
 import { Icon } from './icons.tsx';
@@ -287,6 +287,81 @@ export function BulkDecision({
               <a href={path}>Reload</a>
             </>
           )}
+        </p>
+      )}
+    </form>
+  );
+}
+
+// A decision or replay on the rows ticked on this page. Each row's box belongs to this form by its form attribute, so the
+// table stays rendered on the server; a box's name is its kind (BULK_KINDS). A button acts on the ticked rows of its kind,
+// after a question, with the shared note when there is one. The count is read out as it changes, then the result.
+export function BulkBar({ id, label, actions, note }: { id: string; label: string; actions: BulkAction[]; note?: boolean }) {
+  const [state, action, pending] = useActionState<ActionState, FormData>(reviewMany, {});
+  const form = useRef<HTMLFormElement>(null);
+  const all = useRef<HTMLInputElement>(null);
+  const [ticked, setTicked] = useState<Partial<Record<BulkKind, number>>>({});
+  useEffect(() => {
+    const box = form.current!;
+    const rows = () => [...box.elements].filter((each): each is HTMLInputElement => each instanceof HTMLInputElement && each.name in BULK_KINDS);
+    const count = () => {
+      const on = rows().filter((row) => row.checked);
+      setTicked(Object.fromEntries(Object.keys(BULK_KINDS).map((kind) => [kind, on.filter((row) => row.name === kind).length])));
+      all.current!.checked = on.length > 0 && on.length === rows().length;
+      all.current!.indeterminate = on.length > 0 && on.length < rows().length;
+    };
+    const changed = ({ target }: Event) => {
+      if (target === all.current) for (const row of rows()) row.checked = all.current!.checked;
+      if (target === all.current || (target instanceof HTMLInputElement && target.form === box)) count();
+    };
+    // A reset (after a decision went through) clears the boxes without a change event, and runs before they clear.
+    const reset = () => setTimeout(count);
+    count();
+    document.addEventListener('change', changed);
+    box.addEventListener('reset', reset);
+    return () => {
+      document.removeEventListener('change', changed);
+      box.removeEventListener('reset', reset);
+    };
+  }, [state]);
+  const kinds = (Object.entries(ticked) as [BulkKind, number][]).filter(([, each]) => each > 0);
+  const total = kinds.reduce((sum, [, each]) => sum + each, 0);
+  const summary = total === 0 ? 'None selected' : `${total} selected${kinds.length > 1 ? `: ${kinds.map(([kind, each]) => plural(each, BULK_KINDS[kind])).join(', ')}` : ''}`;
+  return (
+    <form
+      ref={form}
+      id={id}
+      action={action}
+      aria-label={label}
+      className="bulk-bar"
+      onSubmit={(event) => {
+        const chosen = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value as BulkAction | undefined;
+        if (chosen && !window.confirm(bulkQuestion(chosen, ticked[BULK[chosen].kind] ?? 0))) event.preventDefault();
+      }}
+    >
+      <label className="check">
+        <input ref={all} type="checkbox" />
+        Select all
+      </label>
+      <span className="muted" aria-live="polite">
+        {summary}
+      </span>
+      {note && <input name="note" placeholder="Note for each decision (optional)" aria-label="Note for each decision" maxLength={1000} />}
+      <span className="row">
+        {actions.map((each) => (
+          <button key={each} className={`button small${'danger' in BULK[each] ? ' danger' : ''}`} name="action" value={each} disabled={pending || !ticked[BULK[each].kind]}>
+            {BULK[each].label}
+          </button>
+        ))}
+      </span>
+      {state.error && (
+        <p className="form-error" role="alert">
+          {state.error}
+        </p>
+      )}
+      {state.done && (
+        <p className="form-done" role="status">
+          {state.done}
         </p>
       )}
     </form>

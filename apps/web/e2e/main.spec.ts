@@ -451,6 +451,18 @@ test.describe('upload', () => {
     }
   });
 
+  test('on a phone Recent uploads is a list of cards, as the invoices list is, and nothing scrolls sideways', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/upload');
+    // The table's wrapper, which shares its name with the section around it.
+    const recent = page.locator('.table-wrap[aria-labelledby="recent-title"]');
+    const card = recent.locator('tbody tr').first();
+    await expect(card).toBeVisible();
+    expect(await card.evaluate((row) => getComputedStyle(row).display)).toBe('grid');
+    expect(await recent.evaluate((box) => box.scrollWidth - box.clientWidth)).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  });
+
   test('an upload sent after the session ended goes to sign-in, and nothing is uploaded', async ({ page }) => {
     await page.goto('/upload');
     const file = page.getByLabel('Invoice files');
@@ -627,6 +639,75 @@ test.describe('review', () => {
     await expect(trail.getByText('Duplicate confirmed', { exact: true })).toBeVisible();
     await expect(trail.getByText('Overcharge disputed')).toHaveCount(0);
     await expect(trail.getByText('Finding closed', { exact: true })).toHaveCount(row.open);
+  });
+
+  test('in the review queue ticked findings are decided together, each recorded as one decision with the shared note', async ({ page }) => {
+    const row = await withDuplicate();
+    const [duplicate] = await db<{ id: string }>(`SELECT id FROM discrepancies WHERE invoice_id = '${row.id}' AND type = 'duplicate_invoice'`);
+    await page.goto('/discrepancies');
+    const bar = page.getByRole('form', { name: 'Selected findings' });
+    const dispute = bar.getByRole('button', { name: 'Dispute selected' });
+    await expect(dispute).toBeDisabled();
+    const findings = page.locator('input[type="checkbox"][name="finding"]');
+    const chosen = [(await findings.nth(0).getAttribute('value'))!, (await findings.nth(1).getAttribute('value'))!];
+    for (const id of chosen) await page.locator(`input[type="checkbox"][value="${id}"]`).check();
+    const tick = page.locator(`input[type="checkbox"][name="duplicate"][value="${duplicate!.id}"]`);
+    await tick.check();
+    await expect(bar).toContainText('3 selected: 2 findings, 1 possible duplicate');
+    await bar.getByLabel('Note for each decision').fill('Checked against contract C-7');
+    page.once('dialog', (dialog) => void dialog.accept());
+    await dispute.click();
+    await expect(bar.getByRole('status')).toHaveText('2 findings disputed.');
+    // Each went through the one-finding decision: its status and note, and one trail row with the note.
+    const recorded = await db<{ status: string; note: string | null; events: number }>(
+      `SELECT d.status, d.note, (SELECT count(*)::int FROM audit_events a WHERE a.discrepancy_id = d.id AND a.action = 'discrepancy_confirmed' AND a.reason = d.note) AS events
+       FROM discrepancies d WHERE d.id IN ('${chosen.join("', '")}')`,
+    );
+    expect(recorded).toEqual(chosen.map(() => ({ status: 'confirmed', note: 'Checked against contract C-7', events: 1 })));
+    // The possible duplicate was not part of a decision on findings; it takes its own.
+    await tick.check();
+    await expect(bar).toContainText('1 selected');
+    page.once('dialog', (dialog) => void dialog.accept());
+    await bar.getByRole('button', { name: 'Not a duplicate' }).click();
+    await expect(bar.getByRole('status')).toHaveText('1 possible duplicate marked not a duplicate.');
+    const [decided] = await db<{ status: string; events: number }>(
+      `SELECT status, (SELECT count(*)::int FROM audit_events a WHERE a.discrepancy_id = d.id AND a.action = 'discrepancy_dismissed') AS events FROM discrepancies d WHERE id = '${duplicate!.id}'`,
+    );
+    expect(decided).toEqual({ status: 'dismissed', events: 1 });
+  });
+
+  test('ticked dead letters replay together through the one-row replay, with a count and what happened to each', async ({ page }) => {
+    const letters = await db<{ id: string }>(
+      `INSERT INTO dead_letters (tenant_id, queue, job_id, payload, error, attempts)
+       SELECT tenant_id, 'tms-sync', 'e2e-bulk-' || n, '{}', 'The TMS answered 503', 3 FROM (SELECT tenant_id FROM invoices LIMIT 1) t, generate_series(1, 3) n
+       RETURNING id`,
+    );
+    await page.goto('/dead-letters');
+    const bar = page.getByRole('form', { name: 'Selected dead letters' });
+    const replay = bar.getByRole('button', { name: 'Replay selected' });
+    await expect(replay).toBeDisabled();
+    const [first, second, third] = letters.map(({ id }) => page.locator(`input[type="checkbox"][value="${id}"]`));
+    await first!.check();
+    await second!.check();
+    await expect(bar).toContainText('2 selected');
+    // One is replayed meanwhile, as from another tab, so it is refused and the other still goes.
+    await db(`UPDATE dead_letters SET replayed_at = now() WHERE id = '${letters[1]!.id}'`);
+    page.once('dialog', (dialog) => {
+      expect(dialog.message()).toBe('Replay 2 dead letters?');
+      void dialog.accept();
+    });
+    await replay.click();
+    await expect(bar.getByRole('alert')).toHaveText('1 of 2 dead letters replayed. 1 refused: It was replayed already.');
+    const after = await db<{ id: string; replayed: boolean; events: number }>(
+      `SELECT id, replayed_at IS NOT NULL AS replayed, (SELECT count(*)::int FROM audit_events a WHERE a.dead_letter_id = l.id AND a.action = 'replayed') AS events
+       FROM dead_letters l WHERE id IN ('${letters.map(({ id }) => id).join("', '")}') ORDER BY id`,
+    );
+    const by = Object.fromEntries(after.map(({ id, ...rest }) => [id, rest]));
+    expect(by[letters[0]!.id]).toEqual({ replayed: true, events: 1 });
+    expect(by[letters[1]!.id]).toEqual({ replayed: true, events: 0 });
+    expect(by[letters[2]!.id]).toEqual({ replayed: false, events: 0 });
+    await expect(first!).toHaveCount(0);
+    await expect(third!).not.toBeChecked();
   });
 });
 

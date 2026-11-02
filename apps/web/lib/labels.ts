@@ -231,6 +231,30 @@ export const decisionLabel = (status: DiscrepancyStatus, type?: DiscrepancyType,
 export const decideWords = (type: DiscrepancyType) =>
   type === 'DUPLICATE_INVOICE' ? { dismiss: 'Not a duplicate', confirm: 'Confirm duplicate' } : { dismiss: 'Approve charge', confirm: 'Dispute' };
 
+// A decision or replay on the rows ticked on a page: which rows' boxes it reads (their name), the decision each one is
+// sent with, its button, and how its result names them.
+// danger marks the button that upholds, as Dispute does on one row.
+export const BULK = {
+  replay: { kind: 'letter', label: 'Replay selected', ask: 'Replay', noun: 'dead letter', past: 'replayed' },
+  approve: { kind: 'finding', decision: 'DISMISS', label: 'Approve selected', ask: 'Approve', noun: 'charge', past: 'approved' },
+  dispute: { kind: 'finding', decision: 'CONFIRM', label: 'Dispute selected', ask: 'Dispute', noun: 'finding', past: 'disputed', danger: true },
+  confirm: { kind: 'duplicate', decision: 'CONFIRM', label: 'Confirm selected', ask: 'Confirm', noun: 'possible duplicate', past: 'confirmed', danger: true },
+  'not-duplicate': { kind: 'duplicate', decision: 'DISMISS', label: 'Not a duplicate', ask: 'Mark', noun: 'possible duplicate', past: 'marked not a duplicate' },
+} satisfies Record<string, { kind: BulkKind; decision?: 'CONFIRM' | 'DISMISS'; label: string; ask: string; noun: string; past: string; danger?: true }>;
+export type BulkAction = keyof typeof BULK;
+export const BULK_KINDS = { letter: 'dead letter', finding: 'finding', duplicate: 'possible duplicate' } as const;
+export type BulkKind = keyof typeof BULK_KINDS;
+export const bulkQuestion = (action: BulkAction, count: number) =>
+  `${BULK[action].ask} ${plural(count, BULK[action].noun)}${action === 'not-duplicate' ? ' as not a duplicate' : ''}?`;
+// A dead letter replayed after the page loaded is no longer open, which the api says with its id.
+export const REPLAYED_ALREADY = 'It was replayed already.';
+// How many went through, then how many were refused and why, each reason once.
+export function bulkResult(action: BulkAction, total: number, refusals: string[]) {
+  const { noun, past } = BULK[action];
+  if (refusals.length === 0) return `${plural(total, noun)} ${past}.`;
+  return `${total - refusals.length} of ${plural(total, noun)} ${past}. ${refusals.length} refused: ${[...new Set(refusals)].join(' ')}`;
+}
+
 export const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 export const capital = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 // The api's refusals as sentences: its messages start lower case and stop without a period. The two a page out of date

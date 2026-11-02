@@ -4,6 +4,9 @@ import {
   alreadyBilled,
   type BilledBefore,
   billedBefore,
+  type BulkAction,
+  bulkQuestion,
+  bulkResult,
   decideWords,
   decisionLabel,
   decisionQuestion,
@@ -382,6 +385,24 @@ test('money for review comes from the domain: what stands, what the rate card al
   expect(lineAmounts(39_680, findings[0])).toEqual({ expectedCents: 34_720n, differenceCents: 4_960n });
   expect(lineAmounts(9_500, findings[1])).toEqual({ expectedCents: 9_500n, differenceCents: 0n });
   expect(lineAmounts(124_000)).toEqual({ expectedCents: 124_000n, differenceCents: 0n });
+});
+
+test('a decision or replay on ticked rows says how many went through, then how many were refused and why, each reason once', () => {
+  expect(bulkResult('replay', 3, [])).toBe('3 dead letters replayed.');
+  expect(bulkResult('approve', 1, [])).toBe('1 charge approved.');
+  expect(bulkResult('dispute', 2, [])).toBe('2 findings disputed.');
+  expect(bulkResult('confirm', 2, [])).toBe('2 possible duplicates confirmed.');
+  expect(bulkResult('not-duplicate', 1, [])).toBe('1 possible duplicate marked not a duplicate.');
+  expect(bulkResult('replay', 3, ['It was replayed already.'])).toBe('2 of 3 dead letters replayed. 1 refused: It was replayed already.');
+  const closed = 'The invoice is approved; decisions change only while it is reconciled.';
+  expect(bulkResult('dispute', 2, [closed, closed])).toBe(`0 of 2 findings disputed. 2 refused: ${closed}`);
+  expect(['replay', 'approve', 'dispute', 'confirm', 'not-duplicate'].map((action) => bulkQuestion(action as BulkAction, 2))).toEqual([
+    'Replay 2 dead letters?',
+    'Approve 2 charges?',
+    'Dispute 2 findings?',
+    'Confirm 2 possible duplicates?',
+    'Mark 2 possible duplicates as not a duplicate?',
+  ]);
 });
 
 test('each bulk decision asks first, naming what it does and the amount approved or disputed', () => {

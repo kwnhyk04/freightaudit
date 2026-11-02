@@ -81,8 +81,20 @@ export const settings = {
     .default(''),
   // Claude's own UTC day, apart from DAILY_AI_TOKEN_BUDGET: $15 to 2026-11-10 over 21 days at $0.50 per million.
   DAILY_CLAUDE_TOKEN_BUDGET: integer(1_400_000),
-  // The most Claude may ever bill, in dollars and cents ("15.00"); reaching it switches Claude off for good.
-  LLM_CLAUDE_SPEND_CAP_USD: z.union([z.literal(''), z.string().regex(/^\d+(\.\d{1,2})?$/, 'dollars and cents, such as 15.00')]).default(''),
+  // The most Claude may ever bill, in dollars ("15") or dollars and cents ("15.5"), kept as dollars and cents ("15.50");
+  // reaching it switches Claude off for good.
+  LLM_CLAUDE_SPEND_CAP_USD: z
+    .union([
+      z.literal(''),
+      z
+        .string()
+        .regex(/^\d+(\.\d{1,2})?$/, 'dollars, or dollars and cents, such as 15 or 15.00')
+        .transform((dollars) => {
+          const [whole, cents = ''] = dollars.split('.');
+          return `${whole}.${cents.padEnd(2, '0')}`;
+        }),
+    ])
+    .default(''),
   // One key per provider account; required while AI_ENABLED is true for each provider a role uses. Empty means not set.
   GEMINI_API_KEY: z.string().optional(),
   GROQ_API_KEY: z.string().optional(),
