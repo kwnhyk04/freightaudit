@@ -2205,7 +2205,7 @@ td.wrap {
 
 /* The ledger: no frame, a strong rule under the header, hairlines between rows, figures in tabular digits. */
 .hero-proof.table-wrap,
-.landing-section .table-wrap {
+.landing-section .table-wrap:not(.list) {
   background: none;
   border: 0;
   border-radius: 0;
@@ -2255,40 +2255,284 @@ table.ledger strong {
   font-weight: 400;
 }
 
-/* How it works: the sample's audit trail; the time column and the held amount are the figures. */
-table.audit-ledger tbody th {
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 600;
-  white-space: nowrap;
-  width: 1%;
+/* How it works: three cards, their numbers above them joined by a rule. */
+.how-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.trail-time {
-  width: 1%;
-  text-align: left;
-  color: var(--text-2);
+.how-steps > li {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  margin-top: 48px;
+  padding: 24px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--canvas);
 }
-.trail-time span {
-  display: block;
+.step-number {
+  position: absolute;
+  top: -48px;
+  left: 24px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--surface);
   font-size: 14px;
+  font-weight: 600;
 }
-.trail-what {
-  font-weight: 500;
+/* The rule runs back from each number to the one before it, across the gap. */
+.how-steps > li + li::before {
+  content: '';
+  position: absolute;
+  top: -32px;
+  right: calc(100% - 24px);
+  width: calc(100% - 8px);
+  height: 1px;
+  background: var(--rule-strong);
 }
-.trail-note {
-  color: var(--text-2);
+.step-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
+  border-radius: var(--radius);
+  background: var(--accent-tint);
+  color: var(--accent);
 }
-.trail-rule {
-  margin-top: 6px;
+.how-steps h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.step-line {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+}
+.how-steps ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 18px;
   color: var(--text-2);
   font-size: 15px;
   line-height: 22px;
-  max-width: 52em;
 }
-.trail-amount {
-  color: var(--bad);
+
+/* Features: a bento of five cards, each holding a piece of the app. */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.feature {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+/* Paired by height, so no card stretches far past its content: the trail beside the decision it leads to, the
+   findings (two columns wide) beside the cost, and the dead letter across the foot with its row beside its text. */
+.bento {
+  grid-template-areas:
+    'trail trail decide'
+    'find find cost'
+    'replay replay replay';
+}
+.f-replay {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  align-items: start;
+  gap: 8px 24px;
+}
+.f-replay > :not(.feature-shot) {
+  grid-column: 1;
+}
+.f-replay .feature-shot {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin-top: 0;
+}
+.f-trail {
+  grid-area: trail;
+}
+.f-find {
+  grid-area: find;
+}
+.f-cost {
+  grid-area: cost;
+}
+.f-decide {
+  grid-area: decide;
+}
+.f-replay {
+  grid-area: replay;
+}
+.decided {
+  display: grid;
+  gap: 2px;
+}
+.feature h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.feature p {
+  margin: 0;
+}
+.feature-shot {
+  margin-top: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--canvas);
+}
+.findings h4 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.timeline {
+  display: grid;
+  padding-block: 4px;
+  list-style: none;
+}
+.timeline li {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+}
+.timeline li + li {
+  border-top: 1px solid var(--rule);
+}
+.timeline-time {
+  color: var(--text-2);
+}
+.timeline-time span,
+.timeline-body span {
+  display: block;
+}
+.timeline-body strong {
+  font-weight: 500;
+}
+/* Cost against target: each track is the target, the fill the measured cost, its value labelled beside it. */
+.cost-bars {
+  display: grid;
+  gap: 14px;
+}
+.cost-bars dt {
+  font-weight: 500;
+}
+.cost-bars dd {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 0;
+}
+.cost-track {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--rule);
+}
+.cost-fill {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: 4px;
+  background: var(--chart);
+}
+.cost-value strong {
   font-size: 20px;
   font-weight: 600;
+}
+.dead-letter {
+  display: grid;
+  gap: 4px;
+}
+.dead-letter-error {
+  font-family: var(--mono);
+  font-size: 14px;
+}
+.dead-letter .decide-preview {
+  margin-top: 8px;
+}
+
+/* The close: one line and the demo button over the name, set large and faint. */
+.closing {
+  position: relative;
+  overflow: hidden;
+  padding: 120px 0;
+  border-top: 1px solid var(--rule);
+  text-align: center;
+}
+.closing-word {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  color: var(--hero-grid);
+  font-size: clamp(88px, 17vw, 280px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+.closing .landing-wrap {
+  position: relative;
+}
+.closing h2 {
+  max-width: 18em;
+  margin: 0 auto;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+.closing .lead {
+  margin: 16px auto 28px;
+}
+
+/* The header's one-button theme switch, shown on a phone in place of the three. */
+.theme-cycle {
+  display: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.theme-cycle:hover {
+  background: var(--sunken);
+  color: var(--text);
+}
+.theme-cycle:focus-visible {
+  box-shadow: var(--focus);
+  outline: none;
 }
 
 /* Engineering: claim, proof and the files that prove it, as a spec sheet. */
@@ -2312,10 +2556,11 @@ table.audit-ledger tbody th {
   display: grid;
   gap: 8px;
 }
+/* One file per line, so each proof reads as a list. */
 .evidence-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 20px;
+  display: grid;
+  justify-items: start;
+  gap: 4px;
   font-size: 14px;
 }
 .evidence-links code {
@@ -2342,8 +2587,16 @@ table.audit-ledger tbody th {
   .landing-actions {
     gap: 8px;
   }
+  .bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'trail trail'
+      'decide cost'
+      'find find'
+      'replay replay';
+  }
 }
-/* Phone: the demo button joins the menu, the card's figures stack, the trail folds each row into a card-free block. */
+/* Phone: the demo button joins the menu, the card's figures stack, and the steps and features take one column. */
 @media (max-width: 720px) {
   .landing-wrap {
     padding: 0 16px;
@@ -2393,63 +2646,56 @@ table.audit-ledger tbody th {
   table.ledger {
     font-size: 14px;
   }
-  table.audit-ledger thead {
+  /* The steps stack, each number over its card, and the header's theme switch becomes one button. */
+  .how-steps,
+  .bento {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .how-steps > li + li::before {
     display: none;
   }
-  table.audit-ledger tr {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 0 12px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--rule);
+  .bento {
+    grid-template-areas: 'trail' 'decide' 'find' 'cost' 'replay';
   }
-  table.audit-ledger td,
-  table.audit-ledger tbody th,
-  table.audit-ledger tbody tr:last-child td,
-  table.audit-ledger tbody tr:last-child th {
-    padding: 0;
-    border: 0;
-    width: auto;
+  .f-replay {
+    display: flex;
   }
-  table.audit-ledger tbody th {
-    order: 1;
-  }
-  table.audit-ledger .trail-time {
-    order: 2;
-  }
-  table.audit-ledger .trail-amount {
-    order: 3;
-    font-size: 16px;
-  }
-  table.audit-ledger td:nth-child(3) {
-    order: 4;
-    grid-column: 1 / -1;
+  .f-replay .feature-shot {
     margin-top: 8px;
+  }
+  .feature {
+    padding: 20px;
+  }
+  .landing-top .theme-switch.compact {
+    display: none;
+  }
+  .theme-cycle {
+    display: grid;
+  }
+  .closing {
+    padding: 80px 0;
   }
   .evidence div {
     grid-template-columns: minmax(0, 1fr);
   }
   /* The results tables stack: each row is its metric, then its target and the two runs side by side, each named. */
-  table.ledger:not(.audit-ledger) thead {
+  table.ledger thead {
     display: none;
   }
-  table.ledger:not(.audit-ledger) tr {
+  table.ledger tr {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px 12px;
     padding: 14px 0;
     border-bottom: 1px solid var(--rule);
   }
-  table.ledger:not(.audit-ledger) td,
-  table.ledger:not(.audit-ledger) tbody tr:last-child td {
+  table.ledger td,
+  table.ledger tbody tr:last-child td {
     padding: 0;
     border: 0;
     text-align: left;
   }
-  table.ledger.results tr {
-    grid-template-columns: minmax(0, 0.8fr) repeat(2, minmax(0, 1fr));
-  }
-  table.ledger:not(.audit-ledger) td:first-child {
+  table.ledger td:first-child {
     grid-column: 1 / -1;
     font-weight: 500;
   }
@@ -2461,7 +2707,7 @@ table.audit-ledger tbody th {
     font-size: 14px;
     font-weight: 400;
   }
-  table.ledger:not(.audit-ledger) .row {
+  table.ledger .row {
     flex-wrap: wrap;
     gap: 4px 6px;
   }

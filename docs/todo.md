@@ -56,7 +56,16 @@ Next: the demo-check-retry PR merged as `c698d9f` (#42; In Progress). Its push t
   - [x] Header and hero after 21st.dev's "Event Dashboard Hero" (no licence: visual reference only, no code or packages copied).
   - [x] Logo mark redrawn as SVG in `--brand` #2563eb: sidebar tile, landing header, favicon and apple icon; light, dark and one-colour files in `docs/brand/`.
   - [x] Checks, e2e and screenshots in `_tmp/fa-landing-1/` (docs/activity-log.md, 2026-11-02).
-  - [ ] Round 2 (user): features, how it works, closing; the header's Features link comes with its section.
+  - [x] Round 2 (user): features, how it works, closing; the header's Features link comes with its section. Round 1 shipped as `a60eb4a` (#69); round 2 is below.
+  - [ ] `pnpm e2e:screenshots` to refresh `docs/screenshots/ui` (not run).
+- [ ] Landing round 2 of 2: features, how it works and a closing section (user, 2026-11-02): one PR on branch `landing-features-and-closing` from main `a60eb4a`, not committed.
+  - [x] Features kept beside Engineering, not merged: five bento cards of the app's own UI from the demo set (the sample's timed trail, a second finding, the eval's cost per scan, the review queue's decision row, the dead letter with Replay).
+  - [x] How it works rebuilt as three numbered steps (Upload, Check, Decide) in the trail section's own words; its times moved to the Features timeline.
+  - [x] Closing section: the name set large and faint, one line, Open the demo.
+  - [x] Header: the Features link, and one theme button that steps System, Light, Dark on a phone.
+  - [x] Lint, typecheck, unit tests (156), e2e (67) and screenshots in `_tmp/fa-landing-2/` (docs/activity-log.md, 2026-11-02).
+  - [x] Evaluation results as the app's boxed list table with phone cards; Engineering's files one per line (user, 2026-11-02).
+  - [x] Review fix (user): no Features card with a large empty gap; three findings of different kinds, the cost as bars against target, the decision row under its text with the dispute it recorded.
   - [ ] `pnpm e2e:screenshots` to refresh `docs/screenshots/ui` (not run).
   - [ ] The user ships.
 

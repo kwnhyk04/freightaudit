@@ -63,7 +63,7 @@ export function ThemeSwitch({ initial, compact }: { initial: Theme; compact?: bo
     if (next === 'system') delete document.documentElement.dataset.theme;
     else document.documentElement.dataset.theme = next;
   };
-  return (
+  const segmented = (
     <fieldset className={`segmented theme-switch${compact ? ' compact' : ''}`}>
       <legend className="visually-hidden">Theme</legend>
       {THEMES.map((each) => (
@@ -74,6 +74,17 @@ export function ThemeSwitch({ initial, compact }: { initial: Theme; compact?: bo
         </label>
       ))}
     </fieldset>
+  );
+  if (!compact) return segmented;
+  // On a phone the compact switch is one button that steps System, Light, Dark, so it does not take half the header.
+  const next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]!;
+  return (
+    <>
+      {segmented}
+      <button type="button" className="theme-cycle" onClick={() => choose(next)} aria-label={`Theme: ${THEME_LABEL[theme]}. Switch to ${THEME_LABEL[next]}`}>
+        <Icon name={theme} size={18} />
+      </button>
+    </>
   );
 }
 

@@ -19,6 +19,61 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-11-02: Landing round 2: Evaluation results as a boxed table, Engineering files stacked (same branch, not committed)
+
+- Evaluation results moved from the ledger to the shared list table.
+  - What happened: the user asked for a bordered table with a clear header row, as on Invoices, instead of loose lines.
+  - What we did: `Results` in `landing.tsx` now uses `Table cards` with `cols` (Metric 34%, Target 9rem, the two runs sharing the rest). The metric is the card title, the target an aside labelled Target, and each run a wide cell labelled with its name and date (`Result` gained an optional `label`). In `globals.css`, the landing's frameless-table rule now skips list tables (`.table-wrap:not(.list)`), so the box shows. The dead `table.ledger.results` phone rule is removed. The hero's eval strip is unchanged.
+- Engineering's file links stack: `.evidence-links` is a one-column grid.
+- e2e now checks that the results table is a list table and that a claim's second file sits below its first.
+- Files: apps/web/components/landing.tsx, apps/web/app/globals.css, apps/web/e2e/demo.spec.ts, docs/context.md, docs/todo.md, docs/activity-log.md
+- Validation: lint, typecheck and 156 unit tests pass. `pnpm e2e` passes 67 of 67, with the dev containers started for it and stopped after. The sections were shot at 1440 px in both themes, at 1280 px light, and as phone cards at 390 px in both themes (`_tmp/fa-landing-2/results-*.png`, `engineering-*.png`); no page scrolls sideways.
+- Outstanding: `pnpm e2e:screenshots` not run. The user ships.
+
+### 2026-11-02: Landing round 2 review fix: Features cards without empty gaps (same branch, not committed)
+
+- Three Features cards had a large empty gap above their content.
+  - What happened: the user found the findings, cost and decision cards stretched to the tall timeline card, with their content pushed to the bottom.
+  - Why: each card's app piece had `margin-top: auto`, and the grid stretches every card in a row to the tallest one.
+  - What we did, in order: (1) the pieces now sit 8 px under their text. (2) The findings card shows three findings of different kinds from `public/demo/discrepancies.json` (duplicate, rate mismatch, uncontracted; none from the hero's g066). The cost card shows Claude first's digital and scanned cost as bars against their targets from `eval-results.json` (track the target, fill the cost, value labelled, a hover title). The decision card adds the dispute g054's trail recorded, with its reviewer note. (3) Those changes made the findings card the tallest (656 px at 1440), which left the timeline 246 px empty, so a throwaway script tried five grid layouts and measured each card's natural height and the empty space under it. (4) The chosen areas pair cards by height: the trail beside the decision (425 and 390 px), the findings two columns wide beside the cost (362 and 336 px), the dead letter across the foot with its row beside its text. The markup follows the same order, so reading and tab order match the screen. That was the only layout where no card was left with more than about 26 px over its content.
+- The first measure after the grid change showed the dead letter's title and text drifting apart.
+  - Why: its two text rows shared the height of the row beside them.
+  - What we did: `grid-template-rows: auto 1fr` on that card.
+- Files: apps/web/components/landing.tsx, apps/web/app/globals.css, apps/web/e2e/demo.spec.ts, docs/context.md, docs/todo.md, docs/activity-log.md
+- Validation: lint, typecheck and 156 unit tests pass; `pnpm e2e` passes 67 of 67 with the dev containers started for it and stopped after. It now checks the three findings, the bars' values against their targets and the recorded dispute. At 1280, 1440 and 1920 px, in both themes, every card ends within about 26 px of its content, and no page scrolls sideways. Screenshots are in `_tmp/fa-landing-2/`, the whole page as before plus `features-{1280,1440,1920}-{light,dark}.png`.
+- Outstanding: `pnpm e2e:screenshots` not run. The user ships.
+
+### 2026-11-02: Landing round 2: features, how it works and a closing section (branch `landing-features-and-closing`, not committed)
+
+- The prompt's references did not match what it asked for.
+  - What happened: item 1 asked for the "Everything between the prompt and the answer" bento grid, but the code pasted under it was a three-step "HowItWorks" component (auto-parts copy, lucide-react). `_tmp/21st/` held only `freight-audit-table.png`: `steps-5.png` and `h3-closing.png` were missing.
+  - Why: not confirmed; most likely the wrong snippet was pasted and the screenshots were never saved there.
+  - What we did: built all three sections from the prompt's written descriptions, in FA's CSS and tokens, with no Tailwind, shadcn or lucide-react (no new dependency), and reported it. No line started with ">>> PASTE", so the brief's stop rule did not apply.
+- The licence of #8 (the bento grid) could not be read.
+  - What happened: two web searches (2026-11-02) found neither the bento grid's 21st.dev page nor the pasted steps component's; the nearest result, a "Bento" by kinfe123, states "License: unknown" and is not confirmed to be the same component.
+  - Why: the prompt gave no author or URL.
+  - What we did: recorded both as licence unknown, visual reference only, no code copied, in docs/third-party.md.
+- Features and Engineering: kept both, not merged.
+  - What happened: the brief asked to compare the bento with "Engineering, with its evidence" first.
+  - Why: Engineering proves how the system is built, with a file for each claim; Features shows what a reviewer sees. They meet only on dead letters.
+  - What we did: Features is five cards of the app's own UI from the demo set: g066's timed trail, g069's duplicate Linehaul (a second finding, so the hero's is not repeated), Claude first's cost per scanned and digital invoice, the review queue's decision row and the demo's dead letter with Replay. The brief's "keyboard card" shows the decision row without key hints, because the review queue has no keyboard shortcuts. Engineering is unchanged.
+- How it works lost its table, not its facts.
+  - What happened: the trail table became three steps. Its rules text went into the steps' points, its times and model note into the Features timeline, and its Claude-first date into a note under the steps.
+  - What we did: the e2e checks that read the trail now find it as the list "Audit trail of the sample invoice" and still check the finding text and the Gemini note, plus the +3.3 s read time.
+- The step cards first rendered an arrow after every point.
+  - What happened: the 1440 px screenshot showed "→" after each bullet and each card.
+  - Why: the new list reused the class name `.steps`, which the app's pipeline progress line already styles with `li:not(:last-child)::after { content: '\2192' }`.
+  - What we did: renamed the landing list to `.how-steps` in `landing.tsx`, `globals.css` and `demo.spec.ts`, rebuilt, and shot again; docs/design.md now notes the clash.
+- The first e2e run failed one test.
+  - What happened: `getByRole('article', { name: 'Finding' })` resolved to three elements: the finding itself and outer cards whose names contain "Finding".
+  - Why: Playwright matches an accessible name as a substring unless told otherwise.
+  - What we did: added `exact: true`; the second run passed 67 of 67.
+- The header on a phone: below 721 px the compact theme switch is one button (`.theme-cycle` in `ThemeSwitch compact`, same state and cookie as the three icons), stepping System, Light, Dark; a new e2e test checks each step's `data-theme`. Features joined the header's links.
+- The Fact-Forcing hook (GateGuard) blocked the first edit of each file until its facts were stated; they were stated each time.
+- Files: apps/web/components/landing.tsx, apps/web/components/client.tsx, apps/web/app/globals.css, apps/web/e2e/demo.spec.ts, docs/third-party.md, docs/design.md, docs/context.md, docs/todo.md, docs/activity-log.md
+- Validation: `pnpm turbo run build typecheck lint test --filter=@freightaudit/web` passes (156 unit tests); `pnpm e2e` passes 67 of 67 on the second run, with `freightaudit-postgres-1`, `-redis-1` and `-minio-1` started for it and stopped after. Screenshots of the whole page at 1280, 1440, 1920 and 390 px in both themes, plus the phone header, are in `_tmp/fa-landing-2/`; none scrolls sideways.
+- Outstanding: `pnpm e2e:screenshots` not run, so `docs/screenshots/ui` still shows the round-1 landing. The user ships.
+
 ### 2026-11-02: Landing round 1: header, hero and logo (branch `landing-hero-and-logo`, not committed)
 
 - The two reference images the brief named were not on disk.
