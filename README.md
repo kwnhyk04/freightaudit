@@ -2,7 +2,7 @@
 
 Audits carrier freight invoices: an LLM reads each invoice, deterministic code checks every charge against the contract, and a person decides.
 
-![An invoice in FreightAudit: the PDF with the charge billed twice marked, beside its findings](docs/screenshots/ui/demo-invoice-light.png)
+![An invoice in FreightAudit: the PDF with the charge billed twice marked, beside its findings](.github/readme/demo-invoice.png)
 
 **Live demo: https://freightaudit-bay.vercel.app** (the sample data opens without signing in)
 
