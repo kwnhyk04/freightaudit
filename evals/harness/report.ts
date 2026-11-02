@@ -184,7 +184,7 @@ export function readmeSection({ claudeFirst, free }: Officials, loadRows: string
     '',
     `Golden set ${DEFAULT_GOLDEN} (${cases} synthetic invoices, ground truth from the generator), read two ways. ${cases} cases give wide intervals; misses are listed as misses.`,
     '',
-    line('Claude first', "Claude Haiku 5.5 reads first at every step, with the free models behind it: the demo's chain while Claude reads first", claudeFirst),
+    line('Claude first', "Claude Sonnet 5.5 reads first at every step, with the free models behind it: the demo's chain while Claude reads first", claudeFirst),
     line('Free models only', 'what CI checks on every change to extraction, and what reads once Claude stops at its end date, its spend cap or its credit', free),
     '',
     '| Metric | Target | Claude first | 95% CI | Met | Free models only | 95% CI | Met |',

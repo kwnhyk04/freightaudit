@@ -9,6 +9,13 @@
       "source": "https://platform.claude.com/docs/en/about-claude/pricing",
       "note": "For prompts up to 100K tokens (0.50 / 2.50 above); an extraction prompt stays far below. Checked 2026-10-17."
     },
+    "anthropic/claude-sonnet-5-5": {
+      "tier": "paid",
+      "input": "2.00",
+      "output": "10.00",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "note": "One price at every prompt length up to its 1M context. Checked 2026-11-03."
+    },
     "gemini/gemini-3.5-flash-lite": {
       "tier": "free",
       "input": "0.30",

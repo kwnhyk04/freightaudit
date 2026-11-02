@@ -241,7 +241,7 @@ function HowItWorks() {
         </ol>
         {/* The demo's Claude-first window ends on LLM_CLAUDE_FIRST_UNTIL (2026-11-10), as the section said before. */}
         <p className="landing-note muted">
-          Until November 10, 2026, the live demo reads with Claude Haiku first. <a href="#features">See one sample invoice take each step.</a>
+          Until November 10, 2026, the live demo reads with Claude Sonnet first. <a href="#features">See one sample invoice take each step.</a>
         </p>
       </div>
     </section>
@@ -301,7 +301,7 @@ function Features() {
     return found ? [found] : [];
   });
   // Cost per invoice at paid rates, digital and scanned, for both official runs, from lib/eval-results.json
-  // (evals/reports/2026-10-31-v2-full-claude-first.md and 2026-10-27-v2.md); Claude first's scanned cost leads.
+  // (evals/reports/2026-11-02-v2-full-claude-first.md and 2026-10-27-v2.md); Claude first's scanned cost leads.
   const costRow = results.rows.find((row) => row.label === 'Cost per invoice, paid-equivalent (digital / scanned)');
   const dollars = (text?: string) => Number(text?.replace(/[^0-9.]/g, ''));
   const runs = (
@@ -532,7 +532,7 @@ function Results() {
       <div className="landing-wrap">
         <h2 id="results-title">Evaluation results</h2>
         <p className="intro">
-          {results.cases} synthetic invoices with known ground truth, read two ways. Claude first is Claude Haiku 5.5 reading first, with the free models behind it (
+          {results.cases} synthetic invoices with known ground truth, read two ways. Claude first is Claude Sonnet 5.5 reading first, with the free models behind it (
           {measured(results.claudeFirst)}). The free models alone are what CI checks on every change to extraction, and what reads once Claude&apos;s credits end (
           {measured(results.free)}).
         </p>

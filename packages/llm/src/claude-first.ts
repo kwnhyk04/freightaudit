@@ -3,12 +3,15 @@ import type { GenerateInput, Provider, Usage } from './extract.ts';
 import { callCost } from './prices.ts';
 
 // Caps while Claude reads first, sized from Haiku's real use on the golden PDFs the demo accepts (its 2026-10-17 run)
-// with about 10% headroom, so it is never cut off mid-work on them.
+// with about 10% headroom, so it is never cut off mid-work on them. They hold for Sonnet 5.5, which reads first since
+// 2026-11-03: on the v2 dev split it billed the same input tokens as Haiku and at most 1.03 times its output (largest
+// reply 549, largest prompt 6,465, largest invoice attempt 7,041; evals/reports/2026-11-02-v2-dev-4e59f1-claude-first).
 // Output per call: the largest reply was 462 tokens (g084); g083, which never ran on Haiku, projects to about 510.
 export const CLAUDE_FIRST_MAX_TOKENS = 560;
 // Input per call, estimated before sending: the largest prompt was 6,373 tokens (g079, a 3-page scan), estimated 6,521.
 export const CLAUDE_INPUT_CAP = 7_100;
-// Above 100,000 input tokens Haiku charges 5x (packages/llm/prices.json): no prompt goes past it, whatever the cap.
+// Above 100,000 input tokens Haiku charges 5x (packages/llm/prices.json); Sonnet has one price. No prompt goes past it,
+// whatever the cap or the model.
 export const CLAUDE_PROMPT_CEILING = 100_000;
 // One invoice's Claude tokens, the next call's reservation included: g053's repair came to about 7,750 that way.
 export const CLAUDE_EXTRACTION_CAP = 8_500;

@@ -1,8 +1,8 @@
 {
   "cases": 98,
   "claudeFirst": {
-    "report": "evals/reports/2026-10-31-v2-full-claude-first.md",
-    "date": "2026-10-31"
+    "report": "evals/reports/2026-11-02-v2-full-claude-first.md",
+    "date": "2026-11-02"
   },
   "free": {
     "report": "evals/reports/2026-10-27-v2.md",
@@ -25,8 +25,8 @@
       "label": "Header field accuracy (scanned)",
       "target": "93%",
       "claudeFirst": {
-        "result": "92.8%",
-        "met": false
+        "result": "93.4%",
+        "met": true
       },
       "free": {
         "result": "94.3%",
@@ -37,7 +37,7 @@
       "label": "Line-item F1 (scanned)",
       "target": "0.88",
       "claudeFirst": {
-        "result": "0.93",
+        "result": "0.968",
         "met": true
       },
       "free": {
@@ -85,7 +85,7 @@
       "label": "Extraction latency p50 / p95 (3 pages or fewer)",
       "target": "≤ 5 s / 12 s",
       "claudeFirst": {
-        "result": "1.7 s / 5.7 s",
+        "result": "2.9 s / 7.1 s",
         "met": true
       },
       "free": {
@@ -97,7 +97,7 @@
       "label": "Cost per invoice, paid-equivalent (digital / scanned)",
       "target": "≤ $0.02 / $0.05",
       "claudeFirst": {
-        "result": "$0.0005 / $0.0012",
+        "result": "$0.0079 / $0.0105",
         "met": true
       },
       "free": {
@@ -107,7 +107,6 @@
     }
   ],
   "notes": [
-    "Header field accuracy (scanned) is below target for Claude first. Claude first measured 92.8% (95% interval 84.8% to 98.7%), the free models alone 94.3% (86.8% to 99.4%). The intervals overlap, so the difference is within the margin of error.",
-    "On these runs Claude first is ahead on header field accuracy (digital), overcharge recall, extraction latency p50 / p95 (3 pages or fewer) and cost per invoice, paid-equivalent (digital / scanned), and the free models alone on header field accuracy (scanned) and line-item F1 (scanned)."
+    "On these runs Claude first is ahead on header field accuracy (digital), line-item F1 (scanned) and overcharge recall, and the free models alone on header field accuracy (scanned) and cost per invoice, paid-equivalent (digital / scanned)."
   ]
 }

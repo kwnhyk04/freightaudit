@@ -414,6 +414,7 @@ const MODEL: Record<string, string> = {
   'groq/qwen/qwen3.8-27b': 'Qwen3.8 27B',
   'mistral/mistral-small-2603': 'Mistral Small',
   'anthropic/claude-haiku-5-5': 'Claude Haiku 5.5',
+  'anthropic/claude-sonnet-5-5': 'Claude Sonnet 5.5',
 };
 export const modelName = (id: string) => MODEL[id] ?? id;
 
