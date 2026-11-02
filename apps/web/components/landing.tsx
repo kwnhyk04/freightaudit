@@ -682,7 +682,7 @@ function Header({ theme }: { theme: Theme }) {
   );
 }
 
-export function Landing({ theme }: { theme: Theme }) {
+export function Landing({ theme, signedOut = false }: { theme: Theme; signedOut?: boolean }) {
   return (
     <>
       <a className="skip" href="#main">
@@ -690,6 +690,13 @@ export function Landing({ theme }: { theme: Theme }) {
       </a>
       <Header theme={theme} />
       <main id="main">
+        {signedOut && (
+          <div className="landing-wrap">
+            <p className="landing-notice" role="status">
+              You're signed out. Thanks for stopping by.
+            </p>
+          </div>
+        )}
         <Hero />
         <HowItWorks />
         <Features />

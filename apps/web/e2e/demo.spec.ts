@@ -253,6 +253,14 @@ test("the sample opens on its invoices, and Overview in its sidebar shows the sa
   expect(requests.filter((url) => url.includes(':4000'))).toEqual([]);
 });
 
+test('the sign-in page always offers a way home: the header logo and a Back to home link', async ({ page }) => {
+  await page.goto('/login');
+  await expect(page.getByRole('banner').getByRole('link', { name: 'FreightAudit' })).toHaveAttribute('href', '/');
+  await page.getByRole('link', { name: 'Back to home' }).click();
+  await expect(page).toHaveURL(/127[.]0[.]0[.]1:3000\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Pay the contract rate, not the invoice.');
+});
+
 test('signed out, the sample is public and read-only, and live pages still need a session', async ({ page }) => {
   const requests: string[] = [];
   page.on('request', (request) => requests.push(request.url()));

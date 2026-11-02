@@ -106,11 +106,7 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string }) 
   return (
     <form action={action}>
       <div>
-        <h1>
-          <Link href="/" className="home">
-            FreightAudit
-          </Link>
-        </h1>
+        <h1>FreightAudit</h1>
         <p className="muted">Sign in to review carrier invoices.</p>
       </div>
       {notice && !state.error && (
