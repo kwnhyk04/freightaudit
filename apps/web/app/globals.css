@@ -2398,8 +2398,16 @@ table.ledger strong {
   font-weight: 400;
 }
 
-/* How it works: three cards of one height, each number centred above its card, the numbers joined by a rule from
-   centre to centre. */
+/* How it works: the heading, its line and the note centred over the steps; three cards of one height, each number
+   centred above its card, the numbers joined by a rule from centre to centre. */
+.how-wrap > h2,
+.how-wrap > .intro,
+.how-wrap > .landing-note {
+  text-align: center;
+}
+.how-wrap > .intro {
+  margin-inline: auto;
+}
 .how-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
