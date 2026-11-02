@@ -429,8 +429,10 @@ function approval(invoice: Detail, findings: Finding[], money?: Amounts) {
 function Summary({ invoice, money, open, hold, matched }: { invoice: Detail; money?: Amounts; open: number; hold: ReturnType<typeof holdOf>; matched: boolean }) {
   return (
     <section className="panel bento-card b-summary" aria-labelledby="summary-title">
-      <h2 id="summary-title">Summary</h2>
-      <StatusBadge status={invoice.status} open={open} hold={hold} matched={matched} />
+      <div className="summary-head">
+        <h2 id="summary-title">Summary</h2>
+        <StatusBadge status={invoice.status} open={open} hold={hold} matched={matched} />
+      </div>
       <dl className="summary-figures">
         <dt>Billed</dt>
         <dd>

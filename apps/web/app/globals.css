@@ -1285,13 +1285,25 @@ td .reason {
   border-radius: var(--radius-lg);
   box-shadow: var(--card-shadow);
 }
+/* The summary's heading with its status pill beside it. */
+.summary-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.summary-head h2 {
+  margin: 0;
+}
 .summary-figures {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 6px 12px;
   margin: 12px 0 0;
   font-size: 14px;
   line-height: 22px;
+}
+.summary-figures dd {
+  padding-left: 12px;
 }
 .summary-figures dt {
   color: var(--text-2);
@@ -1539,8 +1551,33 @@ input[type='checkbox'] {
 .facts {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 6px 16px;
   margin: 0;
+}
+.facts dd {
+  padding-left: 16px;
+}
+/* A hairline between rows, as between the charges' rows: the same rule and 7 px either side, none above the first row
+   or below the last. The column gap is the value's left padding, so each line runs across both columns. */
+.facts > dt,
+.facts > dd,
+.summary-figures > dt,
+.summary-figures > dd {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  border-top: 1px solid var(--rule);
+}
+.facts > dt:first-of-type,
+.facts > dd:first-of-type,
+.summary-figures > dt:first-of-type,
+.summary-figures > dd:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+.facts > dt:last-of-type,
+.facts > dd:last-of-type,
+.summary-figures > dt:last-of-type,
+.summary-figures > dd:last-of-type {
+  padding-bottom: 0;
 }
 .facts dt {
   color: var(--text-2);
@@ -1560,7 +1597,19 @@ input[type='checkbox'] {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 10px;
+}
+/* The trail's entries take the same hairline between them, 7 px either side. */
+.trail > li {
+  padding: 7px 0;
+}
+.trail > li + li {
+  border-top: 1px solid var(--rule);
+}
+.trail > li:first-child {
+  padding-top: 0;
+}
+.trail > li:last-child {
+  padding-bottom: 0;
 }
 .trail li {
   display: grid;
