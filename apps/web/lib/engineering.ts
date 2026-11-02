@@ -5,6 +5,30 @@ import evidence from './evidence.json';
 export const REPOSITORY = 'https://github.com/kwnhyk04/freightaudit';
 export const sourceLink = (path: string) => `${REPOSITORY}/${path.endsWith('/') ? 'tree' : 'blob'}/main/${path.replace(/\/$/, '')}`;
 
+// The landing's code window: the rate-card check's lines as they stand in their file from line `first`
+// (engineering.test.ts compares them).
+export const RATE_CHECK = {
+  path: 'packages/domain/src/reconcile.ts',
+  first: 69,
+  lines: [
+    "      finding = { type: 'rate_mismatch', expectedCents: rate, evidence };",
+    '    }',
+    '    if (amountCents > finding.expectedCents) discrepancies.push({ ...finding, lineNumber, billedCents: amountCents });',
+    '    if (code !== null) billed.add(code);',
+  ],
+};
+
+// The landing's redaction card: the credential headers that serverOptions in packages/telemetry/src/index.ts tells
+// pino to redact (each path is in its list), written as pino's censor writes them (lib/redaction.js: const CENSOR =
+// '[Redacted]'). engineering.test.ts checks the paths.
+export const MASKED_LOG = {
+  masked: [
+    { field: 'x-api-key', path: 'headers["x-api-key"]' },
+    { field: 'cookie', path: 'headers.cookie' },
+  ],
+  censor: '[Redacted]',
+};
+
 const day = new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' });
 const count = new Intl.NumberFormat('en-US');
 const { load, evals, propertyTests } = evidence;

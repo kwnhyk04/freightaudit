@@ -91,31 +91,49 @@ test('the landing page at / is public and static: no redirect, no api call, no k
   // How it works is three steps, each with its title; the header links every section, Features included.
   await expect(page.locator('#how .how-steps h3')).toHaveText(['Upload', 'Check', 'Decide']);
   await expect(page.getByRole('banner').getByRole('link', { name: 'Features', exact: true })).toHaveAttribute('href', '#features');
-  // Features' timeline is g066's own trail, timed from receipt; its Read step says the sample predates Claude first.
+  // Features is seven cards in the reference's rows: one wide and one narrow, then three, then two.
+  const features = page.locator('#features');
+  const cards = features.locator('.bento > li');
+  await expect(cards).toHaveCount(7);
+  const boxes = await cards.evaluateAll((items) => items.map((item) => item.getBoundingClientRect()).map(({ y, width }) => ({ y: Math.round(y), width })));
+  expect(new Set(boxes.map(({ y }) => y)).size).toBe(3);
+  expect([boxes[0]!.y === boxes[1]!.y, boxes[2]!.y === boxes[4]!.y, boxes[5]!.y === boxes[6]!.y]).toEqual([true, true, true]);
+  expect(boxes[0]!.width).toBeGreaterThan(boxes[1]!.width * 1.8);
+  // The wide card charts g066's own trail: received, read in 3.3 s (the bar marked slow), matched and held; its line
+  // says the sample predates Claude first.
   const trail = page.getByRole('list', { name: 'Audit trail of the sample invoice' });
   await expect(trail.getByRole('listitem')).toHaveCount(4);
-  await expect(trail.getByRole('listitem').nth(1)).toContainText('+3.3 s');
-  await expect(trail.getByText('Rate card version 2 sets Linehaul at $5,343.60; billed $6,145.14.')).toBeVisible();
-  await expect(trail).toContainText('before Claude first went live, so Gemini 3.5 Flash-Lite read it.');
-  // The other cards: a second sample finding with its amount, the eval's cost, and the demo's dead letter.
-  const features = page.locator('#features');
-  const findings = features.getByRole('article', { name: 'Finding', exact: true });
-  await expect(findings).toHaveCount(3);
-  await expect(findings.nth(0)).toContainText('Linehaul is billed twice.');
-  await expect(findings.nth(1)).toContainText('The rate card sets Fuel surcharge at $860.27; billed $963.50.');
-  await expect(findings.nth(2)).toContainText('Inside delivery is not on the rate card.');
-  // The cost bars are Claude first's digital and scanned cost, each against its target.
-  const costRow = results.rows.find((row) => row.label.startsWith('Cost per invoice'))!;
-  const cost = costRow.claudeFirst!.result.split(' / ');
-  const target = costRow.target.replace(/^[^$]*/, '').split(' / ');
-  await expect(features.locator('.cost-bars dt')).toHaveText(['Digital', 'Scanned']);
-  await expect(features.locator('.cost-value')).toHaveText([`${cost[0]} of a ${target[0]} target`, `${cost[1]} of a ${target[1]} target`]);
-  // The decision card shows how the disputed fuel finding was recorded in its invoice's trail.
-  await expect(features.locator('.decided')).toContainText('Overcharge disputed by reviewer');
-  await expect(features.locator('.decided')).toContainText('Fuel billed above the contracted rate; disputed with the carrier.');
+  await expect(trail.getByRole('listitem')).toContainText(['Received', 'Read', 'Matched', 'Held']);
+  await expect(trail.getByRole('listitem').nth(1)).toContainText('3.3 s');
+  await expect(features).toContainText('before Claude first went live, so Gemini 3.5 Flash-Lite read it.');
+  // The dead letter on a scrubber: where it failed, its error, and Replay.
+  await expect(features.locator('.scrubber')).toContainText('Reconciliation failed');
   await expect(features).toContainText('shipment has no miles');
-  // The close leads to the demo.
-  await expect(page.locator('.closing').getByRole('link', { name: 'Open the demo' })).toHaveAttribute('href', '/dashboard');
+  // A real finding as the alert on top: the duplicate Linehaul and what it costs.
+  const alert = features.getByRole('article', { name: 'Finding', exact: true });
+  await expect(alert).toHaveCount(1);
+  await expect(alert).toContainText('Linehaul billed twice');
+  await expect(alert).toContainText('+$5,522.06');
+  // The cost chart: each run's digital and scanned cost from eval-results.json, Claude first's scanned one highlighted.
+  const costRow = results.rows.find((row) => row.label.startsWith('Cost per invoice'))!;
+  const [digital, scanned] = costRow.claudeFirst!.result.split(' / ');
+  await expect(features.locator('.cost-figure')).toHaveText(scanned!);
+  await expect(features.locator('.cost-chart li[data-highlight]')).toContainText(scanned!);
+  await expect(features.locator('.cost-chart li')).toHaveCount(4);
+  await expect(features.locator('.cost-chart')).toContainText(digital!);
+  // The code window: the rate-card check from its file.
+  await expect(features.locator('.code-window')).toContainText('packages/domain/src/reconcile.ts');
+  await expect(features.locator('.code-window')).toContainText('if (amountCents > finding.expectedCents)');
+  // The decision as two keys, and the log line with its credentials masked.
+  await expect(features.locator('.keycap')).toHaveText(['Approve charge', 'Dispute']);
+  await expect(features).toContainText('Synthetic data only');
+  await expect(features.locator('.masked')).toHaveText(['[Redacted]', '[Redacted]']);
+  // The close keeps its words and leads to the demo, over the name scrolling large and faint.
+  const closing = page.locator('.closing');
+  await expect(closing.getByRole('heading', { level: 2 })).toHaveText('Check the next invoice against the contract.');
+  await expect(closing).toContainText('Open the live demo and decide a finding yourself.');
+  await expect(closing.getByRole('link', { name: 'Open the demo' })).toHaveAttribute('href', '/dashboard');
+  await expect(closing.locator('.marquee')).toContainText('FreightAudit');
   // Every engineering proof links to its file on main.
   const proofs = page.locator('.evidence-links a');
   expect(await proofs.count()).toBeGreaterThan(0);

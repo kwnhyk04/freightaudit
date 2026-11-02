@@ -34,6 +34,8 @@
   --radius: 6px;
   /* Containers that hold a list, such as the invoice table and its phone cards. */
   --radius-lg: 10px;
+  /* The landing's feature cards. */
+  --radius-card: 16px;
   --sans: var(--font-plex-sans), system-ui, sans-serif;
   --mono: var(--font-plex-mono), ui-monospace, monospace;
   /* Hover and press: a color change only, quick enough never to lag the pointer. */
@@ -2368,188 +2370,583 @@ table.ledger strong {
   line-height: 22px;
 }
 
-/* Features: a bento of five cards, each holding a piece of the app. */
+/* Features: seven cards on a six-column grid, after a 21st.dev bento (docs/third-party.md): one wide and one narrow,
+   then three, then two. Each card is a piece of the app on top, its title and one line below. */
+.bento-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 16px 64px;
+  margin-bottom: 40px;
+}
+.bento-head h2 {
+  margin: 0;
+}
+.bento-head .intro {
+  margin: 0 0 16px;
+}
+.bento-head .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .bento {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bento > li {
+  display: flex;
+  grid-column: span 2;
+  min-width: 0;
+}
+.bento > .bento-md {
+  grid-column: span 3;
+}
+.bento > .bento-lg {
+  grid-column: span 4;
 }
 .feature {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--card-shadow);
+}
+.feature-visual {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 210px;
+  padding: 20px 20px 0;
+}
+.feature-text {
+  padding: 20px 24px 24px;
+}
+.feature-text h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.feature-text p {
+  max-width: 52ch;
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 22px;
+}
+/* The panels inside the cards: the app's sunken canvas inside the card's surface. */
+.waterfall,
+.code-window,
+.log-panel,
+.keys li {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--canvas);
+}
+/* The sample's trail as a waterfall: a label, then its bar on a track ruled every second; the read, the slow step, is
+   the one coloured bar, its time tagged after it. */
+.waterfall {
+  width: 100%;
+  max-width: 680px;
+  padding: 14px 16px;
+}
+.waterfall-axis {
+  position: relative;
+  height: 18px;
+  margin-left: calc(5.5rem + 12px);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-3);
+}
+.waterfall-axis span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.waterfall-axis span:first-child {
+  transform: none;
+}
+.waterfall-axis span:last-child {
+  transform: translateX(-100%);
+}
+.waterfall ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.waterfall li {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 5px 0;
+}
+.waterfall-label {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-2);
+}
+.waterfall li[data-slow] .waterfall-label {
+  color: var(--text);
+}
+.waterfall-track {
+  position: relative;
+  height: 20px;
+  background: linear-gradient(to right, var(--rule) 1px, transparent 1px) 0 0 / calc(100% / var(--ticks)) 100%;
+}
+.waterfall-bar {
+  position: absolute;
+  top: 5px;
+  min-width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--rule-strong);
+}
+.waterfall li[data-slow] .waterfall-bar {
+  background: var(--chart);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--chart) 18%, transparent);
+}
+.waterfall-tag {
+  position: absolute;
+  top: 50%;
+  margin-left: 10px;
+  padding: 0 8px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--chart) 12%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.waterfall-tag.before {
+  margin: 0 10px 0 0;
+  background: var(--bad-tint);
+}
+/* The read's time sits inside the end of its bar, so it never runs past the track. */
+.waterfall-tag.inside {
+  margin: 0 4px 0 0;
+  background: var(--surface);
+}
+.waterfall-tag .short {
+  display: none;
+}
+/* The dead letter on a scrubber over the upload steps: done up to where it failed, the playhead there with its name. */
+.scrubber {
+  width: 100%;
+  max-width: 320px;
+}
+.scrubber-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 36px;
+  font-size: 13px;
+}
+.replay-pill {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  min-width: 0;
-  padding: 24px;
+  padding: 3px 10px 3px 3px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--canvas);
+  font-weight: 500;
+}
+.replay-pill .play {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text);
+}
+.replay-pill .play::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--surface);
+  clip-path: polygon(40% 30%, 40% 70%, 72% 50%);
+}
+.scrubber-track {
+  position: relative;
+  height: 32px;
+}
+.track-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--rule-strong);
+}
+.track-line.done {
+  background: var(--chart);
+}
+.track-dot {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--rule-strong);
+}
+.track-dot[data-done] {
+  background: var(--chart);
+}
+.playhead {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  transition: transform 500ms cubic-bezier(0.77, 0, 0.175, 1);
+}
+.playhead::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--text);
+}
+.playhead-label {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  background: var(--text);
+  color: var(--surface);
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.scrubber-steps {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.scrubber-error {
+  margin: 14px 0 0;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+/* The finding on top, the other two stacked behind; a pointer spreads the stack. */
+.alert-stack {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  height: 128px;
+}
+.alert {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: calc(3 - var(--depth));
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  transform: translateY(calc(var(--depth) * 14px)) scale(calc(1 - var(--depth) * 0.06));
   border: 1px solid var(--rule);
   border-radius: var(--radius-lg);
   background: var(--surface);
-}
-/* Paired by height, so no card stretches far past its content: the trail beside the decision it leads to, the
-   findings (two columns wide) beside the cost, and the dead letter across the foot with its row beside its text. */
-.bento {
-  grid-template-areas:
-    'trail trail decide'
-    'find find cost'
-    'replay replay replay';
-}
-.f-replay {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto 1fr;
-  align-items: start;
-  gap: 8px 24px;
-}
-.f-replay > :not(.feature-shot) {
-  grid-column: 1;
-}
-.f-replay .feature-shot {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  margin-top: 0;
-}
-.f-trail {
-  grid-area: trail;
-}
-.f-find {
-  grid-area: find;
-}
-.f-cost {
-  grid-area: cost;
-}
-.f-decide {
-  grid-area: decide;
-}
-.f-replay {
-  grid-area: replay;
-}
-.decided {
-  display: grid;
-  gap: 2px;
-}
-.feature h3 {
-  margin: 0;
-  font-size: 18px;
-  line-height: 24px;
-  font-weight: 600;
-}
-.feature p {
-  margin: 0;
-}
-.feature-shot {
-  margin-top: 8px;
-  padding: 14px 16px;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  background: var(--canvas);
-}
-.findings h4 {
-  margin: 0;
+  box-shadow: var(--card-shadow);
   font-size: 14px;
-  line-height: 22px;
-  font-weight: 600;
+  transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
 }
-.timeline {
+.alert + .alert {
+  background: var(--sunken);
+}
+.alert > span:first-child {
   display: grid;
-  padding-block: 4px;
+  min-width: 0;
+}
+.alert strong {
+  font-weight: 500;
+}
+.alert .muted {
+  font-size: 13px;
+}
+.alert + .alert > * {
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+/* Cost: the scanned figure large, then each run's digital and scanned cost as bars on one scale. */
+.cost {
+  width: 100%;
+  max-width: 320px;
+}
+.cost-figure {
+  margin: 0;
+  text-align: left;
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.cost > .muted {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+.cost-chart {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  gap: 16px;
+  margin-top: 16px;
+}
+.cost-chart figure {
+  margin: 0;
+}
+.cost-chart ul {
+  display: flex;
+  align-items: end;
+  gap: 4px;
+  margin: 0;
+  padding: 0 0 2px;
+  border-bottom: 1px solid var(--rule-strong);
   list-style: none;
 }
-.timeline li {
-  display: grid;
-  grid-template-columns: 6.5rem minmax(0, 1fr);
-  gap: 12px;
-  padding: 10px 0;
-}
-.timeline li + li {
-  border-top: 1px solid var(--rule);
-}
-.timeline-time {
+.cost-chart li {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
   color: var(--text-2);
 }
-.timeline-time span,
-.timeline-body span {
-  display: block;
+.cost-chart li > :last-child {
+  order: 3;
 }
-.timeline-body strong {
-  font-weight: 500;
+.cost-bar {
+  order: 2;
+  width: 100%;
+  height: max(2px, calc(var(--h) * 64px));
+  border-radius: 3px 3px 0 0;
+  background: var(--rule-strong);
 }
-/* Cost against target: each track is the target, the fill the measured cost, its value labelled beside it. */
-.cost-bars {
-  display: grid;
-  gap: 14px;
+.cost-chart li[data-highlight] {
+  color: var(--text);
 }
-.cost-bars dt {
-  font-weight: 500;
-}
-.cost-bars dd {
-  display: grid;
-  gap: 6px;
-  margin: 4px 0 0;
-}
-.cost-track {
-  display: block;
-  height: 8px;
-  border-radius: 4px;
-  background: var(--rule);
-}
-.cost-fill {
-  display: block;
-  height: 100%;
-  min-width: 4px;
-  border-radius: 4px;
+.cost-chart li[data-highlight] .cost-bar {
   background: var(--chart);
 }
-.cost-value strong {
-  font-size: 20px;
-  font-weight: 600;
+.cost-chart figcaption {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-3);
 }
-.dead-letter {
-  display: grid;
-  gap: 4px;
+/* The rate-card check in a code window, its file as the title bar, the comparison line marked. */
+.code-window {
+  width: 100%;
+  max-width: 360px;
+  overflow: hidden;
 }
-.dead-letter-error {
+.code-head {
+  display: block;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rule);
   font-family: var(--mono);
-  font-size: 14px;
+  font-size: 12px;
+  color: var(--text-2);
 }
-.dead-letter .decide-preview {
-  margin-top: 8px;
+/* Each line stays whole, as in an editor; a long one scrolls sideways inside the window, never the card. */
+.code-window pre {
+  margin: 0;
+  padding: 10px 0;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-2);
+}
+.code-window pre:focus-visible {
+  outline: none;
+  box-shadow: inset var(--focus);
+}
+.code-window code {
+  display: grid;
+  min-width: max-content;
+}
+.code-line {
+  display: grid;
+  grid-template-columns: 2.5em max-content;
+  padding-right: 12px;
+}
+.code-line[data-mark] {
+  background: color-mix(in srgb, var(--chart) 10%, transparent);
+  color: var(--text);
+}
+.code-number {
+  padding-right: 0.8em;
+  text-align: right;
+  color: var(--text-3);
+  user-select: none;
+}
+/* The two decisions drawn as keys. */
+.keys {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.keys li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text-2);
+}
+.keycap {
+  display: inline-grid;
+  place-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--rule-strong);
+  border-bottom-width: 3px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: transform 150ms ease;
+}
+.keycap.danger {
+  color: var(--bad);
+}
+/* A redacted header as pino writes it, each censored value a hatched block. */
+.log-panel {
+  width: 100%;
+  max-width: 460px;
+  padding: 14px 16px;
+}
+.log-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.log-panel pre {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  color: var(--text-2);
+}
+.masked {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--text) repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--surface) 18%, transparent) 4px 5px);
+  color: var(--surface);
+}
+/* A pointer on a card moves its piece, as the reference does; never with reduced motion. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .feature:hover .playhead {
+    transform: translateX(10px);
+  }
+  .feature:hover .alert {
+    transform: translateY(calc(var(--depth) * 42px)) scale(calc(1 - var(--depth) * 0.03));
+  }
+  .feature:hover .alert + .alert > * {
+    opacity: 1;
+  }
+  .feature:hover .keys li:first-child .keycap {
+    transform: translateY(1px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .playhead,
+  .alert,
+  .alert + .alert > *,
+  .keycap {
+    transition: none;
+  }
 }
 
-/* The close: one line and the demo button over the name, set large and faint. */
+/* The close, after a 21st.dev call to action (docs/third-party.md): one line and the demo button, centred, over the name
+   scrolling large and faint behind it. It stands still with reduced motion. */
 .closing {
   position: relative;
   overflow: hidden;
-  padding: 120px 0;
+  padding: 128px 0;
   border-top: 1px solid var(--rule);
   text-align: center;
 }
-.closing-word {
+.marquee {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  margin: 0;
-  transform: translate(-50%, -50%);
-  color: var(--hero-grid);
-  font-size: clamp(88px, 17vw, 280px);
-  line-height: 1;
-  letter-spacing: -0.04em;
-  font-weight: 600;
-  white-space: nowrap;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
   pointer-events: none;
   user-select: none;
 }
+.marquee-track {
+  display: flex;
+  flex-shrink: 0;
+  width: max-content;
+  color: var(--hero-grid);
+  font-size: clamp(88px, 16vw, 280px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-weight: 600;
+  white-space: pre;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .marquee-track {
+    animation: marquee 40s linear infinite;
+  }
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
 .closing .landing-wrap {
   position: relative;
+  max-width: 52rem;
 }
 .closing h2 {
-  max-width: 18em;
   margin: 0 auto;
-  font-size: clamp(28px, 4vw, 44px);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  font-size: clamp(34px, 5.2vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
   font-weight: 600;
+  text-wrap: balance;
 }
 .closing .lead {
-  margin: 16px auto 28px;
+  max-width: 36em;
+  margin: 24px auto 40px;
+  text-wrap: balance;
 }
 
 /* The header's one-button theme switch, shown on a phone in place of the three. */
@@ -2625,13 +3022,16 @@ table.ledger strong {
   .landing-actions {
     gap: 8px;
   }
+  /* Two columns: the trail across the top, then the other six two by two. */
   .bento {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas:
-      'trail trail'
-      'decide cost'
-      'find find'
-      'replay replay';
+  }
+  .bento > li,
+  .bento > .bento-md {
+    grid-column: span 1;
+  }
+  .bento > .bento-lg {
+    grid-column: span 2;
   }
 }
 /* Phone: the demo button joins the menu, the card's figures stack, and the steps and features take one column. */
@@ -2692,17 +3092,38 @@ table.ledger strong {
   .how-steps > li + li::before {
     display: none;
   }
-  .bento {
-    grid-template-areas: 'trail' 'decide' 'find' 'cost' 'replay';
+  .bento > li,
+  .bento > .bento-md,
+  .bento > .bento-lg {
+    grid-column: span 1;
   }
-  .f-replay {
-    display: flex;
+  .bento-head {
+    grid-template-columns: minmax(0, 1fr);
+    margin-bottom: 24px;
   }
-  .f-replay .feature-shot {
-    margin-top: 8px;
+  .feature-visual {
+    min-height: 0;
+    padding: 16px 16px 0;
   }
-  .feature {
-    padding: 20px;
+  .feature-text {
+    padding: 16px 20px 20px;
+  }
+  .waterfall {
+    padding: 12px;
+  }
+  .waterfall li {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    gap: 8px;
+  }
+  .waterfall-axis {
+    margin-left: calc(4.5rem + 8px);
+  }
+  /* The held finding's tag gives its amount alone; the full one does not fit beside the label. */
+  .waterfall-tag .long {
+    display: none;
+  }
+  .waterfall-tag .short {
+    display: inline;
   }
   .landing-top .theme-switch.compact {
     display: none;

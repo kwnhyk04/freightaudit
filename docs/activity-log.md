@@ -19,6 +19,36 @@ Chronological record of development activity, newest first, with small events an
 
 ## Entries
 
+### 2026-11-02: Landing round 3: Features and Closing restyled after two 21st.dev components (not committed)
+
+- Neither component's licence could be read, so both are visual references only.
+  - What happened: the user pasted `marketing-feature-bento` and `cta69` as code, with no author or page URL. A web search for each found nothing, and four 21st.dev URLs tried returned 404.
+  - Why: the pages' addresses are not known; not confirmed whether they are public.
+  - What we did: following the user's rule (no licence, so no code), we built both from scratch in FA's CSS and tokens, with no Tailwind, no packages and none of their copy. Both are recorded in docs/third-party.md as unknown.
+- The screenshot `_tmp/21st/bento-8.png` was not on disk (the folder holds only `freight-audit-table.png`). The pasted code served as the visual reference. No line of the prompt started with ">>> PASTE", so we did not stop.
+- Every figure was checked against its source before use:
+  - Linehaul billed twice, +$5,522.06 (552206 cents, Tern & Tide Carriers #96079756);
+  - g066 read in 3.3 s (07:23:59.475 to 07:24:02.810 UTC) and matched at 07:24:02.828;
+  - the dead letter: reconcile, "shipment has no miles", 1 attempt;
+  - cost per invoice: Claude first $0.0005 / $0.0012, free models $0.0007 / $0.002, targets $0.02 / $0.05.
+  - The checks used a scratch script over `public/demo/*.json` with `trailRows`, plus `lib/eval-results.json`.
+- The masked-fields card needed a true basis. The services redact `x-api-key`, `cookie`, `authorization` and `apiKey` (`packages/telemetry/src/index.ts`), and pino writes `[Redacted]`. Fastify's default request log does not include headers, so the card says the services redact keys and cookies, not that keys appear in logs.
+- Keys are drawn as `span.keycap`, not `kbd`: FA has no keyboard shortcuts, and `kbd` would suggest one.
+- Small events:
+  - Lint flagged the now-unused `clock`. We removed it.
+  - The first build failed on a name clash: the landing's own `STEPS` and the imported upload steps. We imported the latter as `PROGRESS`.
+  - The first shots showed four problems: the cost figure aligned right (the `.num` style), the two bar groups on different baselines, the code lines wrapping into a jumble, and on a phone the "4 s" tick wrapping and the Held and read tags running out of their track. Fixes: the figure aligned left, the groups aligned at the end, the code scrolls sideways in a focusable region, the ticks stay on one line, the read time sits inside its bar, and on a phone the Held tag shows the amount alone.
+  - The screenshot script's "spill" check flags the code card because its lines run past the card inside their scroll box, which clips them; the page never scrolls sideways.
+- Files: apps/web/components/landing.tsx, apps/web/lib/engineering.ts, apps/web/lib/engineering.test.ts, apps/web/app/globals.css, apps/web/e2e/demo.spec.ts, docs/third-party.md, docs/context.md, docs/todo.md, docs/activity-log.md
+- Validation:
+  - `pnpm test` at the root passes all 18 tasks (web 159, with the two new tests), `pnpm lint` 12 of 12 and `pnpm typecheck` 21 of 21.
+  - `pnpm e2e` passes 70 of 70, with the dev containers started for it and stopped after.
+  - Features and Closing were shot at 1280, 1440, 1920 and 390 px in both themes, with reduced motion so the marquee stands still, plus full pages (`_tmp/fa-landing-3/`). No page scrolls sideways.
+- Outstanding:
+  - The marquee's motion and the hover effects were not checked in a browser with motion on.
+  - `pnpm test:int` not run.
+  - The user ships.
+
 ### 2026-11-02: fa-polish-3 CI fix: the evals test of the spend cap expected the raw string (not committed)
 
 - CI failed in evals.

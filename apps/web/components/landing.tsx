@@ -1,9 +1,10 @@
 import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
+import type { CSSProperties, ReactNode } from 'react';
 import { demoDeadLetters, demoDiscrepancies, demoInvoiceFile } from '../lib/demo.ts';
 import evalResults from '../lib/eval-results.json';
-import { ENGINEERING, REPOSITORY, sourceLink } from '../lib/engineering.ts';
-import { decideWords, decisionLabel, findingText, findingTitle, modelName, overcharge, plural, QUEUE, resultBadge, trailRows } from '../lib/labels.ts';
+import { ENGINEERING, MASKED_LOG, RATE_CHECK, REPOSITORY, sourceLink } from '../lib/engineering.ts';
+import { decideWords, decisionLabel, findingText, findingTitle, modelName, overcharge, plural, QUEUE, resultBadge, STEPS as PROGRESS, trailRows } from '../lib/labels.ts';
 import { START_PAGE } from '../lib/session.ts';
 import type { Theme } from '../lib/theme.ts';
 import { LandingMenu, ThemeSwitch } from './client.tsx';
@@ -15,7 +16,6 @@ import { Badge, Difference, StatusBadge, Table, Td, Th } from './ui.tsx';
 // scripts/evidence.ts copies, and the sample): it calls no api and holds no key. Every claim on it has a source in the
 // repository (docs/memory.md, UI round 2).
 const day = new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' });
-const clock = new Intl.DateTimeFormat('en-GB', { timeStyle: 'medium', timeZone: 'UTC' });
 
 // The runs' results as evals/harness/landing.ts writes them: a run, or its cell in a row, is null until it is measured.
 type Cell = { result: string; met: boolean } | null;
@@ -247,184 +247,279 @@ function HowItWorks() {
   );
 }
 
-// The sample's own audit trail, as its invoice page tells it: received, read, then matched and checked, then the finding it holds.
-const STAGE = new Set(['Received', 'Read', 'Matched']);
-function timeline() {
+// The sample's own audit trail as a waterfall, in seconds from receipt (public/demo/invoice-details.json, g066): its
+// receipt, the read (Reading started to Read), the check (Checking started to Matched), and the finding it holds.
+function waterfall() {
   const facts = sample();
   if (!facts) return null;
-  const { invoice, findings, finding, line } = facts;
-  const rows = trailRows(invoice, findings).filter((row) => STAGE.has(row.verb));
+  const { invoice, findings, finding, line, over } = facts;
+  const rows = trailRows(invoice, findings);
+  const at = (verb: string) => rows.find((row) => row.verb === verb)?.at;
   const start = Date.parse(rows[0]?.at ?? invoice.createdAt);
-  // The sample predates Claude first: say so where it was read, so the model named there does not contradict the note above.
-  const model = invoice.extraction?.model;
-  const before = model && !model.startsWith('anthropic/') ? `Recorded before Claude first went live, so ${modelName(model)} read it.` : null;
-  const steps = [
-    ...rows.map((row) => ({ at: row.at, what: `${row.verb} ${row.rest}`, notes: row.verb === 'Read' && before ? [...row.notes, before] : row.notes })),
-    {
-      at: rows.at(-1)?.at ?? invoice.createdAt,
-      what: `Held: ${findingTitle(finding.type, line.description)}`,
-      notes: [findingText(finding, line, invoice.rateCardVersion?.version, invoice.currency)],
-    },
+  const seconds = (iso?: string) => (iso ? (Date.parse(iso) - start) / 1000 : 0);
+  const spans = [
+    { label: 'Received', from: 0, to: 0 },
+    { label: 'Read', from: seconds(at('Reading started')), to: seconds(at('Read')), slow: true },
+    { label: 'Matched', from: seconds(at('Checking started')), to: seconds(at('Matched')) },
+    { label: 'Held', from: seconds(at('Matched')), to: seconds(at('Matched')), tag: { long: `${findingTitle(finding.type, line.description)}, +${over}`, short: `+${over}` } },
   ];
-  return { invoice, start, steps, elapsed: (at: string) => `+${((Date.parse(at) - start) / 1000).toFixed(1)} s` };
+  const total = Math.max(1, Math.ceil(Math.max(...spans.map((span) => span.to))));
+  // The sample predates Claude first: say so, so the model that read it does not contradict the note under How it works.
+  const model = invoice.extraction?.model;
+  const before = model && !model.startsWith('anthropic/') ? `Recorded before Claude first went live, so ${modelName(model)} read it.` : '';
+  return { invoice, start, spans, total, before };
+}
+
+// One bento card: a piece of the app on top, its title and one line below. size is its width on the six-column grid.
+function Feature({ id, size, title, line, children }: { id: string; size: 'sm' | 'md' | 'lg'; title: string; line: string; children: ReactNode }) {
+  return (
+    <li className={`bento-${size}`}>
+      <article className="feature" aria-labelledby={id}>
+        <div className="feature-visual">{children}</div>
+        <div className="feature-text">
+          <h3 id={id}>{title}</h3>
+          <p className="muted">{line}</p>
+        </div>
+      </article>
+    </li>
+  );
 }
 
 // The Features cards are pieces of the app filled from the demo set (public/demo/*.json) and the eval results; their
 // buttons are shown only, since the landing page decides nothing.
 function Features() {
-  const trail = timeline();
+  const trail = waterfall();
+  const pct = (part: number, whole: number) => `${(part / whole) * 100}%`;
   // One finding of each kind from the demo set (public/demo/discrepancies.json), none of them the hero's g066: a
-  // duplicate (the Linehaul one when there is one), a rate mismatch and an uncontracted charge, each in its own state.
+  // duplicate (the Linehaul one: Tern & Tide Carriers #96079756, +$5,522.06), a rate mismatch and an uncontracted
+  // charge. The first is the alert on top; the others wait behind it.
   const all = demoDiscrepancies().discrepancies.edges.map(({ node }) => node).filter((each) => each.invoice.number !== sample()?.invoice.number);
   const kinds = (['DUPLICATE_CHARGE', 'RATE_MISMATCH', 'UNCONTRACTED_CHARGE'] as const).flatMap((type) => {
     const ofType = all.filter((each) => each.type === type && each.lineItem);
     const found = ofType.find((each) => each.lineItem?.description === 'Linehaul') ?? ofType[0];
     return found ? [found] : [];
   });
-  // Cost per invoice, Claude first at paid rates, against its target, from lib/eval-results.json
-  // (evals/reports/2026-10-31-v2-full-claude-first.md); each bar's track is its target.
+  // Cost per invoice at paid rates, digital and scanned, for both official runs, from lib/eval-results.json
+  // (evals/reports/2026-10-31-v2-full-claude-first.md and 2026-10-27-v2.md); Claude first's scanned cost leads.
   const costRow = results.rows.find((row) => row.label === 'Cost per invoice, paid-equivalent (digital / scanned)');
-  const [digital, scanned] = costRow?.claudeFirst?.result.split(' / ') ?? [];
-  const targets = costRow?.target.replace(/^[^$]*/, '').split(' / ') ?? [];
   const dollars = (text?: string) => Number(text?.replace(/[^0-9.]/g, ''));
-  const bars = [
-    { name: 'Digital', cost: digital, target: targets[0] },
-    { name: 'Scanned', cost: scanned, target: targets[1] },
-  ].filter((bar) => dollars(bar.cost) > 0 && dollars(bar.target) > 0);
-  // The demo set's one dead letter (public/demo/dead-letters.json).
+  const runs = (
+    [
+      ['Claude first', costRow?.claudeFirst],
+      ['Free models only', costRow?.free],
+    ] as const
+  ).flatMap(([name, cell]) => (cell ? [{ name, costs: cell.result.split(' / ') }] : []));
+  const scanned = runs[0]?.name === 'Claude first' ? runs[0].costs[1] : undefined;
+  const highest = Math.max(...runs.flatMap((run) => run.costs.map(dollars)));
+  // The demo set's one dead letter (public/demo/dead-letters.json) on the upload page's progress steps, at the step its
+  // queue runs.
   const dead = demoDeadLetters('OPEN').deadLetters.edges[0]?.node;
+  const failedAt = dead ? PROGRESS.indexOf(dead.queue === 'extract' ? 'Reading' : 'Checking') : -1;
   const words = decideWords('RATE_MISMATCH');
-  // A decision the demo set holds, as its invoice's trail records it: the first decided finding above (g054's disputed fuel).
-  const decided = kinds.find((each) => each.resolvedAt);
-  const decidedInvoice = decided && demoInvoiceFile(decided.invoice.filename);
-  const record =
-    decided && decidedInvoice
-      ? trailRows(decidedInvoice, decidedInvoice.discrepancies.edges.map(({ node }) => node)).find((row) => row.at === decided.resolvedAt)
-      : undefined;
+  const top = kinds[0];
   return (
     <section id="features" className="landing-section" aria-labelledby="features-title">
       <div className="landing-wrap">
-        <h2 id="features-title">Features, as the app shows them</h2>
-        <p className="intro">Each card is a piece of the app, filled from the demo set&apos;s synthetic invoices.</p>
-        <div className="bento">
-          {trail && (
-            <article className="feature f-trail" aria-labelledby="feature-trail">
-              <h3 id="feature-trail">Every step on the record</h3>
-              <p className="muted">
-                Sample invoice {trail.invoice.number}&apos;s audit trail, {day.format(new Date(trail.start))}. Times are UTC.
-              </p>
-              <ol className="timeline feature-shot" aria-label="Audit trail of the sample invoice">
-                {trail.steps.map((step) => (
-                  <li key={step.what}>
-                    <span className="timeline-time num">
-                      {clock.format(new Date(step.at))}
-                      <span>{trail.elapsed(step.at)}</span>
-                    </span>
-                    <span className="timeline-body">
-                      <strong>{step.what}</strong>
-                      {step.notes.map((note) => (
-                        <span key={note} className="muted">
-                          {note}
-                        </span>
-                      ))}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </article>
-          )}
-          <article className="feature f-decide" aria-labelledby="feature-decide">
-            <h3 id="feature-decide">A person decides each finding</h3>
-            <p className="muted">Approve the charge or dispute it, with a note the audit trail keeps.</p>
-            {/* The review queue's own decision row, shown only. */}
-            <div className="feature-shot row decide decide-preview" aria-hidden="true">
-              <input placeholder="Note (optional)" disabled tabIndex={-1} />
-              <span className="button">{words.dismiss}</span>
-              <span className="button danger">{words.confirm}</span>
-            </div>
-            {decided && record && (
-              <div className="feature-shot decided">
-                <p className="muted">
-                  In the trail of invoice <span className="num">{decided.invoice.number}</span>, {clock.format(new Date(record.at))} UTC
-                </p>
-                <p>
-                  <strong>
-                    {record.verb} {record.rest}
-                  </strong>
-                </p>
-                {record.notes.map((note) => (
-                  <p key={note} className="muted">
-                    {note}
-                  </p>
-                ))}
-              </div>
+        <div className="bento-head">
+          <h2 id="features-title">Features, as the app shows them</h2>
+          <div>
+            <p className="intro">Each card is a piece of the app, filled from the demo set&apos;s synthetic invoices.</p>
+            {trail && (
+              <Link className="button" href={`/demo/invoices/${trail.invoice.id}`}>
+                Open the sample invoice
+                <Icon name="next" size={16} />
+              </Link>
             )}
-          </article>
-          {kinds.length > 0 && (
-            <article className="feature f-find" aria-labelledby="feature-alert">
-              <h3 id="feature-alert">Findings that name the amount</h3>
-              <p className="muted">Each finding names its line and what it costs, before anyone pays.</p>
-              <div className="feature-shot findings">
-                {kinds.map((finding) => {
-                  const decision = decisionLabel(finding.status, finding.type);
-                  return (
-                    <article key={finding.id} aria-label="Finding">
-                      <div className="finding-body">
-                        <div className="row">
-                          <h4>{findingTitle(finding.type, finding.lineItem!.description)}</h4>
-                          <Badge tone={decision.tone}>{decision.label}</Badge>
-                        </div>
-                        <p className="muted">
-                          {findingText(finding, finding.lineItem, undefined, finding.invoice.currency)} {finding.invoice.carrier} #{finding.invoice.number}.
-                        </p>
-                      </div>
-                      <Difference cents={overcharge(finding)} currency={finding.invoice.currency} />
-                    </article>
-                  );
-                })}
+          </div>
+        </div>
+        <ul className="bento">
+          {trail && (
+            <Feature
+              id="feature-trail"
+              size="lg"
+              title="Every step on the record"
+              line={`Sample invoice ${trail.invoice.number}, ${day.format(new Date(trail.start))}, in seconds from receipt. ${trail.before}`}
+            >
+              <div className="waterfall">
+                <div className="waterfall-axis" aria-hidden="true">
+                  {Array.from({ length: trail.total + 1 }, (_, tick) => (
+                    <span key={tick} style={{ left: pct(tick, trail.total) }}>
+                      {tick} s
+                    </span>
+                  ))}
+                </div>
+                <ol aria-label="Audit trail of the sample invoice" style={{ '--ticks': trail.total } as CSSProperties}>
+                  {trail.spans.map((span) => (
+                    <li key={span.label} data-slow={span.slow || undefined}>
+                      <span className="waterfall-label">{span.label}</span>
+                      <span className="waterfall-track">
+                        <span className="waterfall-bar" style={{ left: pct(span.from, trail.total), width: pct(span.to - span.from, trail.total) }} />
+                        {span.slow && (
+                          <span className="waterfall-tag inside num" style={{ right: pct(trail.total - span.to, trail.total) }}>
+                            {(span.to - span.from).toFixed(1)} s
+                          </span>
+                        )}
+                        {span.tag && (
+                          <span className="waterfall-tag before" style={{ right: pct(trail.total - span.from, trail.total) }}>
+                            <span className="long">{span.tag.long}</span>
+                            <span className="short">{span.tag.short}</span>
+                          </span>
+                        )}
+                        <span className="visually-hidden">
+                          , at {span.from.toFixed(1)} s{span.to > span.from ? ` to ${span.to.toFixed(1)} s` : ''}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
               </div>
-            </article>
-          )}
-          {bars.length > 0 && (
-            <article className="feature f-cost" aria-labelledby="feature-cost">
-              <h3 id="feature-cost">Reading costs a fraction of a cent</h3>
-              <p className="muted">
-                Claude first at paid rates on {results.cases} test invoices, {measured(results.claudeFirst)}. Each bar is the cost per invoice against its target.
-              </p>
-              <dl className="feature-shot cost-bars">
-                {bars.map((bar) => (
-                  <div key={bar.name}>
-                    <dt>{bar.name}</dt>
-                    <dd>
-                      <span className="cost-track" title={`${bar.name}: ${bar.cost} per invoice; target ${bar.target}`}>
-                        <span className="cost-fill" style={{ width: `${Math.max((dollars(bar.cost) / dollars(bar.target)) * 100, 1)}%` }} />
-                      </span>
-                      <span className="cost-value">
-                        <strong className="num">{bar.cost}</strong> <span className="muted">of a {bar.target} target</span>
-                      </span>
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </article>
+            </Feature>
           )}
           {dead && (
-            <article className="feature f-replay" aria-labelledby="feature-replay">
-              <h3 id="feature-replay">Failed jobs wait to be replayed</h3>
-              <p className="muted">A job that uses up its retries lands in dead letters with its error, ready to replay once the cause is fixed.</p>
-              <div className="feature-shot dead-letter">
-                <p>
-                  <strong>{QUEUE[dead.queue] ?? dead.queue}</strong>, invoice <span className="num">{dead.invoice?.number}</span>
-                </p>
-                <p className="dead-letter-error">{dead.error}</p>
-                <p className="muted">{plural(dead.attempts, 'attempt')}</p>
-                <span className="decide-preview" aria-hidden="true">
-                  <span className="button small">Replay</span>
-                </span>
+            <Feature id="feature-replay" size="sm" title="Failed jobs wait to be replayed" line="A job that uses up its retries waits with its error, ready to replay once the cause is fixed.">
+              <div className="scrubber">
+                <div className="scrubber-head">
+                  <span className="replay-pill" aria-hidden="true">
+                    <span className="play" />
+                    Replay
+                  </span>
+                  <span className="muted num">
+                    Invoice {dead.invoice?.number}, {plural(dead.attempts, 'attempt')}
+                  </span>
+                </div>
+                <div className="scrubber-track">
+                  <span className="track-line" aria-hidden="true" />
+                  <span className="track-line done" style={{ width: pct(failedAt, PROGRESS.length - 1) }} aria-hidden="true" />
+                  {PROGRESS.map((step, index) => (
+                    <span key={step} className="track-dot" data-done={index <= failedAt || undefined} style={{ left: pct(index, PROGRESS.length - 1) }} aria-hidden="true" />
+                  ))}
+                  <span className="playhead" style={{ left: pct(failedAt, PROGRESS.length - 1) }}>
+                    <span className="playhead-label">{QUEUE[dead.queue] ?? dead.queue} failed</span>
+                  </span>
+                </div>
+                <ol className="scrubber-steps" aria-label="Pipeline steps">
+                  {PROGRESS.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+                <p className="scrubber-error">{dead.error}</p>
               </div>
-            </article>
+            </Feature>
           )}
-        </div>
+          {top && (
+            <Feature id="feature-alert" size="sm" title="Findings that name the amount" line="Each finding names its line and what it costs, before anyone pays.">
+              <div className="alert-stack">
+                {kinds.map((finding, depth) =>
+                  depth === 0 ? (
+                    <article key={finding.id} className="alert" aria-label="Finding" style={{ '--depth': depth } as CSSProperties}>
+                      <span>
+                        <strong>{findingTitle(finding.type, finding.lineItem!.description)}</strong>
+                        <span className="muted">
+                          {finding.invoice.carrier} #{finding.invoice.number}, {decisionLabel(finding.status, finding.type).label.toLowerCase()}
+                        </span>
+                      </span>
+                      <Difference cents={overcharge(finding)} currency={finding.invoice.currency} />
+                    </article>
+                  ) : (
+                    <div key={finding.id} className="alert" aria-hidden="true" style={{ '--depth': depth } as CSSProperties}>
+                      <span>
+                        <strong>{findingTitle(finding.type, finding.lineItem!.description)}</strong>
+                        <span className="muted">
+                          {finding.invoice.carrier} #{finding.invoice.number}
+                        </span>
+                      </span>
+                      <Difference cents={overcharge(finding)} currency={finding.invoice.currency} />
+                    </div>
+                  ),
+                )}
+              </div>
+            </Feature>
+          )}
+          {scanned && costRow && (
+            <Feature
+              id="feature-cost"
+              size="sm"
+              title="Reading costs a fraction of a cent"
+              line={`Per invoice at paid rates on ${results.cases} test invoices; the targets are ${costRow.target.replace(/^[^$]*/, '')}.`}
+            >
+              <div className="cost">
+                <p className="cost-figure num">{scanned}</p>
+                <p className="muted">per scanned invoice, Claude first, {measured(results.claudeFirst)}</p>
+                <div className="cost-chart">
+                  {runs.map((run) => (
+                    <figure key={run.name}>
+                      <ul aria-label={`${run.name}, cost per invoice`}>
+                        {run.costs.map((cost, index) => (
+                          <li key={index} data-highlight={(run.name === 'Claude first' && index === 1) || undefined}>
+                            <span className="num">{cost}</span>
+                            <span className="cost-bar" style={{ '--h': dollars(cost) / highest } as CSSProperties} aria-hidden="true" />
+                            <span>{index === 0 ? 'Digital' : 'Scanned'}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <figcaption>{run.name}</figcaption>
+                    </figure>
+                  ))}
+                </div>
+              </div>
+            </Feature>
+          )}
+          <Feature id="feature-code" size="sm" title="Rules in code, not in the model" line="The model only reads the invoice; plain code checks each charge against the rate card.">
+            <div className="code-window">
+              <a className="code-head" href={`${sourceLink(RATE_CHECK.path)}#L${RATE_CHECK.first}-L${RATE_CHECK.first + RATE_CHECK.lines.length - 1}`}>
+                {RATE_CHECK.path}
+              </a>
+              {/* Focusable, so a keyboard can scroll its long lines. */}
+              <pre tabIndex={0} role="region" aria-label={`The rate-card check, lines ${RATE_CHECK.first} to ${RATE_CHECK.first + RATE_CHECK.lines.length - 1}`}>
+                <code>
+                  {RATE_CHECK.lines.map((code, index) => (
+                    <span key={index} className="code-line" data-mark={code.includes('amountCents > finding.expectedCents') || undefined}>
+                      <span className="code-number" aria-hidden="true">
+                        {RATE_CHECK.first + index}
+                      </span>
+                      {code.slice(4)}
+                    </span>
+                  ))}
+                </code>
+              </pre>
+            </div>
+          </Feature>
+          <Feature id="feature-decide" size="md" title="A person decides each finding" line="Each decision goes into the audit trail with its note, and an invoice is approved only once every finding is decided.">
+            {/* The review queue's two decisions, drawn as keys; the landing page decides nothing. */}
+            <ul className="keys" aria-label="The two decisions on a finding">
+              <li>
+                <span>Let the billed amount stand</span>
+                <span className="keycap">{words.dismiss}</span>
+              </li>
+              <li>
+                <span>Dispute the overcharge</span>
+                <span className="keycap danger">{words.confirm}</span>
+              </li>
+            </ul>
+          </Feature>
+          <Feature
+            id="feature-private"
+            size="md"
+            title="Keys stay out of the logs"
+            line="The demo holds only generated invoices from fictional carriers, and every service redacts keys and cookies from what it logs."
+          >
+            <div className="log-panel">
+              <div className="log-head">
+                <span>A redacted request header</span>
+                <Badge tone="neutral">Synthetic data only</Badge>
+              </div>
+              <pre>
+                {'{ "headers": { '}
+                {MASKED_LOG.masked.map((each, index) => (
+                  <span key={each.field}>
+                    {index > 0 && ', '}&quot;{each.field}&quot;: <span className="masked">{MASKED_LOG.censor}</span>
+                  </span>
+                ))}
+                {' } }'}
+              </pre>
+            </div>
+          </Feature>
+        </ul>
       </div>
     </section>
   );
@@ -502,13 +597,18 @@ function Engineering() {
   );
 }
 
-// The close: one line and the demo, over the name set large and faint.
+// The close: one line and the demo, over the name scrolling large and faint. The loop is two identical halves slid by
+// half their width, so each half repeats the name enough to stay wider than the widest screen.
+const MARQUEE = 'FreightAudit · '.repeat(4);
 function Closing() {
   return (
     <section className="closing" aria-labelledby="closing-title">
-      <p className="closing-word" aria-hidden="true">
-        FreightAudit
-      </p>
+      <div className="marquee" aria-hidden="true">
+        <div className="marquee-track">
+          <span>{MARQUEE}</span>
+          <span>{MARQUEE}</span>
+        </div>
+      </div>
       <div className="landing-wrap">
         <h2 id="closing-title">Check the next invoice against the contract.</h2>
         <p className="lead">Open the live demo and decide a finding yourself.</p>
