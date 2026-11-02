@@ -23,8 +23,4 @@ apps/web/.impeccable/
 .seenry/
 docs/*
 !docs/third-party.md
-!docs/screenshots/
-docs/screenshots/*
-!docs/screenshots/ui/
-docs/screenshots/ui/round-*/
 *.plan.md

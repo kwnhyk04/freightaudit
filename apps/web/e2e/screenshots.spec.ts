@@ -6,8 +6,9 @@ import pg from 'pg';
 
 // pnpm e2e:screenshots: the round-1 and round-2 screens (round 2: the landing page and the overview) at the sizes of the
 // approved pictures, into docs/screenshots/ui/round-1/ and round-2/, then every main screen in light and dark at
-// 1440x900 and list and detail on a phone, into docs/screenshots/ui/, for the design review. A phone page that scrolls
-// sideways fails the run.
+// 1440x900 and list and detail on a phone, into docs/screenshots/ui/, for the design review. docs/ is private
+// (ignored), so these stay on this PC; the README's picture is .github/readme/demo-invoice.png. A phone page that
+// scrolls sideways fails the run.
 const out = new URL('../../../docs/screenshots/ui/', import.meta.url);
 mkdirSync(new URL('round-1/', out), { recursive: true });
 mkdirSync(new URL('round-2/', out), { recursive: true });
