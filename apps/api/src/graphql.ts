@@ -10,7 +10,7 @@ import { GraphQLError, GraphQLScalarType, Kind } from 'graphql';
 import { createSchema, createYoga, type Plugin } from 'graphql-yoga';
 import { actorOf } from './actor.ts';
 import { dashboardFigures } from './dashboard.ts';
-import { after, before, connection, cursorAt, pageSize, UUID } from './keyset.ts';
+import { after, before, connection, counted, cursorAt, newerThan, offsetOf, pageSize, UUID } from './keyset.ts';
 import { createLoaders, discrepancyColumns, graphqlInvoiceColumns, type Loaders } from './loaders.ts';
 import { fail } from './problem.ts';
 import { queryLimits } from './query-limits.ts';
@@ -236,6 +236,8 @@ function createResolvers({ db, queues, tenantId, uploadAllowlist }: GraphqlDeps)
         const last = args.last ?? undefined;
         const back = last !== undefined || Boolean(args.before);
         const size = last !== undefined ? pageSize(last, 'last') : pageSize(args.first);
+        if (back && args.offset != null) throw fail(400, 'give offset with first, not last or before');
+        const skip = offsetOf(args.offset, args.after);
         const matching = and(
           eq(invoices.tenantId, tenantId),
           args.status ? eq(invoices.status, args.status.toLowerCase() as typeof invoices.$inferSelect.status) : undefined,
@@ -248,21 +250,19 @@ function createResolvers({ db, queues, tenantId, uploadAllowlist }: GraphqlDeps)
           .leftJoin(carriers, eq(carriers.id, invoices.carrierId))
           .where(and(matching, back ? before(invoices.createdAt, invoices.id, args.before) : after(invoices.createdAt, invoices.id, args.after)))
           .orderBy(...(back ? [asc(invoices.createdAt), asc(invoices.id)] : [desc(invoices.createdAt), desc(invoices.id)]))
-          .limit(size + 1);
+          .limit(size + 1)
+          .offset(skip ?? 0);
         const page = back ? rows.slice(0, size).reverse() : rows.slice(0, size);
         const head = page[0];
         // ponytail: exact counts read every matching invoice of the tenant; estimates past about 100k of them.
-        const newer = head
-          ? sql<number>`count(*) FILTER (WHERE (${invoices.createdAt}, ${invoices.id}) > (${head.cursorAt}::timestamptz, ${head.id}::uuid))`
-          : sql<number>`0`;
         const [counts] = await db
-          .select({ total: count(), newer: newer.mapWith(Number) })
+          .select({ total: count(), newer: newerThan(invoices.createdAt, invoices.id, head) })
           .from(invoices)
           .leftJoin(carriers, eq(carriers.id, invoices.carrierId))
           .where(matching);
         const totalCount = counts!.total;
         // An empty page after a cursor sits past every match; any other empty page comes before them all.
-        const offset = head ? counts!.newer : args.after ? totalCount : 0;
+        const offset = skip ?? (head ? counts!.newer : args.after ? totalCount : 0);
         const flags = back
           ? { hasPreviousPage: rows.length > size, hasNextPage: offset + page.length < totalCount }
           : { hasNextPage: rows.length > size, hasPreviousPage: offset > 0 };
@@ -326,30 +326,32 @@ function createResolvers({ db, queues, tenantId, uploadAllowlist }: GraphqlDeps)
       invoice: (_, { id }, { loaders }) => invoiceById(loaders, id),
       async discrepancies(_, args) {
         const first = pageSize(args.first);
+        const skip = offsetOf(args.offset, args.after);
+        const matching = and(eq(discrepancies.tenantId, tenantId), args.status ? eq(discrepancies.status, args.status.toLowerCase() as 'open') : undefined);
         const rows = await db
           .select({ ...discrepancyColumns, cursorAt: cursorAt(discrepancies.createdAt) })
           .from(discrepancies)
-          .where(
-            and(
-              eq(discrepancies.tenantId, tenantId),
-              args.status ? eq(discrepancies.status, args.status.toLowerCase() as 'open') : undefined,
-              after(discrepancies.createdAt, discrepancies.id, args.after),
-            ),
-          )
+          .where(and(matching, after(discrepancies.createdAt, discrepancies.id, args.after)))
           .orderBy(desc(discrepancies.createdAt), desc(discrepancies.id))
-          .limit(first + 1);
-        return connection(rows, first, toDiscrepancy);
+          .limit(first + 1)
+          .offset(skip ?? 0);
+        const [counts] = await db.select({ total: count(), newer: newerThan(discrepancies.createdAt, discrepancies.id, rows[0]) }).from(discrepancies).where(matching);
+        return counted(rows, first, toDiscrepancy, skip, Boolean(args.after), counts!);
       },
       async deadLetters(_, args) {
         const first = pageSize(args.first);
+        const skip = offsetOf(args.offset, args.after);
         const replayed = args.status === 'OPEN' ? isNull(deadLetters.replayedAt) : args.status === 'REPLAYED' ? isNotNull(deadLetters.replayedAt) : undefined;
+        const matching = and(eq(deadLetters.tenantId, tenantId), replayed);
         const rows = await db
           .select({ row: deadLetters, id: deadLetters.id, cursorAt: cursorAt(deadLetters.createdAt) })
           .from(deadLetters)
-          .where(and(eq(deadLetters.tenantId, tenantId), replayed, after(deadLetters.createdAt, deadLetters.id, args.after)))
+          .where(and(matching, after(deadLetters.createdAt, deadLetters.id, args.after)))
           .orderBy(desc(deadLetters.createdAt), desc(deadLetters.id))
-          .limit(first + 1);
-        return connection(rows, first, ({ row }) => toDeadLetter(row));
+          .limit(first + 1)
+          .offset(skip ?? 0);
+        const [counts] = await db.select({ total: count(), newer: newerThan(deadLetters.createdAt, deadLetters.id, rows[0]) }).from(deadLetters).where(matching);
+        return counted(rows, first, ({ row }) => toDeadLetter(row), skip, Boolean(args.after), counts!);
       },
       carriers: async (_, __, { loaders }) => loaders.carriers(),
       uploadAllowlist: () => (uploadAllowlist ? [...uploadAllowlist].sort() : null),
@@ -397,8 +399,10 @@ function createResolvers({ db, queues, tenantId, uploadAllowlist }: GraphqlDeps)
       async discrepancies(parent, args, { loaders }) {
         const first = pageSize(args.first);
         const status = args.status ? (args.status.toLowerCase() as 'open') : undefined;
-        const rows = await loaders.discrepancies.load({ invoiceId: parent.id!, status, first, after: args.after });
-        return connection(rows, first, toDiscrepancy);
+        const ranked = await loaders.discrepancies.load({ invoiceId: parent.id!, status, first, after: args.after });
+        const counts = { total: Number(ranked[0]?.total ?? 0), newer: Number(ranked[0]?.newer ?? 0) };
+        const rows = ranked.filter((row) => Number(row.rank) > counts.newer);
+        return counted(rows, first, toDiscrepancy, undefined, Boolean(args.after), counts);
       },
       openDiscrepancyCount: (parent, _, { loaders }) => loaders.openDiscrepancyCount.load(parent.id!),
       hold: (parent, _, { loaders }) => (parent.status === 'RECONCILED' ? loaders.hold.load(parent.id!) : null),

@@ -777,17 +777,52 @@ test.describe('list', () => {
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(new RegExp(`[?]q=${invoice!.pro_number}$`));
     await expect(page.locator(`a[href="/invoices/${invoice!.id}"]`)).toBeVisible();
-    const found = await page.locator('tbody tr').count();
-    await expect(page.getByRole('navigation', { name: 'Pages' })).toContainText(`Showing 1 to ${found} of ${found}`);
+    await expect(page.getByRole('navigation', { name: 'Pages' })).toContainText('Page 1 of 1');
+    const [{ total }] = (await db<{ total: number }>('SELECT count(*)::int AS total FROM invoices')) as [{ total: number }];
+    const last = Math.ceil(total / 20);
     await page.goto('/invoices');
     const pages = page.getByRole('navigation', { name: 'Pages' });
-    await expect(pages).toContainText(/Showing 1 to 25 of \d+/);
-    await pages.getByRole('link', { name: 'Next' }).click();
-    await expect(pages).toContainText(/Showing 26 to 50 of \d+/);
-    // Within a page of the start, Previous is the plain first page.
-    await pages.getByRole('link', { name: 'Previous' }).click();
-    await expect(pages).toContainText(/Showing 1 to 25 of \d+/);
-    await expect(page).toHaveURL(/\/invoices$/);
+    const status = pages.locator('.pager-status');
+    await expect(status).toHaveText(`Page 1 of ${last}`);
+    await expect(page.locator('tbody tr')).toHaveCount(20);
+    await expect(pages.getByRole('button', { name: 'Go to previous page' })).toBeDisabled();
+    await expect(pages.getByRole('button', { name: 'Page 1', exact: true })).toHaveAttribute('aria-current', 'page');
+    await pages.getByRole('button', { name: 'Go to next page' }).click();
+    await expect(page).toHaveURL(/[?]page=2&size=20$/);
+    await expect(pages.getByRole('button', { name: 'Page 2', exact: true })).toHaveAttribute('aria-current', 'page');
+    await pages.getByRole('button', { name: `Page ${last}`, exact: true }).click();
+    await expect(pages.getByRole('button', { name: 'Go to next page' })).toBeDisabled();
+    // Back and a reload keep the page.
+    await page.goBack();
+    await expect(status).toHaveText(`Page 2 of ${last}`);
+    await page.reload();
+    await expect(status).toHaveText(`Page 2 of ${last}`);
+    // At 10 a page, row 21 (the first on page 2 at 20) is on page 3, and on screen.
+    const first = await page.locator('tbody tr').first().locator('a.id').getAttribute('href');
+    await pages.getByRole('combobox', { name: 'Results per page' }).selectOption('10');
+    await expect(page).toHaveURL(/[?]page=3&size=10$/);
+    await expect(page.locator('tbody tr').first().locator('a.id')).toHaveAttribute('href', first!);
+    await expect(page.locator('tbody tr').first()).toBeInViewport();
+    // A filter starts at page 1 and keeps the size; a later visit with no size in the address opens at 10 a page.
+    await page.getByRole('navigation', { name: 'Filter by status' }).getByRole('link', { name: /^Approved/ }).click();
+    await expect(page).toHaveURL(/[?]status=approved&size=10$/);
+    await page.goto('/invoices');
+    await expect(page).toHaveURL(/[?]size=10$/);
+    await expect(page.locator('tbody tr')).toHaveCount(10);
+    // A page past the end goes to the last one.
+    await page.goto('/invoices?page=999&size=100');
+    await expect(status).toHaveText(`Page ${Math.ceil(total / 100)} of ${Math.ceil(total / 100)}`);
+  });
+
+  test('on a phone the pager shows the page, Previous, Next and the size, without the numbers', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/invoices?page=2&size=20');
+    const pages = page.getByRole('navigation', { name: 'Pages' });
+    await expect(pages.locator('.pager-status')).toContainText('Page 2 of');
+    await expect(pages.getByRole('button', { name: 'Go to previous page' })).toBeVisible();
+    await expect(pages.getByRole('button', { name: 'Go to next page' })).toBeVisible();
+    await expect(pages.getByRole('combobox', { name: 'Results per page' })).toBeVisible();
+    await expect(pages.getByRole('button', { name: 'Page 2', exact: true })).toBeHidden();
   });
 
   test('an invoice id the api does not hold shows the not-found page inside the app', async ({ page }) => {
@@ -845,7 +880,7 @@ test.describe('list', () => {
       await tab.click();
       await expect(page).toHaveURL(new RegExp(`[?]status=${key}$`));
       await expect(tabs.getByRole('link', { name: new RegExp(`^${label}`) })).toHaveAttribute('aria-current', 'page');
-      await expect(page.getByRole('navigation', { name: 'Pages' })).toContainText(`of ${count}`);
+      await expect(page.locator('caption')).toContainText(`of ${count}`);
       // Each row's status pill, in the third column since the invoice and carrier lead (UI round 2).
       const badges = page.locator('tbody td:nth-child(3) .badge');
       await expect(badges.first()).toBeVisible();

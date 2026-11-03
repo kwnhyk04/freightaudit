@@ -1,6 +1,7 @@
 import type { DeadLettersQuery, DiscrepanciesQuery, DiscrepancyStatus, InvoicesQuery, InvoiceSummaryQuery } from '@freightaudit/contracts/graphql';
 import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import {
   DECISION,
   decideWords,
@@ -19,31 +20,38 @@ import {
   statusReason,
   statusTotals,
 } from '../lib/labels.ts';
-import { ActionForm, BulkBar, DecideForm, Tabs } from './client.tsx';
-import { Badge, Day, Difference, Empty, figureWidth, Moment, Money, Pager, StatusBadge, Table, Td, Th } from './ui.tsx';
+import { pageCount, query } from '../lib/paging.ts';
+import { ActionForm, BulkBar, DecideForm, Pager, Tabs } from './client.tsx';
+import { Badge, Day, Difference, Empty, figureWidth, Moment, Money, StatusBadge, Table, Td, Th } from './ui.tsx';
 
 // Views shared by the live pages and the public /demo pages: base prefixes every link, readOnly hides every action.
+// paging is the page and size from the address; sized says the address named the size, so filters keep it.
 export type Where = { base: string; readOnly: boolean };
-export const query = (path: string, params: Record<string, string | undefined>) => {
-  const search = new URLSearchParams(Object.entries(params).filter((entry): entry is [string, string] => Boolean(entry[1])));
-  return search.size > 0 ? `${path}?${search}` : path;
-};
-export const PAGE_SIZE = 25;
+export type Paging = { page: number; size: number; sized: boolean };
+const sizeParam = ({ size, sized }: Paging) => (sized ? String(size) : undefined);
+
+// A page past the last one, as after rows were decided or replayed away, goes to the last page.
+function keepInRange(path: string, params: Record<string, string | undefined>, paging: Paging, total: number) {
+  const pages = pageCount(total, paging.size);
+  if (paging.page > pages) redirect(query(path, { ...params, page: pages > 1 ? String(pages) : undefined, size: sizeParam(paging) }));
+}
 
 type Summary = InvoiceSummaryQuery['invoiceSummary'];
 
 // The invoices page: what waits for a decision in four cards, the status tabs with their counts, a search, and the
-// list, 25 a page newest first, each row with why it has its status and what it bills against the rate card.
-export function InvoiceList({ data, summary, filter, search, base, readOnly }: Where & { data: InvoicesQuery; summary: Summary; filter: Filter; search?: string }) {
-  const { edges, pageInfo, totalCount, offset } = data.invoices;
+// list, newest first, each row with why it has its status and what it bills against the rate card.
+export function InvoiceList({ data, summary, filter, search, paging, base, readOnly }: Where & { data: InvoicesQuery; summary: Summary; filter: Filter; search?: string; paging: Paging }) {
+  const { edges, totalCount, offset } = data.invoices;
   const totals = statusTotals(summary.statusCounts);
-  const list = (params: Record<string, string | undefined>) => query(`${base}/invoices`, { status: filterKey(filter), q: search, ...params });
+  const params = { status: filterKey(filter), q: search };
+  keepInRange(`${base}/invoices`, params, paging, totalCount);
+  // A filter starts again at page 1 and keeps the size.
   const tabs = FILTERS.map((each) => ({
     key: each.key,
     label: each.label,
     tone: each.tone,
     count: filterCount(each, totals, summary.invoicesHeld),
-    href: query(`${base}/invoices`, { status: filterKey(each) }),
+    href: query(`${base}/invoices`, { status: filterKey(each), size: sizeParam(paging) }),
   }));
   // Each row's findings and amounts; only a priced invoice has an expected amount.
   const rows = edges.map(({ node }) => {
@@ -56,10 +64,7 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
     expected: figureWidth(rows.map(({ node, money }) => money && formatMoney(money.expectedCents, node.currency ?? 'USD'))),
     difference: figureWidth(rows.map(({ node, money }) => money && `${money.standingCents > 0n ? '+' : ''}${formatMoney(money.standingCents, node.currency ?? 'USD')}`)),
   };
-  const showing = totalCount > 0 ? `Showing ${offset + 1} to ${offset + edges.length} of ${totalCount}` : undefined;
-  // Back to the plain first page once within a page of it, so invoices uploaded since never leave a short first page.
-  const previous = !pageInfo.hasPreviousPage || !pageInfo.startCursor ? null : offset <= PAGE_SIZE ? list({}) : list({ before: pageInfo.startCursor });
-  const next = pageInfo.hasNextPage && pageInfo.endCursor ? list({ after: pageInfo.endCursor }) : null;
+  const showing = `${offset + 1} to ${offset + edges.length} of ${totalCount}`;
   const where = filter.status ? ` ${filter.label.toLowerCase()}` : '';
   const { status, note } = filter;
   const hint = readOnly
@@ -111,6 +116,7 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
         <div className="list-tools">
           <form role="search" className="search" action={`${base}/invoices`}>
             {status && <input type="hidden" name="status" value={filter.key} />}
+            {paging.sized && <input type="hidden" name="size" value={paging.size} />}
             <label className="visually-hidden" htmlFor="invoice-search">
               Search invoices
             </label>
@@ -144,7 +150,7 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
         <Table
           label="Invoices"
           cards
-          caption={`Invoices, newest first, ${showing?.toLowerCase() ?? ''}`}
+          caption={`Invoices, newest first, ${showing}`}
           cols={[
             '8.25rem',
             { width: '11.8rem', narrow: '8.7rem' },
@@ -217,20 +223,22 @@ export function InvoiceList({ data, summary, filter, search, base, readOnly }: W
           </tbody>
         </Table>
       )}
-      <Pager showing={showing} previous={previous} next={next} />
+      <Pager path={`${base}/invoices`} params={params} {...paging} total={totalCount} table="invoices" />
     </>
   );
 }
 
-export function DiscrepancyList({ data, status, after, base, readOnly }: Where & { data: DiscrepanciesQuery; status: DiscrepancyStatus; after?: string }) {
-  const { edges, pageInfo } = data.discrepancies;
+export function DiscrepancyList({ data, status, paging, base, readOnly }: Where & { data: DiscrepanciesQuery; status: DiscrepancyStatus; paging: Paging }) {
+  const { edges, totalCount } = data.discrepancies;
+  const params = { status: status.toLowerCase() };
+  keepInRange(`${base}/discrepancies`, params, paging, totalCount);
   // The amount columns' blocks, as wide as each column's widest amount as Money prints it ("None" with none).
   const amount = (cents: number | null | undefined, currency: string | null | undefined) => (cents === null || cents === undefined ? 'None' : formatMoney(cents, currency ?? 'USD'));
   const figures = {
     expected: figureWidth(edges.map(({ node }) => amount(node.expectedCents, node.invoice.currency))),
     billed: figureWidth(edges.map(({ node }) => amount(node.billedCents, node.invoice.currency))),
   };
-  const tabs = (['OPEN', 'CONFIRMED', 'DISMISSED'] as const).map((key) => ({ key, label: DECISION[key].label, href: query(`${base}/discrepancies`, { status: key.toLowerCase() }) }));
+  const tabs = (['OPEN', 'CONFIRMED', 'DISMISSED'] as const).map((key) => ({ key, label: DECISION[key].label, href: query(`${base}/discrepancies`, { status: key.toLowerCase(), size: sizeParam(paging) }) }));
   // A finding takes a decision while it is open on a checked invoice; a possible duplicate is ticked as its own kind.
   const decidable = (node: (typeof edges)[number]['node']) => !readOnly && node.status === 'OPEN' && node.invoice.status === 'RECONCILED';
   const kindOf = (node: (typeof edges)[number]['node']) => (node.type === 'DUPLICATE_INVOICE' ? 'duplicate' : 'finding');
@@ -323,21 +331,19 @@ export function DiscrepancyList({ data, status, after, base, readOnly }: Where &
           </tbody>
         </Table>
       )}
-      <Pager
-        labels={['First page', 'Next 25']}
-        previous={after ? query(`${base}/discrepancies`, { status: status.toLowerCase() }) : null}
-        next={pageInfo.hasNextPage && pageInfo.endCursor ? query(`${base}/discrepancies`, { status: status.toLowerCase(), after: pageInfo.endCursor }) : null}
-      />
+      <Pager path={`${base}/discrepancies`} params={params} {...paging} total={totalCount} table="discrepancies" />
     </>
   );
 }
 
-export function DeadLetterList({ data, replayed, after, base, readOnly }: Where & { data: DeadLettersQuery; replayed: boolean; after?: string }) {
-  const { edges, pageInfo } = data.deadLetters;
+export function DeadLetterList({ data, replayed, paging, base, readOnly }: Where & { data: DeadLettersQuery; replayed: boolean; paging: Paging }) {
+  const { edges, totalCount } = data.deadLetters;
   const status = replayed ? 'replayed' : 'open';
+  const params = { status: replayed ? 'replayed' : undefined };
+  keepInRange(`${base}/dead-letters`, params, paging, totalCount);
   const tabs = [
-    { key: 'open', label: 'Open', href: `${base}/dead-letters` },
-    { key: 'replayed', label: 'Replayed', href: `${base}/dead-letters?status=replayed` },
+    { key: 'open', label: 'Open', href: query(`${base}/dead-letters`, { size: sizeParam(paging) }) },
+    { key: 'replayed', label: 'Replayed', href: query(`${base}/dead-letters`, { status: 'replayed', size: sizeParam(paging) }) },
   ];
   const select = !readOnly && !replayed && edges.length > 0;
   return (
@@ -410,11 +416,7 @@ export function DeadLetterList({ data, replayed, after, base, readOnly }: Where 
           </tbody>
         </Table>
       )}
-      <Pager
-        labels={['First page', 'Next 25']}
-        previous={after ? query(`${base}/dead-letters`, { status: replayed ? 'replayed' : undefined }) : null}
-        next={pageInfo.hasNextPage && pageInfo.endCursor ? query(`${base}/dead-letters`, { status: replayed ? 'replayed' : undefined, after: pageInfo.endCursor }) : null}
-      />
+      <Pager path={`${base}/dead-letters`} params={params} {...paging} total={totalCount} table="dead-letters" />
     </>
   );
 }

@@ -1,5 +1,7 @@
-query DeadLetters($first: Int, $after: String, $status: DeadLetterStatus) {
-  deadLetters(first: $first, after: $after, status: $status) {
+query DeadLetters($first: Int, $after: String, $offset: Int, $status: DeadLetterStatus) {
+  deadLetters(first: $first, after: $after, offset: $offset, status: $status) {
+    totalCount
+    offset
     edges {
       cursor
       node {

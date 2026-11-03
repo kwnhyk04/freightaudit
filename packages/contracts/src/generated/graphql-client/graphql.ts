@@ -150,11 +150,12 @@ export type DashboardQuery = { dashboard: { window: { from: string, to: string, 
 export type DeadLettersQueryVariables = Exact<{
   first?: number | null | undefined;
   after?: string | null | undefined;
+  offset?: number | null | undefined;
   status?: DeadLetterStatus | null | undefined;
 }>;
 
 
-export type DeadLettersQuery = { deadLetters: { edges: Array<{ cursor: string, node: { id: string, queue: string, jobId: string, error: string, attempts: number, createdAt: string, replayedAt: string | null, invoice: { id: string, number: string | null, filename: string, carrier: string | null, status: InvoiceStatus } | null } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+export type DeadLettersQuery = { deadLetters: { totalCount: number, offset: number, edges: Array<{ cursor: string, node: { id: string, queue: string, jobId: string, error: string, attempts: number, createdAt: string, replayedAt: string | null, invoice: { id: string, number: string | null, filename: string, carrier: string | null, status: InvoiceStatus } | null } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
 
 export type DecideInvoiceMutationVariables = Exact<{
   id: string | number;
@@ -169,11 +170,12 @@ export type DecideInvoiceMutation = { decideInvoice: { id: string, status: Invoi
 export type DiscrepanciesQueryVariables = Exact<{
   first?: number | null | undefined;
   after?: string | null | undefined;
+  offset?: number | null | undefined;
   status?: DiscrepancyStatus | null | undefined;
 }>;
 
 
-export type DiscrepanciesQuery = { discrepancies: { edges: Array<{ cursor: string, node: { id: string, type: DiscrepancyType, status: DiscrepancyStatus, expectedCents: number, billedCents: number, evidence: string, note: string | null, resolvedAt: string | null, lineItem: { id: string, lineNumber: number, description: string, chargeCode: string | null } | null, invoice: { id: string, number: string | null, filename: string, carrier: string | null, currency: string | null, status: InvoiceStatus } } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+export type DiscrepanciesQuery = { discrepancies: { totalCount: number, offset: number, edges: Array<{ cursor: string, node: { id: string, type: DiscrepancyType, status: DiscrepancyStatus, expectedCents: number, billedCents: number, evidence: string, note: string | null, resolvedAt: string | null, lineItem: { id: string, lineNumber: number, description: string, chargeCode: string | null } | null, invoice: { id: string, number: string | null, filename: string, carrier: string | null, currency: string | null, status: InvoiceStatus } } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
 
 export type InvoiceBriefQueryVariables = Exact<{
   id: string | number;
@@ -199,6 +201,7 @@ export type InvoicesQueryVariables = Exact<{
   after?: string | null | undefined;
   last?: number | null | undefined;
   before?: string | null | undefined;
+  offset?: number | null | undefined;
   status?: InvoiceStatus | null | undefined;
   hasOpenFindings?: boolean | null | undefined;
   search?: string | null | undefined;
@@ -317,8 +320,10 @@ export const DashboardDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<DashboardQuery, DashboardQueryVariables>;
 export const DeadLettersDocument = new TypedDocumentString(`
-    query DeadLetters($first: Int, $after: String, $status: DeadLetterStatus) {
-  deadLetters(first: $first, after: $after, status: $status) {
+    query DeadLetters($first: Int, $after: String, $offset: Int, $status: DeadLetterStatus) {
+  deadLetters(first: $first, after: $after, offset: $offset, status: $status) {
+    totalCount
+    offset
     edges {
       cursor
       node {
@@ -354,8 +359,10 @@ export const DecideInvoiceDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<DecideInvoiceMutation, DecideInvoiceMutationVariables>;
 export const DiscrepanciesDocument = new TypedDocumentString(`
-    query Discrepancies($first: Int, $after: String, $status: DiscrepancyStatus) {
-  discrepancies(first: $first, after: $after, status: $status) {
+    query Discrepancies($first: Int, $after: String, $offset: Int, $status: DiscrepancyStatus) {
+  discrepancies(first: $first, after: $after, offset: $offset, status: $status) {
+    totalCount
+    offset
     edges {
       cursor
       node {
@@ -527,12 +534,13 @@ export const InvoiceDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<InvoiceQuery, InvoiceQueryVariables>;
 export const InvoicesDocument = new TypedDocumentString(`
-    query Invoices($first: Int, $after: String, $last: Int, $before: String, $status: InvoiceStatus, $hasOpenFindings: Boolean, $search: String) {
+    query Invoices($first: Int, $after: String, $last: Int, $before: String, $offset: Int, $status: InvoiceStatus, $hasOpenFindings: Boolean, $search: String) {
   invoices(
     first: $first
     after: $after
     last: $last
     before: $before
+    offset: $offset
     status: $status
     hasOpenFindings: $hasOpenFindings
     search: $search

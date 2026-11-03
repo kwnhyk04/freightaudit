@@ -3,7 +3,7 @@ import { seed } from '@freightaudit/db/scripts/seed';
 import { createTestDatabase, testEnv } from '@freightaudit/db/testing';
 import { createMemoryStorage, createQueues, type Queues } from '@freightaudit/pipeline';
 import { serverOptions } from '@freightaudit/telemetry';
-import { and, desc, eq, isNotNull } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Redis } from 'ioredis';
 import { createHash, randomBytes } from 'node:crypto';
@@ -123,6 +123,52 @@ test('invoices page forward to the end and back to the start, with the total, ea
   }
   expect((await gql('{ invoices(after: "x", before: "y") { totalCount } }')).errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
   expect((await gql('{ invoices(last: 0) { totalCount } }')).errors?.[0]?.message).toBe('last must be between 1 and 100');
+});
+
+test('invoices, discrepancies and dead letters page by offset: each page is its slice of the list, with the total', async () => {
+  await db.insert(deadLetters).values(
+    Array.from({ length: 12 }, (_, i) => ({ tenantId, queue: 'extract', jobId: `offset-${i}`, payload: {}, error: 'boom', attempts: 5, replayedAt: new Date() })),
+  );
+  const lists = [
+    { field: 'invoices', args: 'status: APPROVED', table: invoices, where: and(eq(invoices.tenantId, tenantId), eq(invoices.status, 'approved')) },
+    { field: 'discrepancies', args: 'status: OPEN', table: discrepancies, where: and(eq(discrepancies.tenantId, tenantId), eq(discrepancies.status, 'open')) },
+    { field: 'deadLetters', args: 'status: REPLAYED', table: deadLetters, where: and(eq(deadLetters.tenantId, tenantId), isNotNull(deadLetters.replayedAt)) },
+  ] as const;
+  for (const { field, args, table, where } of lists) {
+    const all = (await db.select({ id: table.id }).from(table).where(where).orderBy(desc(table.createdAt), desc(table.id))).map((row) => row.id);
+    expect(all.length).toBeGreaterThan(10);
+    for (const offset of [0, 5, 10, all.length - 1, all.length, all.length + 5]) {
+      const { data, errors } = await gql(`query ($offset: Int) { ${field}(first: 5, offset: $offset, ${args}) { totalCount offset edges { node { id } } pageInfo { hasNextPage hasPreviousPage } } }`, { offset });
+      expect(errors).toBeUndefined();
+      const page = data![field];
+      expect(page.edges.map(({ node }: { node: { id: string } }) => node.id)).toEqual(all.slice(offset, offset + 5));
+      expect([page.totalCount, page.offset, page.pageInfo.hasPreviousPage, page.pageInfo.hasNextPage]).toEqual([all.length, offset, offset > 0, offset + 5 < all.length]);
+    }
+    // A cursor page counts too, its offset the rows before it.
+    const first = (await gql(`{ ${field}(first: 3, ${args}) { pageInfo { endCursor } } }`)).data![field].pageInfo.endCursor;
+    const next = (await gql(`query ($after: String) { ${field}(first: 3, after: $after, ${args}) { totalCount offset } }`, { after: first })).data![field];
+    expect(next).toEqual({ totalCount: all.length, offset: 3 });
+    expect((await gql(`query ($after: String) { ${field}(offset: 3, after: $after) { totalCount } }`, { after: first })).errors?.[0]?.message).toBe('give after or offset, not both');
+    expect((await gql(`{ ${field}(offset: -1) { totalCount } }`)).errors?.[0]?.message).toBe('offset must be a whole number from 0');
+  }
+  // An invoice's own findings count in the batched query, past a cursor too, and an empty page there still has its total.
+  // The seed gives an invoice one finding at most, so one gets two more, dismissed, which no other test counts.
+  for (const evidence of ['offset 1', 'offset 2']) {
+    await db.execute(sql`INSERT INTO discrepancies (tenant_id, invoice_id, type, status, expected_cents, billed_cents, evidence, resolved_at)
+      SELECT tenant_id, invoice_id, type, 'dismissed', expected_cents, billed_cents, ${evidence}, now() FROM discrepancies ORDER BY id LIMIT 1`);
+  }
+  const [busiest] = await db.execute<{ id: string; n: number }>(sql`SELECT invoice_id AS id, count(*)::int AS n FROM discrepancies GROUP BY invoice_id ORDER BY n DESC LIMIT 1`).then((r) => r.rows);
+  expect(busiest!.n).toBe(3);
+  const nested = async (after: string | null) =>
+    (await gql('query ($id: ID!, $after: String) { invoice(id: $id) { discrepancies(first: 1, after: $after) { totalCount offset edges { node { id } } pageInfo { endCursor } } } }', { id: busiest!.id, after }))
+      .data!.invoice.discrepancies;
+  const one = await nested(null);
+  expect([one.totalCount, one.offset, one.edges.length]).toEqual([busiest!.n, 0, 1]);
+  const two = await nested(one.pageInfo.endCursor);
+  expect([two.totalCount, two.offset, two.edges.length]).toEqual([busiest!.n, 1, 1]);
+  let last = two;
+  while (last.edges.length > 0) last = await nested(last.pageInfo.endCursor);
+  expect([last.totalCount, last.offset]).toEqual([busiest!.n, busiest!.n]);
 });
 
 test('search finds invoices by number, PRO or carrier, ignoring case, and takes LIKE wildcards literally', async () => {
@@ -245,11 +291,11 @@ test('a page of 25 discrepancies with invoice, line, shipment and rate card cost
   const { data, errors } = await gql(`{ discrepancies(first: 25) ${fields} }`);
   expect(errors).toBeUndefined();
   expect(data!.discrepancies.edges).toHaveLength(25);
-  // The page itself and one batched query per relation, however many rows.
-  expect(queries).toBeLessThanOrEqual(5);
+  // The page itself, its count and one batched query per relation, however many rows.
+  expect(queries).toBeLessThanOrEqual(6);
   queries = 0;
   await gql(`{ discrepancies(first: 5) ${fields} }`);
-  expect(queries).toBeLessThanOrEqual(5);
+  expect(queries).toBeLessThanOrEqual(6);
 });
 
 test('a reviewer corrects a needs_review PRO number, which queues matching again, or rejects one; both are audited', async () => {
