@@ -568,7 +568,7 @@ test('the charges table fits its card with every column from 1100 px, a charge b
   // The sample's findings name no earlier invoice: the cell says so in short, and its name is the whole sentence.
   await expect(charges.getByRole('cell', { name: 'Already billed on an earlier invoice', exact: true })).toHaveCount(3);
   await expect(charges.locator('tbody td', { hasText: /^Billed earlier$/ })).toHaveCount(3);
-  for (const width of [1100, 1279, 1440]) {
+  for (const width of [1100, 1279, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     const wrap = page.locator('.table-wrap', { has: charges });
     expect(await wrap.evaluate((box) => box.scrollWidth - box.clientWidth), `${width} px`).toBe(0);

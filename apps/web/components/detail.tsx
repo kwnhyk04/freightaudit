@@ -264,12 +264,15 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                     <thead>
                       <tr>
                         <Th num>#</Th>
-                        <Th>Description</Th>
+                        {/* A soft hyphen: when the header must split, it reads "Descrip-" over "tion"; its name stays whole. */}
+                        <Th className="charge-description" aria-label="Description">
+                          {'Descrip­tion'}
+                        </Th>
                         <Th>Code</Th>
                         <Th num>Billed</Th>
                         {priced && (
                           <>
-                            <Th num>Expected</Th>
+                            <Th num className="charge-expected">Expected</Th>
                             <Th num>Difference</Th>
                           </>
                         )}
@@ -283,7 +286,7 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                         return (
                           <tr key={line.lineNumber} className={finding && finding.status !== 'DISMISSED' ? 'flagged' : undefined}>
                             <Td num>{line.lineNumber}</Td>
-                            <Td>
+                            <Td className="charge-description">
                               {lineLabel(line.description)}
                               {finding && <div className="faint nowrap">{FINDING[finding.type]}</div>}
                             </Td>

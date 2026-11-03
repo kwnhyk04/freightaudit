@@ -1590,27 +1590,34 @@ table.charges tfoot td {
 table.charges tfoot td {
   text-align: right;
 }
-/* From 1100 px to 1279 px charges take 3 px a side between columns (6 px at the table's edges, clear of a flagged row's
-   bar), and a charge's finding type may wrap under its description, so every column still fits beside the document,
-   an earlier invoice's 8-digit number included. Narrower, the type stays on one line and only the table scrolls. */
+/* From 1100 px the description is the column that gives: every other column keeps its content's width, and the
+   description takes whatever is left. Its finding type wraps under it when short of room, and its words and header
+   break only when nothing else would fit, so the table never scrolls sideways there, whatever font has loaded. */
+@media (min-width: 1100px) {
+  table.charges th.charge-description,
+  table.charges td.charge-description,
+  table.charges td.charge-description > .nowrap {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+}
+/* Below 1440 px Expected keeps only its widest word, so a charge billed before reads on two short lines ("Billed on",
+   then the invoice's number) and the width goes to the description. */
+@media (min-width: 1100px) and (max-width: 1439px) {
+  table.charges th.charge-expected {
+    width: 1px;
+  }
+}
+/* From 1100 px to 1279 px charges take 4 px a side. Narrower, the finding type stays on one line and only the table
+   scrolls. */
 @media (min-width: 1100px) and (max-width: 1279px) {
   table.charges th,
   table.charges td,
   table.charges tfoot th,
   table.charges tfoot td {
-    padding-left: 3px;
-    padding-right: 3px;
-  }
-  table.charges th:first-child,
-  table.charges td:first-child {
-    padding-left: 6px;
-  }
-  table.charges th:last-child,
-  table.charges td:last-child {
-    padding-right: 6px;
-  }
-  table.charges td > .nowrap {
-    white-space: normal;
+    padding-left: 4px;
+    padding-right: 4px;
   }
 }
 .crumbs {
