@@ -1,6 +1,6 @@
 import { DashboardDocument } from '@freightaudit/contracts/graphql';
 import { Overview } from '../../../components/overview.tsx';
-import { query } from '../../../components/views.tsx';
+import { query } from '../../../lib/paging.ts';
 import { firstParams } from '../../../lib/labels.ts';
 import { rangeKey, rangeOf, rangeWindow } from '../../../lib/overview.ts';
 import { gql, livePage } from '../../../lib/server.ts';

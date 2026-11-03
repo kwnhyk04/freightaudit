@@ -5,7 +5,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { capital, duration, plural } from '../lib/labels.ts';
 import { changeNote, costText, moneyTick, RANGES, type Range, rangeKey, ticksFor, tokensText, weekLabel, wholeDollars } from '../lib/overview.ts';
 import { Badge, Day, Money, Table, Td, Th } from './ui.tsx';
-import { query } from './views.tsx';
+import { query } from '../lib/paging.ts';
 
 type Data = DashboardQuery['dashboard'];
 type Week = Data['weeks'][number];

@@ -693,22 +693,115 @@ tr.flagged td {
 tr.flagged td:first-child {
   box-shadow: inset 3px 0 0 var(--bad);
 }
+/* The pager under every paged table, a port of 21st.dev "Numeric pagination" (docs/third-party.md) at its sizes: 40 px
+   buttons 4 px apart with 6 px corners and 14 px medium type, ghost until hovered, the current page outlined, a 2 px
+   ring 2 px out on keyboard focus, half opacity when disabled, and a 40 px size select. On a phone the numbers hide. */
 .pager {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px 16px;
+  justify-content: space-between;
+  gap: 12px;
   margin-top: 12px;
 }
-.pager > .muted {
-  margin-right: auto;
-}
-.page-button {
-  justify-content: center;
-  width: 32px;
-  padding: 0;
+.pager-status {
+  flex: 1;
+  margin: 0;
   color: var(--text-2);
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.pager-status span {
+  color: var(--text);
+}
+.pager-list {
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pager-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: 500 14px/20px var(--sans);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+.pager-button:hover {
+  background: var(--neutral-tint);
+}
+.pager-button[aria-current='page'] {
+  border-color: var(--rule-strong);
+  background: var(--surface);
+}
+.pager-button[aria-current='page']:hover {
+  background: var(--neutral-tint);
+}
+.pager-button:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.pager-button:focus-visible,
+.pager-size select:focus-visible {
+  outline: none;
+  border-radius: var(--radius);
+  box-shadow:
+    0 0 0 2px var(--canvas),
+    0 0 0 4px var(--accent);
+}
+.pager-gap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+.pager-size {
+  position: relative;
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+}
+.pager-size select {
+  appearance: none;
+  height: 40px;
+  padding: 8px 36px 8px 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: 400 14px/20px var(--sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pager-size .icon {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  translate: 0 -50%;
+  opacity: 0.5;
+  pointer-events: none;
+}
+@media (max-width: 720px) {
+  .pager-number {
+    display: none;
+  }
 }
 /* The invoice list and the review queue: a rounded container, a plain header and roomier rows that tint on hover. */
 .table-wrap.list {

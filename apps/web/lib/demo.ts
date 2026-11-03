@@ -56,7 +56,14 @@ const row = (invoice: Detail): InvoicesQuery['invoices']['edges'][number]['node'
 
 // The api's filters: a status, whether a reviewer holds the invoice, and invoice number, PRO number or carrier name
 // containing the words, ignoring case.
-export function demoInvoices({ status, open }: Pick<Filter, 'status' | 'open'> = {}, search?: string): InvoicesQuery {
+// One page of the sample, as the api pages a list by offset; without a window, all of it.
+type Window = { offset: number; size: number };
+const ALL: Window = { offset: 0, size: Infinity };
+function paged<Edge>(edges: Edge[], { offset, size }: Window) {
+  return { edges: edges.slice(offset, offset + size), totalCount: edges.length, offset, hasNextPage: offset + size < edges.length, hasPreviousPage: offset > 0 };
+}
+
+export function demoInvoices({ status, open }: Pick<Filter, 'status' | 'open'> = {}, search?: string, window = ALL): InvoicesQuery {
   const words = search?.trim().slice(0, 100).toLowerCase();
   const rows = invoices.filter(
     (invoice) =>
@@ -64,13 +71,13 @@ export function demoInvoices({ status, open }: Pick<Filter, 'status' | 'open'> =
       (open === undefined || (hold(invoice) !== null) === open) &&
       (!words || [invoice.number, invoice.proNumber, invoice.carrier].some((value) => value?.toLowerCase().includes(words))),
   );
-  // ponytail: the sample fits one page of 25; page it by offset if an export ever holds more.
+  const { edges, totalCount, offset, hasNextPage, hasPreviousPage } = paged(rows, window);
   return {
     invoices: {
-      totalCount: rows.length,
-      offset: 0,
-      edges: rows.map((invoice) => ({ cursor: invoice.id, node: row(invoice) })),
-      pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null },
+      totalCount,
+      offset,
+      edges: edges.map((invoice) => ({ cursor: invoice.id, node: row(invoice) })),
+      pageInfo: { hasNextPage, hasPreviousPage, startCursor: null, endCursor: null },
     },
   };
 }
@@ -138,12 +145,17 @@ export function demoDashboard(range: Range): DashboardQuery['dashboard'] {
 export const demoInvoice = (id: string): InvoiceQuery | undefined => sample.details[id];
 // A sample invoice by its golden file name, which stays the same when the sample is exported again; its id does not.
 export const demoInvoiceFile = (filename: string) => invoices.find((invoice) => invoice.filename === filename);
-export const demoDiscrepancies = (status?: DiscrepancyStatus): DiscrepanciesQuery => ({
-  discrepancies: { ...sample.discrepancies.discrepancies, edges: sample.discrepancies.discrepancies.edges.filter(({ node }) => !status || node.status === status) },
-});
-export const demoDeadLetters = (status?: DeadLetterStatus): DeadLettersQuery => ({
-  deadLetters: {
-    ...sample.deadLetters.deadLetters,
-    edges: sample.deadLetters.deadLetters.edges.filter(({ node }) => !status || (status === 'OPEN') === (node.replayedAt === null)),
-  },
-});
+export function demoDiscrepancies(status?: DiscrepancyStatus, window = ALL): DiscrepanciesQuery {
+  const { edges, totalCount, offset, hasNextPage } = paged(
+    sample.discrepancies.discrepancies.edges.filter(({ node }) => !status || node.status === status),
+    window,
+  );
+  return { discrepancies: { edges, totalCount, offset, pageInfo: { hasNextPage, endCursor: null } } };
+}
+export function demoDeadLetters(status?: DeadLetterStatus, window = ALL): DeadLettersQuery {
+  const { edges, totalCount, offset, hasNextPage } = paged(
+    sample.deadLetters.deadLetters.edges.filter(({ node }) => !status || (status === 'OPEN') === (node.replayedAt === null)),
+    window,
+  );
+  return { deadLetters: { edges, totalCount, offset, pageInfo: { hasNextPage, endCursor: null } } };
+}

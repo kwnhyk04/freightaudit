@@ -1,5 +1,7 @@
-query Discrepancies($first: Int, $after: String, $status: DiscrepancyStatus) {
-  discrepancies(first: $first, after: $after, status: $status) {
+query Discrepancies($first: Int, $after: String, $offset: Int, $status: DiscrepancyStatus) {
+  discrepancies(first: $first, after: $after, offset: $offset, status: $status) {
+    totalCount
+    offset
     edges {
       cursor
       node {
