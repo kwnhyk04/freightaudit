@@ -6,6 +6,7 @@ import { type ReactNode, useActionState, useEffect, useLayoutEffect, useRef, use
 import { type ActionState, login, review, reviewMany, upload, uploadSample } from '../app/actions.ts';
 import { BULK, type BulkAction, type BulkKind, BULK_KINDS, bulkQuestion, duplicateParts, plural, type Tone } from '../lib/labels.ts';
 import { type Theme, THEME_LABEL, themeCookie, THEMES } from '../lib/theme.ts';
+import { PAGE_SIZES, pageAfterResize, pageCount, pageItems, query } from '../lib/paging.ts';
 import { BACKGROUND_HEADER } from '../lib/uploads.ts';
 import { Icon } from './icons.tsx';
 
@@ -49,6 +50,94 @@ export function Tabs({ items, current, label, unit }: { items: { href: string; l
           )}
         </Link>
       ))}
+    </nav>
+  );
+}
+
+// Every paged table's pager, ported from 21st.dev "Numeric pagination" (docs/third-party.md): "Page 2 of 6", Previous,
+// the page numbers with gaps, Next, and the page size. Page and size live in the address; the size is also kept per
+// table, so a visit without one in the address opens at the size chosen last. A new size keeps the first row of the
+// page on screen. On a phone the numbers hide.
+export function Pager({ path, params, page, size, sized, total, table }: { path: string; params: Record<string, string | undefined>; page: number; size: number; sized: boolean; total: number; table: string }) {
+  const router = useRouter();
+  const nav = useRef<HTMLElement>(null);
+  // The row to bring on screen once a new size has loaded, as its place on the new page.
+  const keep = useRef<number | undefined>(undefined);
+  const key = `fa-page-size:${table}`;
+  const pages = pageCount(total, size);
+  const href = (to: number, by = size) => query(path, { ...params, page: to > 1 ? String(to) : undefined, size: String(by) });
+  const resize = (to: number, push: boolean) => {
+    const target = pageAfterResize(page, size, to);
+    keep.current = (page - 1) * size - (target - 1) * to;
+    if (push) router.push(href(target, to), { scroll: false });
+    else router.replace(href(target, to), { scroll: false });
+  };
+  useEffect(() => {
+    if (sized) return;
+    let stored: number | undefined;
+    try {
+      stored = PAGE_SIZES.find((each) => String(each) === localStorage.getItem(key));
+    } catch {
+      // Storage blocked or unavailable: the default size stands.
+    }
+    if (stored && stored !== size) resize(stored, false);
+    // Only on arriving without a size in the address.
+  }, [sized]);
+  useEffect(() => {
+    if (keep.current === undefined) return;
+    nav.current?.parentElement?.querySelectorAll('tbody tr')[keep.current]?.scrollIntoView({ block: 'center' });
+    keep.current = undefined;
+  }, [size]);
+  if (total === 0) return null;
+  const button = (to: number, label: string, inside: ReactNode, current?: boolean) => (
+    <button type="button" className="pager-button" aria-label={label} aria-current={current ? 'page' : undefined} disabled={to < 1 || to > pages} onClick={() => !current && router.push(href(to))}>
+      {inside}
+    </button>
+  );
+  return (
+    <nav ref={nav} className="pager" aria-label="Pages">
+      <p className="pager-status" aria-live="polite">
+        Page <span>{page}</span> of <span>{pages}</span>
+      </p>
+      <ul className="pager-list">
+        <li>{button(page - 1, 'Go to previous page', <Icon name="previous" size={16} />)}</li>
+        {pageItems(page, pages).map((item, index) =>
+          item === 'gap' ? (
+            <li key={`gap-${index}`} className="pager-number">
+              <span className="pager-gap" aria-hidden="true">
+                <Icon name="dots" size={16} />
+              </span>
+            </li>
+          ) : (
+            <li key={item} className="pager-number">
+              {button(item, `Page ${item}`, item, item === page)}
+            </li>
+          ),
+        )}
+        <li>{button(page + 1, 'Go to next page', <Icon name="next" size={16} />)}</li>
+      </ul>
+      <div className="pager-size">
+        <select
+          aria-label="Results per page"
+          value={size}
+          onChange={(event) => {
+            const to = Number(event.target.value);
+            try {
+              localStorage.setItem(key, String(to));
+            } catch {
+              // Storage blocked or unavailable: the size still applies to this page.
+            }
+            resize(to, true);
+          }}
+        >
+          {PAGE_SIZES.map((each) => (
+            <option key={each} value={each}>
+              {each} / page
+            </option>
+          ))}
+        </select>
+        <Icon name="chevronDown" size={16} />
+      </div>
     </nav>
   );
 }

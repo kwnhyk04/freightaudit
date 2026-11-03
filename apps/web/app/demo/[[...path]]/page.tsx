@@ -5,11 +5,15 @@ import { DeadLetterList, DiscrepancyList, InvoiceList } from '../../../component
 import { DEMO_OVERVIEW_NOTE, demoDashboard, demoDeadLetters, demoDiscrepancies, demoInvoice, demoInvoices, demoSummary } from '../../../lib/demo.ts';
 import { firstParams, listFilter } from '../../../lib/labels.ts';
 import { rangeOf } from '../../../lib/overview.ts';
+import { pageParams } from '../../../lib/paging.ts';
 
 // Every sample page: the same views as the live ones, from the snapshot files only, with no actions. /demo itself opens
 // the invoices, since the sample fills one week of the overview's eight.
 export default async function DemoPage({ params, searchParams }: { params: Promise<{ path?: string[] }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [{ path = [] }, { status: raw, q, range }] = await Promise.all([params, firstParams(searchParams)]);
+  const [{ path = [] }, query] = await Promise.all([params, firstParams(searchParams)]);
+  const { status: raw, q, range } = query;
+  const { page, size, offset } = pageParams(query);
+  const paging = { page, size, sized: query.size !== undefined };
   const [section, id] = path;
   const head = (title: string) => (
     <div className="page-head">
@@ -24,7 +28,7 @@ export default async function DemoPage({ params, searchParams }: { params: Promi
   if (section === 'invoices' && !id) {
     const filter = listFilter(raw);
     const search = q?.trim().slice(0, 100) || undefined;
-    return <InvoiceList data={demoInvoices(filter, search)} summary={demoSummary()} filter={filter} search={search} base="/demo" readOnly />;
+    return <InvoiceList data={demoInvoices(filter, search, { offset, size })} summary={demoSummary()} filter={filter} search={search} paging={paging} base="/demo" readOnly />;
   }
   if (section === 'invoices' && id) {
     const data = demoInvoice(id);
@@ -36,7 +40,7 @@ export default async function DemoPage({ params, searchParams }: { params: Promi
     return (
       <>
         {head('Review queue')}
-        <DiscrepancyList data={demoDiscrepancies(status)} status={status} base="/demo" readOnly />
+        <DiscrepancyList data={demoDiscrepancies(status, { offset, size })} status={status} paging={paging} base="/demo" readOnly />
       </>
     );
   }
@@ -45,7 +49,7 @@ export default async function DemoPage({ params, searchParams }: { params: Promi
     return (
       <>
         {head('Dead letters')}
-        <DeadLetterList data={demoDeadLetters(replayed ? 'REPLAYED' : 'OPEN')} replayed={replayed} base="/demo" readOnly />
+        <DeadLetterList data={demoDeadLetters(replayed ? 'REPLAYED' : 'OPEN', { offset, size })} replayed={replayed} paging={paging} base="/demo" readOnly />
       </>
     );
   }

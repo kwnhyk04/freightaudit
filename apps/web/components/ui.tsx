@@ -3,7 +3,6 @@ import { formatMoney } from '@freightaudit/domain';
 import Link from 'next/link';
 import type { ComponentProps, CSSProperties, ReactNode } from 'react';
 import { statusLabel, statusTone, type Tone, type Words } from '../lib/labels.ts';
-import { Icon, type IconName } from './icons.tsx';
 
 export const Badge = ({ tone, children }: { tone: Tone; children: ReactNode }) => <span className={`badge ${tone}`}>{children}</span>;
 
@@ -66,38 +65,6 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
       <strong>{title}</strong>
       {children}
     </div>
-  );
-}
-
-// Pages as links, each an arrow named in words for screen readers and in a tooltip. One that leads nowhere stays in
-// place without a link, marked disabled, so the other never moves.
-export function Pager({ showing, previous, next, labels = ['Previous', 'Next'] }: { showing?: string; previous: string | null; next: string | null; labels?: [string, string] }) {
-  if (!showing && !previous && !next) return null;
-  const page = (href: string | null, text: string, icon: IconName) => {
-    const inside = (
-      <>
-        <Icon name={icon} size={18} />
-        <span className="visually-hidden">{text}</span>
-      </>
-    );
-    return href ? (
-      <Link className="button page-button" href={href} title={text}>
-        {inside}
-      </Link>
-    ) : (
-      <a className="button page-button" aria-disabled="true" title={text}>
-        {inside}
-      </a>
-    );
-  };
-  return (
-    <nav className="pager" aria-label="Pages">
-      {showing && <span className="muted">{showing}</span>}
-      <span className="row">
-        {page(previous, labels[0], labels[0] === 'Previous' ? 'previous' : 'first')}
-        {page(next, labels[1], 'next')}
-      </span>
-    </nav>
   );
 }
 

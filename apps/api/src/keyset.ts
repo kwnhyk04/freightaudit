@@ -56,6 +56,33 @@ export function connection<Row extends Keyed, Node>(
   return { edges, pageInfo: { ...flags, startCursor: edges[0]?.cursor ?? null, endCursor: edges.at(-1)?.cursor ?? null } };
 }
 
+// An offset argument, a page at any place in the list: a whole number from 0, never with a cursor. ponytail: the
+// database reads every row it skips; keyset cursors stay for clients that walk far.
+export function offsetOf(value: number | null | undefined, cursor: string | null | undefined) {
+  if (value === null || value === undefined) return undefined;
+  if (cursor) throw fail(400, 'give after or offset, not both');
+  if (!Number.isInteger(value) || value < 0) throw fail(400, 'offset must be a whole number from 0');
+  return value;
+}
+
+// How many matching rows come before a page's first row in (created_at DESC, id DESC) order: the page's offset.
+export const newerThan = (createdAt: PgColumn, id: PgColumn, head: Keyed | undefined) =>
+  (head ? sql<number>`count(*) FILTER (WHERE (${createdAt}, ${id}) > (${head.cursorAt}::timestamptz, ${head.id}::uuid))` : sql<number>`0`).mapWith(Number);
+
+// A forward connection with its total and offset: the offset asked for, else the rows before its first row; an empty
+// page after a cursor sits past every match, any other before them all.
+export function counted<Row extends Keyed, Node>(
+  rows: Row[],
+  first: number,
+  toNode: (row: Row) => Node,
+  skip: number | undefined,
+  afterCursor: boolean,
+  counts: { total: number; newer: number },
+) {
+  const offset = skip ?? (rows[0] ? counts.newer : afterCursor ? counts.total : 0);
+  return { ...connection(rows, first, toNode, { hasNextPage: rows.length > first, hasPreviousPage: offset > 0 }), totalCount: counts.total, offset };
+}
+
 // A connection's first or last argument: 1 to 100, as the REST limit.
 export function pageSize(size: number | null | undefined, name = 'first') {
   const value = size ?? 25;

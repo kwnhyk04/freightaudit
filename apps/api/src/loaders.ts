@@ -10,7 +10,7 @@ import {
   shipments,
 } from '@freightaudit/db';
 import DataLoader from 'dataloader';
-import { and, asc, count, desc, eq, inArray, lt, lte, ne, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, lt, ne, or, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import { after, cursorAt } from './keyset.ts';
@@ -66,24 +66,27 @@ export function createLoaders(db: NodePgDatabase, tenantId: string) {
   const ofDiscrepancies = (ids: readonly string[]) => and(eq(discrepancies.tenantId, tenantId), inArray(discrepancies.id, [...ids]));
 
   // Every invoice's first + 1 discrepancies under one set of arguments, ranked per invoice in keyset order.
+  // Each invoice's page with its total and the rows before it (newer), counted in the same query. Its first row always
+  // comes back to carry the counts, even when the page past the cursor is empty; the resolver drops it then.
   function rankedDiscrepancies(args: DiscrepancyArgs, ids: string[]) {
+    const older = after(discrepancies.createdAt, discrepancies.id, args.after);
+    const partition = sql`PARTITION BY ${discrepancies.invoiceId}`;
     const ranked = db
       .select({
         ...discrepancyColumns,
         cursorAt: cursorAt(discrepancies.createdAt).as('cursor_at'),
-        rank: sql<number>`row_number() OVER (PARTITION BY ${discrepancies.invoiceId} ORDER BY ${discrepancies.createdAt} DESC, ${discrepancies.id} DESC)`.as('rank'),
+        rank: sql<string>`row_number() OVER (${partition} ORDER BY ${discrepancies.createdAt} DESC, ${discrepancies.id} DESC)`.as('rank'),
+        total: sql<string>`count(*) OVER (${partition})`.as('total'),
+        newer: (older ? sql<string>`count(*) FILTER (WHERE NOT (${older})) OVER (${partition})` : sql<string>`0`).as('newer'),
       })
       .from(discrepancies)
-      .where(
-        and(
-          eq(discrepancies.tenantId, tenantId),
-          inArray(discrepancies.invoiceId, ids),
-          args.status ? eq(discrepancies.status, args.status) : undefined,
-          after(discrepancies.createdAt, discrepancies.id, args.after),
-        ),
-      )
+      .where(and(eq(discrepancies.tenantId, tenantId), inArray(discrepancies.invoiceId, ids), args.status ? eq(discrepancies.status, args.status) : undefined))
       .as('ranked');
-    return db.select().from(ranked).where(lte(ranked.rank, args.first + 1)).orderBy(asc(ranked.rank));
+    return db
+      .select()
+      .from(ranked)
+      .where(or(sql`${ranked.rank} = 1`, and(sql`${ranked.rank} > ${ranked.newer}`, sql`${ranked.rank} <= ${ranked.newer} + ${args.first + 1}`)))
+      .orderBy(asc(ranked.rank));
   }
   type RankedRow = Awaited<ReturnType<typeof rankedDiscrepancies>>[number];
 

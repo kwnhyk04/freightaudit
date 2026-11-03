@@ -168,7 +168,11 @@ export type DeadLetter = Node & {
 export type DeadLetterConnection = {
   __typename?: 'DeadLetterConnection';
   edges: Array<DeadLetterEdge>;
+  /** Matching dead letters before this page, so its first one is number offset + 1. */
+  offset: Scalars['Int']['output'];
   pageInfo: PageInfo;
+  /** Matching dead letters on all pages. */
+  totalCount: Scalars['Int']['output'];
 };
 
 /** A dead letter in a connection. */
@@ -221,7 +225,11 @@ export type Discrepancy = Node & {
 export type DiscrepancyConnection = {
   __typename?: 'DiscrepancyConnection';
   edges: Array<DiscrepancyEdge>;
+  /** Matching discrepancies before this page, so its first one is number offset + 1. */
+  offset: Scalars['Int']['output'];
   pageInfo: PageInfo;
+  /** Matching discrepancies on all pages. */
+  totalCount: Scalars['Int']['output'];
 };
 
 /** Reviewer decision on a discrepancy. */
@@ -572,9 +580,9 @@ export type Query = {
    * is refused.
    */
   dashboard: Dashboard;
-  /** Dead letters, newest first. */
+  /** Dead letters, newest first: a page after a cursor (after) or at an offset (offset), not both. */
   deadLetters: DeadLetterConnection;
-  /** Discrepancies across all invoices, newest first. */
+  /** Discrepancies across all invoices, newest first: a page after a cursor (after) or at an offset (offset), not both. */
   discrepancies: DiscrepancyConnection;
   /** Liveness probe; always returns ok. */
   health: Scalars['String']['output'];
@@ -587,10 +595,11 @@ export type Query = {
    */
   invoiceSummary: InvoiceSummary;
   /**
-   * Invoices, newest first: a page going forward (first, after) or back (last, before), filtered by status, by search,
-   * which matches the invoice number, PRO number or carrier name, ignoring case, and by hasOpenFindings: true keeps the
-   * invoices a reviewer holds (an open discrepancy, or a checked invoice whose possible duplicate is confirmed and waits to
-   * be rejected; see Invoice.hold), false the others.
+   * Invoices, newest first: a page going forward (first, after), back (last, before) or at any place (first, offset),
+   * filtered by status, by search, which matches the invoice number, PRO number or carrier name, ignoring case, and by
+   * hasOpenFindings: true keeps the invoices a reviewer holds (an open discrepancy, or a checked invoice whose possible
+   * duplicate is confirmed and waits to be rejected; see Invoice.hold), false the others. offset goes with neither after
+   * nor before.
    */
   invoices: InvoiceConnection;
   /**
@@ -612,6 +621,7 @@ export type QueryDashboardArgs = {
 export type QueryDeadLettersArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   status?: InputMaybe<DeadLetterStatus>;
 };
 
@@ -620,6 +630,7 @@ export type QueryDeadLettersArgs = {
 export type QueryDiscrepanciesArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   status?: InputMaybe<DiscrepancyStatus>;
 };
 
@@ -645,6 +656,7 @@ export type QueryInvoicesArgs = {
   first?: InputMaybe<Scalars['Int']['input']>;
   hasOpenFindings?: InputMaybe<Scalars['Boolean']['input']>;
   last?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<InvoiceStatus>;
 };
@@ -930,7 +942,9 @@ export type DeadLetterResolvers<ContextType = any, ParentType extends ResolversP
 
 export type DeadLetterConnectionResolvers<ContextType = any, ParentType extends ResolversParentTypes['DeadLetterConnection'] = ResolversParentTypes['DeadLetterConnection']> = {
   edges?: Resolver<Array<ResolversTypes['DeadLetterEdge']>, ParentType, ContextType>;
+  offset?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+  totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type DeadLetterEdgeResolvers<ContextType = any, ParentType extends ResolversParentTypes['DeadLetterEdge'] = ResolversParentTypes['DeadLetterEdge']> = {
@@ -958,7 +972,9 @@ export type DiscrepancyResolvers<ContextType = any, ParentType extends Resolvers
 
 export type DiscrepancyConnectionResolvers<ContextType = any, ParentType extends ResolversParentTypes['DiscrepancyConnection'] = ResolversParentTypes['DiscrepancyConnection']> = {
   edges?: Resolver<Array<ResolversTypes['DiscrepancyEdge']>, ParentType, ContextType>;
+  offset?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+  totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type DiscrepancyEdgeResolvers<ContextType = any, ParentType extends ResolversParentTypes['DiscrepancyEdge'] = ResolversParentTypes['DiscrepancyEdge']> = {
