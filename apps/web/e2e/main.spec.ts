@@ -565,8 +565,8 @@ test.describe('re-bills', () => {
     const row = page.getByRole('row', { name: /clean-digital-g001[.]pdf/ });
     await expect(row).toContainText(`Re-bills ${rebill!.reference}: ${lines} of ${lines} lines already billed on ${name}`);
     await expect(row.getByRole('link', { name })).toHaveAttribute('href', `/invoices/${first!.id}`);
-    // At 1280 px, where the charges table only just fits, its Expected column now holds words.
-    await page.setViewportSize({ width: 1280, height: 900 });
+    // At 1100 px, the narrowest width where the charges table keeps every column, its Expected column holds words.
+    await page.setViewportSize({ width: 1100, height: 900 });
     await page.goto(`/invoices/${rebill!.id}`);
     const header = page.locator('.detail-head');
     await expect(header).toContainText(`Re-bills shipment ${rebill!.reference}: ${lines} of ${lines} lines were already billed on ${name} (${printed}).`);
@@ -574,9 +574,15 @@ test.describe('re-bills', () => {
     expect(texts.filter((text) => text.endsWith(` was already billed on ${name} (${printed}) for the same shipment.`))).toHaveLength(lines);
     const charges = page.locator('table.charges');
     await expect(page.getByText('Expected is $0 for a charge already billed, on an earlier invoice for this shipment or on an earlier line, so it is not paid twice.')).toBeVisible();
-    await expect(charges.locator('tbody td', { hasText: `Already billed on ${name}` })).toHaveCount(lines);
-    await expect(charges.locator('tbody').getByRole('link', { name })).toHaveCount(lines);
-    expect(await page.locator('.table-wrap', { has: charges }).evaluate((box) => box.scrollWidth - box.clientWidth)).toBe(0);
+    // In short, with the number a link, and the whole sentence as the cell's name.
+    await expect(charges.getByRole('cell', { name: `Already billed on ${name}`, exact: true })).toHaveCount(lines);
+    await expect(charges.locator('tbody td', { hasText: `Billed on ${first!.number}` })).toHaveCount(lines);
+    await expect(charges.locator('tbody').getByRole('link', { name: first!.number, exact: true })).toHaveCount(lines);
+    // Every column fits from 1100 px, whatever font has loaded: the description takes what is left.
+    for (const width of [1100, 1280, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(await page.locator('.table-wrap', { has: charges }).evaluate((box) => box.scrollWidth - box.clientWidth), `${width} px`).toBe(0);
+    }
     // Each names the first invoice by a link that opens it.
     await header.getByRole('link', { name }).click();
     await expect(page).toHaveURL(new RegExp(`/invoices/${first!.id}$`));

@@ -178,14 +178,16 @@ test('a re-billed charge names where it was billed first: an earlier invoice by 
   expect(said(rebilledText('Linehaul', { invoice: { ...first, number: null, issuedOn: null } }))).toBe('Linehaul was already billed on g070.pdf for the same shipment.');
   expect(said(rebilledText('DELIVERY APPOINTMENT', { line: 3 }))).toBe('Delivery appointment was already billed on line 3 of this invoice.');
   expect(said(rebilledText('Fuel surcharge', { unnamed: true }))).toBe('Fuel surcharge was already billed on an earlier invoice for the same shipment.');
-  // The Expected cell says it in short, with the same link, while the finding stands; one line above the table says why
-  // it is $0. Once the charge is approved, its billed amount stands, so the cell shows money again.
+  // The Expected cell says it in short, with the earlier invoice's number still a link, while the finding stands, and
+  // keeps the whole sentence as its accessible name; one line above the table says why it is $0. Once the charge is
+  // approved, its billed amount stands, so the cell shows money again.
   const open = { status: 'OPEN' as const };
-  expect(alreadyBilled(open, { invoice: first })).toEqual(['Already billed on ', { invoice: 'e1', text: 'invoice 74731111' }]);
-  expect(alreadyBilled(open, { line: 3 })).toEqual(['Already billed on line 3']);
-  expect(alreadyBilled(open, { unnamed: true })).toEqual(['Already billed on an earlier invoice']);
-  expect(alreadyBilled({ status: 'CONFIRMED' }, { line: 3 })).toEqual(['Already billed on line 3']);
-  expect(alreadyBilled({ status: 'CLOSED' }, { line: 3 })).toEqual(['Already billed on line 3']);
+  expect(alreadyBilled(open, { invoice: first })).toEqual({ words: ['Billed on ', { invoice: 'e1', text: '74731111' }], label: 'Already billed on invoice 74731111' });
+  expect(alreadyBilled(open, { invoice: { ...first, number: null } })).toEqual({ words: ['Billed on ', { invoice: 'e1', text: 'g070.pdf' }], label: 'Already billed on g070.pdf' });
+  expect(alreadyBilled(open, { line: 3 })).toEqual({ words: ['Billed on line 3'], label: 'Already billed on line 3' });
+  expect(alreadyBilled(open, { unnamed: true })).toEqual({ words: ['Billed earlier'], label: 'Already billed on an earlier invoice' });
+  expect(alreadyBilled({ status: 'CONFIRMED' }, { line: 3 })?.label).toBe('Already billed on line 3');
+  expect(alreadyBilled({ status: 'CLOSED' }, { line: 3 })?.label).toBe('Already billed on line 3');
   expect(alreadyBilled({ status: 'DISMISSED' }, { invoice: first })).toBeUndefined();
   expect(alreadyBilled(open, undefined)).toBeUndefined();
   expect(ALREADY_BILLED).toBe('Expected is $0 for a charge already billed, on an earlier invoice for this shipment or on an earlier line, so it is not paid twice.');
