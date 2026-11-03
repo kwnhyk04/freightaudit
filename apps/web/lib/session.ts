@@ -10,7 +10,8 @@ export type Session = { sub: string; iat: number; at: number };
 export type Limits = { idleSeconds: number; maxSeconds: number };
 // Why a validly signed token no longer holds: idle too long, past the limit from sign-in, or written by an older build.
 export type Ended = 'idle' | 'max' | 'old';
-// Activity renews the cookie only this long after its last renewal, so it is not reissued on every request.
+// Activity renews the cookie only this long after its last renewal, so it is not reissued on every request; with a short
+// idle limit (SESSION_IDLE_MINUTES may be 1), at half of it instead, so an active reviewer is never signed out.
 export const RENEW_SECONDS = 5 * 60;
 export const limitsFrom = (env: { SESSION_IDLE_MINUTES: number; SESSION_MAX_HOURS: number }): Limits => ({
   idleSeconds: env.SESSION_IDLE_MINUTES * 60,
@@ -53,9 +54,10 @@ export function readToken(token: string | undefined, secret: string, limits: Lim
   return checked && 'session' in checked ? checked.session : undefined;
 }
 
-// A fresh token for a live session once RENEW_SECONDS have passed since its last one; undefined until then.
-export const renewToken = (session: Session, secret: string, now = Date.now()) =>
-  seconds(now) - session.at >= RENEW_SECONDS ? createToken(session.sub, secret, now, session.iat * 1000) : undefined;
+// A fresh token for a live session once the smaller of RENEW_SECONDS and half the idle limit has passed since its last
+// one; undefined until then.
+export const renewToken = (session: Session, secret: string, limits: Limits, now = Date.now()) =>
+  seconds(now) - session.at >= Math.min(RENEW_SECONDS, limits.idleSeconds / 2) ? createToken(session.sub, secret, now, session.iat * 1000) : undefined;
 
 // The cookie lives until the limit from sign-in; the idle limit is checked from the token.
 export const cookieSeconds = (session: Pick<Session, 'iat'>, limits: Limits, now = Date.now()) => Math.max(0, session.iat + limits.maxSeconds - seconds(now));

@@ -17,8 +17,10 @@ import { redirect } from 'next/navigation';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { BULK, type BulkAction, bulkResult, duplicateNote, refusal, REPLAYED_ALREADY } from '../lib/labels.ts';
 import { createLimiter } from '../lib/limiter.ts';
+import { MAX_PAGE_SIZE } from '../lib/paging.ts';
 import { retryCode } from '../lib/uploads.ts';
 import { verifyPassword } from '../lib/password.ts';
 import { SAMPLES } from '../lib/samples.ts';
@@ -98,8 +100,14 @@ export async function review(_: ActionState, form: FormData): Promise<ActionStat
   return {};
 }
 
+// The api takes 60 requests a minute from all web traffic (RATE_LIMIT_PER_MIN), and a bulk action sends one per row. A
+// row it refuses for that waits as long as it asks and goes again, at most this long in all, so the action answers within
+// about a minute and a half; one request for every row is not possible, since the api's query limits refuse any alias.
+const BULK_WAIT_MS = 90_000;
+
 // One decision or replay on the rows ticked on a page, sent one by one through the same call as a single row's, so each
-// is recorded exactly as one would be; a refusal stops only its own row. At most a page of rows.
+// is recorded exactly as one would be; a refusal stops only its own row. At most a page of rows, at the pager's largest
+// size, paced by the api's rate limit.
 export async function reviewMany(_: ActionState, form: FormData): Promise<ActionState> {
   const name = text(form, 'action');
   const action = (Object.keys(BULK) as BulkAction[]).find((each) => each === name);
@@ -107,18 +115,35 @@ export async function reviewMany(_: ActionState, form: FormData): Promise<Action
   const bulk: { kind: string; decision?: 'CONFIRM' | 'DISMISS' } = BULK[action];
   const ids = form.getAll(bulk.kind).map(String);
   if (ids.length === 0) return { error: 'Select at least one row.' };
-  if (ids.length > 25) return { error: 'Unknown action.' };
+  if (ids.length > MAX_PAGE_SIZE) return { error: `At most ${MAX_PAGE_SIZE} rows at a time.` };
   const note = text(form, 'note') || null;
   const refusals: string[] = [];
   try {
     await asReviewer();
+    let waited = 0;
+    // The api's last word once its limit outlasts the wait allowed: the rows left are not sent, each refused with it.
+    let busy: string | undefined;
     for (const id of ids) {
-      try {
-        if (bulk.decision) await gql(ResolveDiscrepancyDocument, { id, decision: bulk.decision, note }, REVIEWER);
-        else await gql(ReplayDeadLetterDocument, { id }, REVIEWER);
-      } catch (err) {
-        if (!(err instanceof ApiError)) throw err;
-        refusals.push(action === 'replay' && err.code === 'NOT_FOUND' ? REPLAYED_ALREADY : refusal(err.message));
+      if (busy) {
+        refusals.push(busy);
+        continue;
+      }
+      for (;;) {
+        try {
+          if (bulk.decision) await gql(ResolveDiscrepancyDocument, { id, decision: bulk.decision, note }, REVIEWER);
+          else await gql(ReplayDeadLetterDocument, { id }, REVIEWER);
+        } catch (err) {
+          if (!(err instanceof ApiError)) throw err;
+          const wait = err.code === 'RATE_LIMITED' ? Math.max(1, err.retryAfter ?? 60) * 1000 : undefined;
+          if (wait !== undefined && waited + wait <= BULK_WAIT_MS) {
+            waited += wait;
+            await sleep(wait);
+            continue;
+          }
+          if (wait !== undefined) busy = refusal(err.message);
+          refusals.push(action === 'replay' && err.code === 'NOT_FOUND' ? REPLAYED_ALREADY : refusal(err.message));
+        }
+        break;
       }
     }
   } catch (err) {

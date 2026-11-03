@@ -105,8 +105,16 @@ test("Claude has its own UTC day: its tokens never count against the free budget
 
 test("Claude's spend cap: a reservation takes the day's tokens and the cap's micro-dollars together or neither, two at once never pass it, the total never expires, and a seed keeps the larger total", async () => {
   const cap = `${prefix}-claude-cap`;
-  // A cap of $0.001: 1,000 micro-dollars.
-  const options = { prefix: cap, enabled: true, roles: { ...roles({ rpm: 60, tpm: 60_000 }), claude: { rpm: 50, tpm: 50_000 } }, dailyTokenBudget: 1e9, dailyClaudeBudget: 10_000, claudeSpendCap: '0.001' };
+  // A cap of $0.001: 1,000 micro-dollars, with nothing recorded in Postgres yet.
+  const options = {
+    prefix: cap,
+    enabled: true,
+    roles: { ...roles({ rpm: 60, tpm: 60_000 }), claude: { rpm: 50, tpm: 50_000 } },
+    dailyTokenBudget: 1e9,
+    dailyClaudeBudget: 10_000,
+    claudeSpendCap: '0.001',
+    claudeRecorded: async () => 0n,
+  };
   const limits = createLimits(redis, options);
   const now = Date.parse('2026-10-31T15:00:00Z');
   const spent = async () => [await redis.get(`${cap}:llm:claude:spent`), await redis.hget(`${cap}:llm:day:2026-10-31`, 'claude_tokens')];
@@ -129,6 +137,56 @@ test("Claude's spend cap: a reservation takes the day's tokens and the cap's mic
   expect(await limits.seedClaudeSpent(50n)).toBe(100n);
   expect(await limits.seedClaudeSpent(950n)).toBe(950n);
   expect(await limits.reserveClaude(1, 51n, now)).toBe('cap');
+});
+
+test("a total Redis lost is seeded again from what Postgres recorded before Claude reserves, so the cap never restarts from 0, and a settle never brings it back from nothing", async () => {
+  const lost = `${prefix}-claude-lost`;
+  const key = `${lost}:llm:claude:spent`;
+  // A cap of $0.001: 1,000 micro-dollars, 900 of them billed already as Postgres records it.
+  let recorded = 900n;
+  let asked = 0;
+  const options = {
+    prefix: lost,
+    enabled: true,
+    roles: { ...roles({ rpm: 60, tpm: 60_000 }), claude: { rpm: 50, tpm: 50_000 } },
+    dailyTokenBudget: 1e9,
+    dailyClaudeBudget: 10_000,
+    claudeSpendCap: '0.001',
+    claudeRecorded: async () => {
+      asked++;
+      return recorded;
+    },
+  };
+  const limits = createLimits(redis, options);
+  const now = Date.parse('2026-11-03T15:00:00Z');
+  // No total in Redis, as after a restart that lost its data: the 900 count before anything is taken.
+  expect(await redis.get(key)).toBeNull();
+  expect(await limits.reserveClaude(10, 101n, now)).toBe('cap');
+  expect([await redis.get(key), asked]).toEqual(['900', 1]);
+  // Seeded once: the next reservation reads Redis alone.
+  expect(await limits.reserveClaude(10, 100n, now)).toBe('ok');
+  expect([await redis.get(key), asked]).toEqual(['1000', 1]);
+
+  // Redis loses the total while that call runs. Its settle leaves the total missing instead of starting it from the
+  // refund; Postgres records the call's 40, and the next reservation counts it.
+  await redis.del(key);
+  await limits.settleClaude({ tokens: 10, micro: 100n }, { inputTokens: 5, outputTokens: 1 }, 40n, now);
+  expect(await redis.get(key)).toBeNull();
+  recorded = 940n;
+  expect(await limits.reserveClaude(10, 61n, now)).toBe('cap');
+  expect([await redis.get(key), asked]).toEqual(['940', 2]);
+
+  // Two workers that find it missing at once seed it once between them, and still never pass the cap together.
+  await redis.del(key);
+  const both = await Promise.all([limits.reserveClaude(10, 60n, now), createLimits(redis, options).reserveClaude(10, 60n, now)]);
+  expect(both.sort()).toEqual(['cap', 'ok']);
+  expect(await redis.get(key)).toBe('1000');
+});
+
+test("a spend cap needs Claude's total as Postgres records it, to seed a total Redis lost", () => {
+  const options = { prefix: `${prefix}-claude-unrecorded`, enabled: true, roles: { ...roles({ rpm: 60, tpm: 60_000 }), claude: { rpm: 50, tpm: 50_000 } }, dailyTokenBudget: 1e9 };
+  expect(() => createLimits(redis, { ...options, claudeSpendCap: '15.00' })).toThrow('claudeRecorded');
+  expect(() => createLimits(redis, options)).not.toThrow();
 });
 
 test('the switch to the free models is stored once, seen by every worker process, and stays until claude:resume clears it', async () => {

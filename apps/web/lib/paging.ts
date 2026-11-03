@@ -1,6 +1,8 @@
 // Page and page size for every paged table, read from ?page= and ?size=, which the Pager writes.
 export const PAGE_SIZES = [10, 20, 50, 100] as const;
 export const DEFAULT_SIZE = 20;
+// The most rows a page shows, so also the most a bulk action takes: a whole page ticked always goes.
+export const MAX_PAGE_SIZE = Math.max(...PAGE_SIZES);
 
 // Anything that is not a page number or one of the sizes falls back to page 1 and the default size.
 export function pageParams(params: { page?: string; size?: string }) {

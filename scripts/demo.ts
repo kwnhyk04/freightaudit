@@ -24,6 +24,33 @@ function docker(args: string[], capture = false) {
 }
 const compose = (...args: string[]) => docker([...COMPOSE, ...args]);
 const settings = () => parseEnv(readFileSync(envPath, 'utf8'));
+const psql = (sql: string) => docker([...COMPOSE, 'exec', '-T', 'postgres', 'psql', '-X', '-U', 'freightaudit', '-d', 'freightaudit', '-tAc', sql], true).trim();
+const redisCli = (...args: string[]) => docker([...COMPOSE, 'exec', '-T', 'redis', 'redis-cli', ...args], true).trim();
+
+// Claude's lifetime total in micro-dollars, which its spend cap checks. The worker keeps it in Redis (REDIS_PREFIX keeps
+// its default here) and seeds it from Postgres: Claude's calls in llm_calls and what an earlier reset carried over.
+const CLAUDE_SPENT = 'freightaudit:llm:claude:spent';
+const micro = (value: string) => {
+  if (!/^-?\d+$/.test(value)) throw new Error(`Claude's total read as ${JSON.stringify(value)}, not micro-dollars: nothing was deleted, and pnpm demo:up starts the api and worker again`);
+  return BigInt(value);
+};
+
+// What Claude has billed: the larger of the total in Redis, which also holds calls that kept their reservation, and what
+// Postgres recorded. A database from before migration 0018 has carried nothing over.
+function claudeSpent() {
+  const kept = redisCli('--raw', 'GET', CLAUDE_SPENT);
+  const calls = micro(psql("SELECT coalesce(sum(cost_micro_usd), 0) FROM llm_calls WHERE provider = 'anthropic'"));
+  const carried = psql("SELECT to_regclass('claude_spend_carryover') IS NOT NULL") === 't' ? micro(psql('SELECT coalesce(sum(cost_micro_usd), 0) FROM claude_spend_carryover')) : 0n;
+  const inRedis = kept ? micro(kept) : 0n;
+  return inRedis > calls + carried ? inRedis : calls + carried;
+}
+
+// Writes the total back into the migrated, empty database, where the worker counts it from now on, and into the empty
+// Redis, before the worker starts.
+function carryClaudeSpent(spent: bigint) {
+  psql(`INSERT INTO claude_spend_carryover (cost_micro_usd) VALUES (${spent})`);
+  redisCli('SET', CLAUDE_SPENT, spent.toString());
+}
 
 // .env.prod from the example, with random secrets; the provider keys and the Tailscale key are left for the user.
 function init() {
@@ -65,12 +92,14 @@ async function smoke(url: string) {
   console.log(`Live at ${url}: /healthz answers and a request without X-API-Key gets 401. This is the web's API_URL.`);
 }
 
-async function up() {
+// claudeCarried is Claude's total from before a reset, written back before the worker starts.
+async function up(claudeCarried?: bigint) {
   if (!existsSync(envPath)) throw new Error('.env.prod is missing; run pnpm demo:init first');
   if (!docker(['volume', 'ls', '-q', '--filter', `name=^${STATE_VOLUME}$`], true).trim()) docker(['volume', 'create', STATE_VOLUME]);
   compose('pull', 'api', 'worker', 'egress-proxy', 'tailscale');
   compose('up', '-d', '--wait', 'postgres', 'redis', 'minio');
   compose('run', '--rm', 'migrate');
+  if (claudeCarried !== undefined) carryClaudeSpent(claudeCarried);
   compose('up', '-d', '--wait', 'api', 'worker', 'tailscale');
   const url = funnelUrl();
   if (settings().TS_AUTHKEY) console.log('The node is logged in: delete TS_AUTHKEY from .env.prod.');
@@ -117,12 +146,19 @@ async function reload(url: string) {
   console.log(`${names.length} sample invoices sent; the worker reads them over the next few minutes.`);
 }
 
-// Backs up, then empties the demo's data (database, queues, stored PDFs), reseeds it and loads the sample again.
+// Backs up, then empties the demo's data (database, queues, stored PDFs), reseeds it and loads the sample again. Claude's
+// total carries over, read once nothing bills and written back before the worker starts, so its spend cap never restarts
+// from $0.
 async function reset() {
+  // The stores first, so the backup and Claude's total see what the volumes hold, even after demo:down.
+  compose('up', '-d', '--wait', 'postgres', 'redis');
   await backup();
+  compose('stop', 'api', 'worker');
+  const spent = claudeSpent();
+  console.log(`Claude has billed ${spent} micro-dollars so far; the reset keeps that total.`);
   compose('rm', '--stop', '--force', '-v', 'api', 'worker', 'postgres', 'redis', 'minio');
   docker(['volume', 'rm', '--force', ...DATA_VOLUMES]);
-  await reload(await up());
+  await reload(await up(spent));
 }
 
 const commands: Record<string, () => unknown> = { init, up, down, backup, reset };

@@ -12,7 +12,10 @@ export async function GET(request: Request) {
   try {
     if (id) {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return Response.json({ detail: 'no such invoice' }, { status: 404 });
-      const { data } = await rest().GET('/v1/invoices/{id}', { params: { path: { id } } });
+      // openapi-fetch hands back a refusal instead of throwing. The api's rate limit (429) or a failure (5xx) counts as no
+      // answer, so the poller keeps asking; any other answer stands, an empty key when there is no such invoice.
+      const { data, response } = await rest().GET('/v1/invoices/{id}', { params: { path: { id } } });
+      if (response.status === 429 || response.status >= 500) throw new Error(`the api answered ${response.status}`);
       return Response.json({ key: data ? progressKey([data]) : '' }, { headers });
     }
     if (params.get('recent') !== null) {

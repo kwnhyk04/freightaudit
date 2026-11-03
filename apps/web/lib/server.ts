@@ -75,9 +75,12 @@ export async function livePage(path: string) {
 
 export class ApiError extends Error {
   readonly code: string;
-  constructor(message: string, code: string) {
+  // RATE_LIMITED: the seconds the api asked to wait before the next request.
+  readonly retryAfter: number | undefined;
+  constructor(message: string, code: string, retryAfter?: number) {
     super(message);
     this.code = code;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -97,8 +100,10 @@ export async function gql<Result, Variables>(document: TypedDocumentString<Resul
     throw new ApiError('The FreightAudit API did not answer. Try again in a moment.', 'UNAVAILABLE');
   }
   if (response.status === 429) {
-    const wait = Number(response.headers.get('retry-after') ?? 60);
-    throw new ApiError(`The API is busy. Try again in ${wait} seconds.`, 'RATE_LIMITED');
+    // Seconds, as the api sends it; a date or nothing reads as a minute.
+    const header = response.headers.get('retry-after')?.trim() ?? '';
+    const wait = /^\d+$/.test(header) ? Number(header) : 60;
+    throw new ApiError(`The API is busy. Try again in ${wait} seconds.`, 'RATE_LIMITED', wait);
   }
   const body = (await response.json().catch(() => ({}))) as { data?: Result; errors?: { message: string; extensions?: { code?: string } }[] };
   const error = body.errors?.[0];
