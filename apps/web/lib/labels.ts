@@ -165,11 +165,18 @@ export function rebilledText(description: string, before: BilledBefore): Words {
   return [`${label} was already billed on an earlier invoice for the same shipment.`];
 }
 // The Expected cell of a charge billed before, in place of its $0, while its finding stands: once approved, the charge's
-// billed amount stands and the cell shows money again.
-export function alreadyBilled(finding: { status: DiscrepancyStatus }, before: BilledBefore | undefined): Words | undefined {
+// billed amount stands and the cell shows money again. words is short, so the charges table fits beside the document
+// from 1100 px, with the earlier invoice's number (or file name) still a link; label is the whole sentence, the cell's
+// accessible name.
+export function alreadyBilled(finding: { status: DiscrepancyStatus }, before: BilledBefore | undefined): { words: Words; label: string } | undefined {
   if (!before || finding.status === 'DISMISSED') return undefined;
-  if ('invoice' in before) return ['Already billed on ', earlierLink(before.invoice)];
-  return ['line' in before ? `Already billed on line ${before.line}` : 'Already billed on an earlier invoice'];
+  if ('invoice' in before) {
+    const { number, filename } = before.invoice;
+    const link = earlierLink(before.invoice);
+    return { words: ['Billed on ', { ...link, text: number ? number : filename }], label: `Already billed on ${link.text}` };
+  }
+  if ('line' in before) return { words: [`Billed on line ${before.line}`], label: `Already billed on line ${before.line}` };
+  return { words: ['Billed earlier'], label: 'Already billed on an earlier invoice' };
 }
 // The line above a charges table that has such a cell.
 export const ALREADY_BILLED = 'Expected is $0 for a charge already billed, on an earlier invoice for this shipment or on an earlier line, so it is not paid twice.';

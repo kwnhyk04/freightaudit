@@ -293,8 +293,8 @@ export function InvoiceDetail({ data, base, readOnly, documentSrc, example = fal
                             </Td>
                             {priced && (
                               <>
-                                <Td num className={billed ? 'muted wrap' : 'muted'}>
-                                  {billed ? <Said words={billed} base={base} /> : <Money cents={amounts.expectedCents} currency={invoice.currency} />}
+                                <Td num className={billed ? 'muted wrap' : 'muted'} aria-label={billed?.label}>
+                                  {billed ? <Said words={billed.words} base={base} /> : <Money cents={amounts.expectedCents} currency={invoice.currency} />}
                                 </Td>
                                 <Td num>
                                   <Difference cents={amounts.differenceCents} currency={invoice.currency} />
