@@ -1,4 +1,4 @@
-import { invoices, llmCalls } from '@freightaudit/db';
+import { claudeSpendCarryover, invoices, llmCalls } from '@freightaudit/db';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createInterface } from 'node:readline';
@@ -75,7 +75,8 @@ test('with LLM_CLAUDE_MODEL set and AI on, the worker exits 1 until Claude has i
 });
 
 test("with Claude first, the worker counts what Postgres recorded against Claude's spend cap at startup and logs its settings, never its key", async () => {
-  // Two Claude calls and a free one already recorded: 1,200 micro-dollars billed by Claude.
+  // Two Claude calls and a free one already recorded, and 300 micro-dollars a demo reset carried over: 1,500 billed by
+  // Claude.
   const [invoice] = await env.db.insert(invoices).values({ tenantId: env.tenantId, filename: 'seeded.pdf', contentSha256: 'c'.repeat(64) }).returning({ id: invoices.id });
   const row = { tenantId: env.tenantId, invoiceId: invoice!.id, role: 'text', step: 'first_pass', model: 'm', outcome: 'valid', inputTokens: 1, outputTokens: 1, latencyMs: 1 };
   await env.db.insert(llmCalls).values([
@@ -83,6 +84,7 @@ test("with Claude first, the worker counts what Postgres recorded against Claude
     { ...row, provider: 'anthropic', costMicroUsd: 200n },
     { ...row, provider: 'groq', costMicroUsd: 0n },
   ]);
+  await env.db.insert(claudeSpendCarryover).values({ costMicroUsd: 300n });
   const child = spawn(process.execPath, [main], {
     env: { ...settings(), ...CLAUDE, LLM_CLAUDE_FIRST_UNTIL: '2026-11-10', LLM_CLAUDE_SPEND_CAP_USD: '15.00' },
     stdio: ['ignore', 'pipe', 'inherit'],
@@ -97,8 +99,8 @@ test("with Claude first, the worker counts what Postgres recorded against Claude
       if (entry.msg?.startsWith('Server listening at ')) break;
     }
     child.stdout!.resume();
-    expect(claude).toEqual({ model: 'claude-haiku-5-5', until: '2026-11-10', dailyTokens: 1_400_000, spendCapUsd: '15.00', spentMicroUsd: '1200' });
-    expect(await env.redis.get(`${env.prefix}:llm:claude:spent`)).toBe('1200');
+    expect(claude).toEqual({ model: 'claude-haiku-5-5', until: '2026-11-10', dailyTokens: 1_400_000, spendCapUsd: '15.00', spentMicroUsd: '1500' });
+    expect(await env.redis.get(`${env.prefix}:llm:claude:spent`)).toBe('1500');
     expect(lines.join('\n')).not.toContain('anthropic-secret-value');
   } finally {
     child.kill();

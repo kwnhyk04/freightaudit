@@ -153,6 +153,15 @@ export const llmCalls = pgTable('llm_calls', {
   ...timestamps,
 });
 
+// Claude's spend from before pnpm db:reset-demo emptied the database (0018), which its spend cap counts with the Claude
+// calls above.
+export const claudeSpendCarryover = pgTable('claude_spend_carryover', {
+  id: id(),
+  // Integer micro-dollars (1,000,000 is $1).
+  costMicroUsd: bigint('cost_micro_usd', { mode: 'bigint' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const invoiceLines = pgTable('invoice_lines', {
   id: id(),
   tenantId: tenantId(),

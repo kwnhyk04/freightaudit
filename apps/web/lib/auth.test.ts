@@ -42,17 +42,30 @@ test('a session token ends after 30 minutes without activity', () => {
 test('activity renews the token at most every 5 minutes, which moves the idle window but never the sign-in time', () => {
   const token = createToken('reviewer', secret, signedIn);
   const first = readToken(token, secret, limits, signedIn + 4 * MINUTE)!;
-  expect(renewToken(first, secret, signedIn + 4 * MINUTE)).toBeUndefined();
-  const renewed = renewToken(first, secret, signedIn + 25 * MINUTE)!;
+  expect(renewToken(first, secret, limits, signedIn + 4 * MINUTE)).toBeUndefined();
+  const renewed = renewToken(first, secret, limits, signedIn + 25 * MINUTE)!;
   expect(renewed).toBeDefined();
   // 50 minutes after sign-in, 25 after the renewal: still signed in, where the first token has ended.
   expect(readToken(renewed, secret, limits, signedIn + 50 * MINUTE)).toEqual({ sub: 'reviewer', iat: signedIn / 1000, at: signedIn / 1000 + 25 * 60 });
   expect(readToken(token, secret, limits, signedIn + 50 * MINUTE)).toBeUndefined();
 });
 
+test('activity renews the token at the smaller of 5 minutes and half the idle limit, so a short limit never ends an active session', () => {
+  const token = createToken('reviewer', secret, signedIn);
+  for (const [idleMinutes, renewSeconds] of [[1, 30], [8, 240], [10, 300], [30, 300]] as const) {
+    const short = limitsFrom({ SESSION_IDLE_MINUTES: idleMinutes, SESSION_MAX_HOURS: 8 });
+    const session = readToken(token, secret, short, signedIn)!;
+    expect([idleMinutes, renewToken(session, secret, short, signedIn + (renewSeconds - 1) * 1000)]).toEqual([idleMinutes, undefined]);
+    expect([idleMinutes, readToken(renewToken(session, secret, short, signedIn + renewSeconds * 1000), secret, short, signedIn + renewSeconds * 1000)?.at]).toEqual([
+      idleMinutes,
+      signedIn / 1000 + renewSeconds,
+    ]);
+  }
+});
+
 test('a session ends 8 hours after sign-in however active it is', () => {
   let token = createToken('reviewer', secret, signedIn);
-  for (let at = signedIn + 20 * MINUTE; at < signedIn + 8 * 60 * MINUTE; at += 20 * MINUTE) token = renewToken(readToken(token, secret, limits, at)!, secret, at)!;
+  for (let at = signedIn + 20 * MINUTE; at < signedIn + 8 * 60 * MINUTE; at += 20 * MINUTE) token = renewToken(readToken(token, secret, limits, at)!, secret, limits, at)!;
   const last = signedIn + 7 * 60 * MINUTE + 40 * MINUTE;
   expect(readToken(token, secret, limits, last + MINUTE)).toBeDefined();
   expect(checkToken(token, secret, limits, signedIn + 8 * 60 * MINUTE)).toEqual({ ended: 'max' });

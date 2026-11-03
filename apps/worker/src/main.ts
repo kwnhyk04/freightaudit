@@ -1,5 +1,5 @@
 import { configError, LLM_SETTINGS, llmRoles, loadEnv } from '@freightaudit/config/env';
-import { createPool, llmCalls } from '@freightaudit/db';
+import { claudeSpendCarryover, createPool, llmCalls } from '@freightaudit/db';
 import { createLimits, createModels, hasPrice } from '@freightaudit/llm';
 import { createQueues, createStorage, observeQueues } from '@freightaudit/pipeline';
 import { readiness, serverOptions, shutdownTelemetry, tcpCheck } from '@freightaudit/telemetry';
@@ -43,18 +43,24 @@ const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
 const pool = createPool(env.DATABASE_URL, (msg, fields) => app.log.warn(fields, msg));
 const queues = createQueues(redis, env.REDIS_PREFIX);
 observeQueues(queues);
+const db = drizzle(pool);
+// Claude's total as Postgres records it: every Claude call, and what a demo reset carried over. It seeds the total in
+// Redis at start and again whenever Redis has lost it, so a Redis without it never lets Claude past its cap.
+async function claudeRecorded() {
+  const [calls] = await db.select({ total: sum(llmCalls.costMicroUsd) }).from(llmCalls).where(eq(llmCalls.provider, 'anthropic'));
+  const [carried] = await db.select({ total: sum(claudeSpendCarryover.costMicroUsd) }).from(claudeSpendCarryover);
+  return BigInt(calls?.total ?? 0) + BigInt(carried?.total ?? 0);
+}
 const limits = createLimits(redis, {
   prefix: env.REDIS_PREFIX,
   enabled: env.AI_ENABLED,
   dailyTokenBudget: env.DAILY_AI_TOKEN_BUDGET,
   dailyClaudeBudget: env.DAILY_CLAUDE_TOKEN_BUDGET,
   claudeSpendCap,
+  claudeRecorded,
   roles: { ...roles, claude },
 });
-const db = drizzle(pool);
-// Claude's total counts every Claude call Postgres recorded, so a Redis that lost it never lets Claude past its cap.
-const recorded = claude && env.AI_ENABLED ? (await db.select({ total: sum(llmCalls.costMicroUsd) }).from(llmCalls).where(eq(llmCalls.provider, 'anthropic')))[0]?.total : undefined;
-const spent = claude && env.AI_ENABLED ? await limits.seedClaudeSpent(BigInt(recorded ?? 0)) : undefined;
+const spent = claude && env.AI_ENABLED ? await limits.seedClaudeSpent(await claudeRecorded()) : undefined;
 // How Claude runs, never its key: off, or first until a UTC date, under its day and its spend cap.
 app.log.info(
   { claude: claude ? { model: claude.model, until: claudeFirst?.until, dailyTokens: env.DAILY_CLAUDE_TOKEN_BUDGET, spendCapUsd: claudeSpendCap, spentMicroUsd: spent?.toString() } : false },

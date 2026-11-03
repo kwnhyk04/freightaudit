@@ -18,7 +18,7 @@ export function proxy(request: NextRequest) {
     const response = NextResponse.next();
     // Navigation, server actions and requests the reviewer starts renew; a background poll or Next's prefetch does not.
     if (request.headers.has(BACKGROUND_HEADER) || request.headers.has('next-router-prefetch')) return response;
-    const renewed = renewToken(checked.session, secret, now);
+    const renewed = renewToken(checked.session, secret, limits, now);
     if (renewed) response.cookies.set(SESSION_COOKIE, renewed, { ...SESSION_COOKIE_ATTRIBUTES, maxAge: cookieSeconds(checked.session, limits, now) });
     return response;
   }

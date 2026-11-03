@@ -47,29 +47,45 @@ export type RoleLimits = { rpm: number; tpm: number };
 // One bucket per role, and one for Claude when it is configured.
 export type Bucket = Role | 'claude';
 // dailyTokenBudget is the free models' UTC day, dailyClaudeBudget Claude's (none without one), and claudeSpendCap the most
-// Claude may ever bill, in decimal dollars such as "15.00" (no cap without one).
+// Claude may ever bill, in decimal dollars such as "15.00" (no cap without one). claudeRecorded reads Claude's total in
+// micro-dollars as Postgres records it, the source of truth, which seeds the total again when Redis has lost it; a cap
+// needs it.
 export type LimitsOptions = {
   prefix: string;
   enabled: boolean;
   dailyTokenBudget: number;
   dailyClaudeBudget?: number;
   claudeSpendCap?: string | undefined;
+  claudeRecorded?: () => Promise<bigint>;
   roles: Record<Role, RoleLimits> & { claude?: RoleLimits | undefined };
   clock?: Clock;
 };
 
 // Claude's day (KEYS[1]) and its total in micro-dollars (KEYS[2], never expiring) together: takes ARGV[1] tokens and
 // ARGV[3] micro-dollars unless that passes the cap ARGV[4] (returns -1) or the day's budget ARGV[2] (returns 0); 1 when
-// taken.
+// taken. A total Redis lost returns -2 and takes nothing, unless ARGV[5] gives the total Postgres recorded: that seeds
+// it first, keeping the larger if another worker seeded it meanwhile.
 const RESERVE = `
-local total = tonumber(redis.call('GET', KEYS[2]) or '0')
-if total + tonumber(ARGV[3]) > tonumber(ARGV[4]) then return -1 end
+local total = redis.call('GET', KEYS[2])
+if ARGV[5] ~= '' and (not total or tonumber(ARGV[5]) > tonumber(total)) then
+  total = ARGV[5]
+  redis.call('SET', KEYS[2], total)
+end
+if not total then return -2 end
+if tonumber(total) + tonumber(ARGV[3]) > tonumber(ARGV[4]) then return -1 end
 local spent = tonumber(redis.call('HGET', KEYS[1], 'claude_tokens') or '0')
 if spent + tonumber(ARGV[1]) > tonumber(ARGV[2]) then return 0 end
 redis.call('HINCRBY', KEYS[1], 'claude_tokens', ARGV[1])
 redis.call('EXPIRE', KEYS[1], 172800)
 redis.call('INCRBY', KEYS[2], ARGV[3])
 return 1
+`;
+const UNSEEDED = -2;
+// Trues a reservation up by ARGV[1] tokens on Claude's day (KEYS[1]) and ARGV[2] micro-dollars on its total (KEYS[2]).
+// A total Redis lost stays missing, so the next reservation seeds it from Postgres instead of from this difference alone.
+const SETTLE = `
+redis.call('HINCRBY', KEYS[1], 'claude_tokens', ARGV[1])
+if redis.call('EXISTS', KEYS[2]) == 1 then redis.call('INCRBY', KEYS[2], ARGV[2]) end
 `;
 // Keeps the larger of Claude's total (KEYS[1]) and ARGV[1], and returns it as stored.
 const SEED = `
@@ -83,7 +99,8 @@ return total
 const claudeOffKey = (prefix: string) => `${prefix}:llm:claude:off`;
 const claudeSpentKey = (prefix: string) => `${prefix}:llm:claude:spent`;
 
-export function createLimits(redis: Redis, { prefix, enabled, dailyTokenBudget, dailyClaudeBudget = 0, claudeSpendCap, roles, clock }: LimitsOptions) {
+export function createLimits(redis: Redis, { prefix, enabled, dailyTokenBudget, dailyClaudeBudget = 0, claudeSpendCap, claudeRecorded, roles, clock }: LimitsOptions) {
+  if (claudeSpendCap && !claudeRecorded) throw new Error('a Claude spend cap needs claudeRecorded, so a total Redis lost is seeded again from Postgres');
   const spendCap = claudeSpendCap ? microUsd(claudeSpendCap) : BigInt(Number.MAX_SAFE_INTEGER);
   const dayKey = (now: number) => `${prefix}:llm:day:${new Date(now).toISOString().slice(0, 10)}`;
   const limitsOf = (role: Bucket) => {
@@ -123,17 +140,17 @@ export function createLimits(redis: Redis, { prefix, enabled, dailyTokenBudget, 
     // Stores the first reason only; true when this call switched it.
     switchClaudeOff: async (reason: string) => (await redis.set(claudeOffKey(prefix), reason, 'NX')) === 'OK',
     // Takes `tokens` from Claude's UTC day and `micro` from its spend cap, atomically, or names what is full: the cap first.
+    // When Redis has lost Claude's total, what Postgres recorded seeds it first, so the cap never restarts from 0.
     async reserveClaude(tokens: number, micro: bigint, now = Date.now()): Promise<'ok' | 'day' | 'cap'> {
-      const taken = Number(await redis.eval(RESERVE, 2, dayKey(now), claudeSpentKey(prefix), tokens, dailyClaudeBudget, micro.toString(), spendCap.toString()));
+      const reserve = async (seed: string) =>
+        Number(await redis.eval(RESERVE, 2, dayKey(now), claudeSpentKey(prefix), tokens, dailyClaudeBudget, micro.toString(), spendCap.toString(), seed));
+      let taken = await reserve('');
+      if (taken === UNSEEDED) taken = await reserve(String(claudeRecorded ? await claudeRecorded() : 0n));
       return taken === 1 ? 'ok' : taken === 0 ? 'day' : 'cap';
     },
     // Trues a reservation up to what the call used and billed; a call that used nothing gives it all back.
     settleClaude: async (reserved: ClaudeReservation, used: Usage, usedMicro: bigint, now = Date.now()) =>
-      void (await redis
-        .multi()
-        .hincrby(dayKey(now), 'claude_tokens', used.inputTokens + used.outputTokens - reserved.tokens)
-        .incrby(claudeSpentKey(prefix), (usedMicro - reserved.micro).toString())
-        .exec()),
+      void (await redis.eval(SETTLE, 2, dayKey(now), claudeSpentKey(prefix), used.inputTokens + used.outputTokens - reserved.tokens, (usedMicro - reserved.micro).toString())),
     // Raises Claude's total to what Postgres recorded when that is larger (a Redis that lost it), and returns the total.
     seedClaudeSpent: async (micro: bigint) => BigInt(String(await redis.eval(SEED, 1, claudeSpentKey(prefix), micro.toString()))),
     // Counts a finished call against the UTC day and trues up the role's bucket from what was taken to real usage.

@@ -19,6 +19,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { BULK, type BulkAction, bulkResult, duplicateNote, refusal, REPLAYED_ALREADY } from '../lib/labels.ts';
 import { createLimiter } from '../lib/limiter.ts';
+import { MAX_PAGE_SIZE } from '../lib/paging.ts';
 import { retryCode } from '../lib/uploads.ts';
 import { verifyPassword } from '../lib/password.ts';
 import { SAMPLES } from '../lib/samples.ts';
@@ -99,7 +100,8 @@ export async function review(_: ActionState, form: FormData): Promise<ActionStat
 }
 
 // One decision or replay on the rows ticked on a page, sent one by one through the same call as a single row's, so each
-// is recorded exactly as one would be; a refusal stops only its own row. At most a page of rows.
+// is recorded exactly as one would be; a refusal stops only its own row. At most a page of rows, at the pager's largest
+// size.
 export async function reviewMany(_: ActionState, form: FormData): Promise<ActionState> {
   const name = text(form, 'action');
   const action = (Object.keys(BULK) as BulkAction[]).find((each) => each === name);
@@ -107,7 +109,7 @@ export async function reviewMany(_: ActionState, form: FormData): Promise<Action
   const bulk: { kind: string; decision?: 'CONFIRM' | 'DISMISS' } = BULK[action];
   const ids = form.getAll(bulk.kind).map(String);
   if (ids.length === 0) return { error: 'Select at least one row.' };
-  if (ids.length > 25) return { error: 'Unknown action.' };
+  if (ids.length > MAX_PAGE_SIZE) return { error: `At most ${MAX_PAGE_SIZE} rows at a time.` };
   const note = text(form, 'note') || null;
   const refusals: string[] = [];
   try {
