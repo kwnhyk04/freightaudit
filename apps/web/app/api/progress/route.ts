@@ -12,11 +12,11 @@ export async function GET(request: Request) {
   try {
     if (id) {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return Response.json({ detail: 'no such invoice' }, { status: 404 });
-      // openapi-fetch hands back a refusal (429, 5xx) instead of throwing. It counts as no answer, so the poller keeps
-      // asking; an empty key would make it refresh once and stop.
+      // openapi-fetch hands back a refusal instead of throwing. The api's rate limit (429) or a failure (5xx) counts as no
+      // answer, so the poller keeps asking; any other answer stands, an empty key when there is no such invoice.
       const { data, response } = await rest().GET('/v1/invoices/{id}', { params: { path: { id } } });
-      if (!response.ok || !data) throw new Error(`the api answered ${response.status}`);
-      return Response.json({ key: progressKey([data]) }, { headers });
+      if (response.status === 429 || response.status >= 500) throw new Error(`the api answered ${response.status}`);
+      return Response.json({ key: data ? progressKey([data]) : '' }, { headers });
     }
     if (params.get('recent') !== null) {
       const { invoices } = await gql(RecentUploadsDocument, {});

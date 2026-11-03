@@ -28,10 +28,17 @@ test('an invoice the api returns answers with its progress key, and the backend 
 
 // openapi-fetch hands back a refusal instead of throwing; a 200 with an empty key would make the poller refresh once and
 // stop, where a 502 keeps it asking, 5 s and then 60 s apart.
-test.each([429, 500, 502, 503, 404])('an api answering %i counts as no answer: 502, with the backend marked offline', async (status) => {
+test.each([429, 500, 502, 503])('an api answering %i counts as no answer: 502, with the backend marked offline', async (status) => {
   answer = () => Response.json({ type: 'about:blank', title: 'Refused', status }, { status, headers: { 'retry-after': '30' } });
   const response = await ask();
   expect([response.status, await response.json(), offline]).toEqual([502, { detail: 'the FreightAudit API did not answer' }, 1]);
+});
+
+// No such invoice, as the api says it: an empty key, so the page refreshes once and shows that, with the backend live.
+test.each([404, 400, 403])('an api answering %i is an answer: an empty key, with the backend still live', async (status) => {
+  answer = () => Response.json({ type: 'about:blank', title: 'Refused', status }, { status });
+  const response = await ask();
+  expect([response.status, await response.json(), offline]).toEqual([200, { key: '' }, 0]);
 });
 
 test('an api that cannot be reached is answered the same way', async () => {
