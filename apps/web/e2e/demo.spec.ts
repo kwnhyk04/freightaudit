@@ -228,7 +228,7 @@ test('on a wide screen a list table takes the full width, every column gets the 
   expect(Math.abs(value.x + value.width / 2 - (count.x + count.width / 2))).toBeLessThan(1.5);
 });
 
-test("the sample opens on its invoices, and Overview in its sidebar shows the sample's one week, without cost or tokens", async ({ page }) => {
+test("the sample opens on its invoices, and Overview in its sidebar shows the sample's four weeks, without cost or tokens", async ({ page }) => {
   test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
   const requests: string[] = [];
   page.on('request', (request) => requests.push(request.url()));
@@ -237,20 +237,67 @@ test("the sample opens on its invoices, and Overview in its sidebar shows the sa
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Overview' }).click();
   await expect(page).toHaveURL(/\/demo\/dashboard$/);
   await expect(page.getByRole('status')).toHaveText('Sample data, read-only');
-  await expect(page.getByText('The sample covers one week: its 11 invoices arrived on Oct 17, 2026.')).toBeVisible();
-  await expect(page.locator('.hero-card .hero-figure')).toHaveText('$8,279.22');
-  await expect(page.locator('.hero-card')).toContainText('Across 4 invoices');
-  await expect(page.locator('.stats dt:text-is("Invoices received") + dd')).toHaveText('11');
-  await expect(page.locator('.stats dt:text-is("Model cost per invoice")')).toHaveCount(0);
+  await expect(page.getByText('Sample data from Sep 20 to Oct 17, 2026: 11 invoices you can open, plus 1,319 generated ones that only feed these charts.')).toBeVisible();
+  await expect(page.locator('.t-hero .hero-figure .final')).toHaveText('$131,230.77');
+  await expect(page.locator('.t-hero')).toContainText('Across 427 invoices');
+  await expect(page.getByRole('region', { name: 'Invoices received', exact: true }).locator('.tile-figure .final')).toHaveText('1,330');
+  await expect(page.getByRole('region', { name: 'Model cost per invoice' })).toHaveCount(0);
   await expect(page.locator('.health dt:text-is("AI tokens today")')).toHaveCount(0);
   await expect(page.locator('.health dt:text-is("Dead letters") + dd')).toHaveText('1');
   // The carriers that bill most above the rate card, largest first.
-  await expect(page.locator('.carrier-bars li')).toHaveText([/^Tern & Tide Carriers.*\$7,314\.56$/, /^Bramblewood Express.*\$904\.77$/, /^Quarry Lane Transport.*\$59\.89$/]);
+  await expect(page.locator('.carrier-bars li')).toHaveCount(5);
+  const amounts = await page.locator('.carrier-bars li .num').evaluateAll((cells) => cells.map((cell) => Number(cell.textContent!.replace(/[$,]/g, ''))));
+  expect(amounts).toEqual([...amounts].sort((a, b) => b - a));
+  // The five newest sample invoices, each opening its sample page.
+  const latest = page.getByRole('region', { name: 'Latest invoices' });
+  await expect(latest.locator('.latest li')).toHaveCount(5);
+  for (const href of await latest.locator('.latest a').evaluateAll((links) => links.map((link) => link.getAttribute('href')))) expect(href).toMatch(/^\/demo\/invoices\/[0-9a-f-]+$/);
+  await expect(latest.getByRole('link', { name: 'All invoices' })).toHaveAttribute('href', '/demo/invoices');
   // A range stays in the sample.
   await page.getByRole('navigation', { name: 'Time range' }).getByRole('link', { name: '8 weeks' }).click();
   await expect(page).toHaveURL(/\/demo\/dashboard[?]range=8w$/);
-  await expect(page.locator('.hero-card dt')).toHaveText('Overbilling found, last 8 weeks');
+  await expect(page.locator('.t-hero h2')).toHaveText('Overbilling found, last 8 weeks');
   expect(requests.filter((url) => url.includes(':4000'))).toEqual([]);
+});
+
+test("the range pill switches the range in place: the page keeps its scroll, the charts keep their elements and ease to the new days, and with reduced motion nothing moves", async ({ page }) => {
+  test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
+  await page.goto('/demo/dashboard');
+  const card = page.getByRole('region', { name: 'Invoices processed per day', exact: true });
+  await card.getByRole('navigation', { name: 'Time range' }).scrollIntoViewIfNeeded();
+  const before = await page.evaluate(() => {
+    (window as unknown as { line: Element | null }).line = document.querySelector('.line-chart .line.drawn');
+    return scrollY;
+  });
+  await expect(page.locator('.day')).toHaveCount(28);
+  await card.getByRole('navigation', { name: 'Time range' }).getByRole('link', { name: '8 weeks' }).click();
+  await expect(page).toHaveURL(/\/demo\/dashboard[?]range=8w$/);
+  await expect(page.locator('.day')).toHaveCount(56);
+  expect(await page.evaluate(() => document.querySelector('.line-chart .line.drawn') === (window as unknown as { line: Element | null }).line)).toBe(true);
+  expect(await page.evaluate(() => scrollY)).toBe(before);
+  expect(await page.locator('.line-chart .line.drawn').evaluate((line) => getComputedStyle(line).transitionProperty)).toContain('d');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.reload();
+  for (const selector of ['.tile', '.day .bar', '.line-chart .line.drawn', '.gauge .needle']) {
+    expect(await page.locator(selector).first().evaluate((element) => getComputedStyle(element).animationName), selector).toBe('none');
+  }
+  await expect(page.locator('.t-hero .hero-figure .counting')).toHaveText('$131,230.77');
+});
+
+test('the overview is four columns from 1024 px, two below, one on a phone, received and matched as tall as each other, and the page never scrolls sideways', async ({ page }) => {
+  test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
+  // Still cards, so the rise in does not offset one card while the boxes are measured.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const [width, columns] of [[1100, 4], [1024, 4], [1023, 2], [721, 2], [390, 1]] as const) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/demo/dashboard');
+    const grid = page.locator('.overview');
+    expect(await grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length), `${width} px`).toBe(columns);
+    const box = (name: string) => page.getByRole('region', { name, exact: true }).evaluate((element) => element.getBoundingClientRect().toJSON() as DOMRect);
+    const [received, matched] = [await box('Invoices received'), await box('Matched the rate card')];
+    if (columns > 1) expect([matched.y, matched.height], `${width} px`).toEqual([received.y, received.height]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth), `${width} px`).toBeLessThanOrEqual(width);
+  }
 });
 
 test('the sign-in page always offers a way home: the header logo and a Back to home link', async ({ page }) => {

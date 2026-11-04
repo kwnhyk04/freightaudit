@@ -1,10 +1,10 @@
 // The overview's ranges of days, the window each one asks the api for, and its figures in the words and sizes the page
 // shows.
-export type Range = { key: '7d' | '4w' | '8w'; label: string; days: number };
+export type Range = { key: '7d' | '4w' | '8w'; label: string; short: string; days: number };
 export const RANGES: readonly Range[] = [
-  { key: '7d', label: '7 days', days: 7 },
-  { key: '4w', label: '4 weeks', days: 28 },
-  { key: '8w', label: '8 weeks', days: 56 },
+  { key: '7d', label: '7 days', short: '7D', days: 7 },
+  { key: '4w', label: '4 weeks', short: '4W', days: 28 },
+  { key: '8w', label: '8 weeks', short: '8W', days: 56 },
 ];
 const FOUR_WEEKS = RANGES[1]!;
 // A range from ?range=; anything else is 4 weeks, which the address leaves out.
@@ -41,6 +41,34 @@ export const tokensText = (tokens: number) => compact.format(tokens);
 export const moneyTick = (cents: number) => compactDollars.format(cents / 100);
 export const wholeDollars = (cents: number) => dollars.format(cents / 100);
 export const weekLabel = (day: string) => monday.format(new Date(`${day}T00:00:00Z`));
+
+// A day (or week) of the overview's charts, and how many of its invoices the pipeline finished: matched the rate card,
+// needed a reviewer or failed.
+export type Bucket = { day: string; received: number; matchedRateCard: number; neededReviewer: number; failed: number; overbilledCents: number };
+export const processed = (bucket: Bucket) => bucket.matchedRateCard + bucket.neededReviewer + bucket.failed;
+
+// A line chart's points in percent of its plot, y from the top: each week centred in its share of the width, as high as
+// its share of the top gridline.
+const hundredths = (value: number) => Math.round(value * 100) / 100;
+export const weekPoints = (values: readonly number[], top: number) =>
+  values.map((value, i) => [hundredths(((i + 0.5) / values.length) * 100), hundredths(100 - (value / top) * 100)] as const);
+// The curve through those points as count samples, after Web3Bento's smooth(): each segment eases from one point to the
+// next, flat at both, so it never overshoots a value. The count is fixed, so a line can morph from one range to another.
+type Point = readonly [number, number];
+export function sampled(points: readonly Point[], count: number): Point[] {
+  const [x0] = points[0]!;
+  const [xn] = points.at(-1)!;
+  return Array.from({ length: count }, (_, k) => {
+    const x = x0 + ((xn - x0) * k) / (count - 1);
+    const i = Math.min(Math.max(0, points.findLastIndex(([px]) => px <= x)), points.length - 2);
+    if (i < 0) return points[0]!;
+    const [ax, ay] = points[i]!;
+    const [bx, by] = points[i + 1]!;
+    const u = Math.min(1, Math.max(0, (x - ax) / (bx - ax)));
+    return [hundredths(x), hundredths(ay + (by - ay) * u * u * (3 - 2 * u))] as const;
+  });
+}
+export const path = (points: readonly Point[]) => `M ${points.map(([x, y]) => `${x} ${y}`).join(' L ')}`;
 
 // Gridlines for columns as tall as top: from 0 in at most four steps of 1, 2, 2.5 or 5 times a power of ten, whole
 // numbers only, the last at top or just past it.

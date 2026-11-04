@@ -145,7 +145,7 @@ export type DashboardQueryVariables = Exact<{
 }>;
 
 
-export type DashboardQuery = { dashboard: { window: { from: string, to: string, received: number, matchedRateCard: number, overbilledCents: number, overbilledInvoices: number, timed: number, processingP50Ms: number | null, processingP95Ms: number | null, modelCostPerInvoiceMicroUsd: number | null }, previous: { received: number, overbilledCents: number }, weeks: Array<{ start: string, matchedRateCard: number, neededReviewer: number, failed: number, overbilledCents: number }>, carriers: Array<{ carrier: string, overbilledCents: number, invoices: number }>, pipeline: { waitingToBeRead: number, openDeadLetters: number, claudeTokensToday: number, freeModelTokensToday: number } } };
+export type DashboardQuery = { dashboard: { window: { from: string, to: string, received: number, matchedRateCard: number, overbilledCents: number, overbilledInvoices: number, timed: number, processingP50Ms: number | null, processingP95Ms: number | null, modelCostPerInvoiceMicroUsd: number | null }, previous: { received: number, overbilledCents: number }, weeks: Array<{ start: string, received: number }>, days: Array<{ day: string, received: number, matchedRateCard: number, neededReviewer: number, failed: number, overbilledCents: number }>, carriers: Array<{ carrier: string, overbilledCents: number, invoices: number }>, pipeline: { waitingToBeRead: number, openDeadLetters: number, claudeTokensToday: number, freeModelTokensToday: number } }, invoices: { edges: Array<{ node: { id: string, status: InvoiceStatus, filename: string, carrier: string | null, number: string | null, currency: string | null, totalCents: number | null, createdAt: string, openDiscrepancyCount: number, hold: InvoiceHold | null, shipment: { id: string } | null } }> } };
 
 export type DeadLettersQueryVariables = Exact<{
   first?: number | null | undefined;
@@ -300,6 +300,11 @@ export const DashboardDocument = new TypedDocumentString(`
     }
     weeks {
       start
+      received
+    }
+    days {
+      day
+      received
       matchedRateCard
       neededReviewer
       failed
@@ -315,6 +320,25 @@ export const DashboardDocument = new TypedDocumentString(`
       openDeadLetters
       claudeTokensToday
       freeModelTokensToday
+    }
+  }
+  invoices(first: 5) {
+    edges {
+      node {
+        id
+        status
+        filename
+        carrier
+        number
+        currency
+        totalCents
+        createdAt
+        openDiscrepancyCount
+        hold
+        shipment {
+          id
+        }
+      }
     }
   }
 }

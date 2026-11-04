@@ -10,6 +10,5 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const range = rangeOf((await firstParams(searchParams)).range);
   // Offline, the sample shows the same range.
   await livePage(query('/dashboard', { range: rangeKey(range) }));
-  const { dashboard } = await gql(DashboardDocument, rangeWindow(range, new Date()));
-  return <Overview data={dashboard} range={range} base="" />;
+  return <Overview data={await gql(DashboardDocument, rangeWindow(range, new Date()))} range={range} base="" />;
 }

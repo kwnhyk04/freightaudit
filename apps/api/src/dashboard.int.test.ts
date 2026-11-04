@@ -18,9 +18,17 @@ const DASHBOARD = `query ($from: Date!, $to: Date!) { dashboard(from: $from, to:
   weeks { start matchedRateCard neededReviewer failed overbilledCents }
   carriers { carrier overbilledCents invoices }
   pipeline { waitingToBeRead openDeadLetters claudeTokensToday freeModelTokensToday } } }`;
+// Everything dashboardOf counts, the received counts and the days included.
+const COUNTED = `query ($from: Date!, $to: Date!) { dashboard(from: $from, to: $to) {
+  window { from to received matchedRateCard overbilledCents overbilledInvoices timed processingP50Ms processingP95Ms modelCostPerInvoiceMicroUsd }
+  previous { from to received matchedRateCard overbilledCents overbilledInvoices timed processingP50Ms processingP95Ms modelCostPerInvoiceMicroUsd }
+  weeks { start received matchedRateCard neededReviewer failed overbilledCents }
+  days { day received matchedRateCard neededReviewer failed overbilledCents }
+  carriers { carrier overbilledCents invoices }
+  pipeline { waitingToBeRead openDeadLetters claudeTokensToday freeModelTokensToday } } }`;
 
-async function dashboard(from: string, to: string) {
-  const response = await app.inject({ method: 'POST', url: '/graphql', headers: { 'x-api-key': apiKey }, payload: { query: DASHBOARD, variables: { from, to } } });
+async function dashboard(from: string, to: string, query = DASHBOARD) {
+  const response = await app.inject({ method: 'POST', url: '/graphql', headers: { 'x-api-key': apiKey }, payload: { query, variables: { from, to } } });
   return response.json() as { data?: { dashboard: Record<string, unknown> }; errors?: { message: string; extensions?: { code?: string } }[] };
 }
 
@@ -202,11 +210,12 @@ test("the window, the previous window, the weeks and the carriers are dashboardO
     ['2026-08-24', '2026-10-18'],
     ['2026-10-17', '2026-10-17'],
   ] as const) {
-    const { data, errors } = await dashboard(from, to);
+    const { data, errors } = await dashboard(from, to, COUNTED);
     expect(errors).toBeUndefined();
-    const { window, previous, weeks, carriers: top } = data!.dashboard;
+    const { window, previous, weeks, days, carriers: top } = data!.dashboard;
     // The cost per invoice is the api's alone; toMatchObject leaves it out.
-    expect({ window, previous, weeks, carriers: top }).toMatchObject(wire(dashboardOf(facts(SEEDS), from, to)));
+    expect({ window, previous, weeks, days, carriers: top }).toMatchObject(wire(dashboardOf(facts(SEEDS), from, to)));
+    expect(days).toHaveLength((Date.parse(to) - Date.parse(from)) / 86_400_000 + 1);
   }
 });
 

@@ -57,14 +57,19 @@ function windowOf(invoices: readonly DashboardInvoice[], start: number, last: nu
   };
 }
 
-function weeksOf(invoices: readonly DashboardInvoice[], last: number) {
-  return Array.from({ length: WEEKS }, (_, i) => {
-    const start = mondayOf(last) - (WEEKS - 1 - i) * 7 * DAY;
-    const kept = invoices.filter(within(start, start + 7 * DAY));
-    const count = (outcome: ReturnType<typeof outcomeOf>) => kept.filter((invoice) => outcomeOf(invoice) === outcome).length;
-    return { start: dayOf(start), matchedRateCard: count('matched'), neededReviewer: count('reviewer'), failed: count('failed'), overbilledCents: total(kept) };
-  });
+// The invoices that arrived in one span of time: how many, how they ended, and what they bill above the rate card.
+function bucketOf(invoices: readonly DashboardInvoice[], start: number, length: number) {
+  const kept = invoices.filter(within(start, start + length));
+  const count = (outcome: ReturnType<typeof outcomeOf>) => kept.filter((invoice) => outcomeOf(invoice) === outcome).length;
+  return { start: dayOf(start), received: kept.length, matchedRateCard: count('matched'), neededReviewer: count('reviewer'), failed: count('failed'), overbilledCents: total(kept) };
 }
+const weeksOf = (invoices: readonly DashboardInvoice[], last: number) =>
+  Array.from({ length: WEEKS }, (_, i) => bucketOf(invoices, mondayOf(last) - (WEEKS - 1 - i) * 7 * DAY, 7 * DAY));
+const daysOf = (invoices: readonly DashboardInvoice[], start: number, last: number) =>
+  Array.from({ length: (last - start) / DAY + 1 }, (_, i) => {
+    const { start: day, ...counts } = bucketOf(invoices, start + i * DAY, DAY);
+    return { day, ...counts };
+  });
 
 // The carriers that bill most above the rate card, ties by name.
 function carriersOf(invoices: readonly DashboardInvoice[]) {
@@ -84,7 +89,7 @@ function carriersOf(invoices: readonly DashboardInvoice[]) {
 }
 
 // The window from one UTC day to another, both whole; the same number of days just before it; the eight weeks, Monday to
-// Sunday, ending with the week of to; and the carriers of the window.
+// Sunday, ending with the week of to; its days; and the carriers of the window.
 export function dashboardOf(invoices: readonly DashboardInvoice[], from: string, to: string) {
   const start = time(from);
   const last = time(to);
@@ -92,7 +97,9 @@ export function dashboardOf(invoices: readonly DashboardInvoice[], from: string,
   return {
     window: windowOf(invoices, start, last),
     previous: windowOf(invoices, start - days * DAY, start - DAY),
-    weeks: weeksOf(invoices, last),
+    // The week of to stops at to, as the api reads nothing later.
+    weeks: weeksOf(invoices.filter(within(-Infinity, last + DAY)), last),
+    days: daysOf(invoices, start, last),
     carriers: carriersOf(invoices.filter(within(start, last + DAY))),
   };
 }

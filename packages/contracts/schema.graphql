@@ -685,6 +685,10 @@ type Dashboard {
   """
   weeks: [DashboardWeek!]!
   """
+  The window's days in UTC, from to to, oldest first; a day with no invoice is all 0.
+  """
+  days: [DashboardDay!]!
+  """
   The 5 carriers whose invoices in the window bill most above the rate card, ties by name; only those above 0.
   """
   carriers: [CarrierOverbilling!]!
@@ -733,18 +737,34 @@ type DashboardWindow {
 }
 
 """
-A week's invoices by how they ended, and what they bill above the rate card. Invoices still in the pipeline are in none
-of the three counts.
+A week's invoices by when they arrived: how many, how they ended, and what they bill above the rate card. Invoices still
+in the pipeline are in received only, in none of the three outcome counts.
 """
 type DashboardWeek {
   """
   The week's Monday.
   """
   start: Date!
+  """
+  Invoices received in the week, whatever stage they are at; a split upload counts as its parts.
+  """
+  received: Int!
   matchedRateCard: Int!
   """
   Needs review, rejected, or checked but not matched: a discrepancy, no shipment, or a reviewer's correction.
   """
+  neededReviewer: Int!
+  failed: Int!
+  overbilledCents: Cents!
+}
+
+"""
+A day's invoices, counted as DashboardWeek counts a week's: by the UTC day they arrived.
+"""
+type DashboardDay {
+  day: Date!
+  received: Int!
+  matchedRateCard: Int!
   neededReviewer: Int!
   failed: Int!
   overbilledCents: Cents!

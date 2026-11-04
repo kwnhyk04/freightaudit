@@ -23,7 +23,9 @@ export default async function DemoPage({ params, searchParams }: { params: Promi
   if (!section) redirect('/demo/invoices');
   if (section === 'dashboard' && !id) {
     const chosen = rangeOf(range);
-    return <Overview data={demoDashboard(chosen)} range={chosen} base="/demo" note={DEMO_OVERVIEW_NOTE} />;
+    // The five newest, as the live overview asks the api for them.
+    const latest = demoInvoices({}, undefined, { offset: 0, size: 5 }).invoices;
+    return <Overview data={{ dashboard: demoDashboard(chosen), invoices: latest }} range={chosen} base="/demo" note={DEMO_OVERVIEW_NOTE} />;
   }
   if (section === 'invoices' && !id) {
     const filter = listFilter(raw);
