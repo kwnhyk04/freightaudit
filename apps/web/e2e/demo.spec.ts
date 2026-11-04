@@ -300,6 +300,35 @@ test('the overview is four columns from 1024 px, two below, one on a phone, rece
   }
 });
 
+test('from 900 px tall the overview fits the window, its charts taking what the text cards leave; a shorter one keeps natural heights and scrolls', async ({ page }) => {
+  test.skip(sample.invoices.edges.length === 0, 'the sample is empty');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const measure = () =>
+    page.evaluate(() => {
+      const bottom = Math.max(...[...document.querySelectorAll('.overview > .tile')].map((card) => card.getBoundingClientRect().bottom)) + scrollY;
+      const height = (selector: string) => Math.round(document.querySelector(selector)!.getBoundingClientRect().height);
+      const rows = [...document.querySelectorAll('.latest > li')].filter((row) => row.getBoundingClientRect().height > 0).length;
+      return { band: Math.round(innerHeight - bottom), scroll: document.documentElement.scrollHeight - innerHeight, bars: height('.day-bars'), plot: height('.plot'), rows };
+    });
+  await page.setViewportSize({ width: 1440, height: 880 });
+  await page.goto('/demo/dashboard');
+  const short = await measure();
+  expect(short).toMatchObject({ bars: 96, rows: 5 });
+  expect(short.scroll).toBeGreaterThan(0);
+  // The owner's 1440p monitor at 125 % (with browser bars) and at 100 %: the cards end the page's 20 px padding above the
+  // bottom, nothing scrolls, and the latest invoices show four.
+  let previous = { bars: 0, plot: 0 };
+  for (const [width, height] of [[2048, 1030], [2560, 1300]] as const) {
+    await page.setViewportSize({ width, height });
+    const fit = await measure();
+    expect(fit, `${width}x${height}`).toMatchObject({ band: 20, scroll: 0, rows: 4 });
+    expect(fit.bars, `${width}x${height}`).toBeGreaterThan(previous.bars);
+    expect(fit.bars).toBeLessThanOrEqual(280);
+    expect(fit.plot, `${width}x${height}`).toBeGreaterThan(previous.plot);
+    previous = fit;
+  }
+});
+
 test('the sign-in page always offers a way home: the header logo and a Back to home link', async ({ page }) => {
   await page.goto('/login');
   await expect(page.getByRole('banner').getByRole('link', { name: 'FreightAudit' })).toHaveAttribute('href', '/');
