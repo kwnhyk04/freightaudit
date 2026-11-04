@@ -1782,6 +1782,93 @@ td .reason {
     gap: 4px 8px;
   }
 }
+/* From 1100 px on a window at least 900 px tall the bento fills the window under the heading: the charts start small and
+   the spare height stretches the top row and the line chart's lower row (auto rows; fr rows would inflate each other to
+   their ratio when the content is taller than the window), so the daily bars, the sparkline, the gauge and the line take
+   what the text cards leave, up to a cap, and the lists spread their rows. The latest invoices show four here. A window
+   too short for even the small charts scrolls; under 900 px tall the cards keep their natural heights. */
+@media (min-width: 1100px) and (min-height: 900px) {
+  .main:has(> .overview) {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 20px;
+  }
+  .overview {
+    flex: 1 0 auto;
+    grid-template-rows: auto max-content auto max-content;
+    max-height: 1440px;
+  }
+  .t-matched .gauge {
+    flex: 1 1 0;
+    width: auto;
+    min-height: 56px;
+    max-height: 102px;
+  }
+  .t-matched .stat-figure {
+    margin-bottom: auto;
+  }
+  .line-chart {
+    min-height: 0;
+  }
+  .plot {
+    min-height: 80px;
+  }
+  .sparkline {
+    min-height: 32px;
+  }
+  .t-latest .latest > li:nth-child(n + 5) {
+    display: none;
+  }
+  /* Tighter spacing, so a 1030 px window holds the sample with its banner and note. */
+  .overview {
+    gap: 10px;
+  }
+  .overview .tile {
+    padding: 16px 20px;
+  }
+  .hero-figure {
+    margin-top: 4px;
+  }
+  .t-hero .day-chart {
+    padding-top: 12px;
+  }
+  .t-processing .stat-figure,
+  .t-cost .stat-figure {
+    padding-top: 6px;
+  }
+  .t-latest .latest {
+    margin-top: 4px;
+  }
+  .latest-row {
+    padding-block: 5px;
+  }
+  .carrier-bars {
+    gap: 6px;
+  }
+  .t-hero .day-chart {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .t-hero .day-bars {
+    flex: 1;
+    height: auto;
+    min-height: 32px;
+    max-height: 280px;
+  }
+  .sparkline {
+    max-height: 320px;
+  }
+  .plot {
+    max-height: 560px;
+  }
+  .t-latest .latest {
+    display: grid;
+    flex: 1;
+    align-content: space-evenly;
+  }
+}
 
 /* Empty and error states say what will appear and what to do next. */
 .empty {
@@ -2810,13 +2897,11 @@ td.wrap {
 }
 
 /* The hero: the claim beside the sample invoice as the app shows it, then the eval's two runs on the three rows a buyer
-   asks about. Two faint circles and a 40 px grid sit behind it for depth. */
+   asks about. Two faint circles sit behind it for depth. */
 .hero {
   position: relative;
   overflow: hidden;
   padding: 72px 0;
-  background-image: linear-gradient(to right, var(--hero-grid) 1px, transparent 1px), linear-gradient(to bottom, var(--hero-grid) 1px, transparent 1px);
-  background-size: 40px 40px;
 }
 .hero::before,
 .hero::after {
