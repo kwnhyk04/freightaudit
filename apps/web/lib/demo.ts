@@ -10,9 +10,10 @@ import type {
   InvoiceSummaryQuery,
 } from '@freightaudit/contracts/graphql';
 import { holdOf } from '@freightaudit/contracts/hold';
-import { type DashboardInvoice, dashboardOf, type InvoiceState } from '@freightaudit/domain';
+import { type DashboardInvoice, dashboardOf, type FindingAmounts, type InvoiceState } from '@freightaudit/domain';
 import deadLetters from '../public/demo/dead-letters.json';
 import discrepancies from '../public/demo/discrepancies.json';
+import history from './demo-history.json';
 import details from '../public/demo/invoice-details.json';
 import { type Filter, findingAmounts, invoiceAmounts, SETTLED, STATUS } from './labels.ts';
 import { type Range, rangeWindow } from './overview.ts';
@@ -118,20 +119,33 @@ function fact(invoice: Detail): DashboardInvoice {
     findings: invoice.discrepancies.edges.map(({ node }) => findingAmounts(node)),
   };
 }
+// The generated history (scripts/demo-history.ts) as the overview counts it: figures only, with no page to open.
+const generated: DashboardInvoice[] = history.map((row) => ({
+  receivedAt: new Date(row.receivedAt),
+  status: row.status as InvoiceState,
+  carrier: row.carrier,
+  shipment: row.shipment,
+  corrected: row.corrected,
+  settledAt: new Date(row.settledAt),
+  findings: row.findings.map((each) => ({ status: each.status as FindingAmounts['status'], billedCents: BigInt(each.billedCents), expectedCents: BigInt(each.expectedCents) })),
+}));
 // The overview ends on the day the newest invoice arrived, which all eleven share.
 const newest = new Date(invoices[0]!.createdAt);
-export const DEMO_OVERVIEW_NOTE = `The sample covers one week: its ${invoices.length} invoices arrived on ${new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' }).format(newest)}.`;
+// The sample's span: the first generated invoice's day to the newest day.
+const day = (at: Date, year: boolean) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', ...(year ? { year: 'numeric' } : {}), timeZone: 'UTC' }).format(at);
+export const DEMO_OVERVIEW_NOTE = `Sample data from ${day(generated[0]!.receivedAt, false)} to ${day(newest, true)}: ${invoices.length} invoices you can open, plus ${generated.length.toLocaleString('en-US')} generated ones that only feed these charts.`;
 
 // The sample's overview, counted by packages/domain as the api counts its database. The sample made no model calls,
 // so its cost and tokens stay empty and the page leaves them out.
 export function demoDashboard(range: Range): DashboardQuery['dashboard'] {
   const { from, to } = rangeWindow(range, newest);
-  const { window, previous, weeks, carriers } = dashboardOf(invoices.map(fact), from, to);
+  const { window, previous, weeks, days, carriers } = dashboardOf([...invoices.map(fact), ...generated], from, to);
   const cents = <Row extends { overbilledCents: bigint }>(row: Row) => ({ ...row, overbilledCents: Number(row.overbilledCents) });
   return {
     window: { ...cents(window), modelCostPerInvoiceMicroUsd: null },
     previous: { received: previous.received, overbilledCents: Number(previous.overbilledCents) },
     weeks: weeks.map(cents),
+    days: days.map(cents),
     carriers: carriers.map(cents),
     pipeline: {
       waitingToBeRead: invoices.filter((invoice) => invoice.status === 'RECEIVED' || invoice.status === 'EXTRACTING').length,

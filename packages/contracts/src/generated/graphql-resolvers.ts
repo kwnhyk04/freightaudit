@@ -93,6 +93,8 @@ export type Dashboard = {
   __typename?: 'Dashboard';
   /** The 5 carriers whose invoices in the window bill most above the rate card, ties by name; only those above 0. */
   carriers: Array<CarrierOverbilling>;
+  /** The window's days in UTC, from to to, oldest first; a day with no invoice is all 0. */
+  days: Array<DashboardDay>;
   pipeline: PipelineNow;
   /** The same number of days just before the window. */
   previous: DashboardWindow;
@@ -101,9 +103,20 @@ export type Dashboard = {
   window: DashboardWindow;
 };
 
+/** A day's invoices, counted as DashboardWeek counts a week's: by the UTC day they arrived. */
+export type DashboardDay = {
+  __typename?: 'DashboardDay';
+  day: Scalars['Date']['output'];
+  failed: Scalars['Int']['output'];
+  matchedRateCard: Scalars['Int']['output'];
+  neededReviewer: Scalars['Int']['output'];
+  overbilledCents: Scalars['Cents']['output'];
+  received: Scalars['Int']['output'];
+};
+
 /**
- * A week's invoices by how they ended, and what they bill above the rate card. Invoices still in the pipeline are in none
- * of the three counts.
+ * A week's invoices by when they arrived: how many, how they ended, and what they bill above the rate card. Invoices still
+ * in the pipeline are in received only, in none of the three outcome counts.
  */
 export type DashboardWeek = {
   __typename?: 'DashboardWeek';
@@ -112,6 +125,8 @@ export type DashboardWeek = {
   /** Needs review, rejected, or checked but not matched: a discrepancy, no shipment, or a reviewer's correction. */
   neededReviewer: Scalars['Int']['output'];
   overbilledCents: Scalars['Cents']['output'];
+  /** Invoices received in the week, whatever stage they are at; a split upload counts as its parts. */
+  received: Scalars['Int']['output'];
   /** The week's Monday. */
   start: Scalars['Date']['output'];
 };
@@ -784,6 +799,7 @@ export type ResolversTypes = {
   CarrierOverbilling: ResolverTypeWrapper<CarrierOverbilling>;
   Cents: ResolverTypeWrapper<Scalars['Cents']['output']>;
   Dashboard: ResolverTypeWrapper<Dashboard>;
+  DashboardDay: ResolverTypeWrapper<DashboardDay>;
   DashboardWeek: ResolverTypeWrapper<DashboardWeek>;
   DashboardWindow: ResolverTypeWrapper<DashboardWindow>;
   Date: ResolverTypeWrapper<Scalars['Date']['output']>;
@@ -832,6 +848,7 @@ export type ResolversParentTypes = {
   CarrierOverbilling: CarrierOverbilling;
   Cents: Scalars['Cents']['output'];
   Dashboard: Dashboard;
+  DashboardDay: DashboardDay;
   DashboardWeek: DashboardWeek;
   DashboardWindow: DashboardWindow;
   Date: Scalars['Date']['output'];
@@ -893,10 +910,20 @@ export interface CentsScalarConfig extends GraphQLScalarTypeConfig<ResolversType
 
 export type DashboardResolvers<ContextType = any, ParentType extends ResolversParentTypes['Dashboard'] = ResolversParentTypes['Dashboard']> = {
   carriers?: Resolver<Array<ResolversTypes['CarrierOverbilling']>, ParentType, ContextType>;
+  days?: Resolver<Array<ResolversTypes['DashboardDay']>, ParentType, ContextType>;
   pipeline?: Resolver<ResolversTypes['PipelineNow'], ParentType, ContextType>;
   previous?: Resolver<ResolversTypes['DashboardWindow'], ParentType, ContextType>;
   weeks?: Resolver<Array<ResolversTypes['DashboardWeek']>, ParentType, ContextType>;
   window?: Resolver<ResolversTypes['DashboardWindow'], ParentType, ContextType>;
+};
+
+export type DashboardDayResolvers<ContextType = any, ParentType extends ResolversParentTypes['DashboardDay'] = ResolversParentTypes['DashboardDay']> = {
+  day?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
+  failed?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  matchedRateCard?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  neededReviewer?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  overbilledCents?: Resolver<ResolversTypes['Cents'], ParentType, ContextType>;
+  received?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type DashboardWeekResolvers<ContextType = any, ParentType extends ResolversParentTypes['DashboardWeek'] = ResolversParentTypes['DashboardWeek']> = {
@@ -904,6 +931,7 @@ export type DashboardWeekResolvers<ContextType = any, ParentType extends Resolve
   matchedRateCard?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   neededReviewer?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   overbilledCents?: Resolver<ResolversTypes['Cents'], ParentType, ContextType>;
+  received?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   start?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
 };
 
@@ -1132,6 +1160,7 @@ export type Resolvers<ContextType = any> = {
   CarrierOverbilling?: CarrierOverbillingResolvers<ContextType>;
   Cents?: GraphQLScalarType;
   Dashboard?: DashboardResolvers<ContextType>;
+  DashboardDay?: DashboardDayResolvers<ContextType>;
   DashboardWeek?: DashboardWeekResolvers<ContextType>;
   DashboardWindow?: DashboardWindowResolvers<ContextType>;
   Date?: GraphQLScalarType;

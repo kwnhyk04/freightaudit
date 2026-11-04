@@ -25,11 +25,15 @@
   /* Text on a solid --bad fill (the Failed pill). */
   --on-bad: #ffffff;
   --neutral-tint: #eef0f3;
-  /* Chart fills, run through the dataviz palette validator against the card surface in both modes:
-     blue for a single series and for invoices that matched, amber for those that needed a reviewer, red for failures. */
+  /* The chart fill, run through the dataviz palette validator against the card surface in both modes: one blue for every
+     single series, and the overview line chart's leading line beside a grey one. */
   --chart: #2a78d6;
-  --chart-warn: #eda100;
-  --chart-bad: #b42318;
+  /* The overview's deck: a page a step under its cards, cards with a hairline and no shadow, a firmer line on hover. */
+  --deck: #eef0f3;
+  --tile: #ffffff;
+  --tile-rule: #e3e6ea;
+  --tile-hover: #c4cad1;
+  --radius-tile: 20px;
   --focus: 0 0 0 3px rgb(43 76 126 / 35%);
   --radius: 6px;
   /* Containers that hold a list, such as the invoice table and its phone cards. */
@@ -79,8 +83,10 @@
     --on-bad: #121417;
     --neutral-tint: #22272d;
     --chart: #3987e5;
-    --chart-warn: #c98500;
-    --chart-bad: #d03b3b;
+    --deck: #0b0c0e;
+    --tile: #16181b;
+    --tile-rule: #25282d;
+    --tile-hover: #3a3f46;
     --focus: 0 0 0 3px rgb(143 176 230 / 40%);
     --scrim: rgb(0 0 0 / 55%);
     --drawer-shadow: 0 8px 32px rgb(0 0 0 / 50%);
@@ -110,8 +116,10 @@
   --on-bad: #121417;
   --neutral-tint: #22272d;
   --chart: #3987e5;
-  --chart-warn: #c98500;
-  --chart-bad: #d03b3b;
+  --deck: #0b0c0e;
+  --tile: #16181b;
+  --tile-rule: #25282d;
+  --tile-hover: #3a3f46;
   --focus: 0 0 0 3px rgb(143 176 230 / 40%);
   --scrim: rgb(0 0 0 / 55%);
   --drawer-shadow: 0 8px 32px rgb(0 0 0 / 50%);
@@ -198,6 +206,17 @@ h1.id {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   min-height: 100dvh;
+}
+/* The sidebar is sticky and one screen tall; its column is painted on the shell too, surface and rule, so it runs the
+   page's full height however long the page, folded or not. A phone has no column: the sidebar is a drawer there. */
+@media (min-width: 721px) {
+  .shell {
+    --column: var(--sidebar-wide);
+    background: linear-gradient(to right, var(--surface) calc(var(--column) - 1px), var(--rule) 0 var(--column), transparent 0);
+  }
+  .shell:has(.sidebar[data-collapsed='true']) {
+    --column: var(--sidebar-rail);
+  }
 }
 .topbar,
 .scrim,
@@ -1097,94 +1116,489 @@ td .reason {
   opacity: 0;
   cursor: pointer;
 }
-.overview-top {
+/* The overview as a bento grid, after 21st.dev's Web3Bento (MIT, docs/third-party.md). From 1024 px four columns: the
+   hero, the line chart, the latest invoices, the carriers and the pipeline two wide, the chart two tall, and the cards of
+   a row end at the same height. The sample has no cost card, so processing time takes its cell. */
+.overview {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 8fr);
-  gap: 16px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-areas:
+    'hero hero received matched'
+    'chart chart processing cost'
+    'chart chart latest latest'
+    'carriers carriers health health';
+  gap: 12px;
 }
-.overview-top > dl {
-  margin: 0;
+/* The deck: the overview's page a step under its cards, in both themes. */
+:root:has(.overview),
+:root:has(.overview) body {
+  background: var(--deck);
 }
-.hero-card {
-  display: grid;
-  align-content: start;
-  gap: 2px;
-  padding: 16px 20px;
-}
-.hero-card dt {
+/* --text-3 on the light deck is 4.21:1, under 4.5 for 12 px text. */
+:root:has(.overview) .page-head .faint {
   color: var(--text-2);
-  font-size: 12.5px;
+}
+.overview.without-cost {
+  grid-template-areas:
+    'hero hero received matched'
+    'chart chart processing processing'
+    'chart chart latest latest'
+    'carriers carriers health health';
+}
+.t-hero {
+  grid-area: hero;
+}
+.t-received {
+  grid-area: received;
+}
+.t-matched {
+  grid-area: matched;
+}
+.t-chart {
+  grid-area: chart;
+}
+.t-processing {
+  grid-area: processing;
+}
+.t-cost {
+  grid-area: cost;
+}
+.t-health {
+  grid-area: health;
+}
+.t-carriers {
+  grid-area: carriers;
+}
+.t-latest {
+  grid-area: latest;
+}
+/* A card: 20 px corners, a hairline and no shadow; a quiet heading, then what it shows. It rises in once, in reading
+   order, and firms its line under a pointer or when something in it has focus. */
+.tile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--tile-rule);
+  border-radius: var(--radius-tile);
+  background: var(--tile);
+  transition: border-color var(--dur-1) var(--ease-out);
+  animation: rise 480ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+@media (hover: hover) {
+  .tile:hover {
+    border-color: var(--tile-hover);
+  }
+}
+.tile:focus-within {
+  border-color: var(--tile-hover);
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes draw {
+  from {
+    clip-path: inset(-12px 100% -12px -12px);
+  }
+  to {
+    clip-path: inset(-12px -12px -12px -12px);
+  }
+}
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}
+.tile > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.tile h2 {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 18px;
   font-weight: 500;
 }
-.hero-card dd {
-  margin: 0;
+.tile > header a {
+  font-size: 12px;
 }
-/* The figure the page leads with keeps proportional digits: it never stands in a column of numbers. */
-.hero-figure {
-  font-size: 48px;
-  line-height: 56px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+.tile > .faint {
+  margin-top: 2px;
 }
-.hero-figure .num {
-  text-align: left;
-  font-variant-numeric: lining-nums proportional-nums;
-}
-.overview-grid {
+.stat-figure {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: 12px;
 }
-.overview-grid .panel {
-  min-width: 0;
-  margin: 0;
+/* Figures in the tabular monospace, as the reference sets them: 44 px for the one the page leads with, 26 px in a card,
+   then 13 px headings and 11 to 12 px captions. */
+.tile-figure,
+.hero-figure {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
-.overview-grid h2 {
-  margin-bottom: 2px;
+.tile-figure {
+  font-size: 26px;
+  line-height: 32px;
+  letter-spacing: -0.03em;
+}
+.hero-figure {
+  margin-top: 10px;
+  font-size: 44px;
+  line-height: 52px;
+  letter-spacing: -0.04em;
+}
+.t-received .tile-figure {
+  margin-top: 10px;
+}
+/* A counting figure sits over its final text, which keeps the width and is what assistive technology reads. */
+.count {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+}
+.count .final {
+  color: transparent;
+}
+.count .counting {
+  position: absolute;
+  inset: 0;
+}
+/* Matched the rate card: an arc over a lighter track of the chart blue and a needle turned to the share, both easing in
+   once and to a new share, centred over the figure. */
+.gauge {
+  display: block;
+  width: 150px;
+  margin: auto auto 0;
+  padding-top: 12px;
+  overflow: visible;
+}
+.gauge path {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+.gauge .track {
+  stroke: color-mix(in srgb, var(--chart) 18%, var(--tile));
+}
+.gauge .meter {
+  stroke: var(--chart);
+  stroke-dasharray: calc(var(--s) * 1px) 100px;
+  transition: stroke-dasharray 600ms var(--ease-out);
+  animation: meter-in 900ms var(--ease-out) 200ms both;
+}
+.gauge .needle {
+  transform: rotate(var(--angle));
+  transform-origin: 60px 60px;
+  transition: transform 600ms var(--ease-out);
+  animation: needle-in 900ms var(--ease-out) 200ms both;
+}
+.gauge .needle line {
+  stroke: var(--text);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.gauge .hub {
+  fill: var(--text);
+}
+@keyframes meter-in {
+  from {
+    stroke-dasharray: 0px 100px;
+  }
+}
+@keyframes needle-in {
+  from {
+    transform: rotate(-90deg);
+  }
+}
+.t-matched .stat-figure {
+  justify-items: center;
+  margin-top: 0;
+  padding-top: 4px;
+  text-align: center;
+}
+.foot {
+  margin-top: auto;
 }
 .chart-empty {
   padding: 24px 0 8px;
-}
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  margin: 6px 0 0;
-  padding: 0;
-  list-style: none;
-  color: var(--text-2);
-  font-size: 12.5px;
-}
-.legend li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.legend .swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
 }
 /* Chart fills; the words beside them keep the text colors. */
 .fill {
   background: var(--chart);
 }
-.fill.warn {
-  background: var(--chart-warn);
+/* The hero's bars: a thin bar a day with rounded tops, weeks in two tones of the accent, grown from the baseline once in a
+   quick sweep and eased to new heights when the range changes. The picked day stays full while the others fade. */
+.day-chart {
+  margin-top: auto;
+  padding-top: 20px;
 }
-.fill.bad {
-  background: var(--chart-bad);
+.day-bars {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  column-gap: 3px;
+  height: 96px;
+  border-radius: 6px;
+  touch-action: pan-y;
+  cursor: crosshair;
 }
-/* Weekly columns: hairline gridlines with their values in a left gutter, columns at most 24 px wide with a rounded top,
-   2 px of the card between stacked parts, and the weeks underneath. */
-.week-chart {
+.day {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.day .bar {
+  width: min(100%, 24px);
+  height: max(2px, var(--h));
+  border-radius: 4px 4px 1px 1px;
+  background: var(--chart);
+  transform-origin: bottom;
+  transition:
+    height 600ms var(--ease-out),
+    opacity var(--dur-1) var(--ease-out);
+  animation: grow 700ms var(--ease-out) both;
+  animation-delay: calc(150ms + var(--i) * 10ms);
+}
+.day.soft .bar {
+  background: color-mix(in srgb, var(--chart) 50%, var(--tile));
+}
+.day-bars[data-active] .day:not(.on) .bar {
+  opacity: 0.35;
+}
+.day.on .bar {
+  background: var(--chart);
+}
+.axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
   margin-top: 8px;
+  color: var(--text-3);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 14px;
+}
+.axis.gutter {
+  margin-left: 40px;
+}
+/* A note over the picked day, the value strong in the monospace and its words after. It shifts by its own share of the
+   width (--at), so it never leaves the chart, and every value it shows is also in the chart's table. */
+.tip {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid var(--tile-rule);
+  border-radius: 10px;
+  background: var(--tile);
+  box-shadow: 0 6px 18px -10px rgb(0 0 0 / 35%);
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  transform: translateX(calc(var(--at) * -100%));
+  pointer-events: none;
+}
+.tip strong {
+  color: var(--text);
+  font-family: var(--mono);
+  font-weight: 500;
+}
+/* The line chart's note opens beside the guide, toward the middle, so it never covers the day's own markers. */
+.tip.beside {
+  transform: translateX(12px);
+}
+.tip.beside.flip {
+  transform: translateX(calc(-100% - 12px));
+}
+/* The line chart: the latest week's figures keyed to their lines, then the plot on gridlines at clean values with their
+   counts in a left gutter, and the weeks underneath. */
+.line-figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 32px;
+  margin-top: 12px;
+}
+.line-figures .key {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 16px;
+}
+.line-key {
+  width: 16px;
+  border-top: 2px solid var(--chart);
+}
+.line-key.dashed {
+  border-top: 2px dashed var(--text-3);
+}
+.line-states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 7px;
+}
+.line-chart {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 240px;
+  margin-top: 16px;
 }
 .plot {
   position: relative;
-  height: 160px;
-  margin: 20px 0 0 44px;
+  flex: 1;
+  margin: 8px 0 0 40px;
+  border-radius: 6px;
+  touch-action: pan-y;
+  cursor: crosshair;
+}
+.line-chart svg,
+.sparkline svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+/* The line draws in once and fades its wash in under it; a new range morphs both, as every line has the same number
+   of samples. */
+.fade-top {
+  stop-color: var(--chart);
+  stop-opacity: 0.26;
+}
+.fade-bottom {
+  stop-color: var(--chart);
+  stop-opacity: 0;
+}
+.line-chart .area {
+  transition: d 600ms var(--ease-out);
+  animation: appear 900ms ease 400ms both;
+}
+.line {
+  fill: none;
+  stroke: var(--chart);
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  transition: d 600ms var(--ease-out);
+}
+/* Drawn by a wipe from the left: a dash pattern would not follow the path once its shape comes from CSS. */
+.line.drawn {
+  animation: draw 1100ms var(--ease-out) 150ms both;
+}
+.line.matched {
+  stroke: var(--text-3);
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 5;
+  animation: appear 600ms ease 600ms both;
+}
+/* The latest day's marker glows; it appears once the line has drawn and moves with it. */
+.glow {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--tile);
+  border-radius: 50%;
+  background: var(--chart);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--chart) 22%, transparent),
+    0 0 16px 2px color-mix(in srgb, var(--chart) 50%, transparent);
+  transform: translate(-50%, -50%);
+  transition:
+    left 600ms var(--ease-out),
+    top 600ms var(--ease-out);
+  animation: appear 400ms ease 1100ms both;
+  pointer-events: none;
+}
+/* The picked day: a hairline at it and its two markers, 10 px with a 2 px ring of the card. */
+.guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--rule-strong);
+  pointer-events: none;
+}
+.dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--tile);
+  border-radius: 50%;
+  background: var(--chart);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.dot.matched {
+  background: var(--text-3);
+}
+/* Invoices received per week as a line filling the card under its figure. */
+.sparkline {
+  position: relative;
+  flex: 1;
+  min-height: 48px;
+  margin: 16px 0 0;
+}
+/* The carriers spread over their card's height, so a card as tall as its neighbour has no empty band. */
+.t-carriers .carrier-bars {
+  flex: 1;
+  align-content: space-evenly;
+}
+.sparkline .area {
+  fill: color-mix(in srgb, var(--chart) 12%, transparent);
+  animation: appear 900ms ease 400ms both;
+}
+.sparkline .glow {
+  width: 9px;
+  height: 9px;
+}
+/* The range: a small segmented pill in the chart's card, the current range filled. */
+.range-pills {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--tile-rule);
+  border-radius: 999px;
+}
+.range-pills a {
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+.range-pills a:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+.range-pills a[aria-current='page'] {
+  background: var(--text);
+  color: var(--tile);
 }
 .gridline {
   position: absolute;
@@ -1203,57 +1617,6 @@ td .reason {
   font-size: 11px;
   line-height: 16px;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.columns,
-.weeks {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-}
-.columns {
-  position: absolute;
-  inset: 0;
-}
-.column {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-}
-.stack {
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 2px;
-  width: min(24px, 60%);
-}
-.stack > span {
-  flex: 1 1 0;
-  min-height: 2px;
-}
-.stack > :last-child {
-  border-radius: 4px 4px 0 0;
-}
-.stack:hover > span {
-  opacity: 0.8;
-}
-.column-label {
-  position: absolute;
-  left: 0;
-  right: 0;
-  margin-bottom: 4px;
-  font-size: 11px;
-  line-height: 14px;
-  font-weight: 600;
-  text-align: center;
-  white-space: nowrap;
-}
-.weeks {
-  margin: 6px 0 0 44px;
-  color: var(--text-3);
-  font-size: 11px;
-  line-height: 16px;
-  text-align: center;
   white-space: nowrap;
 }
 .table-view {
@@ -1307,8 +1670,8 @@ td .reason {
   align-content: start;
   gap: 2px;
   padding: 12px;
-  border-radius: var(--radius);
-  background: var(--sunken);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text) 4%, var(--tile));
 }
 .health dt {
   color: var(--text-2);
@@ -1319,15 +1682,105 @@ td .reason {
   margin: 0;
 }
 .health dd.stat {
+  font-family: var(--mono);
   font-size: 22px;
   line-height: 30px;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+/* Every overview motion stays still for a reader who asks for less motion: no rise, growth, drawing or easing. */
+@media (prefers-reduced-motion: reduce) {
+  .tile,
+  .day .bar,
+  .line,
+  .line.drawn,
+  .line.matched,
+  .line-chart .area,
+  .sparkline .area,
+  .glow,
+  .gauge .meter,
+  .gauge .needle,
+  .latest-row {
+    animation: none;
+    transition: none;
+  }
+}
+/* --text-3 on --sunken is 4.32:1 in light, under 4.5 for 12 px; --text-2 is 5.46:1. */
+.health .faint {
+  color: var(--text-2);
 }
 .health .badge {
   height: auto;
   padding: 0;
   background: none;
   white-space: normal;
+}
+
+/* The latest invoices, as the reference's activity: each row a link with a round icon, the number over its carrier and
+   arrival, and its amount over its status; a pointer or keyboard focus washes the row. */
+.latest {
+  margin: 8px -8px -8px;
+  padding: 0;
+  list-style: none;
+}
+.latest-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 14px;
+  color: var(--text);
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+.latest-row:hover,
+.latest-row:focus-visible {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  text-decoration: none;
+}
+.latest-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text) 7%, var(--tile));
+  color: var(--text-2);
+}
+.latest-title {
+  font-weight: 500;
+}
+.latest-side .num {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.latest-main {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  min-width: 0;
+}
+.latest-side {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+/* In a narrow card each row stacks: the number, its carrier and arrival, then its amount beside its status. */
+.t-latest {
+  container-type: inline-size;
+}
+@container (max-width: 26rem) {
+  .latest-row {
+    grid-template-columns: 36px minmax(0, 1fr);
+    align-items: start;
+  }
+  .latest-side {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+  }
 }
 
 /* Empty and error states say what will appear and what to do next. */
@@ -3529,17 +3982,33 @@ table.ledger strong {
     grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
   }
 }
-/* Below 1280 px the overview's counts move under its figure, where each keeps room for its line. */
-@media (max-width: 1279px) {
-  .overview-top {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 @media (max-width: 1023px) {
   .review,
-  .upload,
-  .overview-grid {
+  .upload {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* The overview in two columns, in its reading order: the hero, received beside matched, the chart, processing time
+     beside the cost, then the latest invoices, the carriers and the pipeline each across. */
+  .overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'hero hero'
+      'received matched'
+      'chart chart'
+      'processing cost'
+      'latest latest'
+      'carriers carriers'
+      'health health';
+  }
+  .overview.without-cost {
+    grid-template-areas:
+      'hero hero'
+      'received matched'
+      'chart chart'
+      'processing processing'
+      'latest latest'
+      'carriers carriers'
+      'health health';
   }
   /* One column: summary, any alert, findings, the document, charges, details, trail, 16 px apart. */
   .review {
@@ -3664,13 +4133,20 @@ table.ledger strong {
   .stats > div:nth-child(n + 3) {
     border-top: 1px solid var(--rule);
   }
-  /* The overview's figure shrinks to fit, every other week keeps its name, and carrier names give way to their bars. */
-  .hero-figure {
-    font-size: 40px;
-    line-height: 48px;
+  /* The overview in one column, in its reading order; its figure shrinks to fit, every other week keeps its name, and
+     carrier names give way to their bars. */
+  .overview,
+  .overview.without-cost {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
   }
-  .weeks span:nth-child(odd) {
-    visibility: hidden;
+  .overview > .tile {
+    grid-area: auto;
+    padding: 16px;
+  }
+  .hero-figure {
+    font-size: 36px;
+    line-height: 44px;
   }
   .carrier-bars li {
     grid-template-columns: minmax(0, 8rem) minmax(0, 1fr);

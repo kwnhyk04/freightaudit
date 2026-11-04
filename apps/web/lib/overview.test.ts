@@ -1,4 +1,4 @@
-import { changeNote, costText, moneyTick, RANGES, rangeKey, rangeOf, rangeWindow, ticksFor, tokensText, weekLabel, wholeDollars } from './overview.ts';
+import { changeNote, costText, moneyTick, path, sampled, RANGES, rangeKey, rangeOf, rangeWindow, ticksFor, tokensText, weekLabel, weekPoints, wholeDollars } from './overview.ts';
 
 test('a range comes from ?range=, 4 weeks unless the address names another, which the address then carries', () => {
   expect(RANGES.map((range) => [range.key, range.label, range.days])).toEqual([
@@ -49,4 +49,27 @@ test('gridlines start at 0 and step by 1, 2, 2.5 or 5 times a power of ten, whol
   expect(ticksFor(11)).toEqual([0, 5, 10, 15]);
   expect(ticksFor(38)).toEqual([0, 10, 20, 30, 40]);
   expect(ticksFor(827_922)).toEqual([0, 250_000, 500_000, 750_000, 1_000_000]);
+});
+
+test("a line chart's points sit mid-week, as high as their share of the top gridline, and its curve never overshoots a point", () => {
+  // Percent of the plot, y from the top: a week at 0 on the baseline, one at the top gridline on the top edge.
+  expect(weekPoints([0, 5, 10], 10)).toEqual([
+    [16.67, 100],
+    [50, 50],
+    [83.33, 0],
+  ]);
+  // A fixed number of samples whatever the bucket count, so a line can morph from one range to another; each segment
+  // eases from one point to the next, flat at both, so it never overshoots either.
+  expect(sampled([[0, 100], [100, 0]], 3)).toEqual([[0, 100], [50, 50], [100, 0]]);
+  expect(sampled([[50, 40]], 3)).toEqual([[50, 40], [50, 40], [50, 40]]);
+  const points = weekPoints([3, 9, 0, 7, 7, 1, 12, 4], 12);
+  const line = sampled(points, 96);
+  expect(line).toHaveLength(96);
+  for (const [x, y] of line) {
+    const i = Math.max(0, points.findLastIndex(([px]) => px <= x));
+    const ends = [points[i]![1], points[Math.min(i + 1, points.length - 1)]![1]];
+    expect(y).toBeGreaterThanOrEqual(Math.min(...ends) - 0.01);
+    expect(y).toBeLessThanOrEqual(Math.max(...ends) + 0.01);
+  }
+  expect(path([[0, 100], [50, 50]])).toBe('M 0 100 L 50 50');
 });

@@ -63,12 +63,13 @@ export async function dashboardFigures({ db, tenantId }: { db: NodePgDatabase; t
   const byInvoice = new Map<string, FindingAmounts[]>();
   for (const { invoiceId, ...finding } of findings) byInvoice.set(invoiceId, [...(byInvoice.get(invoiceId) ?? []), finding]);
   const facts: DashboardInvoice[] = rows.map(({ id, settledAt, ...row }) => ({ ...row, settledAt: (settledAt as Date | null) ?? null, findings: byInvoice.get(id) ?? [] }));
-  const { window, previous, weeks, carriers: top } = dashboardOf(facts, from, to);
+  const { window, previous, weeks, days, carriers: top } = dashboardOf(facts, from, to);
   const perInvoice = (micro: bigint, received: number) => (received > 0 ? Number(divRound(micro, BigInt(received))) : null);
   return {
     window: { ...window, modelCostPerInvoiceMicroUsd: perInvoice(cost!.window, window.received) },
     previous: { ...previous, modelCostPerInvoiceMicroUsd: perInvoice(cost!.previous, previous.received) },
     weeks,
+    days,
     carriers: top,
     pipeline: { waitingToBeRead: waiting!.count, openDeadLetters: letters!.count, claudeTokensToday: tokens!.claude, freeModelTokensToday: tokens!.free },
   };

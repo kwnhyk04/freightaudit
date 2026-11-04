@@ -64,35 +64,41 @@ test("the landing page's invoice is the sample's g066: one open finding, its lin
 // (731,456), g066's open one (80,154), g054's confirmed one (10,323) and g056's open one (5,989); g055's is dismissed.
 // Upload to the pipeline's first stop, ascending, in ms: 1,305 1,614 2,696 3,361 5,141 19,641 26,584 48,976 66,960
 // 84,408 102,352 (g087's first stop is its move to needs review), so the 6th and the 11th are the median and the 95th.
-test("the sample's overview ends on its newest day, with every figure counted by hand from its eleven invoices", () => {
+// The eleven exported invoices, all received on 2026-10-17, add to the generated history (lib/demo-history.json, from
+// scripts/demo-history.ts with a fixed seed) over the four weeks to that day; these are the figures the two make together.
+test("the sample's overview ends on its newest day and counts its eleven invoices with the generated four weeks before", () => {
   const month = demoDashboard(rangeOf('4w'));
   expect(month.window).toEqual({
     from: '2026-09-20',
     to: '2026-10-17',
-    received: 11,
-    matchedRateCard: 2,
-    overbilledCents: 827_922,
-    overbilledInvoices: 4,
-    timed: 11,
-    processingP50Ms: 19_641,
-    processingP95Ms: 102_352,
+    received: 1_330,
+    matchedRateCard: 620,
+    overbilledCents: 13_123_077,
+    overbilledInvoices: 427,
+    timed: 1_330,
+    processingP50Ms: 12_885,
+    processingP95Ms: 81_377,
     modelCostPerInvoiceMicroUsd: null,
   });
+  // Nothing before the four weeks, so the change notes say none.
   expect(month.previous).toEqual({ received: 0, overbilledCents: 0 });
-  // Eight weeks, Monday to Sunday, and only the last holds the sample.
-  const empty = { matchedRateCard: 0, neededReviewer: 0, failed: 0, overbilledCents: 0 };
-  expect(month.weeks).toEqual([
-    ...['2026-08-24', '2026-08-31', '2026-09-07', '2026-09-14', '2026-09-21', '2026-09-28', '2026-10-05'].map((start) => ({ start, ...empty })),
-    { start: '2026-10-12', matchedRateCard: 2, neededReviewer: 8, failed: 1, overbilledCents: 827_922 },
-  ]);
-  expect(month.carriers).toEqual([
-    { carrier: 'Tern & Tide Carriers', overbilledCents: 731_456, invoices: 1 },
-    { carrier: 'Bramblewood Express', overbilledCents: 90_477, invoices: 2 },
-    { carrier: 'Quarry Lane Transport', overbilledCents: 5_989, invoices: 1 },
-  ]);
+  // The weeks hold the four, the first of them from its Sunday; the four weeks before are empty.
+  expect(month.weeks.map((week) => week.received > 0)).toEqual([false, false, false, true, true, true, true, true]);
+  expect(month.weeks.reduce((sum, week) => sum + week.received, 0)).toBe(1_330);
+  // 28 uneven days: two quiet Sundays, the rest about 40 to 60, the last with the eleven; overbilling on most days.
+  expect(month.days).toHaveLength(28);
+  const quiet = month.days.filter((day) => day.received < 10).map((day) => day.day);
+  expect(quiet).toEqual(['2026-10-04', '2026-10-11']);
+  expect(month.days.filter((day) => !quiet.includes(day.day)).every((day) => day.received >= 38 && day.received <= 62)).toBe(true);
+  expect(new Set(month.days.map((day) => day.received)).size).toBeGreaterThan(15);
+  expect(month.days.filter((day) => day.overbilledCents > 0).length).toBeGreaterThan(20);
+  // Shares a reviewer would believe: about half matched, a few failed.
+  expect([month.window.matchedRateCard / month.window.received, month.days.reduce((sum, day) => sum + day.failed, 0) / month.window.received].map((share) => Math.round(share * 100))).toEqual([47, 3]);
+  expect(month.carriers.map((row) => row.carrier)).toHaveLength(5);
+  expect(month.carriers.every((row, i) => i === 0 || row.overbilledCents <= month.carriers[i - 1]!.overbilledCents)).toBe(true);
   // No invoice waits to be read and one dead letter is open; the sample made no model calls.
   expect(month.pipeline).toEqual({ waitingToBeRead: 0, openDeadLetters: 1, claudeTokensToday: 0, freeModelTokensToday: 0 });
-  expect(demoDashboard(rangeOf('7d')).window).toMatchObject({ from: '2026-10-11', to: '2026-10-17', received: 11 });
-  expect(demoDashboard(rangeOf('8w')).window).toMatchObject({ from: '2026-08-23', to: '2026-10-17', received: 11 });
-  expect(DEMO_OVERVIEW_NOTE).toBe('The sample covers one week: its 11 invoices arrived on Oct 17, 2026.');
+  expect(demoDashboard(rangeOf('7d')).window).toMatchObject({ from: '2026-10-11', to: '2026-10-17' });
+  expect(demoDashboard(rangeOf('8w')).window).toMatchObject({ from: '2026-08-23', to: '2026-10-17', received: 1_330 });
+  expect(DEMO_OVERVIEW_NOTE).toBe('Sample data from Sep 20 to Oct 17, 2026: 11 invoices you can open, plus 1,319 generated ones that only feed these charts.');
 });

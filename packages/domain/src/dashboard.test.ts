@@ -66,6 +66,8 @@ test('eight weeks, Monday to Sunday in UTC, end with the week of to, oldest firs
     invoice({ receivedAt: at('2026-10-17T07:22:49.121Z'), status: 'needs_review', shipment: false }),
     invoice({ receivedAt: at('2026-10-17T07:24:00.000Z'), status: 'failed', shipment: false }),
     invoice({ receivedAt: at('2026-10-17T07:25:00.000Z'), status: 'extracting', shipment: false }),
+    // After to, though in to's week: the weeks stop at to, as the api reads no later.
+    invoice({ receivedAt: at('2026-10-18T12:00:00.000Z'), status: 'extracting', shipment: false }),
     invoice({ receivedAt: at('2026-08-24T00:00:00.000Z'), findings: [finding('open', 1_249n)] }),
     invoice({ receivedAt: at('2026-08-23T23:59:59.999Z') }),
   ];
@@ -73,11 +75,21 @@ test('eight weeks, Monday to Sunday in UTC, end with the week of to, oldest firs
   const { weeks } = dashboardOf(invoices, '2026-10-17', '2026-10-17');
   expect(weeks.map((week) => week.start)).toEqual(WEEKS);
   const week = (start: string) => weeks.find((each) => each.start === start);
-  expect(week('2026-10-12')).toEqual({ start: '2026-10-12', matchedRateCard: 1, neededReviewer: 1, failed: 1, overbilledCents: 0n });
-  expect(week('2026-10-05')).toEqual({ start: '2026-10-05', matchedRateCard: 0, neededReviewer: 1, failed: 0, overbilledCents: 1_619n });
-  expect(week('2026-08-24')).toEqual({ start: '2026-08-24', matchedRateCard: 0, neededReviewer: 1, failed: 0, overbilledCents: 1_249n });
-  expect(weeks.filter((each) => !['2026-10-12', '2026-10-05', '2026-08-24'].includes(each.start)).every((each) => each.matchedRateCard + each.neededReviewer + each.failed === 0)).toBe(true);
+  // Received counts the one still being read; the outcomes leave it out.
+  expect(week('2026-10-12')).toEqual({ start: '2026-10-12', received: 4, matchedRateCard: 1, neededReviewer: 1, failed: 1, overbilledCents: 0n });
+  expect(week('2026-10-05')).toEqual({ start: '2026-10-05', received: 1, matchedRateCard: 0, neededReviewer: 1, failed: 0, overbilledCents: 1_619n });
+  expect(week('2026-08-24')).toEqual({ start: '2026-08-24', received: 1, matchedRateCard: 0, neededReviewer: 1, failed: 0, overbilledCents: 1_249n });
+  expect(weeks.filter((each) => !['2026-10-12', '2026-10-05', '2026-08-24'].includes(each.start)).every((each) => each.received + each.matchedRateCard + each.neededReviewer + each.failed === 0)).toBe(true);
   expect(dashboardOf([], '2026-10-12', '2026-10-12').weeks.map((each) => each.start)).toEqual(WEEKS);
+  // The window's days, one per UTC day from from to to, counted as the weeks are.
+  const empty = { received: 0, matchedRateCard: 0, neededReviewer: 0, failed: 0, overbilledCents: 0n };
+  expect(dashboardOf(invoices, '2026-10-11', '2026-10-17').days).toEqual([
+    { day: '2026-10-11', received: 1, matchedRateCard: 0, neededReviewer: 1, failed: 0, overbilledCents: 1_619n },
+    { day: '2026-10-12', received: 1, matchedRateCard: 1, neededReviewer: 0, failed: 0, overbilledCents: 0n },
+    ...['2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16'].map((day) => ({ day, ...empty })),
+    { day: '2026-10-17', received: 3, matchedRateCard: 0, neededReviewer: 1, failed: 1, overbilledCents: 0n },
+  ]);
+  expect(dashboardOf([], '2026-10-12', '2026-10-12').days).toEqual([{ day: '2026-10-12', ...empty }]);
 });
 
 test('processing time is the nearest-rank median and 95th percentile of the timed invoices', () => {
@@ -139,9 +151,16 @@ test('over the eight weeks themselves, the weeks add up to the window', () => {
   fc.assert(
     fc.property(fc.array(any, { maxLength: 30 }), (drawn) => {
       const invoices = drawn.map(({ offset, findings, ...rest }) => invoice({ ...rest, receivedAt: new Date(day + offset), findings: findings.map((each) => finding(each.status, each.billed)) }));
-      const { window, weeks } = dashboardOf(invoices, '2026-08-24', '2026-10-18');
+      const { window, weeks, days } = dashboardOf(invoices, '2026-08-24', '2026-10-18');
       const settled = invoices.filter((each) => each.receivedAt.getTime() >= day && each.receivedAt.getTime() < day + 56 * 86_400_000 && outcomeOf(each) !== null).length;
       return (
+        [weeks, days].every(
+          (buckets) =>
+            buckets.reduce((sum, each) => sum + each.received, 0) === window.received &&
+            buckets.reduce((sum, each) => sum + each.overbilledCents, 0n) === window.overbilledCents &&
+            buckets.reduce((sum, each) => sum + each.matchedRateCard + each.neededReviewer + each.failed, 0) === settled,
+        ) &&
+        days.length === 56 &&
         weeks.reduce((sum, week) => sum + week.overbilledCents, 0n) === window.overbilledCents &&
         weeks.reduce((sum, week) => sum + week.matchedRateCard, 0) === window.matchedRateCard &&
         weeks.reduce((sum, week) => sum + week.matchedRateCard + week.neededReviewer + week.failed, 0) === settled

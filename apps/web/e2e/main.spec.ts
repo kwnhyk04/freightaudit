@@ -213,35 +213,62 @@ test.describe('overview', () => {
     const money = (cents: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
     await page.goto('/dashboard');
     await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
-    const hero = page.locator('.hero-card');
-    await expect(hero.locator('dt')).toHaveText('Overbilling found, last 4 weeks');
-    await expect(hero.locator('.hero-figure')).toHaveText(money(Number(counted!.overbilled)));
+    const hero = page.locator('.t-hero');
+    const heading = hero.getByRole('heading', { level: 2 });
+    await expect(heading).toHaveText('Overbilling found, last 4 weeks');
+    // A figure's final text; its counting copy is hidden from assistive technology.
+    await expect(hero.locator('.hero-figure .final')).toHaveText(money(Number(counted!.overbilled)));
     await expect(hero).toContainText(`Across ${counted!.invoices} invoice${counted!.invoices === 1 ? '' : 's'}`);
-    await expect(page.locator('.stats dt:text-is("Invoices received") + dd')).toHaveText(String(counted!.received));
+    await expect(page.getByRole('region', { name: 'Invoices received', exact: true }).locator('.tile-figure .final')).toHaveText(counted!.received.toLocaleString('en-US'));
     await expect(page.locator('.health dt:text-is("Waiting to be read") + dd')).toHaveText(String(counted!.waiting));
     await expect(page.locator('.health dt:text-is("Dead letters") + dd')).toHaveText(String(counted!.letters));
     // The live overview shows the model cost and today's tokens, which the sample leaves out.
-    await expect(page.locator('.stats dt:text-is("Model cost per invoice")')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Model cost per invoice', exact: true })).toBeVisible();
     await expect(page.locator('.health dt:text-is("AI tokens today")')).toBeVisible();
-    // Each column's hover text holds the values of its row in the chart's table.
-    for (const name of ['Overbilling found per week', 'Invoices per week, by outcome']) {
-      const card = page.getByRole('region', { name, exact: true });
+    // Each chart is one keyboard stop: Home and End pick the first and the last of the 28 days, whose note holds the values
+    // of that day's row in the chart's table (the hero's amount, the line chart's four counts), and is read out.
+    // This test runs before the upload tests and the seed is older than four weeks, so a window with nothing finished in it
+    // shows each chart's empty state instead.
+    const processedCard = page.getByRole('region', { name: 'Invoices processed per day', exact: true });
+    const [row] = await db<{ finished: number }>(
+      `SELECT count(*)::int AS finished FROM invoices WHERE status IN ('reconciled', 'approved', 'needs_review', 'rejected', 'failed')
+       AND created_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' - interval '27 days'`,
+    );
+    const finished = row!.finished;
+    if (finished === 0) await expect(processedCard).toContainText('No invoice was checked in the last 4 weeks.');
+    if (Number(counted!.overbilled) === 0) await expect(hero).toContainText('No overbilling found in the last 4 weeks.');
+    const charts = finished > 0 ? [processedCard] : [];
+    if (Number(counted!.overbilled) > 0) charts.push(hero);
+    for (const card of charts) {
       await card.getByText('Show as a table').click();
       const rows = await card.locator('tbody tr').evaluateAll((trs) => trs.map((tr) => [...tr.querySelectorAll('td.num')].map((td) => td.textContent)));
-      const titles = await card.locator('.stack').evaluateAll((stacks) => stacks.map((stack) => stack.getAttribute('title')!.split(': ')[1]!));
-      expect(rows).toHaveLength(8);
-      expect(titles.map((title) => (title.startsWith('$') ? [title] : title.match(/[0-9]+/g)))).toEqual(rows);
+      expect(rows).toHaveLength(28);
+      const chart = card.getByRole('group');
+      await chart.focus();
+      for (const [key, row] of [['Home', rows[0]], ['End', rows.at(-1)]] as const) {
+        await page.keyboard.press(key);
+        await expect(card.locator('.tip strong')).toHaveText(row!);
+        await expect(card.locator('[aria-live]')).not.toHaveText('');
+      }
+      await chart.blur();
+      await expect(card.locator('.tip')).toHaveCount(0);
     }
+    // The latest invoices are the list's newest five, in its order.
+    const latest = await page.getByRole('region', { name: 'Latest invoices' }).locator('.latest a').evaluateAll((links) => links.map((link) => link.getAttribute('href')));
+    await page.goto('/invoices');
+    const newest = await page.locator('tbody tr a.id').evaluateAll((links) => links.slice(0, 5).map((link) => link.getAttribute('href')));
+    expect(latest).toEqual(newest);
+    await page.goto('/dashboard');
     // The range is a link that the address keeps; 4 weeks needs none.
     const ranges = page.getByRole('navigation', { name: 'Time range' });
     await expect(ranges.getByRole('link', { name: '4 weeks' })).toHaveAttribute('aria-current', 'page');
     await ranges.getByRole('link', { name: '7 days' }).click();
     await expect(page).toHaveURL(/\/dashboard[?]range=7d$/);
-    await expect(hero.locator('dt')).toHaveText('Overbilling found, last 7 days');
+    await expect(heading).toHaveText('Overbilling found, last 7 days');
     await expect(ranges.getByRole('link', { name: '7 days' })).toHaveAttribute('aria-current', 'page');
     await ranges.getByRole('link', { name: '4 weeks' }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(hero.locator('dt')).toHaveText('Overbilling found, last 4 weeks');
+    await expect(heading).toHaveText('Overbilling found, last 4 weeks');
   });
 });
 

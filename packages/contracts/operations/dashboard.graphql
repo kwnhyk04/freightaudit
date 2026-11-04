@@ -18,6 +18,11 @@ query Dashboard($from: Date!, $to: Date!) {
     }
     weeks {
       start
+      received
+    }
+    days {
+      day
+      received
       matchedRateCard
       neededReviewer
       failed
@@ -33,6 +38,25 @@ query Dashboard($from: Date!, $to: Date!) {
       openDeadLetters
       claudeTokensToday
       freeModelTokensToday
+    }
+  }
+  invoices(first: 5) {
+    edges {
+      node {
+        id
+        status
+        filename
+        carrier
+        number
+        currency
+        totalCents
+        createdAt
+        openDiscrepancyCount
+        hold
+        shipment {
+          id
+        }
+      }
     }
   }
 }
