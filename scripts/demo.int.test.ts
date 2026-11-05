@@ -58,6 +58,14 @@ test("a demo reset carries Claude's total over the wipe: the larger of Redis's a
   expect(at(/redis-cli SET /)).toBeLessThan(at(/^up -d --wait api worker tailscale$/));
 });
 
+// A queue left in the volume would keep a finished job's id, which is the content hash, so the sample's new upload would
+// never run.
+test('a demo reset empties the queues: the Redis volume goes with the database and the stored PDFs', async () => {
+  const { code, calls } = await reset({ FAKE_CLAUDE_CALLS: '0' });
+  expect(code).toBe(0);
+  expect(calls).toContain('volume rm --force freightaudit-prod_postgres-data freightaudit-prod_minio-data freightaudit-prod_redis-data');
+});
+
 test('Postgres decides when it recorded more, as when Redis lost its total, and a database from before migration 0018 carries its calls alone', async () => {
   const { code, calls } = await reset({ FAKE_CLAUDE_CALLS: '1200000' });
   expect(code).toBe(0);

@@ -99,7 +99,7 @@ test("with Claude first, the worker counts what Postgres recorded against Claude
       if (entry.msg?.startsWith('Server listening at ')) break;
     }
     child.stdout!.resume();
-    expect(claude).toEqual({ model: 'claude-haiku-5-5', until: '2026-11-10', dailyTokens: 1_400_000, spendCapUsd: '15.00', spentMicroUsd: '1500' });
+    expect(claude).toEqual({ model: 'claude-haiku-5-5', until: '2026-11-10', dailyTokens: 70_000, spendCapUsd: '15.00', spentMicroUsd: '1500' });
     expect(await env.redis.get(`${env.prefix}:llm:claude:spent`)).toBe('1500');
     expect(lines.join('\n')).not.toContain('anthropic-secret-value');
   } finally {

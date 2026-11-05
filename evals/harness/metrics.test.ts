@@ -106,6 +106,34 @@ test('failed calls are listed by case with provider, model, class, status and me
   ]);
 });
 
+test("a provider's 5xx counts as an outage, apart from failed calls; every other call without a reply stays failed", () => {
+  const call = result().calls[0]!;
+  const noReply = (outcome: string, errorClass: string, httpStatus: number | null = null) => ({ ...call, outcome, errorClass, httpStatus });
+  const calls = [
+    noReply('error', '5xx', 503),
+    noReply('error', '5xx', 500),
+    noReply('rate_limited', '429', 429),
+    noReply('error', 'timeout'),
+    noReply('error', 'network'),
+    noReply('error', 'parse_or_schema', 400),
+    noReply('error', 'other', 400),
+    // Cached before migration 0012: no class, so nothing excuses it.
+    { ...call, outcome: 'error' },
+    // A reply that failed its checks is a reply, so it is neither.
+    { ...call, outcome: 'invalid' },
+    call,
+  ];
+  const score = scoreCase(golden, { ...result(), calls });
+  expect(score).toMatchObject({ failedCalls: 6, outageCalls: 2 });
+  expect(Object.fromEntries(measure([score]).map((m) => [m.metric, m.value]))).toMatchObject({ failed_calls: 6, provider_outage_calls: 2 });
+});
+
+test('a report written before outages counted apart gives them as unknown, never zero, and keeps its failed calls', () => {
+  const metrics = new Map(measure([{ ...scoreCase(golden, result()), failedCalls: 3, outageCalls: undefined }]).map((m) => [m.metric, m]));
+  expect(metrics.get('provider_outage_calls')).toMatchObject({ value: undefined, ci: undefined, n: 1 });
+  expect(metrics.get('failed_calls')).toMatchObject({ value: 3 });
+});
+
 test('the bootstrap interval is seeded, so it repeats, and it brackets the value', () => {
   const scores = [1, 0, 1, 1, 0, 1, 1, 1].map((ok, i) => ({ ...scoreCase(golden, result()), id: `g${i}`, escalated: 1 - ok }));
   const compute = (s: typeof scores) => s.reduce((sum, x) => sum + x.escalated, 0) / s.length;

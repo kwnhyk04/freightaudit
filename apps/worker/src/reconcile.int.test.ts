@@ -1,4 +1,4 @@
-import { carriers, deadLetters, discrepancies, extractions, invoiceLines, invoices, rateCardBands, rateCardVersions, shipments } from '@freightaudit/db';
+import { carriers, deadLetters, discrepancies, extractions, invoiceLines, invoices, rateCardBands, rateCards, rateCardVersions, shipments } from '@freightaudit/db';
 import { seed, type Truth } from '@freightaudit/db/scripts/seed';
 import { createTestDatabase } from '@freightaudit/db/testing';
 import { replayDeadLetter } from '@freightaudit/pipeline';
@@ -228,6 +228,44 @@ test('an invoice sent to needs_review, then corrected, gets the possible-duplica
   const saved = await db().select({ type: discrepancies.type, status: discrepancies.status, evidence: discrepancies.evidence }).from(discrepancies).where(eq(discrepancies.invoiceId, invoice.invoiceId));
   expect(saved).toEqual([
     { type: 'duplicate_invoice', status: 'open', evidence: `Possible duplicate: invoice ${invoiceNumber} from this carrier was also received on 2026-09-05 as first-scan.pdf.` },
+  ]);
+});
+
+// The seed's extractions print no tax; this reads one on top of lines that match the contract.
+const readTax = (id: string, cents: number) =>
+  db()
+    .update(extractions)
+    .set({ result: sql`${extractions.result} || ${JSON.stringify({ tax_cents: cents })}::jsonb` })
+    .where(eq(extractions.invoiceId, id));
+const allFindingsOf = (id: string) =>
+  db()
+    .select({ type: discrepancies.type, status: discrepancies.status, invoiceLineId: discrepancies.invoiceLineId, expectedCents: discrepancies.expectedCents, billedCents: discrepancies.billedCents, evidence: discrepancies.evidence, shipmentId: discrepancies.shipmentId })
+    .from(discrepancies)
+    .where(eq(discrepancies.invoiceId, id));
+
+test('tax no rate card contracts waits for a reviewer: one open finding on the whole invoice, whose lines all match', async () => {
+  const invoice = take((candidate) => clean(candidate) && candidate.shippedOn >= INCREASE);
+  await readTax(invoice.invoiceId, 4_200);
+  expect(await run(invoice.invoiceId)).toEqual({ invoiceId: invoice.invoiceId, status: 'reconciled', discrepancies: 1 });
+  const { shipmentId } = await invoiceOf(invoice.invoiceId);
+  expect(await allFindingsOf(invoice.invoiceId)).toEqual([
+    { type: 'uncontracted_charge', status: 'open', invoiceLineId: null, expectedCents: 0n, billedCents: 4_200n, evidence: 'Tax of $42.00 is not on rate card version 2, so a reviewer must check it.', shipmentId },
+  ]);
+});
+
+test('tax above what the rate card version in force contracts is a rate mismatch on the whole invoice', async () => {
+  const invoice = take((candidate) => clean(candidate) && candidate.shippedOn >= INCREASE);
+  const { tenantId, carrierId } = await invoiceOf(invoice.invoiceId);
+  const [version] = await db()
+    .select({ id: rateCardVersions.id })
+    .from(rateCardVersions)
+    .where(and(eq(rateCardVersions.carrierId, carrierId!), sql`${rateCardVersions.effective} @> (${invoice.shippedOn}::timestamp AT TIME ZONE 'UTC')`));
+  await db().insert(rateCards).values({ tenantId, rateCardVersionId: version!.id, chargeCode: 'TAX', rateCents: 4_200n });
+  await readTax(invoice.invoiceId, 5_000);
+  expect(await run(invoice.invoiceId)).toMatchObject({ status: 'reconciled', discrepancies: 1 });
+  const { shipmentId } = await invoiceOf(invoice.invoiceId);
+  expect(await allFindingsOf(invoice.invoiceId)).toEqual([
+    { type: 'rate_mismatch', status: 'open', invoiceLineId: null, expectedCents: 4_200n, billedCents: 5_000n, evidence: 'Rate card version 2 sets TAX at $42.00; billed $50.00.', shipmentId },
   ]);
 });
 

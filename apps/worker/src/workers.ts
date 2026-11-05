@@ -73,6 +73,8 @@ export function startWorkers(
   { lockDuration = 60_000, stalledInterval = lockDuration / 2, backoff = {}, extractConcurrency = 8 }: WorkerOptions = {},
 ): { workers: Worker[]; close(): Promise<void> } {
   const backoffStrategy = jitteredBackoff(backoff.baseMs, backoff.capMs);
+  // A TMS page retried in place waits out a flaky link, not an outage (tms-sync.ts), so its waits stay short.
+  const pageBackoff = jitteredBackoff(backoff.baseMs ?? 2_000, backoff.capMs ?? 60_000);
   const common = {
     connection: deps.redis,
     prefix: deps.queues.prefix,
@@ -91,7 +93,7 @@ export function startWorkers(
       { ...common, concurrency: extractConcurrency },
     ),
     new Worker('reconcile', (job: Job) => consume('reconcile', job, () => failFast(() => reconcile(deps, job))), { ...common, concurrency: 8 }),
-    new Worker('tms-sync', (job: Job) => consume('tms-sync', job, () => failFast(() => syncShipments(deps, job, backoffStrategy))), common),
+    new Worker('tms-sync', (job: Job) => consume('tms-sync', job, () => failFast(() => syncShipments(deps, job, pageBackoff))), common),
   ];
 
   // Dead-letter moves still running; close() waits for them before the connections go away.

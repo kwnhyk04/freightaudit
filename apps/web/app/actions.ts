@@ -168,7 +168,7 @@ async function send(file: File, key: string): Promise<ActionState> {
     if (!(await isLive())) return { error: NO_ANSWER, code: 'UNAVAILABLE' };
     const checked = checkUpload(new Uint8Array(await file.arrayBuffer()), file.size);
     if (!checked.ok) return { error: refusal(`${file.name}: ${checked.detail}`) };
-    const { data, error, response } = await rest().POST('/v1/invoices', {
+    const { data, error, response } = await rest('file').POST('/v1/invoices', {
       params: { header: { 'Idempotency-Key': key } },
       body: { file },
       bodySerializer: () => {
@@ -192,7 +192,8 @@ async function send(file: File, key: string): Promise<ActionState> {
     return { done: `${file.name} uploaded.`, id: data.id };
   } catch (err) {
     if (err instanceof ApiError) return { error: refusal(err.message), code: err.code };
-    if (err instanceof TypeError) {
+    // fetch's own failures: a TypeError when the api cannot be reached, a TimeoutError when it stalls past the timeout.
+    if (err instanceof TypeError || (err as Error).name === 'TimeoutError') {
       markOffline();
       return { error: NO_ANSWER, code: 'UNAVAILABLE' };
     }

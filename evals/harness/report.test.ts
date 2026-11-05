@@ -128,7 +128,7 @@ const runOf = (cases: GoldenCase[], read: GoldenCase[], calls: object[] = []) =>
     key: 'k',
     promptHash: 'p',
   }) as Run;
-// A call on the text model that returned a reply after this long, or failed.
+// A call on the text model that returned a reply after this long, or timed out.
 const call = (outcome: 'valid' | 'error', latencyMs: number) => ({
   invoiceId: 'i1',
   role: 'text',
@@ -141,17 +141,25 @@ const call = (outcome: 'valid' | 'error', latencyMs: number) => ({
   outputTokens: 100,
   latencyMs,
   waitMs: 0,
-  errorClass: outcome === 'error' ? '5xx' : null,
-  httpStatus: outcome === 'error' ? 503 : null,
-  errorMessage: outcome === 'error' ? 'groq HTTP 503' : null,
+  errorClass: outcome === 'error' ? 'timeout' : null,
+  httpStatus: null,
+  errorMessage: outcome === 'error' ? 'request timed out' : null,
   costMicroUsd: 0,
   paidMicroUsd: 0,
 });
+// The same call answered with its provider's 503.
+const outageCall = { ...call('error', 0), errorClass: '5xx', httpStatus: 503, errorMessage: 'groq HTTP 503 UNAVAILABLE' };
 // report() on such a run in a temp folder that holds an older README table, these earlier reports and, when given, the
 // set's floors: its exit code and the files it left there.
 async function reportIn(
   run: Run,
-  { subset = 'full', thresholds, config = 'free', files = {} }: { subset?: Subset; thresholds?: object; config?: 'free' | 'claude-first'; files?: Record<string, object> } = {},
+  {
+    subset = 'full',
+    thresholds,
+    config = 'free',
+    files = {},
+    setFloors = false,
+  }: { subset?: Subset; thresholds?: object; config?: 'free' | 'claude-first'; files?: Record<string, object>; setFloors?: boolean } = {},
 ) {
   const dir = await mkdtemp(join(tmpdir(), 'freightaudit-report-'));
   const root = pathToFileURL(`${dir}/`);
@@ -165,11 +173,11 @@ async function reportIn(
     for (const [file, json] of Object.entries(files)) await writeFile(new URL(`evals/reports/${file}`, root), JSON.stringify(json));
     if (thresholds) await writeFile(new URL(`evals/${thresholdsFile(DEFAULT_GOLDEN)}`, root), JSON.stringify(thresholds));
     console.log = () => {};
-    const code = await report({ subset, runs: [run], durationMs: 1, setFloors: false, config, root });
+    const code = await report({ subset, runs: [run], durationMs: 1, setFloors, config, root });
     console.log = log;
     const written = await readdir(new URL('evals/reports/', root));
     const reports = Object.fromEntries(await Promise.all(written.filter((file) => !Object.hasOwn(files, file)).map(async (file) => [file, await read(`evals/reports/${file}`)] as const)));
-    return { code, readme: await read('README.md'), card: await read('evals/README.md'), landing: await read('apps/web/lib/eval-results.json'), reports };
+    return { code, readme: await read('README.md'), card: await read('evals/README.md'), landing: await read('apps/web/lib/eval-results.json'), floors: await read(`evals/${thresholdsFile(DEFAULT_GOLDEN)}`), reports };
   } finally {
     console.log = log;
     await rm(dir, { recursive: true, force: true });
@@ -203,9 +211,9 @@ test("a full Claude-first run is never held to floors nor sets them; its report 
   expect([name, freeName]).toEqual([expect.stringMatching(/^\d{4}-\d{2}-\d{2}-v2-full-claude-first$/), '2026-10-27-v2']);
   const md = reports[`${name}.md`]!;
   expect(md).toContain('Served: anthropic/claude-haiku-5-5 50.0% of calls, groq/t 50.0%.');
-  expect(md).toContain('| Model | Served as | Calls | Share of calls | Failed | Input tokens | Output tokens |');
-  expect(md).toContain('| anthropic/claude-haiku-5-5 | claude-haiku-5-5 | 1 | 50.0% | 0 | 1,000 | 100 |');
-  expect(md).toContain('| groq/t |  | 1 | 50.0% | 1 | 1,000 | 100 |');
+  expect(md).toContain('| Model | Served as | Calls | Share of calls | Failed | Provider 5xx | Input tokens | Output tokens |');
+  expect(md).toContain('| anthropic/claude-haiku-5-5 | claude-haiku-5-5 | 1 | 50.0% | 0 | 0 | 1,000 | 100 |');
+  expect(md).toContain('| groq/t |  | 1 | 50.0% | 1 | 0 | 1,000 | 100 |');
   expect(md).toContain('| Claude tokens per invoice attempt | 1,100 |');
   const json = JSON.parse(reports[`${name}.json`]!);
   expect(json).toMatchObject({
@@ -213,8 +221,8 @@ test("a full Claude-first run is never held to floors nor sets them; its report 
     floors: {},
     pins: 'anthropic/claude-haiku-5-5 first at every step, then primary gemini/p, text groq/t, fallback groq/f',
     modelUse: [
-      { model: 'anthropic/claude-haiku-5-5', servedAs: ['claude-haiku-5-5'], calls: 1, share: 0.5, failed: 0 },
-      { model: 'groq/t', servedAs: [], calls: 1, share: 0.5, failed: 1 },
+      { model: 'anthropic/claude-haiku-5-5', servedAs: ['claude-haiku-5-5'], calls: 1, share: 0.5, failed: 0, outages: 0 },
+      { model: 'groq/t', servedAs: [], calls: 1, share: 0.5, failed: 1, outages: 0 },
     ],
   });
   expect(JSON.parse(landing!)).toEqual(landingResults({ claudeFirst: { name: name!, json }, free: { name: '2026-10-27-v2', json: free } }));
@@ -229,12 +237,14 @@ test('a full run that left a case unread, as --cached does on a partial cache, w
   expect([readme, card, landing]).toEqual([OLDER_README, OLDER_CARD, undefined]);
 });
 
-// The report's two latency p95 rows, as its table prints them.
-const p95Rows = (reports: Record<string, string | undefined>) =>
-  Object.entries(reports)
-    .find(([file]) => file.endsWith('.md'))![1]!
+// The report written to this extension.
+const reportFile = (reports: Record<string, string | undefined>, extension: '.md' | '.json') => Object.entries(reports).find(([file]) => file.endsWith(extension))![1]!;
+// The report's table rows with these labels, as it prints them.
+const tableRows = (reports: Record<string, string | undefined>, ...labels: string[]) =>
+  reportFile(reports, '.md')
     .split('\n')
-    .filter((line) => line.startsWith('| Extraction latency p95') || line.startsWith('| End-to-end latency p95'));
+    .filter((line) => labels.some((label) => line.startsWith(`| ${label}`)));
+const p95Rows = (reports: Record<string, string | undefined>) => tableRows(reports, 'Extraction latency p95', 'End-to-end latency p95');
 // Floors the one case's 5,000 ms reply and its 1,000 ms upload to final status both break.
 const LATENCY_FLOORS = { extraction_latency_p95_ms: { max: 1_000, from: 'test' }, e2e_latency_p95_ms: { max: 500, from: 'test' } };
 
@@ -254,6 +264,33 @@ test('in the ci subset every other row still gates: a failed call over its floor
   const golden = await goldenCase('g2-001');
   const { code } = await reportIn(runOf([golden], [golden], [call('error', 0), call('valid', 900)]), { subset: 'ci', thresholds: { ci: { failed_calls: { max: 0, from: 'test' } } } });
   expect(code).toBe(1);
+});
+
+// As PR ops-hardening's smoke read it: a job retrying through a provider's 503s, each attempt one more call.
+test('a provider outage shows in its own row, by model and by call, and breaks no floor; as many failures of ours do', async () => {
+  const golden = await goldenCase('g2-001');
+  const fourteen = (failed: object) => [...Array.from({ length: 14 }, () => failed), call('valid', 900)];
+  const thresholds = { ci: { failed_calls: { max: 4, from: 'test' } } };
+  const { code, reports } = await reportIn(runOf([golden], [golden], fourteen(outageCall)), { subset: 'ci', thresholds });
+  expect(code).toBe(0);
+  expect(tableRows(reports, 'Failed or timed-out', 'Provider outage')).toEqual([expect.stringContaining('| ≤ 4 | kept | 0 |'), expect.stringContaining('| - | - | - | - | 14 |')]);
+  const md = reportFile(reports, '.md');
+  expect(md).toContain('| groq/t |  | 15 | 100.0% | 0 | 14 | 15,000 | 1,500 |');
+  expect(md).toContain('| g2-001 | groq | t | 5xx | 503 | groq HTTP 503 UNAVAILABLE |');
+  const json = JSON.parse(reportFile(reports, '.json'));
+  expect(json.metrics).toContainEqual(expect.objectContaining({ metric: 'provider_outage_calls', value: 14 }));
+  expect(json.modelUse).toEqual([expect.objectContaining({ failed: 0, outages: 14 })]);
+  const ours = await reportIn(runOf([golden], [golden], fourteen(call('error', 0))), { subset: 'ci', thresholds });
+  expect(ours.code).toBe(1);
+  expect(tableRows(ours.reports, 'Failed or timed-out', 'Provider outage')).toEqual([expect.stringContaining('| ≤ 4 | broken | 14 |'), expect.stringContaining('| - | - | - | - | 0 |')]);
+});
+
+test('setting floors gives failed calls one and provider outages none: an outage measures the provider, not this code', async () => {
+  const golden = await goldenCase('g2-001');
+  const { floors } = await reportIn(runOf([golden], [golden], [outageCall, call('valid', 900)]), { subset: 'ci', setFloors: true });
+  const { ci } = JSON.parse(floors!) as { ci: Record<string, object> };
+  expect(ci.failed_calls).toBeDefined();
+  expect(ci.provider_outage_calls).toBeUndefined();
 });
 
 test('the breakdown counts each kind and each trait: cases, header fields, carrier, invoices read and outcomes', () => {

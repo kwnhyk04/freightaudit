@@ -7,7 +7,7 @@ import { CLAUDE_EXTRACTION_CAP, CLAUDE_FIRST_MAX_TOKENS, CLAUDE_INPUT_CAP } from
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import type { GoldenCase } from '../golden/build.ts';
 import { writeLandingResults } from './landing.ts';
-import { failuresOf, type Measured, measure, meets, type Metric, METRICS, replied, scoreCase, type Score } from './metrics.ts';
+import { failuresOf, isOutage, type Measured, measure, meets, type Metric, METRICS, replied, scoreCase, type Score } from './metrics.ts';
 import type { Roles, Run, Subset } from './run.ts';
 
 // Floors per subset: a minimum for metrics where higher is better, a maximum for the others. Floors only tighten;
@@ -16,9 +16,11 @@ import type { Roles, Run, Subset } from './run.ts';
 type Floor = { min?: number; max?: number; from: string };
 type Thresholds = { _rules?: string } & Partial<Record<Subset, Record<string, Floor>>>;
 const RULES =
-  "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). The ci subset reports its extraction latency p95 and end-to-end latency p95 against their floors but does not gate on them: with n = 20 a p95 is the slowest one or two cases, which one slow provider call moves past any floor (docs/memory.md, 2026-10-28); the full run gates both. Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
+  "Regression floors per subset, set from that subset's own run. Accuracy and failed calls: the looser of the run's 95% bound and the design target (a minimum takes the lower of the two, a maximum the higher); without a target, the bound with a 0.02 margin, at most 0.98 for a minimum and at least 0.02 for a maximum. Tokens, cost, latency and rate-limit waits: the upper bound times 1.5, capped at the design target unless the run already exceeds it. Cost as billed: 0. Each is rounded away from the run to its unit's step (one call for failed calls). Failed calls leave out a provider's own 5xx answers, which the report counts apart as provider outage calls and which never take a floor. The ci subset reports its extraction latency p95 and end-to-end latency p95 against their floors but does not gate on them: with n = 20 a p95 is the slowest one or two cases, which one slow provider call moves past any floor (docs/memory.md, 2026-10-28); the full run gates both. Floors only tighten; loosening one needs a written reason in docs/memory.md naming the run that justified it.";
 // Rows the ci subset reports against their floors without gating on them (RULES); the full run gates them.
 const NOT_GATED_IN_CI = new Set(['extraction_latency_p95_ms', 'e2e_latency_p95_ms']);
+// Rows that never take a floor: an outage measures the provider's day, not this code (RULES).
+const NO_FLOOR = new Set(['provider_outage_calls']);
 // The repository root, under which a report reads floors and the k6 results and writes its files; a test points it elsewhere.
 const ROOT = new URL('../../', import.meta.url);
 
@@ -97,16 +99,17 @@ export async function loadTestRows(root = ROOT) {
   return rows;
 }
 
-// Which models actually read the run: each one's calls, the failed ones among them, its tokens, the versions it reported
-// serving, and its share of all the run's calls, most calls first.
+// Which models actually read the run: each one's calls, the failed ones and its provider's 5xx among them, its tokens, the
+// versions it reported serving, and its share of all the run's calls, most calls first.
 const usage = (runs: Run[]) => {
-  const rows = new Map<string, { calls: number; failed: number; input: number; output: number; served: Set<string> }>();
+  const rows = new Map<string, { calls: number; failed: number; outages: number; input: number; output: number; served: Set<string> }>();
   for (const run of runs)
     for (const result of run.results.values())
       for (const call of result.calls) {
-        const row = rows.get(`${call.provider}/${call.model}`) ?? { calls: 0, failed: 0, input: 0, output: 0, served: new Set<string>() };
+        const row = rows.get(`${call.provider}/${call.model}`) ?? { calls: 0, failed: 0, outages: 0, input: 0, output: 0, served: new Set<string>() };
         row.calls += 1;
-        if (!replied(call)) row.failed += 1;
+        if (isOutage(call)) row.outages += 1;
+        else if (!replied(call)) row.failed += 1;
         row.input += call.inputTokens;
         row.output += call.outputTokens;
         if (call.servedModel) row.served.add(call.servedModel);
@@ -115,7 +118,7 @@ const usage = (runs: Run[]) => {
   const total = [...rows.values()].reduce((sum, row) => sum + row.calls, 0);
   return [...rows]
     .sort(([, a], [, b]) => b.calls - a.calls)
-    .map(([model, row]) => ({ model, servedAs: [...row.served], calls: row.calls, share: total ? Number((row.calls / total).toFixed(4)) : 0, failed: row.failed, inputTokens: row.input, outputTokens: row.output }));
+    .map(([model, row]) => ({ model, servedAs: [...row.served], calls: row.calls, share: total ? Number((row.calls / total).toFixed(4)) : 0, failed: row.failed, outages: row.outages, inputTokens: row.input, outputTokens: row.output }));
 };
 export type ModelUse = ReturnType<typeof usage>[number];
 const percent = (share: number) => `${(share * 100).toFixed(1)}%`;
@@ -332,11 +335,11 @@ export async function report({
   const rewrites = writesReadme({ subset, version, config, stopped, unread: scored.reduce((sum, { run, scores }) => sum + run.cases.length - scores.length, 0) });
   const used = usage(runs);
   const usageTable = [
-    '| Model | Served as | Calls | Share of calls | Failed | Input tokens | Output tokens |',
-    '| --- | --- | --- | --- | --- | --- | --- |',
+    '| Model | Served as | Calls | Share of calls | Failed | Provider 5xx | Input tokens | Output tokens |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
     ...used.map(
       (row) =>
-        `| ${row.model} | ${row.servedAs.join(', ')} | ${row.calls} | ${percent(row.share)} | ${row.failed} | ${row.inputTokens.toLocaleString('en-US')} | ${row.outputTokens.toLocaleString('en-US')} |`,
+        `| ${row.model} | ${row.servedAs.join(', ')} | ${row.calls} | ${percent(row.share)} | ${row.failed} | ${row.outages} | ${row.inputTokens.toLocaleString('en-US')} | ${row.outputTokens.toLocaleString('en-US')} |`,
     ),
   ];
   // A Claude-first run is never held to the floors, which come from the free models alone, and never sets them.
@@ -380,7 +383,7 @@ export async function report({
       const tighter = floor?.from !== 'design target' && proposed !== undefined && floorBound && (metric.higherIsBetter ? proposed > floorBound.value : proposed < floorBound.value);
       if (gated && tighter && m.value !== undefined && m.ci && Math.abs(m.value - floorBound.value) > m.ci[1] - m.ci[0] && floorOk)
         suggestions.push(`${metric.label}: measured ${fmt(metric.unit, m.value)} clears the floor ${fmt(metric.unit, floorBound.value)} by more than the interval's width; consider tightening it to ${fmt(metric.unit, proposed)}.`);
-      if (setFloors && !floor && m.value !== undefined && m.ci) {
+      if (setFloors && !floor && !NO_FLOOR.has(m.metric) && m.value !== undefined && m.ci) {
         floors[m.metric] = { [metric.higherIsBetter ? 'min' : 'max']: floorFrom(metric, m.ci), from: name };
       }
       return { m, metric, floorBound, floorOk, gated };
@@ -414,7 +417,7 @@ export async function report({
     lines.push(
       `| Throughput (free-tier ceiling, not a load test) | ≥ 2,000 / h | ${yes((ceiling ?? 0) >= 2_000)} | - | - | ${fmt('per_hour', ceiling)} / h | computed, no interval | ${scores.length} |`,
       '',
-      "Extraction latency counts the calls that returned a reply (first pass, repair, fallback), each from its request to its answer, without the time spent waiting on a provider's rate limit: on free tiers those waits measure the provider plan, not the pipeline, so the rate-limit rows count them, and failed or timed-out calls, apart. End-to-end latency is measured from upload to final status under this run's own throttling and concurrency, not under normal load; throughput is the ceiling the pinned roles' free-tier per-minute limits allow at the measured calls and tokens per invoice, not a load test. The k6 load test measures both (README, Load test).",
+      "Extraction latency counts the calls that returned a reply (first pass, repair, fallback), each from its request to its answer, without the time spent waiting on a provider's rate limit: on free tiers those waits measure the provider plan, not the pipeline, so the rate-limit rows count them, and failed or timed-out calls, apart. A provider's own 5xx answers count in the provider outage row, not as failed calls, and take no floor: they measure the provider's day, and a job retrying through an outage adds one such call at each attempt. End-to-end latency is measured from upload to final status under this run's own throttling and concurrency, not under normal load; throughput is the ceiling the pinned roles' free-tier per-minute limits allow at the measured calls and tokens per invoice, not a load test. The k6 load test measures both (README, Load test).",
     );
     if (suggestions.length > 0) lines.push('', '## Floors to tighten', '', ...suggestions.map((text) => `- ${text}`));
     const misses = scores.filter((s) => s.header.correct < s.header.total || s.lines.fp + s.lines.fn > 0 || s.overcharges.fp + s.overcharges.fn > 0 || s.outcomes.ok < s.outcomes.total || s.invoices.read !== s.invoices.truth);
@@ -426,7 +429,7 @@ export async function report({
       run.results,
     );
     const cell = (text: string | null) => (text ?? 'unknown').replaceAll('|', '\\|');
-    lines.push('', '## Model use', '', ...usageTable, '', '## Failed calls', '');
+    lines.push('', '## Model use', '', ...usageTable, '', '## Failed calls and provider 5xx', '');
     if (failures.length === 0) lines.push('None.');
     else
       lines.push(

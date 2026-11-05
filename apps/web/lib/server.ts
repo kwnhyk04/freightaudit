@@ -127,8 +127,13 @@ export const documentStored = (id: string) =>
     () => true,
   );
 
-// The typed REST client for uploads and documents.
-export const rest = () => createClient<paths>({ baseUrl: env().API_URL, headers: { 'x-api-key': env().API_KEY } });
+// How long the api gets before a REST call counts as no answer, its body included: a status as long as gql, a whole file
+// (4 MB at most, over the public path, which has stalled for 30 s) longer.
+const REST_TIMEOUT_MS = { status: 10_000, file: 30_000 };
+
+// The typed REST client for uploads and documents, made for one call, so its timeout starts with the call.
+export const rest = (kind: keyof typeof REST_TIMEOUT_MS) =>
+  createClient<paths>({ baseUrl: env().API_URL, headers: { 'x-api-key': env().API_KEY }, signal: AbortSignal.timeout(REST_TIMEOUT_MS[kind]) });
 
 let counted: { at: number; summary: Promise<InvoiceSummaryQuery['invoiceSummary']> } | undefined;
 // The list's cards and the sidebar's counts: one call per request, kept 10 s, since every page asks for them and the api

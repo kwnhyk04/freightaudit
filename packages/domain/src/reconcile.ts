@@ -74,6 +74,20 @@ export function reconcileInvoice<V extends RateCardVersion>(
   return { version, discrepancies };
 }
 
+// Tax prints apart from the lines, so no line's rule sees it, and a total that adds up says nothing about whether it is
+// owed. A version may contract a flat amount under the code TAX, and more than that is a rate mismatch; a version without
+// one cannot check it, so all of it is uncontracted and waits for a reviewer. Like a possible duplicate it belongs to the
+// invoice, not a line. A credit's negative tax favours the shipper and is not flagged.
+// ponytail: a flat amount only; a percentage needs a column on rate_card_versions once a contract has one.
+export function taxFinding({ version, accessorials }: Pick<RateCardVersion, 'version' | 'accessorials'>, taxCents: bigint) {
+  const contracted = accessorials.TAX;
+  if (taxCents <= (contracted ?? 0n)) return undefined;
+  if (contracted === undefined) {
+    return { type: 'uncontracted_charge' as const, expectedCents: 0n, billedCents: taxCents, evidence: `Tax of ${formatUsd(taxCents)} is not on rate card version ${version}, so a reviewer must check it.` };
+  }
+  return { type: 'rate_mismatch' as const, expectedCents: contracted, billedCents: taxCents, evidence: `Rate card version ${version} sets TAX at ${formatUsd(contracted)}; billed ${formatUsd(taxCents)}.` };
+}
+
 // A possible duplicate: another invoice the carrier billed under the same number (the worker reads them, earliest
 // first) that was not rejected; the finding names the earliest. Their files differ, since one file is one invoice. It
 // belongs to the invoice, not a line, and carries no money, so no total counts it.
