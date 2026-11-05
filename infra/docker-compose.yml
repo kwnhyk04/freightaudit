@@ -79,7 +79,7 @@ services:
 
   grafana:
     profiles: [observability]
-    image: grafana/grafana:13.2.4
+    image: grafana/grafana:13.3.0
     volumes:
       - "./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro"
       - "./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro"
