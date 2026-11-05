@@ -44,6 +44,8 @@ export type CallRow = {
 };
 // A call that got a reply, valid or not; the others failed (429s, timeouts, other errors).
 export const replied = (call: CallRow) => call.outcome === 'valid' || call.outcome === 'invalid';
+// A provider's own 5xx: its outage, not a failure of ours, so it counts apart from the failed calls and takes no floor.
+export const isOutage = (call: CallRow) => call.errorClass === '5xx';
 // Every call that got no reply, in case order; calls cached before migration 0012 have no class, status or message.
 export const failuresOf = (ids: string[], results: Map<string, CaseResult>) =>
   ids.flatMap((id) =>
@@ -74,7 +76,10 @@ export type Score = {
   // Calls that waited on a rate limit and their total wait; undefined when any call predates the wait record.
   waits: number | undefined;
   waitMs: number | undefined;
+  // Calls with no reply: a provider's 5xx in outageCalls, any other in failedCalls. A report written before 2026-11-06 has
+  // no outageCalls, and its failedCalls hold both.
   failedCalls: number;
+  outageCalls: number | undefined;
   e2eMs: number;
   inputTokens: number;
   outputTokens: number;
@@ -130,10 +135,11 @@ function arithmeticHolds(read: Read | null) {
 
 // One case's contribution to every metric. Truth and prediction pair up by page order; a missing invoice scores
 // nothing, and an extra one counts its lines and findings as false. Extraction latency sums the calls that returned a
-// reply (first pass, repairs, fallback), each from request to answer; failed calls and rate-limit waits count apart,
-// since on free tiers they measure the provider plan, not the pipeline.
+// reply (first pass, repairs, fallback), each from request to answer; failed calls, provider outages and rate-limit waits
+// count apart, since on free tiers they measure the provider plan, not the pipeline.
 export function scoreCase(truth: GoldenCase, result: CaseResult): Score {
   const answered = result.calls.filter(replied);
+  const outages = result.calls.filter(isOutage).length;
   const waitsKnown = result.calls.every((call) => typeof call.waitMs === 'number');
   const score: Score = {
     id: truth.id,
@@ -150,7 +156,8 @@ export function scoreCase(truth: GoldenCase, result: CaseResult): Score {
     latencyMs: answered.length > 0 ? answered.reduce((sum, call) => sum + call.latencyMs, 0) : undefined,
     waits: waitsKnown ? result.calls.filter((call) => (call.waitMs ?? 0) > 0).length : undefined,
     waitMs: waitsKnown ? result.calls.reduce((sum, call) => sum + (call.waitMs ?? 0), 0) : undefined,
-    failedCalls: result.calls.length - answered.length,
+    failedCalls: result.calls.length - answered.length - outages,
+    outageCalls: outages,
     e2eMs: result.e2eMs,
     inputTokens: result.calls.reduce((sum, call) => sum + call.inputTokens, 0),
     outputTokens: result.calls.reduce((sum, call) => sum + call.outputTokens, 0),
@@ -223,8 +230,8 @@ const perCase = (pick: (score: Score) => number) => (scores: Score[]) => ratio(t
 // Cases of 3 pages or fewer where some call returned a reply.
 const pages3 = (score: Score) => score.pages <= 3 && score.latencyMs !== undefined;
 const latencies = (scores: Score[]) => scores.map((x) => x.latencyMs ?? 0);
-// A total over every case, or undefined when a case has no wait record.
-const waitTotal = (pick: (score: Score) => number | undefined) => (scores: Score[]) =>
+// A total over every case, or undefined when a case has no record of it.
+const knownTotal = (pick: (score: Score) => number | undefined) => (scores: Score[]) =>
   scores.some((x) => pick(x) === undefined) ? undefined : total(scores, (x) => pick(x) ?? 0);
 
 export const METRICS: Metric[] = [
@@ -240,9 +247,10 @@ export const METRICS: Metric[] = [
   { metric: 'escalation_rate', label: 'Escalation rate', unit: 'ratio', higherIsBetter: false, target: { op: '<=', value: 0.1 }, compute: perCase((x) => x.escalated) },
   { metric: 'extraction_latency_p50_ms', label: 'Extraction latency p50 (3 pages or fewer)', unit: 'ms', where: pages3, higherIsBetter: false, target: { op: '<=', value: 5_000 }, compute: (s) => quantile(latencies(s), 0.5) },
   { metric: 'extraction_latency_p95_ms', label: 'Extraction latency p95 (3 pages or fewer)', unit: 'ms', where: pages3, higherIsBetter: false, target: { op: '<=', value: 12_000 }, compute: (s) => quantile(latencies(s), 0.95) },
-  { metric: 'rate_limit_waits', label: 'Rate-limit waits (calls that waited for their per-minute limit)', unit: 'waits', higherIsBetter: false, compute: waitTotal((x) => x.waits) },
-  { metric: 'rate_limit_wait_ms', label: 'Rate-limit wait time (total, outside extraction latency)', unit: 'ms', higherIsBetter: false, compute: waitTotal((x) => x.waitMs) },
-  { metric: 'failed_calls', label: 'Failed or timed-out calls (429s, timeouts, other errors)', unit: 'calls', higherIsBetter: false, compute: (s) => total(s, (x) => x.failedCalls) },
+  { metric: 'rate_limit_waits', label: 'Rate-limit waits (calls that waited for their per-minute limit)', unit: 'waits', higherIsBetter: false, compute: knownTotal((x) => x.waits) },
+  { metric: 'rate_limit_wait_ms', label: 'Rate-limit wait time (total, outside extraction latency)', unit: 'ms', higherIsBetter: false, compute: knownTotal((x) => x.waitMs) },
+  { metric: 'failed_calls', label: 'Failed or timed-out calls, without provider 5xx (429s, timeouts, bad replies, other errors)', unit: 'calls', higherIsBetter: false, compute: (s) => total(s, (x) => x.failedCalls) },
+  { metric: 'provider_outage_calls', label: 'Provider outage calls (HTTP 5xx, no floor)', unit: 'calls', higherIsBetter: false, compute: knownTotal((x) => x.outageCalls) },
   { metric: 'e2e_latency_p95_ms', label: 'End-to-end latency p95 (under eval throttling, not normal load)', unit: 'ms', higherIsBetter: false, target: { op: '<=', value: 30_000 }, compute: (s) => quantile(s.map((x) => x.e2eMs), 0.95) },
   { metric: 'input_tokens_per_page_digital', label: 'Input tokens per page (text path)', unit: 'tokens', path: 'digital', higherIsBetter: false, target: { op: '<=', value: 4_000 }, compute: (s) => ratio(total(s, (x) => x.inputTokens), total(s, (x) => x.pages)) },
   { metric: 'output_tokens_per_page_digital', label: 'Output tokens per page (text path)', unit: 'tokens', path: 'digital', higherIsBetter: false, target: { op: '<=', value: 1_200 }, compute: (s) => ratio(total(s, (x) => x.outputTokens), total(s, (x) => x.pages)) },
