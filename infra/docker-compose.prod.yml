@@ -61,8 +61,9 @@ services:
   redis:
     <<: *kept
     ports: !reset []
-    # At the limit Redis rejects writes instead of being OOM-killed; BullMQ requires noeviction.
-    command: ["redis-server", "--maxmemory", "200mb", "--maxmemory-policy", "noeviction"]
+    # Append-only on the base file's volume, so jobs survive pnpm demo:down. At the limit Redis rejects writes instead of
+    # being OOM-killed; BullMQ requires noeviction.
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "200mb", "--maxmemory-policy", "noeviction"]
     networks: [data]
     deploy: { resources: { limits: { memory: 256m } } }
 
@@ -118,7 +119,7 @@ services:
       LLM_CLAUDE_MODEL: ${LLM_CLAUDE_MODEL:-}
       LLM_CLAUDE_FIRST_UNTIL: ${LLM_CLAUDE_FIRST_UNTIL:-}
       LLM_CLAUDE_SPEND_CAP_USD: ${LLM_CLAUDE_SPEND_CAP_USD:-}
-      DAILY_CLAUDE_TOKEN_BUDGET: ${DAILY_CLAUDE_TOKEN_BUDGET:-1400000}
+      DAILY_CLAUDE_TOKEN_BUDGET: ${DAILY_CLAUDE_TOKEN_BUDGET:-70000}
       # The Groq account is shared with other projects and CI; about 3 resets and 25 uploads a day.
       DAILY_AI_TOKEN_BUDGET: ${DAILY_AI_TOKEN_BUDGET:-100000}
       # The demo bills seeded shipments, so there is no TMS to sync.

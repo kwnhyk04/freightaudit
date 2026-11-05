@@ -11,23 +11,25 @@ export const isQueueName = (name: string): name is QueueName => (QUEUE_NAMES as 
 export type InvoiceJob = { tenantId: string; invoiceId: string; otel?: TraceCarrier };
 export type TmsSyncJob = { tenantId: string };
 
-// Five attempts, spaced by the worker's 'jittered' backoffStrategy. Completed jobs stay a week, so adding a job whose
-// id (the invoice content hash) was already used stays a no-op for at least that long. Failed jobs stay two weeks,
-// long after their move to the dead-letter queue and table.
+// Eight attempts, spaced by the worker's 'jittered' backoffStrategy, so a job outlasts a provider outage of 5 minutes:
+// its seven waits add up to 5 min 7.5 s at the least and 10 min 15 s at the most. Completed jobs stay a week, so adding a
+// job whose id (the invoice content hash) was already used stays a no-op for at least that long. Failed jobs stay two
+// weeks, long after their move to the dead-letter queue and table.
 export const jobOptions = {
-  attempts: 5,
+  attempts: 8,
   backoff: { type: 'jittered' },
   removeOnComplete: { age: 7 * 86_400 },
   removeOnFail: { age: 14 * 86_400 },
 } satisfies JobsOptions;
 
-// Exponential from baseMs, capped at capMs, with full jitter; an error's retryAfterMs (Retry-After) is the floor.
+// Exponential from baseMs, capped at capMs. Jitter spreads only the upper half of each delay: full jitter could spend
+// every attempt inside an outage. An error's retryAfterMs (Retry-After) is the floor, and may pass capMs.
 export const jitteredBackoff =
-  (baseMs = 2_000, capMs = 60_000, random = Math.random) =>
+  (baseMs = 5_000, capMs = 300_000, random = Math.random) =>
   (attemptsMade: number, _type?: string, err?: Error) => {
     const ceiling = Math.min(capMs, baseMs * 2 ** (attemptsMade - 1));
     const floor = (err as { retryAfterMs?: number } | undefined)?.retryAfterMs ?? 0;
-    return Math.max(Math.round(random() * ceiling), floor);
+    return Math.max(Math.round((ceiling * (1 + random())) / 2), floor);
   };
 
 // Jobs not yet running: waiting, plus delayed by a retry backoff or by the AI budget guard.

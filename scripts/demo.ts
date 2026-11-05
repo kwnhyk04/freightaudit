@@ -15,7 +15,7 @@ const envPath = join(cwd, '.env.prod');
 const COMPOSE = ['compose', '--env-file', '.env.prod', '-f', 'infra/docker-compose.yml', '-f', 'infra/docker-compose.prod.yml'];
 // The node's login lives here; resets never touch it.
 const STATE_VOLUME = 'freightaudit-prod-tailscale-state';
-const DATA_VOLUMES = ['freightaudit-prod_postgres-data', 'freightaudit-prod_minio-data'];
+const DATA_VOLUMES = ['freightaudit-prod_postgres-data', 'freightaudit-prod_minio-data', 'freightaudit-prod_redis-data'];
 
 function docker(args: string[], capture = false) {
   const result = spawnSync('docker', args, { cwd, encoding: 'utf8', stdio: ['ignore', capture ? 'pipe' : 'inherit', 'inherit'] });
@@ -108,7 +108,7 @@ async function up(claudeCarried?: bigint) {
 }
 
 function down() {
-  // Containers and networks go; volumes stay, so the data and the node's login survive.
+  // Containers and networks go; volumes stay, so the data, the queued and delayed jobs and the node's login survive.
   compose('down');
 }
 

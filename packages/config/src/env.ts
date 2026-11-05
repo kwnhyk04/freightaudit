@@ -79,8 +79,9 @@ export const settings = {
   LLM_CLAUDE_FIRST_UNTIL: z
     .union([z.literal(''), z.iso.date().refine((day) => Number.isFinite(Date.parse(`${day}T00:00:00Z`)) && new Date(`${day}T00:00:00Z`).toISOString().startsWith(day), 'not a calendar date')])
     .default(''),
-  // Claude's own UTC day, apart from DAILY_AI_TOKEN_BUDGET: $15 to 2026-11-10 over 21 days at $0.50 per million.
-  DAILY_CLAUDE_TOKEN_BUDGET: integer(1_400_000),
+  // Claude's own UTC day, apart from DAILY_AI_TOKEN_BUDGET: $15 to 2026-11-10 over 21 days is about $0.70 a day, this many
+  // tokens priced as all output at Sonnet 5.5's $10 per million. An invoice bills about 3,300 tokens, or $0.01.
+  DAILY_CLAUDE_TOKEN_BUDGET: integer(70_000),
   // The most Claude may ever bill, in dollars ("15") or dollars and cents ("15.5"), kept as dollars and cents ("15.50");
   // reaching it switches Claude off for good.
   LLM_CLAUDE_SPEND_CAP_USD: z

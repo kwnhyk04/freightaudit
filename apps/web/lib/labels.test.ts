@@ -10,6 +10,7 @@ import {
   decideWords,
   decisionLabel,
   decisionQuestion,
+  documentProblem,
   duplicateNote,
   duration,
   FILTERS,
@@ -49,6 +50,13 @@ const move = (seconds: number, from: string, to: string, detail: string | null =
   action: 'STATUS_CHANGED' as const,
   detail,
   changes: [{ field: 'status', from, to }],
+});
+
+test('the document viewer says why a document did not load: nothing stored, no answer from the api, or anything else', () => {
+  expect(documentProblem(404)).toBe('No document is stored for this invoice.');
+  expect(documentProblem(502)).toBe('The FreightAudit API did not answer. Reload the page to try again.');
+  expect(documentProblem(undefined)).toBe('The document could not be shown.');
+  expect(documentProblem(500)).toBe('The document could not be shown.');
 });
 
 test('a description printed in capitals reads in sentence case; any other stays as read', () => {

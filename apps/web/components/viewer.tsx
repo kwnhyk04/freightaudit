@@ -1,6 +1,7 @@
 'use client';
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PageViewport } from 'pdfjs-dist';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { documentProblem } from '../lib/labels.ts';
 import type { Mark, MarkValues, TextItem } from '../lib/marks.ts';
 
 type Item = TextItem & { fontName: string };
@@ -45,8 +46,7 @@ export function DocumentViewer({ src, filename, values }: { src: string; filenam
         }
         if (!cancelled) setLoaded({ doc, pages, find: marks.findMarks, transform: pdfjs.Util.transform });
       } catch (err) {
-        const missing = (err as { status?: number }).status === 404;
-        if (!cancelled) setState({ error: missing ? 'No document is stored for this invoice.' : 'The document could not be shown.' });
+        if (!cancelled) setState({ error: documentProblem((err as { status?: number }).status) });
       }
     })();
     return () => {
@@ -97,7 +97,7 @@ export function DocumentViewer({ src, filename, values }: { src: string; filenam
       } catch {
         if (cancelled) return;
         pages.replaceChildren();
-        setState({ error: 'The document could not be shown.' });
+        setState({ error: documentProblem() });
       }
     })();
     return () => {

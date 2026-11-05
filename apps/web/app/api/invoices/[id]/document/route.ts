@@ -6,7 +6,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!(await currentSession())) return Response.json({ detail: 'sign in first' }, { status: 401 });
   const { id } = await params;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return Response.json({ detail: 'no such invoice' }, { status: 404 });
-  const answered = await rest()
+  const answered = await rest('file')
     .GET('/v1/invoices/{id}/document', { params: { path: { id } }, parseAs: 'stream' })
     .catch(() => undefined);
   if (!answered) {

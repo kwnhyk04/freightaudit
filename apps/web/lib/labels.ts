@@ -93,6 +93,10 @@ export const duplicateNote = (brief: Brief) => duplicateParts(brief).join('');
 export const isExampleData = ({ stored, trail }: { stored: boolean; trail: { action: AuditAction }[] }) =>
   !stored && trail.length === 1 && trail[0]!.action === 'RECEIVED';
 
+// Why the document viewer shows no document: the document route's status, or none when the failure came after it.
+export const documentProblem = (status?: number) =>
+  status === 404 ? 'No document is stored for this invoice.' : status === 502 ? 'The FreightAudit API did not answer. Reload the page to try again.' : 'The document could not be shown.';
+
 export const FINDING: Record<DiscrepancyType, string> = {
   RATE_MISMATCH: 'Rate mismatch',
   UNCONTRACTED_CHARGE: 'Uncontracted charge',

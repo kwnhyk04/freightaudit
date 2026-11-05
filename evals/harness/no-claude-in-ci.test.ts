@@ -1,7 +1,8 @@
 import { settings } from '@freightaudit/config/env';
+import { paidCost } from '@freightaudit/llm';
 import { readdirSync, readFileSync } from 'node:fs';
 import { reportName } from './report.ts';
-import { claudeFirst, configOf, configuredRoles, evalRoles } from './run.ts';
+import { CLAUDE_FIRST_MODEL, claudeFirst, configOf, configuredRoles, evalRoles } from './run.ts';
 
 // CI never calls Claude: no workflow or action names its key, provider or setting, every eval there runs the free models
 // alone, turbo hands no task an Anthropic or LLM_ variable, and the defaults keep every role on the free models. GitHub
@@ -56,7 +57,9 @@ test('by default no role is on Claude and Claude is off; LLM_CLAUDE_MODEL needs 
 
 test('Claude first needs a real end date and a spend cap in dollars and cents, and keeps its own daily budget', () => {
   expect(settings.LLM_CLAUDE_FIRST_UNTIL.parse(undefined)).toBe('');
-  expect(settings.DAILY_CLAUDE_TOKEN_BUDGET.parse(undefined)).toBe(1_400_000);
+  // A full day, priced as all output at the model Claude first runs, keeps within $15 over the 21 days to 2026-11-10.
+  const day = settings.DAILY_CLAUDE_TOKEN_BUDGET.parse(undefined);
+  expect(paidCost('anthropic', CLAUDE_FIRST_MODEL, { inputTokens: 0, outputTokens: day })).toBeLessThanOrEqual(15_000_000n / 21n);
   expect(() => settings.LLM_CLAUDE_FIRST_UNTIL.parse('next week')).toThrow();
   expect(() => settings.LLM_CLAUDE_FIRST_UNTIL.parse('2026-02-30')).toThrow();
   expect(settings.LLM_CLAUDE_SPEND_CAP_USD.parse(undefined)).toBe('');

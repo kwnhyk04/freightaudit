@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { type BilledLine, currencyReview, duplicateInvoice, rateShipment, reconcileInvoice, type RateCardVersion, versionInForce } from './index.ts';
+import { type BilledLine, currencyReview, duplicateInvoice, rateShipment, reconcileInvoice, type RateCardVersion, taxFinding, versionInForce } from './index.ts';
 
 // A fixed seed: every run checks the same cases, and a failure prints the counterexample it shrank to.
 fc.configureGlobal({ seed: 42, numRuns: 1_000 });
@@ -166,6 +166,38 @@ test('explains each finding for the reviewer', () => {
       { type: 'duplicate_charge', lineNumber: 5, expectedCents: 0n, billedCents: 9_500n, evidence: 'LIFTGATE is billed twice.' },
     ],
   });
+});
+
+test('tax a version does not contract cannot be checked, so a reviewer gets it as an uncontracted charge, expected at nothing', () => {
+  expect(taxFinding({ version: 2, accessorials: { LIFTGATE: 9_500n } }, 4_200n)).toEqual({
+    type: 'uncontracted_charge',
+    expectedCents: 0n,
+    billedCents: 4_200n,
+    evidence: 'Tax of $42.00 is not on rate card version 2, so a reviewer must check it.',
+  });
+});
+
+test('tax a version contracts is checked against it: up to that amount passes, a cent more is a rate mismatch', () => {
+  const version = { version: 3, accessorials: { TAX: 4_200n } };
+  expect(taxFinding(version, 4_200n)).toBeUndefined();
+  expect(taxFinding(version, 4_199n)).toBeUndefined();
+  expect(taxFinding(version, 4_201n)).toEqual({
+    type: 'rate_mismatch',
+    expectedCents: 4_200n,
+    billedCents: 4_201n,
+    evidence: 'Rate card version 3 sets TAX at $42.00; billed $42.01.',
+  });
+});
+
+test('no tax, or the negative tax of a credit, is never flagged', () => {
+  const versions: Pick<RateCardVersion, 'version' | 'accessorials'>[] = [
+    { version: 1, accessorials: {} },
+    { version: 1, accessorials: { TAX: 4_200n } },
+  ];
+  for (const version of versions) {
+    expect(taxFinding(version, 0n)).toBeUndefined();
+    expect(taxFinding(version, -500n)).toBeUndefined();
+  }
 });
 
 test('refuses a ship date no version covers, overlapping versions and malformed days', () => {

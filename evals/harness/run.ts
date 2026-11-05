@@ -21,7 +21,7 @@ import {
 } from '@freightaudit/llm';
 import { createMemoryStorage, createQueues, type Queues, type Storage } from '@freightaudit/pipeline';
 import { startWorkers } from '@freightaudit/worker/workers';
-import { asc, eq, inArray, or } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, or } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Redis } from 'ioredis';
 import { createHash } from 'node:crypto';
@@ -233,11 +233,12 @@ export async function runCase(env: Environment, root: URL, golden: GoldenCase): 
       .from(extractions)
       .where(eq(extractions.invoiceId, row.id));
     const result = extraction?.result as (Read & { output?: unknown }) | undefined;
+    // Every finding with money: on a line, or on the whole invoice, as tax is. A possible duplicate carries none.
     const findings = await env.db
       .select({ line: invoiceLines.lineNumber, type: discrepancies.type, expected: discrepancies.expectedCents, billed: discrepancies.billedCents })
       .from(discrepancies)
-      .innerJoin(invoiceLines, eq(invoiceLines.id, discrepancies.invoiceLineId))
-      .where(eq(discrepancies.invoiceId, row.id));
+      .leftJoin(invoiceLines, eq(invoiceLines.id, discrepancies.invoiceLineId))
+      .where(and(eq(discrepancies.invoiceId, row.id), ne(discrepancies.type, 'duplicate_invoice')));
     out.push({
       status: row.status,
       step: extraction?.step ?? null,

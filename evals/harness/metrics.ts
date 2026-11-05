@@ -17,7 +17,8 @@ export type Read = {
   tax_cents?: unknown;
   line_items?: Line[];
 };
-export type Finding = { line_number: number; type: string; expected_cents: number; billed_cents: number };
+// line_number is null for a finding on the whole invoice, as tax is.
+export type Finding = { line_number: number | null; type: string; expected_cents: number; billed_cents: number };
 // One invoice as the pipeline left it, in page order.
 export type PredictedInvoice = { status: string; step: string | null; reviewReason: string | null; read: Read | null; findings: Finding[] };
 // waitMs is the time the call waited on its role's rate limit; null or absent for calls recorded before migration 0011.

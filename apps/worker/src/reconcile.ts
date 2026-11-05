@@ -1,5 +1,5 @@
 import { discrepancies, extractions, invoiceLines, invoices, possibleDuplicate, rateCardBands, rateCards, rateCardVersions, shipments } from '@freightaudit/db';
-import { currencyReview, reconcileInvoice, versionInForce } from '@freightaudit/domain';
+import { currencyReview, reconcileInvoice, taxFinding, versionInForce } from '@freightaudit/domain';
 import { type ExtractedInvoice, PermanentError, TransientError } from '@freightaudit/llm';
 import type { InvoiceJob } from '@freightaudit/pipeline';
 import { invoicesNeedsReview } from '@freightaudit/telemetry';
@@ -102,7 +102,7 @@ async function check(tx: Tx, invoiceId: string) {
     .where(and(eq(invoices.shipmentId, shipment.id), ne(invoices.id, invoiceId)));
 
   // Numbered by position, as the contracts define a line number, whatever numbers the document printed.
-  const items = (extraction.result as ExtractedInvoice).line_items;
+  const { line_items: items, tax_cents: tax } = extraction.result as ExtractedInvoice;
   const lines = items.map((item, i) => ({ lineNumber: i + 1, chargeCode: item.charge_code, amountCents: BigInt(item.amount_cents) }));
   const terms = {
     ...version,
@@ -130,7 +130,8 @@ async function check(tx: Tx, invoiceId: string) {
     billedCents,
     evidence,
   }));
-  if (duplicate) findings.push({ tenantId, invoiceId, invoiceLineId: null, shipmentId: shipment.id, ...duplicate });
+  const taxed = taxFinding(terms, BigInt(tax ?? 0));
+  for (const finding of [duplicate, taxed]) if (finding) findings.push({ tenantId, invoiceId, invoiceLineId: null, shipmentId: shipment.id, ...finding });
   if (findings.length > 0) await tx.insert(discrepancies).values(findings);
   // Findings leave the invoice reconciled; they wait as open discrepancies in the review queue.
   await tx.update(invoices).set({ status: 'reconciled', shipmentId: shipment.id }).where(eq(invoices.id, invoiceId));
