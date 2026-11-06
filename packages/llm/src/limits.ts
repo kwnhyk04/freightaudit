@@ -98,11 +98,12 @@ return total
 `;
 const claudeOffKey = (prefix: string) => `${prefix}:llm:claude:off`;
 const claudeSpentKey = (prefix: string) => `${prefix}:llm:claude:spent`;
+const dayKeyOf = (prefix: string, now: number) => `${prefix}:llm:day:${new Date(now).toISOString().slice(0, 10)}`;
 
 export function createLimits(redis: Redis, { prefix, enabled, dailyTokenBudget, dailyClaudeBudget = 0, claudeSpendCap, claudeRecorded, roles, clock }: LimitsOptions) {
   if (claudeSpendCap && !claudeRecorded) throw new Error('a Claude spend cap needs claudeRecorded, so a total Redis lost is seeded again from Postgres');
   const spendCap = claudeSpendCap ? microUsd(claudeSpendCap) : BigInt(Number.MAX_SAFE_INTEGER);
-  const dayKey = (now: number) => `${prefix}:llm:day:${new Date(now).toISOString().slice(0, 10)}`;
+  const dayKey = (now: number) => dayKeyOf(prefix, now);
   const limitsOf = (role: Bucket) => {
     const found = roles[role];
     if (!found) throw new Error(`no limits for ${role}`);
@@ -173,6 +174,14 @@ export type Limits = ReturnType<typeof createLimits>;
 
 // pnpm claude:resume: Claude reads again, as configured; true when it was switched off.
 export const resumeClaude = async (redis: Redis, prefix: string) => (await redis.del(claudeOffKey(prefix))) === 1;
+
+// What is left of the UTC day, read without taking any: Claude's tokens, none while it is switched off, and the free
+// models'.
+export async function dayLeft(redis: Redis, prefix: string, { dailyTokenBudget, dailyClaudeBudget }: { dailyTokenBudget: number; dailyClaudeBudget: number }, now = Date.now()) {
+  const [claude, free] = await redis.hmget(dayKeyOf(prefix, now), 'claude_tokens', 'tokens');
+  const off = await redis.exists(claudeOffKey(prefix));
+  return { claude: off ? 0 : Math.max(0, dailyClaudeBudget - Number(claude)), free: Math.max(0, dailyTokenBudget - Number(free)) };
+}
 
 // Design target per page: about 4,000 input and 1,200 output tokens.
 const TOKENS_PER_PAGE = 5_200;

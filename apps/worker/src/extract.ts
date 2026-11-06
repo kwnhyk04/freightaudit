@@ -25,7 +25,7 @@ import type { Deps } from './workers.ts';
 
 type Invoice = typeof invoices.$inferSelect;
 type Pdf = Awaited<ReturnType<typeof readPdf>>;
-type CollectJob = InvoiceJob & {
+export type CollectJob = InvoiceJob & {
   model: string;
   usage: Usage;
   step?: Extraction['step'];
@@ -45,7 +45,7 @@ async function loadInvoice({ db }: Deps, invoiceId: string) {
   return invoice;
 }
 
-const queueReconcile = ({ queues }: Deps, invoice: Invoice) =>
+export const queueReconcile = ({ queues }: Pick<Deps, 'queues'>, invoice: Pick<Invoice, 'id' | 'tenantId' | 'contentSha256'>) =>
   send('reconcile', invoice.contentSha256, (trace) =>
     queues.queue('reconcile').add('reconcile', { tenantId: invoice.tenantId, invoiceId: invoice.id, ...trace }, { jobId: invoice.contentSha256 }),
   );
@@ -175,22 +175,23 @@ async function split({ db, storage, queues }: Deps, invoice: Invoice, pdf: Pdf, 
   const pageCount = pdf.getPageCount();
   const ranges = found.map((part, i): [number, number] => [part.first_page, (found[i + 1]?.first_page ?? pageCount + 1) - 1]);
   const parts = await splitPdf(pdf, ranges);
-  const children: { invoiceId: string; jobId: string }[] = [];
-  for (const [i, bytes] of parts.entries()) {
-    const contentSha256 = sha256(bytes);
-    await storage.put(contentSha256, bytes);
-    const [from, to] = ranges[i]!;
-    const filename = `${invoice.filename} (pages ${from}-${to})`;
-    await db
-      .insert(invoices)
-      .values({ tenantId: invoice.tenantId, filename, contentSha256, parentInvoiceId: invoice.id })
-      .onConflictDoNothing();
-    const [child] = await db
-      .select({ id: invoices.id })
-      .from(invoices)
-      .where(and(eq(invoices.tenantId, invoice.tenantId), eq(invoices.contentSha256, contentSha256)));
-    children.push({ invoiceId: child!.id, jobId: contentSha256 });
-  }
+  const hashes = parts.map((bytes) => sha256(bytes));
+  for (const [i, bytes] of parts.entries()) await storage.put(hashes[i]!, bytes);
+  // All the rows or none, since the requeue sweep takes the parts it finds for the whole split.
+  const children = await db.transaction(async (tx) => {
+    const rows: { invoiceId: string; jobId: string }[] = [];
+    for (const [i, contentSha256] of hashes.entries()) {
+      const [from, to] = ranges[i]!;
+      const filename = `${invoice.filename} (pages ${from}-${to})`;
+      await tx.insert(invoices).values({ tenantId: invoice.tenantId, filename, contentSha256, parentInvoiceId: invoice.id }).onConflictDoNothing();
+      const [child] = await tx
+        .select({ id: invoices.id })
+        .from(invoices)
+        .where(and(eq(invoices.tenantId, invoice.tenantId), eq(invoices.contentSha256, contentSha256)));
+      rows.push({ invoiceId: child!.id, jobId: contentSha256 });
+    }
+    return rows;
+  });
   // One producer span for the whole flow: the parent and every part carry its context, so each part's extract and
   // reconcile stay in the upload's trace.
   await send('extract', `split-${invoice.contentSha256}`, (trace) =>

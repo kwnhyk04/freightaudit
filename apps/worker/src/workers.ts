@@ -16,6 +16,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Redis } from 'ioredis';
 import { collect, extract } from './extract.ts';
 import { reconcile } from './reconcile.ts';
+import { isRequeued, requeueStranded } from './requeue.ts';
 import { syncShipments } from './tms-sync.ts';
 
 export type Db = NodePgDatabase;
@@ -46,6 +47,8 @@ export type WorkerOptions = {
   backoff?: { baseMs?: number; capMs?: number };
   // Documents read at once (EXTRACT_CONCURRENCY).
   extractConcurrency?: number;
+  // How often to put invoices that lost their job back in their queue, and how long one sits before that; off without it.
+  requeue?: { everyMs: number; minAgeMs: number } | undefined;
 };
 
 // TMS sync every 5 minutes. Every worker upserts the same scheduler id, so there is one schedule however many run.
@@ -70,7 +73,7 @@ const SWEEP_MS = 5 * 60_000;
 
 export function startWorkers(
   deps: Deps,
-  { lockDuration = 60_000, stalledInterval = lockDuration / 2, backoff = {}, extractConcurrency = 8 }: WorkerOptions = {},
+  { lockDuration = 60_000, stalledInterval = lockDuration / 2, backoff = {}, extractConcurrency = 8, requeue }: WorkerOptions = {},
 ): { workers: Worker[]; close(): Promise<void> } {
   const backoffStrategy = jitteredBackoff(backoff.baseMs, backoff.capMs);
   // A TMS page retried in place waits out a flaky link, not an outage (tms-sync.ts), so its waits stay short.
@@ -125,11 +128,25 @@ export function startWorkers(
   let sweeping = sweep();
   const sweeper = setInterval(() => (sweeping = sweep()), SWEEP_MS);
 
+  // Every worker process sweeps, as for dead letters: a second sweep finds the job the first one added.
+  const requeueStrays = async ({ minAgeMs }: NonNullable<WorkerOptions['requeue']>) => {
+    const requeued = (await requeueStranded(deps, { minAgeMs })).filter(({ outcome }) => isRequeued(outcome));
+    if (requeued.length > 0) deps.log.warn({ requeued: requeued.length }, 'requeued invoices that had lost their job');
+  };
+  let requeuing: Promise<void> = Promise.resolve();
+  const requeuer =
+    requeue &&
+    setInterval(() => {
+      requeuing = requeueStrays(requeue).catch((err: unknown) => deps.log.error({ err }, 'requeue sweep failed'));
+    }, requeue.everyMs);
+
   return {
     workers,
     // Lets running jobs finish, then waits for dead-letter moves. A job cut off by a kill is recovered as stalled.
     async close() {
       clearInterval(sweeper);
+      clearInterval(requeuer);
+      await requeuing;
       await Promise.all(workers.map((worker) => worker.close()));
       await Promise.all([...moving, sweeping]);
     },

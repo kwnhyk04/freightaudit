@@ -38,9 +38,10 @@ export async function backlog(queue: Queue) {
   return (counts.wait ?? 0) + (counts.delayed ?? 0);
 }
 
-// The pipeline queues, each with a <name>-dlq dead-letter queue, plus a flow producer, on one shared connection.
-export function createQueues(connection: Redis, prefix: string) {
-  const open = (name: string, defaultJobOptions?: JobsOptions) => new Queue(name, { connection, prefix, defaultJobOptions });
+// The pipeline queues, each with a <name>-dlq dead-letter queue, plus a flow producer, on one shared connection. BullMQ
+// writes a queue's settings to Redis as it opens, which a read-only set, for a dry run, skips.
+export function createQueues(connection: Redis, prefix: string, { readOnly = false } = {}) {
+  const open = (name: string, defaultJobOptions?: JobsOptions) => new Queue(name, { connection, prefix, defaultJobOptions, skipMetasUpdate: readOnly });
   const queues = new Map(QUEUE_NAMES.map((name) => [name, open(name, jobOptions)]));
   const dlqs = new Map(QUEUE_NAMES.map((name) => [name, open(`${name}-dlq`)]));
   const flows = new FlowProducer({ connection, prefix });

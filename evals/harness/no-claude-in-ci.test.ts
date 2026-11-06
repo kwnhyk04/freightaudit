@@ -75,7 +75,11 @@ test("on the demo only the worker gets Claude's settings, and squid lets only th
   // Each service's block: from its two-space name line to the next one.
   const services = Object.fromEntries(compose.split(/\n(?= {2}[a-z][a-z-]*:\n)/).map((block) => [block.match(/^ {2}([a-z][a-z-]*):/)?.[1] ?? '', block]));
   for (const name of ['ANTHROPIC_API_KEY', 'LLM_CLAUDE_MODEL', 'LLM_CLAUDE_FIRST_UNTIL', 'LLM_CLAUDE_SPEND_CAP_USD', 'DAILY_CLAUDE_TOKEN_BUDGET']) expect(services.worker).toContain(`${name}: \${${name}`);
-  const others = Object.entries(services).filter(([name]) => name !== 'worker');
+  // The requeue one-off says who would read a stranded invoice, so it takes Claude's budget and end date, and nothing else
+  // of Claude's: never the key or the model, and it has no route out.
+  const requeue = services.requeue!.replace(/^ +(DAILY_CLAUDE_TOKEN_BUDGET|LLM_CLAUDE_FIRST_UNTIL): .*$/gm, '');
+  expect(services.requeue).toContain('networks: [data]');
+  const others = Object.entries({ ...services, requeue }).filter(([name]) => name !== 'worker');
   expect(others.filter(([, block]) => /ANTHROPIC|LLM_CLAUDE|DAILY_CLAUDE/.test(block)).map(([name]) => name)).toEqual([]);
   const squid = read('infra/squid.conf');
   expect(squid).toMatch(/^acl worker_hosts dstdomain -n .*\bapi\.anthropic\.com\b/m);
