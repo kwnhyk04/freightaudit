@@ -4,6 +4,8 @@ import { createHash, createHmac } from 'node:crypto';
 export type Storage = {
   put(key: string, body: Uint8Array): Promise<void>;
   get(key: string): Promise<Uint8Array | undefined>;
+  // Whether an object is stored, without fetching it.
+  has(key: string): Promise<boolean>;
 };
 
 export type StorageOptions = { endpoint: string; accessKey: string; secretKey: string; bucket: string; region?: string };
@@ -11,7 +13,7 @@ export type StorageOptions = { endpoint: string; accessKey: string; secretKey: s
 // For tests and runs without MinIO: objects live in this process only.
 export function createMemoryStorage(): Storage {
   const objects = new Map<string, Uint8Array>();
-  return { put: async (key, body) => void objects.set(key, body), get: async (key) => objects.get(key) };
+  return { put: async (key, body) => void objects.set(key, body), get: async (key) => objects.get(key), has: async (key) => objects.has(key) };
 }
 
 const sha256 = (data: string | Uint8Array) => createHash('sha256').update(data).digest('hex');
@@ -19,7 +21,7 @@ const hmac = (key: string | Buffer, data: string) => createHmac('sha256', key).u
 
 // Minimal S3 client for MinIO: path-style requests signed with AWS Signature V4, no SDK.
 export function createStorage({ endpoint, accessKey, secretKey, bucket, region = 'us-east-1' }: StorageOptions): Storage {
-  function send(method: 'GET' | 'PUT', path: string, body?: Uint8Array) {
+  function send(method: 'GET' | 'HEAD' | 'PUT', path: string, body?: Uint8Array) {
     const url = new URL(path, endpoint);
     const amzDate = new Date().toISOString().replace(/[-:]|\.\d{3}/g, '');
     const scope = `${amzDate.slice(0, 8)}/${region}/s3/aws4_request`;
@@ -68,6 +70,12 @@ export function createStorage({ endpoint, accessKey, secretKey, bucket, region =
       }
       if (!response.ok) await check(response, 'get');
       return new Uint8Array(await response.arrayBuffer());
+    },
+    async has(key) {
+      const response = await send('HEAD', `/${bucket}/${key}`);
+      if (response.status === 404) return false;
+      await check(response, 'head');
+      return true;
     },
   };
 }

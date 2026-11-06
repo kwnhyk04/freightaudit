@@ -12,7 +12,9 @@ test('puts and gets objects in MinIO with SigV4-signed requests', async () => {
   await storage.put(key, body);
   expect(Buffer.from((await storage.get(key)) ?? [])).toEqual(body);
   expect(await storage.get(`${key}-missing`)).toBeUndefined();
+  expect([await storage.has(key), await storage.has(`${key}-missing`)]).toEqual([true, false]);
 
   // A wrong secret fails the signature check.
   await expect(createStorage({ ...options, secretKey: 'wrong-secret' }).get(key)).rejects.toThrow('HTTP 403');
+  await expect(createStorage({ ...options, secretKey: 'wrong-secret' }).has(key)).rejects.toThrow('HTTP 403');
 });

@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.build.json",
     "dev": "node --env-file-if-exists=../../.env --import ./src/telemetry.ts --watch src/main.ts",
     "lint": "eslint .",
+    "requeue": "node --env-file-if-exists=../../.env src/requeue-cli.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

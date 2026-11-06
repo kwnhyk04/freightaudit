@@ -20,6 +20,7 @@
     "db:seed": "turbo run db:seed --",
     "db:reset": "turbo run db:reset",
     "extract:resume": "turbo run extract:resume",
+    "requeue": "turbo run requeue --",
     "claude:resume": "turbo run claude:resume",
     "fixtures": "turbo run fixtures --",
     "codegen": "turbo run codegen",
@@ -29,6 +30,7 @@
     "demo:init": "node scripts/demo.ts init",
     "demo:up": "node scripts/demo.ts up",
     "demo:down": "node scripts/demo.ts down",
+    "demo:requeue": "node scripts/demo.ts requeue",
     "db:backup": "node scripts/demo.ts backup",
     "db:reset-demo": "node scripts/demo.ts reset"
   },

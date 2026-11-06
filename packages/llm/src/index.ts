@@ -42,7 +42,7 @@ export {
   type Usage,
 } from './extract.ts';
 export { createGeminiProvider } from './gemini.ts';
-export { createLimits, type Limits, metered, resumeClaude, type RoleLimits } from './limits.ts';
+export { createLimits, dayLeft, type Limits, metered, resumeClaude, type RoleLimits } from './limits.ts';
 export { createModels, type ModelConfig } from './models.ts';
 export { createOpenAiProvider } from './openai.ts';
 export { readPages } from './pages.ts';

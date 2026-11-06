@@ -128,6 +128,25 @@ test('EXTRACT_CONCURRENCY sets how many documents the extract worker reads at on
   }
 });
 
+test('the requeue sweep stays off unless REQUEUE_SWEEP_MINUTES is set, and the worker logs how it runs', async () => {
+  for (const [minutes, expected] of [[undefined, false], ['5', { everyMinutes: 5, minAgeMinutes: 15 }]] as const) {
+    const child = spawn(process.execPath, [main], { env: { ...settings(), REQUEUE_SWEEP_MINUTES: minutes }, stdio: ['ignore', 'pipe', 'inherit'] });
+    try {
+      let requeue: unknown;
+      for await (const line of createInterface({ input: child.stdout! })) {
+        const entry = (line.startsWith('{') ? JSON.parse(line) : {}) as { msg?: string; requeue?: unknown };
+        if (entry.msg === 'requeue sweep') requeue = entry.requeue;
+        if (entry.msg === 'requeue sweep' || entry.msg?.startsWith('Server listening at ')) break;
+      }
+      child.stdout!.resume();
+      expect([minutes, requeue]).toEqual([minutes, expected]);
+    } finally {
+      child.kill();
+      await once(child, 'exit');
+    }
+  }
+});
+
 test('EXTRACT_CONCURRENCY outside 1 to 8, or not a whole number, stops the worker at startup', async () => {
   for (const value of ['0', '9', '1.5', 'two']) {
     // A worker that accepted the value would run on; the timeout ends it, and the exit code shows it was not refused.

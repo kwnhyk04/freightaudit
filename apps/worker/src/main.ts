@@ -28,6 +28,8 @@ const env = loadEnv([
   'MOCK_TMS_URL',
   'JOB_LOCK_MS',
   'EXTRACT_CONCURRENCY',
+  'REQUEUE_SWEEP_MINUTES',
+  'REQUEUE_MIN_AGE_MINUTES',
   ...LLM_SETTINGS,
 ]);
 // With AI off nothing is required: no model is built and extract jobs wait.
@@ -66,6 +68,8 @@ app.log.info(
   { claude: claude ? { model: claude.model, until: claudeFirst?.until, dailyTokens: env.DAILY_CLAUDE_TOKEN_BUDGET, spendCapUsd: claudeSpendCap, spentMicroUsd: spent?.toString() } : false },
   'claude',
 );
+const requeue = env.REQUEUE_SWEEP_MINUTES > 0 ? { everyMs: env.REQUEUE_SWEEP_MINUTES * 60_000, minAgeMs: env.REQUEUE_MIN_AGE_MINUTES * 60_000 } : undefined;
+app.log.info({ requeue: requeue ? { everyMinutes: env.REQUEUE_SWEEP_MINUTES, minAgeMinutes: env.REQUEUE_MIN_AGE_MINUTES } : false }, 'requeue sweep');
 const workers = startWorkers(
   {
     db,
@@ -80,7 +84,7 @@ const workers = startWorkers(
     tmsUrl: env.MOCK_TMS_URL,
     log: app.log,
   },
-  { lockDuration: env.JOB_LOCK_MS, extractConcurrency: env.EXTRACT_CONCURRENCY },
+  { lockDuration: env.JOB_LOCK_MS, extractConcurrency: env.EXTRACT_CONCURRENCY, requeue },
 );
 // Read back from BullMQ, so the log shows what each worker takes at once.
 app.log.info({ concurrency: Object.fromEntries(workers.workers.map((worker) => [worker.name, worker.concurrency])) }, 'workers started');

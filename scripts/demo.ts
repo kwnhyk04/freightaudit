@@ -1,5 +1,6 @@
 // The public demo's backend on this PC: compose project freightaudit-prod with the settings in .env.prod
-// (see the private deploy notes). pnpm demo:init | demo:up | demo:down | db:backup | db:reset-demo. Prints no secret.
+// (see the private deploy notes). pnpm demo:init | demo:up | demo:down | demo:requeue | db:backup | db:reset-demo. Prints
+// no secret.
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';
@@ -131,6 +132,13 @@ async function backup() {
   console.log(`Backup: ${path} (${statSync(path).size} bytes). Restore with pg_restore, as docs/deploy.md shows.`);
 }
 
+// Puts invoices that lost their job back in their queues, or with --dry-run lists them and changes nothing. The image
+// comes first, since the stack may still run one from before this command.
+function requeue() {
+  compose('pull', 'requeue');
+  compose('run', '--rm', 'requeue', ...process.argv.slice(3));
+}
+
 // Sends the public sample's PDFs (golden-set invoices) through the live pipeline in one batch.
 async function reload(url: string) {
   const key = settings().API_KEYS?.split(',')[0]?.trim();
@@ -161,10 +169,10 @@ async function reset() {
   await reload(await up(spent));
 }
 
-const commands: Record<string, () => unknown> = { init, up, down, backup, reset };
+const commands: Record<string, () => unknown> = { init, up, down, backup, reset, requeue };
 const command = commands[process.argv[2] ?? ''];
 if (!command) {
-  console.error('usage: node scripts/demo.ts init|up|down|backup|reset');
+  console.error('usage: node scripts/demo.ts init|up|down|backup|reset|requeue');
   process.exit(2);
 }
 try {

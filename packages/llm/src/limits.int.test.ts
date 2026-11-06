@@ -1,7 +1,7 @@
 import { testEnv } from '@freightaudit/db/testing';
 import { Redis } from 'ioredis';
 import { randomBytes } from 'node:crypto';
-import { createLimits, resumeClaude, type RoleLimits } from './limits.ts';
+import { createLimits, dayLeft, resumeClaude, type RoleLimits } from './limits.ts';
 
 const redis = new Redis(testEnv('REDIS_URL'));
 const prefix = `test-${randomBytes(4).toString('hex')}`;
@@ -187,6 +187,25 @@ test("a spend cap needs Claude's total as Postgres records it, to seed a total R
   const options = { prefix: `${prefix}-claude-unrecorded`, enabled: true, roles: { ...roles({ rpm: 60, tpm: 60_000 }), claude: { rpm: 50, tpm: 50_000 } }, dailyTokenBudget: 1e9 };
   expect(() => createLimits(redis, { ...options, claudeSpendCap: '15.00' })).toThrow('claudeRecorded');
   expect(() => createLimits(redis, options)).not.toThrow();
+});
+
+test("what is left of the UTC day reads without taking any: Claude's tokens, the free models', and none for Claude while it is off", async () => {
+  const day = `${prefix}-left`;
+  const budgets = { dailyTokenBudget: 1_000, dailyClaudeBudget: 500 };
+  const limits = createLimits(redis, { prefix: day, enabled: true, ...budgets, roles: roles({ rpm: 10, tpm: 1_000 }) });
+  const now = Date.parse('2026-11-06T12:00:00Z');
+  expect(await dayLeft(redis, day, budgets, now)).toEqual({ claude: 500, free: 1_000 });
+  expect(await redis.keys(`${day}:*`)).toEqual([]);
+
+  expect(await limits.reserveClaude(120, 0n, now)).toBe('ok');
+  await limits.record('primary', { inputTokens: 200, outputTokens: 100 }, 300, now);
+  expect(await dayLeft(redis, day, budgets, now)).toEqual({ claude: 380, free: 700 });
+  // The next UTC day starts full.
+  expect(await dayLeft(redis, day, budgets, now + 86_400_000)).toEqual({ claude: 500, free: 1_000 });
+
+  await limits.record('primary', { inputTokens: 900, outputTokens: 900 }, 1_800, now);
+  await limits.switchClaudeOff('spend_cap');
+  expect(await dayLeft(redis, day, budgets, now)).toEqual({ claude: 0, free: 0 });
 });
 
 test('the switch to the free models is stored once, seen by every worker process, and stays until claude:resume clears it', async () => {
