@@ -62,7 +62,7 @@ services:
 
   jaeger:
     profiles: [observability]
-    image: jaegertracing/jaeger:2.22.0
+    image: jaegertracing/jaeger:2.23.0
     ports: ["127.0.0.1:${JAEGER_PORT:-16686}:16686"]
     healthcheck:
       <<: *healthcheck
@@ -70,7 +70,7 @@ services:
 
   prometheus:
     profiles: [observability]
-    image: prom/prometheus:v3.15.1-busybox
+    image: prom/prometheus:v3.16.0-busybox
     volumes: ["./prometheus.yml:/etc/prometheus/prometheus.yml:ro", "./prometheus-alerts.yml:/etc/prometheus/alerts.yml:ro"]
     ports: ["127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"]
     healthcheck:
@@ -79,7 +79,7 @@ services:
 
   grafana:
     profiles: [observability]
-    image: grafana/grafana:13.2.4
+    image: grafana/grafana:13.3.0
     volumes:
       - "./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro"
       - "./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro"
