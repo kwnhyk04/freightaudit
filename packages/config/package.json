@@ -19,13 +19,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@swc/core": "^1.16.18",
+    "@swc/core": "^1.16.22",
     "@swc/jest": "^0.2.39",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "jest": "catalog:",
-    "testcontainers": "^12.2.1",
+    "testcontainers": "^12.2.2",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.71.2"
+    "typescript-eslint": "^8.73.0"
   }
 }
